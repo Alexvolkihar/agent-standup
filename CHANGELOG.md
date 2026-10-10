@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.8.0
+- Support: a "buy the dev a coffee" line in the ⚙ menu and at the end of the recap (never during a live call), a Sponsor button on the repository, and a note in the README. Friendlier "port already in use" message for `node server.js`.
+
 ## 1.7.1
 - Translation: finds Claude Code much more reliably (PATH, Homebrew/npm/nvm/Bun/Volta, Windows `.exe`/`.cmd`, and the binary bundled with the official VS Code Claude Code extension); new `agentStandup.claudePath` setting; precise hints (not found / not signed in / VS Code started from a Claude Code session); stays in English without a warning when French cannot work and was not chosen explicitly.
 - The extension now always runs its own server on a free port (`agentStandup.port` = 0) instead of reusing whatever already answers on 4747, which could be a server without the right environment.
