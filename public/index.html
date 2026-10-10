@@ -239,7 +239,7 @@ const CID = Math.random().toString(36).slice(2, 12);   // identifies this window
 const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
 
-let prefs = { lang: 'en', voice: true, office: true, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call' };
+let prefs = { lang: 'en', voice: true, office: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call' };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem('cc.prefs') || '{}')); } catch {}
 const savePrefs = () => { try { localStorage.setItem('cc.prefs', JSON.stringify(prefs)); } catch {} };
 const FR = () => prefs.lang === 'fr';

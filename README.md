@@ -27,7 +27,7 @@ _A fictional team fixing a slow login page — the built-in demo (⚙ → Source
 - **Video export** — records the call as a 1280×720 `.webm` with voices and subtitles.
 - **French or English** — agent text is translated on the fly (see below).
 - **Office music** — optional live web radio (FIP and its themed stations) that fades down smoothly while an agent talks and fades back up when the room goes quiet.
-- Office ambience, on by default and fully synthesised: keyboards that type when agents run commands, clicks when they read, a coffee machine, a phone buzzing, a far-away door… (⚙ → Office ambience). Plus small reactions and jokes between agents ("episode mode").
+- Office ambience, optional (off by default) and fully synthesised: keyboards that type when agents run commands, clicks when they read, a coffee machine, a phone buzzing, a far-away door… (⚙ → Office ambience). Plus small reactions and jokes between agents ("episode mode").
 
 ## What you see for each agent
 
@@ -67,7 +67,7 @@ In VS Code: Extensions view → search **Agent Standup** → Install. Or: https:
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.12.0/agent-standup-1.12.0.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.12.1/agent-standup-1.12.1.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.12.1
+- Office ambience is now off by default (⚙ → Office ambience to turn it on).
+
 ## 1.12.0
 - **Office ambience** (on by default, ⚙ → Office ambience): keyboards typing while agents work and on every real command, mouse clicks when they read, a coffee machine (grinder, pouring, steam, beep) with a little "Someone is making coffee…" note, a phone buzzing, a chair, a far-away door, paper, a knock on the meeting-room door. All synthesised in the browser, no audio files; it fades down when someone talks.
 - In Live, the header shows which project is being followed.
