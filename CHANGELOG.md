@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.11.0
+- **Token usage per agent**: ⚡ counter in the header and on each tile, per-agent breakdown in the detail drawer and the recap (counted once per message, as recorded in the session files).
+- **Stuck / quiet / failed**: tiles pulse amber with ⏳ when a command has been running for 1 min+, show 💤 after 3 min of silence, and count failed tool calls (✗). The tab title shows how many agents are working.
+- **Much faster server**: each transcript is parsed once and then read incrementally (a live update on a 12 MB, 168-sub-agent session went from ~1.6 s to ~50 ms), responses are cached and gzip-compressed (12 MB → 3.3 MB), and memory for sessions you are no longer viewing is released. Verified identical to the previous output on 9 real sessions.
+- Fix: a report from a nested sub-agent now goes to its real parent instead of the lead.
+- Smoother UI on very large sessions (repaints of the tree, details and badges are coalesced). Keyboard shortcuts **T** (tree/call), **R** (recap), **L** (transcript).
+
 ## 1.10.0
 - Built-in demo (⚙ → Source → Demo, or "Watch the demo" when there is no session yet): a fictional team fixes a slow login page, with real-looking commands, outputs, diffs, a task list and a retry-logic sub-agent. Ships its own French.
 - Spotlight sizing: the speaker's tile now keeps a 3:2 shape at every window size (it used to get too flat on wide screens).

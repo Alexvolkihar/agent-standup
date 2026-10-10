@@ -10,11 +10,25 @@ const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Conte
 fs.mkdirSync(out, { recursive: true });
 const prefs = (lang) => JSON.stringify({ lang, voice: false, sfx: false, music: false, epi: false, vanish: true, view: 'call', langChosen: true });
 
+// Moments are found by what happens in the demo (not by position), so adding events to the demo never breaks the captures.
+const D = require('../demo.js')();
+const at = (fn) => { const i = D.events.findIndex(fn); if (i < 0) throw new Error('moment not found'); return i; };
+const tool = (agent, text) => (e) => e.kind === 'tools' && e.agent === agent && ((e.tools[0].d || {}).text === text || (e.tools[0].d || {}).file === text);
+const M = {
+  hero: at((e) => e.kind === 'say' && e.agent === 'hugo'),
+  terminal: at(tool('remy', 'npm test -- cart')),
+  terminalOut: at(tool('ada', 'npm run profile -- login')),
+  diff: at((e) => e.kind === 'tools' && e.agent === 'remy' && e.tools[0].name === 'Edit'),
+  read: at(tool('ada', 'src/pages/Login.jsx')),
+  todo: at((e) => e.kind === 'tools' && e.agent === 'main' && e.tools[0].name === 'TodoWrite'),
+  tree: at((e) => e.kind === 'report' && e.agent === 'iris'),
+  end: D.events.length - 1,
+};
 const STILLS = [   // [file, query, viewport]
-  ['hero', 'at=35', [1280, 720]], ['hero-fr', 'at=35&lang=fr', [1280, 720]],
-  ['terminal', 'at=8', [1280, 720]], ['terminal-output', 'at=18', [1280, 720]],
-  ['editor-diff', 'at=19', [1280, 720]], ['editor-read', 'at=6', [1280, 720]],
-  ['todo', 'at=2', [1280, 720]], ['tree', 'at=38&view=tree', [1280, 720]], ['recap', 'at=47&recap=1', [1280, 720]],
+  ['hero', `at=${M.hero}`, [1280, 720]], ['hero-fr', `at=${M.hero}&lang=fr`, [1280, 720]],
+  ['terminal', `at=${M.terminal}`, [1280, 720]], ['terminal-output', `at=${M.terminalOut}`, [1280, 720]],
+  ['editor-diff', `at=${M.diff}`, [1280, 720]], ['editor-read', `at=${M.read}`, [1280, 720]],
+  ['todo', `at=${M.todo}`, [1280, 720]], ['tree', `at=${M.tree}&view=tree`, [1280, 720]], ['recap', `at=${M.end}&recap=1`, [1280, 720]],
 ];
 
 (async () => {

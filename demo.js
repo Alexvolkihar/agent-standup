@@ -14,13 +14,14 @@ module.exports = function demoTimeline() {
   ];
   const cat = (lines) => lines.map((l, i) => String(i + 1).padStart(6) + '\t' + l).join('\n');
   const ev = (gap, e) => { now += gap; events.push({ ts: now, ...e }); return now; };
+  const tok = (agent) => { const k = ++n; events.push({ ts: now - 5, agent, kind: 'usage', u: { i: 4 + (k % 7), o: 90 + ((k * 37) % 420), r: 16000 + k * 1100, w: k % 5 === 0 ? 2400 : 0 }, model: 'demo' }); };   // made-up numbers, same shape as real ones
   const user = (text, fr) => ev(0, { agent: 'user', kind: 'user', text, fr });
-  const say = (agent, text, fr, gap = 2600) => ev(gap, { agent, kind: 'say', text, fr });
-  const order = (from, to, title, text, fr, gap = 2200) => ev(gap, { agent: from, to, kind: 'order', title, text, fr });
+  const say = (agent, text, fr, gap = 2600) => { const t = ev(gap, { agent, kind: 'say', text, fr }); tok(agent); return t; };
+  const order = (from, to, title, text, fr, gap = 2200) => { const t = ev(gap, { agent: from, to, kind: 'order', title, text, fr }); tok(from); return t; };
   const report = (agent, to, text, fr, gap = 2600) => ev(gap, { agent, to, kind: 'report', text, fr });
   // one tool call + its result, `ms` later
   const use = (agent, name, arg, d, out, { err = false, ms = 400, gap = 1500 } = {}) => {
-    const id = 'toolu_demo' + ++n, ts = ev(gap, { agent, kind: 'tools', tools: [{ id, name, arg, d }] });
+    const id = 'toolu_demo' + ++n, ts = ev(gap, { agent, kind: 'tools', tools: [{ id, name, arg, d }] }); tok(agent);
     if (out != null) events.push({ ts: ts + ms, agent, kind: 'results', items: [{ id, err, out }] });
     events[events.findIndex((e) => e.tools && e.tools[0].id === id)].tools[0].ts = ts;
   };

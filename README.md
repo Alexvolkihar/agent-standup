@@ -14,6 +14,8 @@ _A fictional team fixing a slow login page — the built-in demo (⚙ → Source
 
 ## What you get
 
+- **Token usage per agent** — a ⚡ counter in the header and on each tile shows how many tokens each agent used (input + output + cache writes; cache reads shown separately in the tooltip), counted once per message as recorded by Claude Code. Handy to see which sub-agent is the expensive one. It is read from the session files, not an estimate of your bill.
+- **Stuck or quiet agents** — in the live call, a tile pulses amber with ⏳ when a command has been running for over a minute, shows 💤 when a working agent has gone quiet for 3 minutes, and a red ✗ counter for failed tool calls. The browser tab title shows how many agents are working.
 - **Built-in demo** — no session yet? ⚙ → Source → **Demo** plays a fictional team (no data of yours).
 - **Live call** — follows your newest Claude Code session in real time. Each agent is a small character at its desk; the one who speaks gets the spotlight and keeps it until someone else talks. Agents that talk back-to-back talk over each other, like a real meeting.
 - **Real voices, lip-sync** — lines are spoken aloud; mouths follow the actual volume of the voice.
@@ -62,7 +64,7 @@ Outputs are trimmed (about 1–2 KB each) to keep the call fast. Results of inte
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.10.0/agent-standup-1.10.0.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.11.0/agent-standup-1.11.0.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself
@@ -105,6 +107,7 @@ The first click on **Join** is required by browsers to allow sound.
 | **☰** | transcript |
 | **🔊 / 🔇** (M) | mute everything |
 | **⚙** | language · voices · ambience · **office music (station + volume)** · reactions · remove finished agents · **Live ↔ Replay** (and session picker) · recap · export video |
+| **T** · **R** · **L** | tree/call · recap · transcript |
 | Esc | close recap / menu |
 
 In Replay, a slider and a speed control appear at the bottom, and clicking a transcript line jumps there.
@@ -151,7 +154,7 @@ Requires Node 18+.
 
 ## How it works
 
-Claude Code writes every session to `~/.claude/projects/<project>/<session>.jsonl`, and each sub-agent to `<session>/subagents/agent-*.jsonl` (with a `.meta.json` linking it to the tool call that created it). Agent Standup merges these into one timeline: orders (the prompt a lead sends to a sub-agent), spoken text, tool calls (with their inputs), the **results** of those calls (matched by tool-call id, with real durations) and final reports. The page polls the server every 0.7 s and plays new events.
+Claude Code writes every session to `~/.claude/projects/<project>/<session>.jsonl`, and each sub-agent to `<session>/subagents/agent-*.jsonl` (with a `.meta.json` linking it to the tool call that created it). Agent Standup merges these into one timeline: orders (the prompt a lead sends to a sub-agent), spoken text, tool calls (with their inputs), the **results** of those calls (matched by tool-call id, with real durations) and final reports. Each file is parsed once and then only the new lines are read, so even a very large session refreshes in a few milliseconds; responses are compressed. The page polls the server every 0.7 s and plays new events.
 
 The website counts visits anonymously (a 1-pixel file hosted on GitHub per channel: no cookies, no third-party tracker); the app itself has no telemetry.
 
@@ -173,7 +176,7 @@ The website counts visits anonymously (a 1-pixel file hosted on GitHub per chann
 - Tool outputs are trimmed (about 1–2 KB each); the shared screen shows the beginning of long outputs.
 - Output only exists once a tool call has finished: a running command shows a spinner and its live timer, not partial output.
 - Voices on macOS/Windows/Linux differ in quality; Windows needs a French voice installed for French.
-- Very large sessions (10 MB+ of transcript) take a second or two to load and refresh a little less often (every ~2× the time it takes to parse them).
+- Very large sessions (10 MB+ of transcript) take a second or two to load the first time (about 1.9 s for a 12 MB, 168-sub-agent session on a recent Mac); after that updates take milliseconds.
 - Video export records in real time and needs a Chromium-based browser/VS Code.
 
 ## Support

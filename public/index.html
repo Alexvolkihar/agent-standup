@@ -22,6 +22,13 @@
   .brand b { font:700 14px "Comic Sans MS","Chalkboard SE",system-ui,sans-serif; white-space:nowrap }
   .brand small { display:block; color:var(--dim); font-size:11px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
   .sp { flex:1 }
+  .tok { font-size:11px; font-weight:600; padding:3px 9px; border-radius:99px; background:var(--panel2); color:#c3c6d4; white-space:nowrap } .tok:hover { color:#fff }
+  .tbadge { position:absolute; top:30px; right:6px; display:flex; gap:4px; z-index:2; pointer-events:none } .tbadge span { font-size:10.5px; padding:1px 7px; border-radius:99px; background:rgba(14,15,24,.78); backdrop-filter:blur(6px) }
+  .tbadge .e { color:#ff7b72 } .tbadge .s { color:#ffb347 } .tbadge .q { color:#9aa3bd }
+  .tile.slow { border-color:#ff9f1c !important; animation:slowp 1.6s ease-in-out infinite } @keyframes slowp { 50% { box-shadow:0 0 0 4px rgba(255,159,28,.35) } }
+  .tile.quiet { opacity:.72 }
+  .tag .tk { color:#aab2c5; font-size:10px } .tag .tk:empty { display:none }
+  .keys { padding:6px 10px 4px; color:var(--dim); font-size:10.5px; line-height:1.5 }
   #pill { font-size:11px; font-weight:600; letter-spacing:.04em; padding:3px 9px; border-radius:99px; background:var(--panel2); color:var(--dim); white-space:nowrap }
   #pill.live { color:#fff; background:#c0392b } #pill.live::before { content:'● '; animation:pulse 1.4s infinite }
   #pill.wait { color:var(--ok) } #pill.wait::before { content:'● '; opacity:.7 }
@@ -168,7 +175,7 @@
 <body>
 <header>
   <div class="brand"><div class="logo">🎥</div><div><b>Agent Standup</b><small id="subtitle"></small></div></div>
-  <span id="pill">REPLAY</span>
+  <span id="pill">REPLAY</span><button id="tok" class="tok" style="display:none"></button>
   <div class="sp"></div>
   <div class="seg" id="viewSeg"><button data-v="call" class="on" data-fr="Appel" data-en="Call">Appel</button><button data-v="tree" data-fr="Arbre" data-en="Tree">Arbre</button></div>
   <button class="ic" id="bPlay" title="Pause / Lecture (espace)">⏸</button>
@@ -196,6 +203,7 @@
   <button class="mi" id="mCoffee" style="display:none"><span id="mCoffeeT"></span></button>
   <button class="mi" id="mRecap"><span data-fr="📋 Récapitulatif" data-en="📋 Recap">📋 Récapitulatif</span></button>
   <button class="mi" id="mExport"><span data-fr="🎞 Exporter la vidéo" data-en="🎞 Export video">🎞 Exporter la vidéo</span></button>
+  <div class="keys">Space ⏯ · M 🔇 · T tree · R recap · L log · Esc ✕</div>
   <button class="mi" id="mBrowser" style="display:none"><span data-fr="↗ Ouvrir dans le navigateur" data-en="↗ Open in browser">↗ Ouvrir dans le navigateur</span></button>
 </div>
 
@@ -551,7 +559,7 @@ async function speakLine(text, p, primary, token, fr = FR()) {
 // =====================================================================
 function addTile(p) {
   const d = document.createElement('div'); d.className = 'tile' + (p.lead ? ' lead' : ''); d.id = 't-' + p.id; d.style.display = 'none'; d.onclick = () => openDetail(p.id);
-  d.innerHTML = `${avatarSVG(p, undefined, 't' + p.gid + '_')}<div class="bubble"></div><div class="status"></div><div class="ticker"></div><div class="tag"><b>${esc(p.name)}</b><span>${esc(p.role)}</span></div>`;
+  d.innerHTML = `${avatarSVG(p, undefined, 't' + p.gid + '_')}<div class="bubble"></div><div class="status"></div><div class="ticker"></div><div class="tbadge"></div><div class="tag"><b>${esc(p.name)}</b><span>${esc(p.role)}</span><span class="tk"></span></div>`;
   $('#stage').appendChild(d);
 }
 function buildStage() { $('#stage').innerHTML = ''; Object.values(S.agents).forEach(addTile); }
@@ -576,7 +584,7 @@ function renderLog(full) {
   if (full || S.logTo < from || S.logTo > S.events.length) { log.innerHTML = ''; S.logTo = from; }
   const html = [];
   for (let i = S.logTo; i < S.events.length; i++) {
-    if (S.events[i].kind === 'results') continue;
+    if (S.events[i].kind === 'results' || S.events[i].kind === 'usage') continue;
     const e = S.events[i], arrow = e.to ? ` <span class="arrow">→</span> <span class="who">${esc(nameOf(e.to))}</span>` : '';
     const body = e.kind === 'tools' ? e.tools.map((t) => t.name).join(', ') : spoken(e), k = { order: L('tâche', 'task'), report: L('rapport', 'report'), say: '', user: L('brief', 'brief'), tools: L('outils', 'tools') }[e.kind];
     html.push(`<div class="row ${e.kind}" data-i="${i}"><span class="who">${esc(nameOf(e.agent))}</span>${arrow} <span class="k">${k}</span><div class="txt">${esc(body)}</div></div>`);
@@ -594,7 +602,7 @@ function paintStatus() {
   }
   const prev = $('.row.now'); if (prev) prev.classList.remove('now');
   const now = $(`.row[data-i="${S.idx}"]`); if (now) { now.classList.add('now'); if (document.body.classList.contains('log')) now.scrollIntoView({ block: 'nearest' }); }
-  renderDetail(); renderTree(); drawGantt();
+  later('detail', renderDetail); later('tree', renderTree); drawGantt();
   $('#seek').value = S.idx; $('#pos').textContent = `${Math.min(S.idx + 1, S.events.length)} / ${S.events.length}`;
 }
 const applyStatus = (ev) => {
@@ -602,13 +610,14 @@ const applyStatus = (ev) => {
   if (ev.kind === 'report') { S.status[ev.agent] = 'done'; S.doneAt[ev.agent] = S.clock; delete S.run[ev.agent]; }
 };
 function recomputeStatus(upTo) {
-  S.term = {}; S.todos = {}; S.run = {}; S.act = {}; hidePresent();
+  S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; hidePresent();
   S.status = {}; S.tc = {}; S.doneAt = {}; S.gone.clear(); S.leaving.clear(); document.querySelectorAll('.tile.vanishing').forEach((t) => t.classList.remove('vanishing')); const doneIdx = {}; document.querySelectorAll('.ticker').forEach((x) => { x.classList.remove('on'); x.innerHTML = ''; });
   for (let i = 0; i < upTo; i++) {
-    const e = S.events[i]; applyStatus(e); if (e.kind === 'tools') S.tc[e.agent] = (S.tc[e.agent] || 0) + e.tools.length;
+    const e = S.events[i]; applyStatus(e); tally(e); if (e.kind === 'tools') S.tc[e.agent] = (S.tc[e.agent] || 0) + e.tools.length;
     if (i >= upTo - 160) { if (e.kind === 'tools') e.tools.forEach((t) => pushTerm(e.agent, t)); else if (e.kind === 'results') applyResults(e, true); }
     if (e.kind === 'report') doneIdx[e.agent] = i; if (e.kind === 'order') delete doneIdx[e.to];
   }
+  later('tok', renderTokens, 50); later('badges', renderBadges, 50);
   const now = S.events[Math.max(0, upTo - 1)];   // agents that finished long before this point are already gone
   if (prefs.vanish && now) for (const id in doneIdx) if (now.t - S.events[doneIdx[id]].t >= VANISH_MS) S.gone.add(id);
 }
@@ -622,10 +631,44 @@ function syncUI() {
 
 // ---------- tool ticker, shared screen, flying messages ----------
 // ---------- what each agent is doing: tool calls with their real outputs ----------
-S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.present = null; S.camFor = null; let presentTimer = null;
+S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.present = null; S.camFor = null; let presentTimer = null;
+const later = (k, fn, ms = 160) => { later.p = later.p || {}; if (later.p[k]) return; later.p[k] = setTimeout(() => { later.p[k] = 0; fn(); }, ms); };   // coalesce bursts of repaints
+const fmtTok = (n) => (n < 1000 ? String(n) : n < 1e6 ? (n / 1000).toFixed(n < 1e4 ? 1 : 0) + 'k' : (n / 1e6).toFixed(n < 1e7 ? 2 : 1) + 'M');
+const tokTotal = (u) => (u ? u.i + u.o + u.w : 0);   // headline = input + output + cache writes; cache reads are cheap and shown separately
+function tally(ev) {   // numbers that pile up over a session: token usage, errors, last sign of life
+  if (ev.kind === 'usage') { const u = (S.usage[ev.agent] = S.usage[ev.agent] || { i: 0, o: 0, r: 0, w: 0 }); u.i += ev.u.i; u.o += ev.u.o; u.r += ev.u.r; u.w += ev.u.w; later('tok', renderTokens, 300); }
+  else if (ev.kind === 'results') ev.items.forEach((it) => { if (it.err) { S.errs[ev.agent] = (S.errs[ev.agent] || 0) + 1; later('badges', renderBadges, 300); } });
+  else if (ev.kind === 'tools' || ev.kind === 'say') S.lastAct[ev.agent] = ev.ts;
+}
+const tokTip = (u) => `${L('Jetons enregistrés par Claude Code (comptés une fois par message, ce n’est pas une facture)', 'Tokens recorded by Claude Code (counted once per message, not a bill)')}\n${L('entrée', 'input')} ${fmtTok(u.i)} · ${L('sortie', 'output')} ${fmtTok(u.o)} · ${L('écriture cache', 'cache write')} ${fmtTok(u.w)} · ${L('lecture cache', 'cache read')} ${fmtTok(u.r)}`;
+function renderTokens() {
+  const all = { i: 0, o: 0, r: 0, w: 0 }; for (const id in S.usage) for (const k in all) all[k] += S.usage[id][k];
+  const b = $('#tok'), tot = tokTotal(all); b.style.display = tot ? '' : 'none';
+  if (tot) { b.textContent = `⚡ ${fmtTok(tot)} ${L('jetons', 'tokens')}`; b.title = tokTip(all); }
+  for (const id in S.agents) { const t = $('#t-' + id); if (!t) continue; const u = S.usage[id], el = t.querySelector('.tk'); el.textContent = u && tokTotal(u) ? `⚡${fmtTok(tokTotal(u))}` : ''; if (u) t.title = tokTip(u); }
+}
+function renderBadges() {   // per tile: failed tool calls, a command that has been running a long time, an agent that went quiet
+  const now = Date.now();
+  for (const id in S.agents) {
+    const t = $('#t-' + id); if (!t) continue; const b = t.querySelector('.tbadge'), parts = []; let slow = false, quiet = false;
+    if (S.errs[id]) parts.push(`<span class="e">✗ ${S.errs[id]}</span>`);
+    if (S.live && S.status[id] === 'working') {
+      const r = S.run[id];
+      if (r && r.ts && now - r.ts > 60000) { slow = true; parts.push(`<span class="s">⏳ ${fmtShort(now - r.ts)}</span>`); }
+      else if (!r && S.lastAct[id] && now - S.lastAct[id] > 180000) { quiet = true; parts.push(`<span class="q">💤 ${fmtShort(now - S.lastAct[id])}</span>`); }
+    }
+    t.classList.toggle('slow', slow); t.classList.toggle('quiet', quiet); const h = parts.join(''); if (b.innerHTML !== h) b.innerHTML = h;
+  }
+}
+const fmtShort = (ms) => { const s = Math.round(ms / 1000); return s < 90 ? `${s}s` : `${Math.round(s / 60)} min`; };
+function updateTitle() {
+  let n = 0; for (const id in S.status) if (S.status[id] === 'working' && !S.gone.has(id)) n++;
+  document.title = S.live && S.playing && n ? `● ${n} ${L('au travail', 'working')} · Agent Standup` : 'Agent Standup';
+}
+setInterval(() => { if (!S.agents || !S.live) return; renderBadges(); updateTitle(); }, 2000);
 const base = (f) => String(f || '').split('/').pop();
 const fmtDur = (ms) => (ms < 950 ? `${Math.max(1, Math.round(ms))} ms` : ms < 60000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.floor(ms / 60000)} min ${Math.round((ms % 60000) / 1000)} s`);
-const quiet = (e) => e.kind === 'tools' || e.kind === 'results';
+const quiet = (e) => e.kind === 'tools' || e.kind === 'results' || e.kind === 'usage';
 function activityLabel(t) {   // the short "what is on their screen" tag
   const d = t.d || {}, f = base(d.file || t.arg);
   switch (d.kind) {
@@ -664,7 +707,7 @@ function tickTools(ev) {
   ev.tools.forEach((tool) => pushTerm(ev.agent, tool));
   const buf = S.term[ev.agent], k = ev.tools[ev.tools.length - 1];
   S.tc[ev.agent] = (S.tc[ev.agent] || 0) + ev.tools.length; S.lastTool[ev.agent] = k.name + ' ' + (k.arg || '').slice(-38);
-  S.run[ev.agent] = { id: k.id, start: performance.now() }; setTicker(ev.agent, buf[buf.length - 1]); showPresent(ev.agent);
+  S.run[ev.agent] = { id: k.id, start: performance.now(), ts: k.ts }; setTicker(ev.agent, buf[buf.length - 1]); showPresent(ev.agent);
 }
 setInterval(() => {   // live "running…" counters
   if (!S.playing) return;
@@ -821,7 +864,8 @@ function renderDetail() {
   if (!S.detail) return; const id = S.detail, evs = S.events.slice(0, S.idx + 1).filter((e) => e.agent === id || e.to === id);
   const order = evs.find((e) => e.kind === 'order' && e.to === id), tools = evs.filter((e) => e.agent === id && e.kind === 'tools').flatMap((e) => e.tools);
   const counts = {}; tools.forEach((t) => (counts[t.name] = (counts[t.name] || 0) + 1));
-  $('#dbody').innerHTML = (order ? `<h3>${L('Consigne de', 'Prompt from')} ${esc(nameOf(order.agent))}</h3><pre>${esc(order.text)}</pre>` : '') +
+  const u = S.usage[id], tokHtml = u && tokTotal(u) ? `<h3>${L('Jetons', 'Tokens')} · ⚡ ${fmtTok(tokTotal(u))}</h3><div class="dim">${L('entrée', 'input')} ${fmtTok(u.i)} · ${L('sortie', 'output')} ${fmtTok(u.o)} · ${L('écriture cache', 'cache write')} ${fmtTok(u.w)} · ${L('lecture cache', 'cache read')} ${fmtTok(u.r)}</div>` : '';
+  $('#dbody').innerHTML = tokHtml + (order ? `<h3>${L('Consigne de', 'Prompt from')} ${esc(nameOf(order.agent))}</h3><pre>${esc(order.text)}</pre>` : '') +
     `<h3>${L('Outils', 'Tools')} (${tools.length})</h3><div>${Object.entries(counts).map(([n, c]) => `${esc(n)} ×${c}`).join(' · ') || '—'}</div>` +
     `<h3>${L('Activité récente', 'Recent activity')}</h3>` + (S.term[id] || []).slice(-30).reverse().map((e) => `<details><summary>${e.end == null ? '⠋' : e.err ? '✗' : '✓'} ${esc(e.tool.name)} <span class="dim">${e.end != null ? fmtDur(e.end - e.ts) : L('en cours', 'running')}</span> — ${esc((e.tool.arg || '').slice(-60))}</summary><pre>${esc((e.tool.d && e.tool.d.kind === 'cmd' ? '$ ' + e.tool.d.text + '\n' : '') + (e.out || ''))}</pre></details>`).join('') +
     evs.filter((e) => e.agent === id && (e.kind === 'say' || e.kind === 'report')).map((e) => `<h3>${e.kind === 'report' ? L('Rapport final', 'Final report') : L('A dit', 'Said')}</h3><pre>${esc(e.text)}</pre>`).join('');
@@ -872,19 +916,20 @@ $('#mCoffee').onclick = () => { $('#menu').classList.remove('on'); openExternal(
 // =====================================================================
 const fmt = (ms) => { const s = Math.round(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60), d = Math.floor(h / 24); return d ? `${d}j ${h % 24}h` : h ? `${h}h${String(m % 60).padStart(2, '0')}` : `${m}:${String(s % 60).padStart(2, '0')}`; };
 function openRecap() {
-  const per = {}, files = {}; let tools = 0, cmds = 0, errs = 0; const A = (id) => (per[id] = per[id] || { id, tools: 0, files: new Set(), t0: null, t1: null });
+  const per = {}, files = {}; let tools = 0, cmds = 0, errs = 0; const tk = {}, A = (id) => (per[id] = per[id] || { id, tools: 0, files: new Set(), t0: null, t1: null });
   S.events.forEach((e) => {
+    if (e.kind === 'usage') { const u = (tk[e.agent] = tk[e.agent] || { i: 0, o: 0, r: 0, w: 0 }); u.i += e.u.i; u.o += e.u.o; u.r += e.u.r; u.w += e.u.w; }
     if (e.kind === 'results') e.items.forEach((it) => { if (it.err) errs++; });
     if (e.kind === 'order') A(e.to).t0 = e.t; if (e.kind === 'report') A(e.agent).t1 = e.t;
     if (e.kind === 'tools') e.tools.forEach((t) => { tools++; A(e.agent).tools++; if (t.name === 'Bash') cmds++; const d = t.d || {};
       if ((d.kind === 'edit' || d.kind === 'write') && d.file) { A(e.agent).files.add(d.file); (files[d.file] = files[d.file] || { n: 0, who: new Set() }).n++; files[d.file].who.add(nameOf(e.agent)); } });
   });
   const last = S.events.length ? S.events[S.events.length - 1].t : 0, rows = Object.values(per).filter((a) => a.id !== 'user' && S.agents[a.id]).sort((a, b) => b.tools - a.tools).slice(0, 18), fl = Object.entries(files).sort((a, b) => b[1].n - a[1].n).slice(0, 25);
-  const k = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
+  const k = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`, totTok = Object.values(tk).reduce((n, u) => n + tokTotal(u), 0);
   $('#recap .box').innerHTML = `<h1>${L('Récap de l’épisode', 'Episode recap')}</h1>
-    <div class="kpis">${k(Math.max(0, Object.keys(S.agents).length - 2), 'agents')}${k(tools, L('appels d’outils', 'tool calls'))}${k(cmds, L('commandes', 'commands'))}${k(errs, L('outils en erreur', 'tool errors'))}${k(Object.keys(files).length, L('fichiers modifiés', 'files changed'))}${k(fmt(last), L('durée', 'duration'))}</div>
-    <h3>${L('Agents les plus actifs', 'Busiest agents')}</h3><table><tr><th></th><th>${L('Rôle', 'Role')}</th><th>${L('Outils', 'Tools')}</th><th>${L('Fichiers', 'Files')}</th><th>${L('Durée', 'Time')}</th></tr>
-    ${rows.map((a) => `<tr><td><b>${esc(nameOf(a.id))}</b></td><td>${esc(S.agents[a.id].role)}</td><td>${a.tools}</td><td>${a.files.size || ''}</td><td>${a.t0 != null && a.t1 != null ? fmt(a.t1 - a.t0) : ''}</td></tr>`).join('')}</table>
+    <div class="kpis">${k(Math.max(0, Object.keys(S.agents).length - 2), 'agents')}${k(tools, L('appels d’outils', 'tool calls'))}${k(cmds, L('commandes', 'commands'))}${k(errs, L('outils en erreur', 'tool errors'))}${totTok ? k('⚡ ' + fmtTok(totTok), L('jetons', 'tokens')) : ''}${k(Object.keys(files).length, L('fichiers modifiés', 'files changed'))}${k(fmt(last), L('durée', 'duration'))}</div>
+    <h3>${L('Agents les plus actifs', 'Busiest agents')}</h3><table><tr><th></th><th>${L('Rôle', 'Role')}</th><th>${L('Outils', 'Tools')}</th><th>${L('Fichiers', 'Files')}</th><th>${L('Jetons', 'Tokens')}</th><th>${L('Durée', 'Time')}</th></tr>
+    ${rows.map((a) => `<tr><td><b>${esc(nameOf(a.id))}</b></td><td>${esc(S.agents[a.id].role)}</td><td>${a.tools}</td><td>${a.files.size || ''}</td><td title="${tk[a.id] ? esc(tokTip(tk[a.id])) : ''}">${tk[a.id] ? '⚡ ' + fmtTok(tokTotal(tk[a.id])) : ''}</td><td>${a.t0 != null && a.t1 != null ? fmt(a.t1 - a.t0) : ''}</td></tr>`).join('')}</table>
     <h3>${L('Fichiers touchés', 'Files touched')}</h3>${fl.length ? `<table>${fl.map(([f, v]) => `<tr><td class="f">${esc(f)}</td><td>×${v.n}</td><td>${esc([...v.who].join(', '))}</td></tr>`).join('')}</table>` : `<div class="dim">${L('Aucune modification.', 'No edits.')}</div>`}
     ${SUPPORT.url ? `<div class="coffee"><span>${esc(coffeeMsg())}</span><button class="btn" id="recapCoffee">☕ ${L('Offrir un café', 'Buy a coffee')}</button></div>` : ''}
     <p style="text-align:right;margin:18px 0 0"><button class="cta" id="recapx">${L('Fermer', 'Close')}</button></p>`;
@@ -927,17 +972,19 @@ async function run(i) {
     const lim = S.stopAt || S.events.length;
     if (i >= lim) { if (S.live && !S.stopAt) { if (!S.idle) { S.idle = true; syncUI(); } await sleep(350); continue; } break; }
     if (S.idle) { S.idle = false; syncUI(); }
-    if (S.live && S.events.length - i > 14) { i = S.events.length - 6; recomputeStatus(i); paintStatus(); }   // way behind: skip ahead to stay current
-    S.boost = S.live && S.events.length - i > 3 ? 3 : 1;   // live: hurry through any backlog
-    const ev = S.events[i]; S.idx = i;
+    if (S.live && S.events.length - i > 40) { i = S.events.length - 14; recomputeStatus(i); paintStatus(); }   // way behind: skip ahead to stay current
+    S.boost = S.live && S.events.length - i > 6 ? 3 : 1;   // live: hurry through any backlog
+    const ev = S.events[i]; S.idx = i; tally(ev);
+    if (ev.kind === 'usage') { i++; continue; }
     if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.demo ? 900 : S.live ? 30 : 80) / spd()); i++; continue; }
     if (ev.kind === 'tools') { applyStatus(ev); tickTools(ev); AUD.click(); paintStatus(); await sleep((S.demo ? 1100 : S.live ? 110 : 250) / spd()); i++; continue; }
     const group = [ev]; let j = i + 1;   // sub-agents talking back-to-back were running in parallel: they talk over each other
     if (isSub(ev.agent) && ev.kind !== 'order') {
-      while (j < Math.min(S.events.length, i + 14) && group.length < 3) {
+      while (j < Math.min(S.events.length, i + 28) && group.length < 3) {
         const e2 = S.events[j];
-        if (e2.kind === 'tools') { tickTools(e2); applyStatus(e2); j++; continue; }
-        if (e2.kind === 'results') { applyResults(e2, true); j++; continue; }
+        if (e2.kind === 'usage') { tally(e2); j++; continue; }
+        if (e2.kind === 'tools') { tally(e2); tickTools(e2); applyStatus(e2); j++; continue; }
+        if (e2.kind === 'results') { tally(e2); applyResults(e2, true); j++; continue; }
         if (e2.kind !== 'order' && isSub(e2.agent) && !group.some((g) => g.agent === e2.agent)) { group.push(e2); j++; } else break;
       }
     }
@@ -997,7 +1044,7 @@ async function followCurrent() {
   if (!cur.id) { $('#empty').classList.add('on'); return false; } $('#empty').classList.remove('on');
   if (S.cur && S.cur.id === cur.id && S.cur.proj === cur.proj) return false;
   if (!(await loadSession(cur.proj, cur.id))) return false;
-  const start = Math.max(0, S.events.length - 8); recomputeStatus(start); S.idx = start; trNew(start); paintStatus();
+  const start = Math.max(0, S.events.length - 16); recomputeStatus(start); S.idx = start; trNew(start); paintStatus();
   if (!S.locked && !S.userPaused) run(start); return true;
 }
 let polling = false;
@@ -1104,7 +1151,7 @@ function applyLang() {
   $('#gT').textContent = L('Rejoindre l’appel', 'Join the call'); $('#gP').textContent = L('Cliquez pour activer le son et suivre votre session Claude Code en direct.', 'Click to enable sound and follow your Claude Code session live.'); $('#gB').textContent = L('▶ Rejoindre', '▶ Join');
   $('#eDemo').textContent = L('▶ Voir la démo', '▶ Watch the demo'); $('#eT').textContent = L('En attente d’une session', 'Waiting for a session'); $('#eP').textContent = L('Lancez Claude Code dans ce dossier : l’appel démarrera tout seul.', 'Start Claude Code in this folder — the call will start by itself.');
   for (const id in S.agents) { const p = persona(S.agents[id]); Object.assign(S.agents[id], { name: p.name, role: p.role }); const t = $('#t-' + id); if (t) { t.querySelector('.tag span').textContent = p.role; t.querySelector('.tag b').textContent = p.name; if (id === 'main' || id === 'user') t.querySelector('.tag span').textContent = p.role; } }
-  document.querySelectorAll('#menu .mi[data-t]').forEach((b) => b.querySelector('.sw').classList.toggle('on', !!prefs[b.dataset.t])); renderCoffee(); updateHint(); renderLog(true); syncUI();
+  document.querySelectorAll('#menu .mi[data-t]').forEach((b) => b.querySelector('.sw').classList.toggle('on', !!prefs[b.dataset.t])); renderCoffee(); renderTokens(); updateHint(); renderLog(true); syncUI();
 }
 const elsewhere = () => !!(S.owner && S.owner !== CID);
 function applyMute() {
@@ -1132,6 +1179,7 @@ $('#station').innerHTML = STATIONS.map((s) => `<option value="${s.id}">📻 ${s.
 $('#station').value = prefs.station; $('#musicVol').value = prefs.musicVol; $('#musicBox').style.display = prefs.music ? '' : 'none';
 $('#station').onchange = (e) => { prefs.station = e.target.value; savePrefs(); AUD.init(); RADIO.sync(); };
 $('#musicVol').oninput = (e) => { prefs.musicVol = +e.target.value; savePrefs(); AUD.applyMusic(); };
+$('#tok').onclick = () => openRecap();
 $('#bMenu').onclick = (e) => { e.stopPropagation(); $('#menu').classList.toggle('on'); };
 document.addEventListener('click', (e) => { if (!e.target.closest('#menu') && !e.target.closest('#bMenu')) $('#menu').classList.remove('on'); });
 $('#bLog').onclick = () => { document.body.classList.toggle('log'); $('#bLog').classList.toggle('on'); };
@@ -1149,7 +1197,7 @@ $('#gB').onclick = () => {
 };
 addEventListener('keydown', (e) => {
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
-  if (e.key === ' ') { e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key.toLowerCase() === 't') setView(document.body.classList.contains('tree') ? 'call' : 'tree'); else if (e.key.toLowerCase() === 'r') openRecap(); else if (e.key.toLowerCase() === 'l') $('#bLog').click(); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
 });
 if (EMBED) $('#mBrowser').style.display = '';
 

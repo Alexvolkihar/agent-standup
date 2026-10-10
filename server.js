@@ -6,20 +6,13 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const zlib = require('zlib');
 const { execFileSync } = require('child_process');
 
 const PORT = process.env.PORT || 4747;
 const ROOT = path.join(os.homedir(), '.claude', 'projects');
 const PUBLIC = path.join(__dirname, 'public');
 
-const readJsonl = (file) => {
-  const out = [];
-  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
-    if (!line) continue;
-    try { out.push(JSON.parse(line)); } catch {}
-  }
-  return out;
-};
 const blocks = (rec) => {
   const c = rec.message && rec.message.content;
   if (typeof c === 'string') return [{ type: 'text', text: c }];
@@ -88,13 +81,23 @@ function stamp(proj, id) {
   if (fs.existsSync(sd)) for (const f of fs.readdirSync(sd)) add(path.join(sd, f));
   return n;
 }
-const tlCache = new Map();
-function timeline(proj, id) {
+const tlCache = new Map();   // "proj/id" → { st (file stamp), tl, at, ms, files[], json?, gz? }
+const MAX_CACHED_SESSIONS = 3;
+function timelineEntry(proj, id) {
   const key = proj + '/' + id, st = stamp(proj, id), hit = tlCache.get(key), now = Date.now();
-  if (hit && hit.st === st) return hit.tl;
-  if (hit && now - hit.at < Math.max(400, hit.ms * 2)) return hit.tl;   // big sessions: rebuild at most every ~2× the build time instead of on every poll
-  const t0 = Date.now(), tl = buildTimeline(proj, id); tlCache.set(key, { st, tl, at: Date.now(), ms: Date.now() - t0 }); return tl;
+  if (hit && hit.st === st) return hit;
+  if (hit && now - hit.at < Math.max(250, hit.ms * 2)) return hit;   // very big sessions: don't rebuild on every poll
+  const t0 = Date.now(), tl = buildTimeline(proj, id), base = path.join(ROOT, proj), sd = path.join(base, id, 'subagents');
+  const files = [path.join(base, id + '.jsonl')]; try { for (const f of fs.readdirSync(sd)) files.push(path.join(sd, f)); } catch {}
+  const entry = { st, tl, at: Date.now(), ms: Date.now() - t0, files };
+  tlCache.delete(key); tlCache.set(key, entry);
+  while (tlCache.size > MAX_CACHED_SESSIONS) {   // free the memory of sessions nobody is looking at any more
+    const [oldKey, old] = tlCache.entries().next().value; tlCache.delete(oldKey);
+    for (const f of old.files) fileStates.delete(f);
+  }
+  return entry;
 }
+const timeline = (proj, id) => timelineEntry(proj, id).tl;
 // Most recently active session (optionally limited to one project dir) — drives the live feed.
 function currentSession(projFilter) {
   let best = null;
@@ -116,92 +119,101 @@ function currentSession(projFilter) {
   return best || {};
 }
 
-function buildTimeline(proj, id) {
-  const base = path.join(ROOT, proj);
-  const mainFile = path.join(base, id + '.jsonl');
-  if (!fs.existsSync(mainFile)) throw new Error('session not found');
-  const toolName = {};
-  const agents = { main: { id: 'main', role: 'Lead', type: 'main' } };
-  const events = [];
-  const spawner = {}; // toolUseId -> emitting agent id
-  const sources = [{ agent: 'main', recs: readJsonl(mainFile) }];
-
-  const subDir = path.join(base, id, 'subagents');
-  const meta = {};
-  if (fs.existsSync(subDir)) {
-    for (const f of fs.readdirSync(subDir).filter((x) => x.endsWith('.jsonl'))) {
-      const aid = f.replace(/^agent-/, '').replace(/\.jsonl$/, '');
-      let m = {};
-      try { m = JSON.parse(fs.readFileSync(path.join(subDir, f.replace(/\.jsonl$/, '.meta.json')), 'utf8')); } catch {}
-      meta[aid] = m;
-      agents[aid] = { id: aid, role: m.description || m.agentType || 'Agent', type: m.agentType || 'agent', toolUseId: m.toolUseId };
-      sources.push({ agent: aid, recs: readJsonl(path.join(subDir, f)) });
+// ---- Incremental transcript reader: each .jsonl is parsed once, then only the bytes appended since are read.
+// A session is merged from its main file and one file per sub-agent; the per-file results are cached and re-assembled cheaply.
+const fileStates = new Map();   // path → { agent, offset, tail, raw[], toolName{}, msgUsage Map }
+function readNew(file, agent) {
+  let size; try { size = fs.statSync(file).size; } catch { fileStates.delete(file); return null; }
+  let st = fileStates.get(file);
+  if (!st || size < st.offset) { st = { agent, offset: 0, tail: Buffer.alloc(0), raw: [], toolName: {}, msgUsage: new Map() }; fileStates.set(file, st); }
+  if (size > st.offset) {
+    const fd = fs.openSync(file, 'r'); let buf;
+    try { buf = Buffer.alloc(size - st.offset); fs.readSync(fd, buf, 0, buf.length, st.offset); } finally { fs.closeSync(fd); }
+    st.offset = size;
+    const all = st.tail.length ? Buffer.concat([st.tail, buf]) : buf, cut = all.lastIndexOf(10);   // only complete lines; a half-written last line waits for the next read
+    if (cut < 0) { st.tail = all; return st; }
+    st.tail = all.subarray(cut + 1);
+    for (const line of all.subarray(0, cut).toString('utf8').split('\n')) {
+      if (!line) continue;
+      let r; try { r = JSON.parse(line); } catch { continue; }
+      parseRecord(st, r);
     }
   }
-
-  // Map each Agent tool_use to its child so we know who ordered whom.
-  const childByTool = {};
-  for (const a of Object.values(agents)) if (a.toolUseId) childByTool[a.toolUseId] = a.id;
-
-  for (const { agent, recs } of sources) {
-    let lastText = null;
-    let firstUser = true;
-    for (const r of recs) {
-      const ts = Date.parse(r.timestamp) || 0;
-      if (r.type === 'user') {
-        const items = [];   // tool results: the real output that appeared on the agent's screen
-        for (const b of blocks(r)) if (b.type === 'tool_result' && toolName[b.tool_use_id] && !NO_RESULT.has(toolName[b.tool_use_id])) {
-          const n = toolName[b.tool_use_id];
-          items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || 600) });
-        }
-        if (items.length) events.push({ ts, agent, kind: 'results', items });
-        if (agent !== 'main') { firstUser = false; continue; } // sub's first user msg == the order, emitted by parent
-        const bs = blocks(r);
-        const txt = bs.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
-        if (txt && !/^<(system-reminder|command-|local-command|task-notification)/.test(txt) && !r.isMeta) {
-          events.push({ ts, agent: 'user', kind: 'user', text: txt });
-        }
-      } else if (r.type === 'assistant') {
-        for (const b of blocks(r)) {
-          if (b.type === 'text' && b.text.trim()) {
-            events.push({ ts, agent, kind: 'say', text: b.text.trim() });
-            lastText = events[events.length - 1];
-          } else if (b.type === 'tool_use') {
-            toolName[b.id] = b.name;
-            if (b.name === 'Agent' || b.name === 'Task') {
-              const to = childByTool[b.id];
-              if (to) events.push({ ts, agent, to, kind: 'order', text: (b.input && b.input.prompt) || '', title: (b.input && b.input.description) || '' });
-            } else {
-              events.push({ ts, agent, kind: 'tool', tool: toolLabel(b, ts) });
-            }
-          }
-        }
+  return st;
+}
+function parseRecord(st, r) {
+  const agent = st.agent, ts = Date.parse(r.timestamp) || 0;
+  if (r.type === 'user') {
+    const items = [];   // tool results: the real output that appeared on the agent's screen
+    for (const b of blocks(r)) if (b.type === 'tool_result' && st.toolName[b.tool_use_id] && !NO_RESULT.has(st.toolName[b.tool_use_id])) {
+      const n = st.toolName[b.tool_use_id];
+      items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || 600) });
+    }
+    if (items.length) st.raw.push({ ts, agent, kind: 'results', items });
+    if (agent !== 'main') return;   // a sub-agent's first user message is the order, emitted from the parent's side
+    const txt = blocks(r).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    if (txt && !/^<(system-reminder|command-|local-command|task-notification)/.test(txt) && !r.isMeta) st.raw.push({ ts, agent: 'user', kind: 'user', text: txt });
+  } else if (r.type === 'assistant') {
+    const m = r.message || {};
+    if (m.id && m.usage) {   // the same message is repeated once per content block with identical numbers: keep one per message id
+      const u = m.usage, prev = st.msgUsage.get(m.id);
+      st.msgUsage.set(m.id, { ts: prev ? prev.ts : ts, u: { i: u.input_tokens || 0, o: u.output_tokens || 0, r: u.cache_read_input_tokens || 0, w: u.cache_creation_input_tokens || 0 }, model: m.model });
+    }
+    for (const b of blocks(r)) {
+      if (b.type === 'text' && b.text.trim()) st.raw.push({ ts, agent, kind: 'say', text: b.text.trim() });
+      else if (b.type === 'tool_use') {
+        st.toolName[b.id] = b.name;
+        if (b.name === 'Agent' || b.name === 'Task') st.raw.push({ ts, agent, kind: 'agentcall', toolId: b.id, text: (b.input && b.input.prompt) || '', title: (b.input && b.input.description) || '' });
+        else st.raw.push({ ts, agent, kind: 'tool', tool: toolLabel(b, ts) });
       }
     }
-    // The last thing a sub-agent says is its report back to the lead.
-    if (agent !== 'main' && lastText) {
-      lastText.kind = 'report';
-      lastText.to = parentOf(agent);
+  }
+}
+const metaCache = new Map();   // meta file path → { mtime, value }
+function readMeta(f) {
+  try { const mt = fs.statSync(f).mtimeMs, c = metaCache.get(f); if (c && c.mtime === mt) return c.value; const v = JSON.parse(fs.readFileSync(f, 'utf8')); metaCache.set(f, { mtime: mt, value: v }); return v; } catch { return {}; }
+}
+
+function buildTimeline(proj, id) {
+  const base = path.join(ROOT, proj), mainFile = path.join(base, id + '.jsonl');
+  if (!fs.existsSync(mainFile)) throw new Error('session not found');
+  const agents = { main: { id: 'main', role: 'Lead', type: 'main' } };
+  const states = [readNew(mainFile, 'main')];
+  const subDir = path.join(base, id, 'subagents');
+  if (fs.existsSync(subDir)) {
+    for (const f of fs.readdirSync(subDir).filter((x) => x.endsWith('.jsonl'))) {
+      const aid = f.replace(/^agent-/, '').replace(/\.jsonl$/, ''), m = readMeta(path.join(subDir, f.replace(/\.jsonl$/, '.meta.json')));
+      agents[aid] = { id: aid, role: m.description || m.agentType || 'Agent', type: m.agentType || 'agent', toolUseId: m.toolUseId };
+      const st = readNew(path.join(subDir, f), aid); if (st) states.push(st);
     }
   }
-  function parentOf(aid) {
-    const tu = agents[aid].toolUseId;
-    for (const e of events) if (e.kind === 'order' && e.to === aid) return e.agent;
-    return 'main';
+  const childByTool = {};   // Agent tool_use id → the sub-agent it created, so we know who ordered whom
+  for (const a of Object.values(agents)) if (a.toolUseId) childByTool[a.toolUseId] = a.id;
+
+  const events = [], parent = {};
+  for (const st of states) {
+    if (!st) continue;
+    let lastSay = -1;   // the last thing a sub-agent says is its report back to the lead
+    if (st.agent !== 'main') for (let i = st.raw.length - 1; i >= 0; i--) if (st.raw[i].kind === 'say') { lastSay = i; break; }
+    st.raw.forEach((e, i) => {
+      if (e.kind === 'agentcall') { const to = childByTool[e.toolId]; if (to) { parent[to] = e.agent; events.push({ ts: e.ts, agent: e.agent, to, kind: 'order', text: e.text, title: e.title }); } }
+      else if (i === lastSay) events.push({ ...e, kind: 'report', to: null });   // `to` filled below, once every order is known
+      else events.push(e);
+    });
+    for (const [, mu] of st.msgUsage) events.push({ ts: mu.ts, agent: st.agent, kind: 'usage', u: mu.u, model: mu.model });
   }
+  for (const e of events) if (e.kind === 'report' && e.to === null) e.to = parent[e.agent] || 'main';
 
   events.sort((a, b) => a.ts - b.ts);
-  // Merge consecutive tool events by the same agent into one activity beat.
-  const merged = [];
+  const merged = []; let lastReal = -1;   // consecutive tool calls of one agent become one activity beat; usage events are transparent to that rule
   for (const e of events) {
-    const p = merged[merged.length - 1];
+    const p = lastReal >= 0 ? merged[lastReal] : null;
+    if (e.kind === 'usage') { merged.push(e); continue; }
     if (e.kind === 'tool' && p && p.kind === 'tools' && p.agent === e.agent) p.tools.push(e.tool);
-    else if (e.kind === 'tool') merged.push({ ts: e.ts, agent: e.agent, kind: 'tools', tools: [e.tool] });
-    else merged.push(e);
+    else { merged.push(e.kind === 'tool' ? { ts: e.ts, agent: e.agent, kind: 'tools', tools: [e.tool] } : e); lastReal = merged.length - 1; }
   }
-  const first = merged.length ? merged[0].ts : 0;
-  const last = merged.length ? merged[merged.length - 1].ts : 0;
-  return { id, proj, agents: Object.values(agents), events: merged.map((e) => ({ ...e, t: e.ts - first })), durationMs: last - first };
+  const real = merged.find((e) => e.kind !== 'usage'), first = real ? real.ts : 0, last = merged.length ? merged[merged.length - 1].ts : 0;   // time zero = the first thing said or done
+  return { id, proj, agents: Object.values(agents), events: merged.map((e) => ({ ...e, t: Math.max(0, e.ts - first) })), durationMs: last - first };
 }
 
 // Ask the local `claude` CLI (uses the user's existing login) to map a JSON array of strings to another array. Cached.
@@ -406,9 +418,15 @@ function start(port = PORT) {
     if (url.pathname === '/api/session') {
       const proj = url.searchParams.get('proj') || '', sid = url.searchParams.get('id') || '', SAFE = /^[\w.\-]+$/;
       if (!SAFE.test(proj) || !SAFE.test(sid) || proj === '..' || sid === '..') { res.writeHead(400); return res.end('bad request'); }
-      const tl = proj === '_demo' ? require('./demo.js')() : timeline(proj, sid);   // built-in fictional session
+      const entry = proj === '_demo' ? { tl: require('./demo.js')() } : timelineEntry(proj, sid), tl = entry.tl;   // built-in fictional session
       const after = url.searchParams.get('after');
-      if (after == null) return json(tl);
+      if (after == null) {   // the whole timeline: serialize once per version, send gzip-compressed when the browser allows it (12 MB → ~1.5 MB)
+        const gz = /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+        if (!entry.json) entry.json = JSON.stringify(tl);
+        if (gz && !entry.gz) entry.gz = zlib.gzipSync(entry.json, { level: 5 });
+        res.writeHead(200, { 'content-type': 'application/json', ...(gz ? { 'content-encoding': 'gzip' } : {}), vary: 'accept-encoding' });
+        return res.end(gz ? entry.gz : entry.json);
+      }
       return json({ id: tl.id, agents: tl.agents, total: tl.events.length, events: tl.events.slice(+after) });
     }
     const file = path.join(PUBLIC, url.pathname === '/' ? 'index.html' : url.pathname);
