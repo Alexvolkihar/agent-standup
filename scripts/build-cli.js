@@ -11,7 +11,7 @@ fs.mkdirSync(path.join(out, 'media'), { recursive: true }); fs.copyFileSync(path
 const cli = {
   name: NAME, version: pkg.version, description: 'Your Claude Code agents as a live video call, from the terminal: a local page in your browser, plus one-line status for status bars. Free, open source, zero token cost.',
   bin: { 'agent-standup': 'bin/agent-standup.js' }, main: 'server.js', files: ['bin', 'server.js', 'demo.js', 'public', 'media', 'LICENSE', 'README.md'], license: 'MIT',
-  engines: { node: '>=18' }, repository: pkg.repository, homepage: pkg.homepage, bugs: pkg.bugs, keywords: ['claude-code', 'claude', 'agents', 'sub-agents', 'monitoring', 'viewer', 'statusline', 'standup'],
+  engines: { node: '>=18' }, repository: { type: 'git', url: String(pkg.repository.url).replace(/^(git\+)?/, 'git+') }, homepage: pkg.homepage, bugs: pkg.bugs, keywords: ['claude-code', 'claude', 'agents', 'sub-agents', 'monitoring', 'viewer', 'statusline', 'standup'],
   author: 'Double Geste', publishConfig: { access: 'public' },
 };
 fs.writeFileSync(path.join(out, 'package.json'), JSON.stringify(cli, null, 2) + '\n');
