@@ -58,7 +58,10 @@ Outputs are trimmed (about 1–2 KB each) to keep the call fast. Results of inte
 
 ## Install (VS Code)
 
-### Option A — from a GitHub Release (recommended)
+### Option 0 — from the Marketplace (easiest)
+In VS Code: Extensions view → search **Agent Standup** → Install. Or: https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup
+
+### Option A — from a GitHub Release
 1. Open the repository's **Releases** page and download `agent-standup-<version>.vsix` (don't send it by email: Gmail and others block `.vsix` files).
 2. In VS Code: Extensions view → `…` menu (top right) → **Install from VSIX…** → pick the file.
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
