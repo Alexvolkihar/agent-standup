@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.17.0
+- **Agents list**: a fixed column left of the call (wide windows) with each agent's role and one status line, urgent first, lead on top. Click = spotlight that agent (25 s), double-click = details. Toggle in ⚙ → Agents list.
+
 ## 1.16.0
 - **Sessions board** (new tab next to Call / Tree): every session active in the last 12 h, across all projects, with a single state (working · needs you? · waiting on sub-agents · your turn · idle) and active sub-agents. Reads only the tail of each transcript (a few ms for 40 sessions). Click a card to follow that session live.
 - **Call feels more like a call**: a raised hand ✋ on tiles that may need you, 😰 on stalled ones, ⌛ while waiting, 🎉 when someone finishes; participants count and a call timer in the header; hover cards with name, state and last command; a reactions bar (👍 👏 ☕ 🔥 🙌) that flies emojis to whoever has the floor and gets a reply.
