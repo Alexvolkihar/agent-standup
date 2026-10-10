@@ -7,7 +7,10 @@
 <meta name="description" content="Agent Standup turns your Claude Code session into a live team call: the lead gives orders, sub-agents join, share their screen and report back. Free VS Code extension.">
 <meta property="og:title" content="Agent Standup">
 <meta property="og:description" content="Your AI agents, in a stand-up call. A free VS Code extension for Claude Code.">
-<meta property="og:image" content="https://atoll92.github.io/agent-standup/icon.png">
+<meta property="og:image" content="https://atoll92.github.io/agent-standup/media/social.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Agent Standup — your AI agents in a stand-up call">
+<meta name="twitter:image" content="https://atoll92.github.io/agent-standup/media/social.jpg">
 <link rel="icon" href="icon.png">
 <style>
 :root { --bg:#fbf8f3; --ink:#1f1b16; --dim:#70675c; --line:#e9e1d5; --card:#fff; --accent:#d9604a; --accent-ink:#fff; --coffee:#ffdd00 }
@@ -49,6 +52,10 @@ ul.list { padding-left:22px } ul.list li { margin-bottom:8px }
 .coffee a:hover { filter:brightness(.96) }
 footer { margin:54px 0 40px; padding-top:22px; border-top:1px solid var(--line); color:var(--dim); font-size:14px; display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:space-between }
 footer a { color:inherit }
+.shot { display:block; width:100%; border-radius:16px; background:#111; box-shadow:0 10px 30px rgba(60,40,20,.22) }
+.shots { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:16px }
+@media (max-width:620px) { .shots { grid-template-columns:1fr } }
+.shots figure { margin:0 } .shots img { display:block; width:100%; border-radius:12px; box-shadow:0 6px 18px rgba(60,40,20,.18) } .shots figcaption { color:var(--dim); font-size:13.5px; margin-top:8px; line-height:1.4 }
 .soon { color:var(--dim); font-size:14px }
 /*ART_CSS*/
 </style>
@@ -72,13 +79,22 @@ footer a { color:inherit }
       <span class="fine" data-en="Free · open source · Mac, Windows, Linux" data-fr="Gratuit · open source · Mac, Windows, Linux">Free · open source · Mac, Windows, Linux</span>
     </div>
 
+    <h2 data-en="See it for real" data-fr="Voir pour de vrai">See it for real</h2>
+    <p class="fine" data-en="A fictional team fixing a slow login page — this is the built-in demo, none of your data." data-fr="Une équipe fictive qui corrige une page de login lente : c’est la démo intégrée, aucune de vos données.">A fictional team fixing a slow login page.</p>
+    <video class="shot" src="media/demo.mp4" poster="media/hero.jpg" controls muted loop playsinline preload="metadata"></video>
+    <div class="shots">
+      <figure><img src="media/terminal-output.jpg" alt="An agent sharing its terminal with real command output" loading="lazy"><figcaption data-en="Agents share their screen: real commands, real output." data-fr="Les agents partagent leur écran : vraies commandes, vraies sorties.">Agents share their screen: real commands, real output.</figcaption></figure>
+      <figure><img src="media/editor-diff.jpg" alt="An agent sharing an editor with a diff" loading="lazy"><figcaption data-en="…and the exact change they make." data-fr="…et la modification exacte qu’ils font.">…and the exact change they make.</figcaption></figure>
+      <figure><img src="media/tree.jpg" alt="The tree of who asked whom" loading="lazy"><figcaption data-en="A tree of who asked whom." data-fr="Un arbre de qui a demandé quoi à qui.">A tree of who asked whom.</figcaption></figure>
+    </div>
+
     <h2 data-en="Install it in a minute" data-fr="Installez-la en une minute">Install it in a minute</h2>
     <ol class="steps">
       <li data-en="Download the <code>.vsix</code> file above." data-fr="Téléchargez le fichier <code>.vsix</code> ci-dessus.">Download the <code>.vsix</code> file above.</li>
       <li data-en="In VS Code: Extensions → the <code>…</code> menu → <b>Install from VSIX…</b> and pick the file." data-fr="Dans VS Code : Extensions → menu <code>…</code> → <b>Install from VSIX…</b> puis choisissez le fichier.">In VS Code: Extensions → the <code>…</code> menu → <b>Install from VSIX…</b> and pick the file.</li>
       <li data-en="Reload, click the camera icon in the sidebar, press <b>Join</b>. That’s it." data-fr="Rechargez, cliquez sur l’icône caméra dans la barre latérale, puis sur <b>Rejoindre</b>. C’est tout.">Reload, click the camera icon in the sidebar, press <b>Join</b>. That’s it.</li>
     </ol>
-    <p class="fine" data-en="You need VS Code 1.80+ and to have used Claude Code on this machine at least once. Voices are best on a Mac." data-fr="Il faut VS Code 1.80+ et avoir déjà utilisé Claude Code sur cette machine. Les voix sont meilleures sur Mac.">You need VS Code 1.80+ and to have used Claude Code on this machine at least once. Voices are best on a Mac.</p>
+    <p class="fine" data-en="You need VS Code 1.80+ and to have used Claude Code on this machine at least once. Voices are best on a Mac. No session yet? Open the ⚙ menu → Source → <b>Demo</b>." data-fr="Il faut VS Code 1.80+ et avoir déjà utilisé Claude Code sur cette machine. Les voix sont meilleures sur Mac. Pas encore de session ? Menu ⚙ → Source → <b>Demo</b>.">You need VS Code 1.80+ and to have used Claude Code on this machine at least once. Voices are best on a Mac.</p>
 
     <h2 data-en="What you actually get" data-fr="Ce que vous obtenez vraiment">What you actually get</h2>
     <ul class="list">
@@ -111,6 +127,7 @@ const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c
 let LANG = /^fr/i.test(navigator.language || '') ? 'fr' : 'en';
 try { LANG = localStorage.getItem('as.site.lang') || LANG; } catch {}
 const L = (fr, en) => (LANG === 'fr' ? fr : en);
+const FR = () => LANG === 'fr';   // the art block shared with the app expects these two helpers
 /*ART_JS*/
 
 // ---- the little illustration ----

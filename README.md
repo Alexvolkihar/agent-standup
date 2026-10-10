@@ -4,12 +4,17 @@
 
 **→ Website & download: https://atoll92.github.io/agent-standup/**
 
+![Agent Standup: a team of AI agents in a call](https://atoll92.github.io/agent-standup/media/hero.gif)
+
+_A fictional team fixing a slow login page — the built-in demo (⚙ → Source → Demo). [Watch the full 1-minute video](https://atoll92.github.io/agent-standup/media/demo.mp4)._
+
 [![Buy me a coffee](https://img.shields.io/badge/-Buy%20the%20(replaced)%20dev%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/bored_dev_and_his_robots)
 
 > Unofficial community project, not affiliated with or endorsed by Anthropic. "Claude" is a trademark of Anthropic.
 
 ## What you get
 
+- **Built-in demo** — no session yet? ⚙ → Source → **Demo** plays a fictional team (no data of yours).
 - **Live call** — follows your newest Claude Code session in real time. Each agent is a small character at its desk; the one who speaks gets the spotlight and keeps it until someone else talks. Agents that talk back-to-back talk over each other, like a real meeting.
 - **Real voices, lip-sync** — lines are spoken aloud; mouths follow the actual volume of the voice.
 - **Live screen sharing with the real output** — when an agent works, its screen fills the stage (presenter's camera in the corner, "sharing" badge): a **terminal** with the command history and the actual output of each command, search results and tool calls; or an **editor** with the file it reads (real content and line numbers) or the exact diff it applies. See *What you see for each agent* below.
@@ -39,6 +44,16 @@
 
 Outputs are trimmed (about 1–2 KB each) to keep the call fast. Results of internal calls (sub-agent launches, messages) are not shown.
 
+## Screenshots
+
+| Real commands, real output | The exact change | Who asked whom |
+|---|---|---|
+| ![terminal](https://atoll92.github.io/agent-standup/media/terminal-output.jpg) | ![editor](https://atoll92.github.io/agent-standup/media/editor-diff.jpg) | ![tree](https://atoll92.github.io/agent-standup/media/tree.jpg) |
+
+| Task list of an agent | End-of-episode recap | In French |
+|---|---|---|
+| ![todo](https://atoll92.github.io/agent-standup/media/todo.jpg) | ![recap](https://atoll92.github.io/agent-standup/media/recap.jpg) | ![fr](https://atoll92.github.io/agent-standup/media/hero-fr.jpg) |
+
 ## Install (VS Code)
 
 ### Option A — from a GitHub Release (recommended)
@@ -47,7 +62,7 @@ Outputs are trimmed (about 1–2 KB each) to keep the call fast. Results of inte
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.9.0/agent-standup-1.9.0.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.10.0/agent-standup-1.10.0.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself

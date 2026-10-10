@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Agent Standup</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎥%3C/text%3E%3C/svg%3E">
 <style>
   :root { --bg:#12131a; --panel:#1b1d27; --panel2:#232634; --line:#2a2d3b; --text:#e9eaf0; --dim:#8a8fa3; --accent:#7c9cff; --gold:#f5c04a; --ok:#58d68d; --warn:#f0a020; --red:#ff5a5a; --r:10px }
   * { box-sizing:border-box }
@@ -43,7 +44,7 @@
   #present.on { display:flex; animation:fadein .3s }
   .pwin { flex:0 1 900px; display:flex; flex-direction:column; border-radius:10px; overflow:hidden; background:#0d1117; box-shadow:0 18px 50px rgba(0,0,0,.6), 0 0 0 2px rgba(240,160,32,.55) }
   .pbar { display:flex; align-items:center; gap:6px; padding:7px 10px; background:#1c1f2b; font-size:11.5px; color:#9aa0b4 } .pbar i { width:10px; height:10px; border-radius:50%; display:inline-block }
-  .pbar .r { background:#ff5f57 } .pbar .y { background:#febc2e } .pbar .g { background:#28c840 } #ptitle { margin:0 auto; transform:translateX(-24px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  .pbar .r { background:#ff5f57 } .pbar .y { background:#febc2e } .pbar .g { background:#28c840 } #ptitle { margin:0 0 0 14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0 }
   #pbody { flex:1; overflow:hidden; padding:10px 14px; font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:#d6dae6 } .pwin.editor #pbody { background:#1a1b26; padding:0 }
   .ptab { display:flex; align-items:center; gap:10px; background:#16161e; padding:5px 12px; border-bottom:1px solid #2a2b3d; font:11.5px -apple-system,system-ui,sans-serif } .ptab span { background:#1a1b26; padding:3px 10px; border-radius:6px 6px 0 0; color:#e9eaf0 } .ptab em { color:#6b7089; font-style:normal }
   .ln { display:flex; gap:10px; padding:0 12px; white-space:pre-wrap; word-break:break-all } .ln b { width:12px; flex:none; color:#7a7f98; font-weight:400 } .ln.add { background:rgba(63,185,80,.16); color:#9be9a8 } .ln.del { background:rgba(248,81,73,.16); color:#ffa198 }
@@ -58,7 +59,7 @@
   .spin { display:inline-block; width:9px; height:9px; margin-right:6px; border:2px solid #ffd24a; border-top-color:transparent; border-radius:50%; animation:spin .7s linear infinite; vertical-align:-1px } @keyframes spin { to { transform:rotate(360deg) } }
   .ticker em { font-style:normal; color:#9aa3bd; font-size:10px } .ticker em.ok { color:#58d68d } .ticker em.bad { color:#ff7b72 }
   .status { max-width:62%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-  #pbadge { position:absolute; top:20px; left:24px; z-index:2; background:rgba(240,160,32,.94); color:#201400; font-weight:600; font-size:11.5px; padding:3px 11px; border-radius:99px }
+  #pbadge { margin-left:auto; flex:none; background:rgba(240,160,32,.94); color:#201400; font-weight:600; font-size:11px; padding:1px 10px; border-radius:99px; white-space:nowrap }
   #present.has-todo #pcam { right:270px } #pcam { position:absolute; right:28px; bottom:22px; width:158px; height:118px; z-index:2; cursor:default; box-shadow:0 8px 24px rgba(0,0,0,.6) }
   #pcap { display:none; position:absolute; left:24px; right:200px; bottom:20px; z-index:2; background:rgba(10,11,16,.84); backdrop-filter:blur(6px); border-radius:10px; padding:6px 12px; font-size:13px } #pcap:not(:empty) { display:block }
   body.narrow #present { height:clamp(150px,36vh,260px) } body.narrow #pcam { width:110px; height:82px } body.narrow #pcap { right:150px }
@@ -189,7 +190,7 @@
   <button class="mi" data-t="vanish"><span data-fr="Retirer les agents terminés (2 min)" data-en="Remove finished agents (2 min)">Retirer les agents terminés (2 min)</span><i class="sw"></i></button>
   <button class="mi" data-t="epi"><span data-fr="Réactions et blagues" data-en="Reactions & jokes">Réactions et blagues</span><i class="sw"></i></button>
   <h4 data-fr="Source" data-en="Source">Source</h4>
-  <div class="box"><div class="seg" style="width:100%" id="modeSeg"><button data-m="live" style="flex:1">Live</button><button data-m="replay" style="flex:1">Replay</button></div>
+  <div class="box"><div class="seg" style="width:100%" id="modeSeg"><button data-m="live" style="flex:1">Live</button><button data-m="replay" style="flex:1">Replay</button><button data-m="demo" style="flex:1">Demo</button></div>
     <select id="sessions" style="display:none"></select></div>
   <h4 data-fr="Outils" data-en="Tools">Outils</h4>
   <button class="mi" id="mCoffee" style="display:none"><span id="mCoffeeT"></span></button>
@@ -200,11 +201,11 @@
 
 <main>
   <section id="center">
-    <div id="present"><div class="pwin term"><div class="pbar"><i class="r"></i><i class="y"></i><i class="g"></i><span id="ptitle"></span></div><div id="pbody"></div><div id="pstat"></div></div><div id="ptodo" style="display:none"></div><div id="pbadge"></div><div id="pcap"></div><div id="pcam" class="tile working"></div></div>
+    <div id="present"><div class="pwin term"><div class="pbar"><i class="r"></i><i class="y"></i><i class="g"></i><span id="ptitle"></span><span id="pbadge"></span></div><div id="pbody"></div><div id="pstat"></div></div><div id="ptodo" style="display:none"></div><div id="pcap"></div><div id="pcam" class="tile working"></div></div>
     <div id="stage"></div><div id="tree"></div>
     <canvas id="gantt" height="90"></canvas>
     <div id="toasts"></div>
-    <div id="empty"><h2 id="eT"></h2><p id="eP"></p></div>
+    <div id="empty"><h2 id="eT"></h2><p id="eP"></p><button class="cta" id="eDemo"></button></div>
     <div id="gate"><h2 id="gT"></h2><p id="gP"></p><button class="cta" id="gB"></button><button class="glink" id="gCoffee" style="display:none"></button></div>
     <div id="detail"><div class="hd"><b id="dname"></b><button class="ic" id="dclose">✕</button></div><div id="dbody"></div></div>
   </section>
@@ -252,7 +253,7 @@ function persona(a) {
   const h = hash(a.id), base = { ...a };
   if (a.id === 'main') return { ...base, name: 'Claude', role: L('Chef', 'Lead'), shirt: '#e8845f', shape: 0, acc: 1, eye: 0, glasses: false, scene: 6, prop: 1, acc2: '#f5c04a', lead: true, vi: 0, gid: 'main' };
   if (a.id === 'user') return { ...base, name: L('Vous', 'You'), role: L('Humain', 'Human'), shirt: '#8a94c9', shape: 1, acc: 2, eye: 1, glasses: false, scene: 7, prop: 1, acc2: '#ff7a6b', vi: 3, gid: 'user' };
-  return { ...base, name: uniqueName(a.id, h), shirt: PAL[(h >>> 6) % 8], shape: (h >>> 3) % 5, acc: (h >>> 9) % 6, eye: (h >>> 12) % 3, glasses: ((h >>> 15) % 4) === 0,
+  return { ...base, name: a.name || uniqueName(a.id, h), roleEn: a.roleEn || a.role, role: (FR() && a.roleFr) || a.roleEn || a.role, shirt: PAL[(h >>> 6) % 8], shape: (h >>> 3) % 5, acc: (h >>> 9) % 6, eye: (h >>> 12) % 3, glasses: ((h >>> 15) % 4) === 0,
            scene: (h >>> 18) % 6, prop: (h >>> 21) % 3, acc2: PAL[(h >>> 24) % 8], vi: h >>> 4, gid: h.toString(36) };
 }
 
@@ -357,7 +358,7 @@ function avatarSVG(p, o, uid = '') {   // uid keeps SVG ids unique per instance:
 // =====================================================================
 const S = { owner: null, agents: {}, events: [], idx: 0, playing: false, token: 0, status: {}, tc: {}, cur: null, live: true, userPaused: false, boost: 1, stopAt: 0,
             speakers: new Set(), say: {}, lastTool: {}, level: {}, detail: null, collapsed: new Set(), title: '', idle: false, locked: true, logTo: 0, trOk: true,
-            clock: 0, doneAt: {}, gone: new Set(), leaving: new Set() };
+            clock: 0, doneAt: {}, gone: new Set(), leaving: new Set(), demo: false, hold: false };
 const VANISH_MS = 120000;   // a finished agent leaves the call after 2 minutes (playback time)
 const spd = () => (S.live ? 1.12 : +$('#speed').value) * (S.boost || 1);
 const nameOf = (id) => (S.agents[id] || {}).name || id;
@@ -556,9 +557,16 @@ function addTile(p) {
 function buildStage() { $('#stage').innerHTML = ''; Object.values(S.agents).forEach(addTile); }
 const layout = () => {
   const st = $('#stage'), w = st.clientWidth - 28 || 600, cols = Math.max(1, Math.floor((w + 12) / 212)), colw = (w - 12 * (cols - 1)) / cols;
-  const rh = Math.round(colw * 0.74); st.style.setProperty('--cols', cols); st.style.setProperty('--rh', rh + 'px'); const k = cols <= 2 ? cols : Math.min(cols, Math.ceil(cols * 0.6)), fw = k * colw + (k - 1) * 12;   // spotlight ≈ 3:2
-  const fr = Math.max(1, Math.min(Math.round((fw / 1.5 + 12) / (rh + 12)), Math.floor((st.clientHeight * 0.66 + 12) / (rh + 12)), 4));
-  st.style.setProperty('--fcols', k); st.style.setProperty('--fr', cols === 1 ? 1 : Math.max(2, fr)); st.classList.toggle('one', cols === 1);
+  const rh = Math.round(colw * 0.74); st.style.setProperty('--cols', cols); st.style.setProperty('--rh', rh + 'px'); // Spotlight size: the biggest block (k columns × fr rows) that stays close to 3:2 and leaves room beside it for the others.
+  const maxRows = Math.max(cols > 1 ? 2 : 1, Math.floor((st.clientHeight * 0.7 + 12) / (rh + 12)));   // the stage scrolls, so the spotlight may be a bit taller than the free space
+  let k = 1, fr = 1, best = -1;
+  for (let kk = 1; kk <= cols; kk++) for (let rr = 1; rr <= Math.min(4, maxRows); rr++) {
+    const fw = kk * colw + (kk - 1) * 12, fh = rr * rh + (rr - 1) * 12, ratio = fw / fh, area = fw * fh;
+    if ((cols > 2 && kk === cols) || ratio < 1.15 || ratio > 1.95) continue;
+    if (area > best) { best = area; k = kk; fr = rr; }
+  }
+  if (best < 0) { k = Math.min(2, cols); fr = Math.min(2, maxRows); }
+  st.style.setProperty('--fcols', k); st.style.setProperty('--fr', fr); st.classList.toggle('one', cols === 1);
   document.body.classList.toggle('narrow', $('#center').clientWidth < 480); drawGantt();
 };
 new ResizeObserver(layout).observe($('#center'));
@@ -709,7 +717,7 @@ function renderPresent() {
   $('#pcam').classList.toggle('speaking', S.speakers.has(id));
 }
 function armPresent() {   // stays up while a command is still running, then ~4 s after the last action
-  clearTimeout(presentTimer);
+  clearTimeout(presentTimer); if (S.hold) return;
   presentTimer = setTimeout(() => { if (S.present && S.run[S.present] && S.playing) armPresent(); else hidePresent(); }, 4200 / Math.max(1, spd() / 1.2));
 }
 function showPresent(id) {
@@ -922,8 +930,8 @@ async function run(i) {
     if (S.live && S.events.length - i > 14) { i = S.events.length - 6; recomputeStatus(i); paintStatus(); }   // way behind: skip ahead to stay current
     S.boost = S.live && S.events.length - i > 3 ? 3 : 1;   // live: hurry through any backlog
     const ev = S.events[i]; S.idx = i;
-    if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.live ? 30 : 80) / spd()); i++; continue; }
-    if (ev.kind === 'tools') { applyStatus(ev); tickTools(ev); AUD.click(); paintStatus(); await sleep((S.live ? 110 : 250) / spd()); i++; continue; }
+    if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.demo ? 900 : S.live ? 30 : 80) / spd()); i++; continue; }
+    if (ev.kind === 'tools') { applyStatus(ev); tickTools(ev); AUD.click(); paintStatus(); await sleep((S.demo ? 1100 : S.live ? 110 : 250) / spd()); i++; continue; }
     const group = [ev]; let j = i + 1;   // sub-agents talking back-to-back were running in parallel: they talk over each other
     if (isSub(ev.agent) && ev.kind !== 'order') {
       while (j < Math.min(S.events.length, i + 14) && group.length < 3) {
@@ -961,6 +969,16 @@ function seekTo(i) {
   pause(); i = Math.max(0, Math.min(S.events.length - 1, i)); S.idx = i; recomputeStatus(i); paintStatus(); S.userPaused = false; run(i);
 }
 
+// Freeze the call at one exact moment (used for screenshots: ?demo=1&at=<event index>).
+function showMoment(i) {
+  S.hold = true; pause(); recomputeStatus(i); S.idx = i; const e = S.events[i];
+  if (e.kind === 'tools') {
+    tickTools(e);
+    for (let k = i + 1; k < Math.min(S.events.length, i + 10); k++) { const r = S.events[k]; if (r.kind === 'results' && r.agent === e.agent && r.items.some((it) => e.tools.some((t) => t.id === it.id))) applyResults(r); }
+  } else if (!quiet(e)) startTalk(e.agent, spoken(e), '');
+  paintStatus();
+}
+
 // =====================================================================
 //  data: live follow + replay
 // =====================================================================
@@ -971,6 +989,7 @@ async function loadSession(proj, id) {
   S.term = {}; S.camFor = null; S.focus = null; S.agents = {}; for (const k in nameBook) delete nameBook[k]; [{ id: 'user' }, ...data.agents].forEach((a) => (S.agents[a.id] = persona(a)));
   S.events = data.events; S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on');
   const opt = $('#sessions').selectedOptions[0]; S.title = (S.live ? '' : opt && opt.dataset.title) || '';
+  if (proj === '_demo') S.events.forEach((e) => { if (e.fr) trMem.set(baseText(e), e.fr); });   // the demo ships its own French
   $('#subtitle').textContent = S.title; buildStage(); setFocus('main'); renderLog(true); computeGantt(); layout(); paintStatus(); prefetchTr(0); return true;
 }
 async function followCurrent() {
@@ -996,6 +1015,13 @@ setInterval(async () => {
 }, 700);
 
 async function setMode(m) {
+  if (m === 'demo') {   // a built-in fictional session: nothing to install, nothing private on screen
+    pause(); S.live = false; S.demo = true; S.userPaused = false; S.cur = null; $('#empty').classList.remove('on');
+    document.querySelectorAll('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.m === 'demo')); $('#sessions').style.display = 'none';
+    if (await loadSession('_demo', 'demo')) { S.title = L('Démo — une équipe corrige un login lent', 'Demo — a team fixes a slow login'); $('#subtitle').textContent = S.title; S.locked = false; $('#gate').classList.remove('on'); syncUI(); }
+    return;
+  }
+  S.demo = false;
   const live = m === 'live'; if (live === S.live && S.cur) return; pause(); S.live = live; S.userPaused = false;
   document.querySelectorAll('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.m === m)); $('#sessions').style.display = live ? 'none' : '';
   S.cur = null; syncUI();
@@ -1076,8 +1102,8 @@ function applyLang() {
   document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.l === prefs.lang));
   [['#bPlay', L('Pause / Lecture (espace)', 'Pause / Play (space)')], ['#bLog', 'Transcript'], ['#bMute', L('Son (touche M)', 'Sound (M key)')], ['#bMenu', L('Réglages', 'Settings')], ['#dclose', L('Fermer', 'Close')]].forEach(([q, t]) => { const el = $(q); el.title = t; el.setAttribute('aria-label', t); });
   $('#gT').textContent = L('Rejoindre l’appel', 'Join the call'); $('#gP').textContent = L('Cliquez pour activer le son et suivre votre session Claude Code en direct.', 'Click to enable sound and follow your Claude Code session live.'); $('#gB').textContent = L('▶ Rejoindre', '▶ Join');
-  $('#eT').textContent = L('En attente d’une session', 'Waiting for a session'); $('#eP').textContent = L('Lancez Claude Code dans ce dossier : l’appel démarrera tout seul.', 'Start Claude Code in this folder — the call will start by itself.');
-  for (const id in S.agents) { const p = persona(S.agents[id]); Object.assign(S.agents[id], { name: p.name, role: S.agents[id].type === 'main' || id === 'user' ? p.role : S.agents[id].role }); const t = $('#t-' + id); if (t) { t.querySelector('.tag b').textContent = p.name; if (id === 'main' || id === 'user') t.querySelector('.tag span').textContent = p.role; } }
+  $('#eDemo').textContent = L('▶ Voir la démo', '▶ Watch the demo'); $('#eT').textContent = L('En attente d’une session', 'Waiting for a session'); $('#eP').textContent = L('Lancez Claude Code dans ce dossier : l’appel démarrera tout seul.', 'Start Claude Code in this folder — the call will start by itself.');
+  for (const id in S.agents) { const p = persona(S.agents[id]); Object.assign(S.agents[id], { name: p.name, role: p.role }); const t = $('#t-' + id); if (t) { t.querySelector('.tag span').textContent = p.role; t.querySelector('.tag b').textContent = p.name; if (id === 'main' || id === 'user') t.querySelector('.tag span').textContent = p.role; } }
   document.querySelectorAll('#menu .mi[data-t]').forEach((b) => b.querySelector('.sw').classList.toggle('on', !!prefs[b.dataset.t])); renderCoffee(); updateHint(); renderLog(true); syncUI();
 }
 const elsewhere = () => !!(S.owner && S.owner !== CID);
@@ -1115,6 +1141,7 @@ $('#mRecap').onclick = () => { $('#menu').classList.remove('on'); openRecap(); }
 $('#mExport').onclick = () => { $('#menu').classList.remove('on'); exportVideo(); };
 $('#mBrowser').onclick = () => { $('#menu').classList.remove('on'); window.parent.postMessage({ agentStandup: 'openBrowser' }, '*'); };
 $('#seek').oninput = (e) => seekTo(+e.target.value);
+$('#eDemo').onclick = () => setMode('demo');
 $('#gB').onclick = () => {
   claimAudio(); AUD.init(); AUD.apply(); S.locked = false; $('#gate').classList.remove('on'); syncUI();
   if (synth && !EMBED) { try { synth.speak(new SpeechSynthesisUtterance('')); } catch {} }   // unlock browser speech
@@ -1133,6 +1160,13 @@ if (EMBED) $('#mBrowser').style.display = '';
     if (!prefs.langChosen && FR() && h.claude === null && !h.apiKey) { prefs.lang = 'en'; applyLang(); }
     if (FR()) fetch('/api/warm').catch(() => {});
   });
+  if (Q.get('lang')) { prefs.lang = Q.get('lang') === 'fr' ? 'fr' : 'en'; applyLang(); }   // not saved: lets a link force a language
+  if (Q.get('demo')) {
+    if (Q.get('view') === 'tree') setView('tree');
+    await setMode('demo'); if (Q.get('speed')) $('#speed').value = Q.get('speed');
+    if (Q.get('at') != null) { showMoment(+Q.get('at')); if (Q.get('recap') === '1') openRecap(); } else if (Q.get('play') === '1') run(0);
+    return;
+  }
   S.live = Q.get('live') !== '0'; document.querySelectorAll('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.m === (S.live ? 'live' : 'replay')));
   if (S.live) { S.locked = true; $('#gate').classList.add('on'); S.cur = null; syncUI(); await followCurrent(); } else { S.live = true; await setMode('replay'); }
   syncUI();

@@ -406,7 +406,7 @@ function start(port = PORT) {
     if (url.pathname === '/api/session') {
       const proj = url.searchParams.get('proj') || '', sid = url.searchParams.get('id') || '', SAFE = /^[\w.\-]+$/;
       if (!SAFE.test(proj) || !SAFE.test(sid) || proj === '..' || sid === '..') { res.writeHead(400); return res.end('bad request'); }
-      const tl = timeline(proj, sid);
+      const tl = proj === '_demo' ? require('./demo.js')() : timeline(proj, sid);   // built-in fictional session
       const after = url.searchParams.get('after');
       if (after == null) return json(tl);
       return json({ id: tl.id, agents: tl.agents, total: tl.events.length, events: tl.events.slice(+after) });
