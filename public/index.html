@@ -129,6 +129,9 @@
   .cta { background:var(--accent); color:#0b1020; font-weight:700; padding:10px 22px; border-radius:99px; font-size:14px } .cta:hover { filter:brightness(1.1) }
   .btn { background:var(--panel2); border:1px solid var(--line); padding:6px 12px; border-radius:8px } .btn:hover { border-color:var(--accent) }
   #menu { position:absolute; top:52px; right:10px; z-index:12; width:280px; background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 14px 40px rgba(0,0,0,.55); padding:6px; display:none }
+  .coffee-btn { color:#ffd24a !important; background:rgba(255,210,74,.12); box-shadow:inset 0 0 0 1px rgba(255,210,74,.35) } .coffee-btn:hover { background:rgba(255,210,74,.22) !important }
+  .glink { color:var(--dim); font-size:12.5px; text-decoration:underline; text-underline-offset:3px } .glink:hover { color:#ffd24a }
+  #mCoffee { background:rgba(255,210,74,.10); box-shadow:inset 0 0 0 1px rgba(255,210,74,.3); margin-top:4px } #mCoffee:hover { background:rgba(255,210,74,.2) }
   #menu.on { display:block } #menu h4 { margin:8px 10px 4px; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); font-weight:600 }
   .mi { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:8px 10px; border-radius:8px } .mi:hover { background:var(--panel2) }
   .sw { width:30px; height:17px; border-radius:99px; background:#3a3e50; position:relative; flex:none; transition:background .15s } .sw::after { content:''; position:absolute; top:2px; left:2px; width:13px; height:13px; border-radius:50%; background:#fff; transition:transform .15s }
@@ -170,6 +173,7 @@
   <button class="ic" id="bPlay" title="Pause / Lecture (espace)">⏸</button>
   <button class="ic" id="bLog" title="Transcript">☰</button>
   <button class="ic" id="bMute" title="Son (M)">🔊</button>
+  <button class="ic coffee-btn" id="bCoffee" style="display:none">☕</button>
   <button class="ic" id="bMenu" title="Réglages">⚙</button>
 </header>
 
@@ -201,7 +205,7 @@
     <canvas id="gantt" height="90"></canvas>
     <div id="toasts"></div>
     <div id="empty"><h2 id="eT"></h2><p id="eP"></p></div>
-    <div id="gate"><h2 id="gT"></h2><p id="gP"></p><button class="cta" id="gB"></button></div>
+    <div id="gate"><h2 id="gT"></h2><p id="gP"></p><button class="cta" id="gB"></button><button class="glink" id="gCoffee" style="display:none"></button></div>
     <div id="detail"><div class="hd"><b id="dname"></b><button class="ic" id="dclose">✕</button></div><div id="dbody"></div></div>
   </section>
   <aside><h2 id="logH">Transcript</h2><div id="log"></div></aside>
@@ -847,7 +851,12 @@ $('#gantt').onclick = (e) => { const r = e.currentTarget.getBoundingClientRect()
 // =====================================================================
 const coffeeMsg = () => L('Ce développeur a été remplacé par ses propres agents. Un café pour sa reconversion ? ☕', 'This dev was replaced by his own agents. Spare a coffee for his career change? ☕');
 function openExternal(url) { if (EMBED) window.parent.postMessage({ agentStandup: 'openExternal', url }, '*'); else window.open(url, '_blank', 'noopener'); }   // VS Code webviews must ask the extension
-function renderCoffee() { const b = $('#mCoffee'); b.style.display = SUPPORT.url ? '' : 'none'; $('#mCoffeeT').textContent = L('☕ Offrir un café au développeur', '☕ Buy the (replaced) dev a coffee'); b.title = coffeeMsg(); }
+function renderCoffee() {
+  const on = !!SUPPORT.url, b = $('#mCoffee'); b.style.display = on ? '' : 'none'; $('#mCoffeeT').textContent = L('☕ Offrir un café au développeur', '☕ Buy the (replaced) dev a coffee'); b.title = coffeeMsg();
+  const h = $('#bCoffee'); h.style.display = on ? '' : 'none'; h.title = coffeeMsg(); h.setAttribute('aria-label', coffeeMsg());
+  const g = $('#gCoffee'); g.style.display = on ? '' : 'none'; g.textContent = L('☕ Ce développeur a été remplacé par ses agents — lui offrir un café', '☕ This dev was replaced by his agents — buy him a coffee');
+}
+$('#bCoffee').onclick = $('#gCoffee').onclick = () => openExternal(SUPPORT.url);
 $('#mCoffee').onclick = () => { $('#menu').classList.remove('on'); openExternal(SUPPORT.url); };
 
 // =====================================================================

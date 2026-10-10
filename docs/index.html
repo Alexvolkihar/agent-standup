@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent Standup — your AI agents in a stand-up call</title>
+<meta name="description" content="Agent Standup turns your Claude Code session into a live team call: the lead gives orders, sub-agents join, share their screen and report back. Free VS Code extension.">
+<meta property="og:title" content="Agent Standup">
+<meta property="og:description" content="Your AI agents, in a stand-up call. A free VS Code extension for Claude Code.">
+<meta property="og:image" content="https://atoll92.github.io/agent-standup/icon.png">
+<link rel="icon" href="icon.png">
+<style>
+:root { --bg:#fbf8f3; --ink:#1f1b16; --dim:#70675c; --line:#e9e1d5; --card:#fff; --accent:#d9604a; --accent-ink:#fff; --coffee:#ffdd00 }
+@media (prefers-color-scheme:dark) { :root { --bg:#14120f; --ink:#f4eee5; --dim:#a79e90; --line:#2b2720; --card:#1c1915; --accent:#ff8a70; --accent-ink:#1a0d08 } }
+* { box-sizing:border-box }
+html { scroll-behavior:smooth }
+body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.65 ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased }
+.wrap { max-width:780px; margin:0 auto; padding:0 22px }
+header { display:flex; align-items:center; justify-content:space-between; padding:22px 0 }
+.brand { display:flex; align-items:center; gap:10px; font-weight:700; text-decoration:none; color:inherit }
+.brand img { width:30px; height:30px; border-radius:8px }
+nav { display:flex; gap:18px; align-items:center; font-size:15px }
+nav a, nav button { color:var(--dim); text-decoration:none; background:none; border:0; font:inherit; cursor:pointer; padding:0 }
+nav a:hover, nav button:hover { color:var(--ink) }
+h1 { font:800 clamp(34px,6.4vw,56px)/1.06 Georgia,"Iowan Old Style","Palatino Linotype",serif; letter-spacing:-.02em; margin:30px 0 14px }
+h2 { font:700 24px/1.2 Georgia,"Iowan Old Style",serif; margin:56px 0 14px; letter-spacing:-.01em }
+p { margin:0 0 14px } .lead { font-size:19px; color:var(--dim); max-width:620px }
+.stage { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:34px 0 8px }
+@media (max-width:620px) { .stage { grid-template-columns:repeat(2,1fr) } }
+.tile { position:relative; aspect-ratio:4/3; border-radius:16px; overflow:hidden; background:#222; box-shadow:0 6px 22px rgba(60,40,20,.18); transition:transform .25s }
+.tile svg { width:100%; height:100%; display:block }
+.tile.speaking { transform:translateY(-4px); box-shadow:0 0 0 3px var(--accent), 0 12px 28px rgba(60,40,20,.25) }
+.tag { position:absolute; left:7px; bottom:7px; background:rgba(14,15,24,.6); color:#fff; padding:1px 9px; border-radius:99px; font-size:12px }
+.bubble { position:absolute; left:7px; right:7px; top:7px; background:#fff; color:#1b1d27; border-radius:12px; padding:5px 9px; font-size:12.5px; line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,.3); opacity:0; transform:translateY(-4px); transition:.2s; pointer-events:none }
+.tile.speaking .bubble { opacity:1; transform:none }
+.note { color:var(--dim); font-size:14px; text-align:center; margin:6px 0 0 }
+.cta { display:inline-flex; align-items:center; gap:10px; background:var(--accent); color:var(--accent-ink); font-weight:700; font-size:18px; padding:15px 28px; border-radius:99px; text-decoration:none; box-shadow:0 8px 22px rgba(217,96,74,.35); transition:transform .15s }
+.cta:hover { transform:translateY(-2px) } .cta small { font-weight:500; opacity:.85; font-size:14px }
+.cta-row { display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin:26px 0 6px }
+.fine { color:var(--dim); font-size:14px }
+ol.steps { list-style:none; counter-reset:s; padding:0; margin:0 }
+ol.steps li { counter-increment:s; position:relative; padding:0 0 14px 48px }
+ol.steps li::before { content:counter(s); position:absolute; left:0; top:0; width:32px; height:32px; border-radius:50%; background:var(--card); border:1.5px solid var(--line); display:grid; place-items:center; font-weight:700; font-size:15px }
+code { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:.9em }
+ul.list { padding-left:22px } ul.list li { margin-bottom:8px }
+.coffee { margin-top:40px; background:var(--card); border:1.5px dashed var(--line); border-radius:20px; padding:26px 26px 24px; text-align:center }
+.coffee p { margin:0 auto 16px; max-width:480px }
+.coffee a { display:inline-block; background:var(--coffee); color:#1a1500; font-weight:700; padding:11px 22px; border-radius:99px; text-decoration:none }
+.coffee a:hover { filter:brightness(.96) }
+footer { margin:54px 0 40px; padding-top:22px; border-top:1px solid var(--line); color:var(--dim); font-size:14px; display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:space-between }
+footer a { color:inherit }
+.soon { color:var(--dim); font-size:14px }
+/* character animation: all state-driven from the tile's classes */
+  .fig { transform-origin:50px 76px; animation:bob 4.4s ease-in-out infinite; animation-delay:var(--d,0s) } @keyframes bob { 50% { transform:translateY(-.9px) } }
+  .tile.speaking .fig { animation:talk .46s ease-in-out infinite } @keyframes talk { 50% { transform:scale(1.025,.985) translateY(-.5px) } }
+  .tile.vanishing { pointer-events:none; z-index:3; animation:vanish 1.2s cubic-bezier(.45,0,.75,.35) forwards }
+  @keyframes vanish { 0% { filter:none; transform:none; opacity:1 } 16% { filter:brightness(1.7) saturate(1.5); transform:scale(1.05) } 55% { filter:brightness(2.3) blur(1.5px); transform:scale(.88) rotate(-3deg); opacity:.85 } 100% { filter:brightness(3.4) blur(11px); transform:scale(.12) rotate(11deg); opacity:0 } }
+  .tile.vanishing::after { content:''; position:absolute; inset:0; background:radial-gradient(circle,#fff 0,rgba(255,255,255,0) 68%); opacity:0; animation:flash2 .7s ease-out .15s }
+  @keyframes flash2 { 40% { opacity:.9 } }
+  .puff { position:fixed; left:0; top:0; z-index:9; pointer-events:none; border-radius:50% }
+  #toasts { position:absolute; left:12px; bottom:12px; z-index:6; display:flex; flex-direction:column; gap:6px; pointer-events:none }
+  .toast { background:rgba(27,29,39,.92); border:1px solid var(--line); border-radius:99px; padding:5px 12px; font-size:12px; animation:toast 3s ease forwards } @keyframes toast { 0% { opacity:0; transform:translateY(6px) } 10%, 80% { opacity:1; transform:none } 100% { opacity:0 } }
+  .eye { transform-box:fill-box; transform-origin:center; animation:blink 4.6s infinite; animation-delay:var(--d,0s) } @keyframes blink { 0%,94%,100% { transform:scaleY(1) } 97% { transform:scaleY(.08) } }
+  .brow { transform-box:fill-box; transform-origin:center; transition:transform .25s } .tile.speaking .brow { animation:brow .7s ease-in-out infinite } @keyframes brow { 50% { transform:translateY(-1.1px) } }
+  .tile.working .brow.l { transform:rotate(13deg) translateY(.5px) } .tile.working .brow.r { transform:rotate(-13deg) translateY(.5px) } .tile.working .pupil { transform:translateY(1.2px) }
+  .arm.l { transform-origin:27px 48px } .arm.r { transform-origin:73px 48px } .tile.speaking .arm.r { animation:wave .7s ease-in-out infinite } @keyframes wave { 50% { transform:rotate(-34deg) } }
+  .tile.working .arm { display:none } .tile .laptop, .tile .hands, .tile .sparks, .tile .grin, .tile .eyes-happy, .tile .mouth { display:none }
+  .tile.working .laptop, .tile.working .hands, .tile.done .sparks, .tile.done .eyes-happy { display:inline } .tile.done .eyes-open { display:none }
+  .tile.speaking .mouth { display:inline } .tile.speaking .smile, .tile.speaking .grin { display:none } .tile.done:not(.speaking) .smile { display:none } .tile.done:not(.speaking) .grin { display:inline }
+  .hand { animation:type .34s ease-in-out infinite } .hand.r { animation-delay:-.17s } @keyframes type { 50% { transform:translateY(-1.3px) } }
+  .tw { animation:tw 3.2s ease-in-out infinite } .pulse { animation:tw 1.7s ease-in-out infinite } @keyframes tw { 50% { opacity:.25 } }
+  .drift { animation:drift 24s ease-in-out infinite alternate } @keyframes drift { to { transform:translateX(9px) } }
+  .steam { animation:steam 2.6s ease-in-out infinite } @keyframes steam { 50% { transform:translateY(-1.4px); opacity:.25 } }
+  .tile.done .sparks path { animation:tw 1.6s ease-in-out infinite }
+  @media (prefers-reduced-motion:reduce) { .tile *, .tile { animation:none !important } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="#"><img src="icon.png" alt=""> Agent Standup</a>
+    <nav><a href="https://github.com/Atoll92/agent-standup" target="_blank" rel="noopener">GitHub</a><button id="lang" aria-label="Language">FR</button></nav>
+  </header>
+
+  <main>
+    <h1 data-en="Your AI agents,<br>in a stand-up call." data-fr="Vos agents IA,<br>en réunion d’équipe.">Your AI agents,<br>in a stand-up call.</h1>
+    <p class="lead" data-en="Agent Standup turns your Claude Code session into a live team meeting: the lead gives orders, sub-agents join, share their screen and report back. It’s a bit silly. It’s also weirdly useful." data-fr="Agent Standup transforme votre session Claude Code en réunion d’équipe en direct : le chef donne des ordres, les sous-agents rejoignent l’appel, partagent leur écran et font leur rapport. C’est un peu idiot. C’est aussi étonnamment utile.">Agent Standup turns your Claude Code session into a live team meeting: the lead gives orders, sub-agents join, share their screen and report back. It’s a bit silly. It’s also weirdly useful.</p>
+
+    <div class="stage" id="stage" aria-hidden="true"></div>
+    <p class="note" data-en="(An illustration. The real thing is live, has voices, and follows your actual session.)" data-fr="(Une illustration. La vraie version est en direct, avec des voix, et suit votre vraie session.)">(An illustration. The real thing is live, has voices, and follows your actual session.)</p>
+
+    <div class="cta-row">
+      <a class="cta" id="dl" href="https://github.com/Atoll92/agent-standup/releases/latest"><span id="dlT" data-en="Download for VS Code" data-fr="Télécharger pour VS Code">Download for VS Code</span><small id="dlS">v1.9.0</small></a>
+      <span class="fine" data-en="Free · open source · Mac, Windows, Linux" data-fr="Gratuit · open source · Mac, Windows, Linux">Free · open source · Mac, Windows, Linux</span>
+    </div>
+
+    <h2 data-en="Install it in a minute" data-fr="Installez-la en une minute">Install it in a minute</h2>
+    <ol class="steps">
+      <li data-en="Download the <code>.vsix</code> file above." data-fr="Téléchargez le fichier <code>.vsix</code> ci-dessus.">Download the <code>.vsix</code> file above.</li>
+      <li data-en="In VS Code: Extensions → the <code>…</code> menu → <b>Install from VSIX…</b> and pick the file." data-fr="Dans VS Code : Extensions → menu <code>…</code> → <b>Install from VSIX…</b> puis choisissez le fichier.">In VS Code: Extensions → the <code>…</code> menu → <b>Install from VSIX…</b> and pick the file.</li>
+      <li data-en="Reload, click the camera icon in the sidebar, press <b>Join</b>. That’s it." data-fr="Rechargez, cliquez sur l’icône caméra dans la barre latérale, puis sur <b>Rejoindre</b>. C’est tout.">Reload, click the camera icon in the sidebar, press <b>Join</b>. That’s it.</li>
+    </ol>
+    <p class="fine" data-en="You need VS Code 1.80+ and to have used Claude Code on this machine at least once. Voices are best on a Mac." data-fr="Il faut VS Code 1.80+ et avoir déjà utilisé Claude Code sur cette machine. Les voix sont meilleures sur Mac.">You need VS Code 1.80+ and to have used Claude Code on this machine at least once. Voices are best on a Mac.</p>
+
+    <h2 data-en="What you actually get" data-fr="Ce que vous obtenez vraiment">What you actually get</h2>
+    <ul class="list">
+      <li data-en="<b>A live call</b> that follows your Claude Code session. No setup." data-fr="<b>Un appel en direct</b> qui suit votre session Claude Code. Aucune configuration.">A live call that follows your Claude Code session.</li>
+      <li data-en="Sub-agents <b>join</b> when they get a task, <b>share their screen</b> (real commands, real output, real diffs), and <b>leave</b> when they’re done." data-fr="Les sous-agents <b>rejoignent</b> l’appel quand on leur confie une tâche, <b>partagent leur écran</b> (vraies commandes, vraies sorties, vrais diffs) et <b>quittent</b> l’appel une fois finis.">Sub-agents join, share their screen, leave.</li>
+      <li data-en="<b>Voices</b> with lip-sync, in English or French." data-fr="<b>Des voix</b> avec synchronisation labiale, en français ou en anglais.">Voices.</li>
+      <li data-en="A <b>tree</b> of who asked whom, a timeline, and a recap of what changed." data-fr="Un <b>arbre</b> de qui a demandé quoi à qui, une frise chronologique et un récap de ce qui a changé.">A tree, a timeline, a recap.</li>
+      <li data-en="<b>Replay</b> any past session, or export it as a video." data-fr="<b>Rejouez</b> n’importe quelle session passée, ou exportez-la en vidéo.">Replay.</li>
+      <li data-en="Optional <b>office music</b> (FIP radio) that fades down when agents talk." data-fr="<b>Musique d’ambiance</b> facultative (radio FIP) qui baisse quand les agents parlent.">Office music.</li>
+    </ul>
+
+    <h2 data-en="Is it serious?" data-fr="C’est sérieux ?">Is it serious?</h2>
+    <p data-en="Mostly for fun. A little for clarity: when eight sub-agents are working at once, seeing who’s doing what, and what’s on their screen, is easier than scrolling through a log." data-fr="Surtout pour le plaisir. Un peu pour la clarté : quand huit sous-agents travaillent en même temps, voir qui fait quoi, et ce qu’il y a sur leur écran, est plus simple que de faire défiler un journal.">Mostly for fun.</p>
+    <p data-en="<b>Is my code sent anywhere?</b> No. Everything runs on your machine and reads the session files Claude Code already writes. (If you pick French, short lines are translated through your own Claude login.)" data-fr="<b>Mon code part-il quelque part ?</b> Non. Tout tourne sur votre machine et lit les fichiers de session que Claude Code écrit déjà. (Si vous choisissez le français, de courtes phrases sont traduites via votre propre connexion Claude.)">No.</p>
+
+    <div class="coffee">
+      <p data-en="Made by a bored dev and his robots. <br>This dev was replaced by his own agents. If this made you smile, spare a coffee for his career change? ☕" data-fr="Fait par un dev qui s’ennuie et ses robots.<br>Ce développeur a été remplacé par ses propres agents. Si ça vous a fait sourire, un café pour sa reconversion ? ☕">Made by a bored dev and his robots.</p>
+      <a href="https://www.buymeacoffee.com/bored_dev_and_his_robots" target="_blank" rel="noopener" data-en="☕ Buy him a coffee" data-fr="☕ Lui offrir un café">☕ Buy him a coffee</a>
+    </div>
+  </main>
+
+  <footer>
+    <span data-en="MIT licensed. Unofficial: not affiliated with Anthropic." data-fr="Licence MIT. Non officiel : sans lien avec Anthropic.">MIT licensed. Unofficial: not affiliated with Anthropic.</span>
+    <span><a href="https://github.com/Atoll92/agent-standup" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/Atoll92/agent-standup/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> · <a href="https://github.com/Atoll92/agent-standup/issues" target="_blank" rel="noopener">Say hi / report a bug</a></span>
+  </footer>
+</div>
+
+<script>
+const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
+let LANG = /^fr/i.test(navigator.language || '') ? 'fr' : 'en';
+try { LANG = localStorage.getItem('as.site.lang') || LANG; } catch {}
+const L = (fr, en) => (LANG === 'fr' ? fr : en);
+// =====================================================================
+//  cast: soft mascots at their desks, in front of illustrated rooms
+// =====================================================================
+const NAMES = ['Ada','Linus','Grace','Alan','Margaret','Dennis','Barbara','Ken','Radia','Tim','Hedy','Guido','Frances','Bjarne','Katherine','Brian','Sophie','Niklaus','Annie','Donald','Joan','Edsger','Lynn','Vint','Mae','Rob','Zoe','Ivan','Nina','Otto','Lena','Hugo','Ines','Théo','Maya','Jules','Alma','Remy','Cleo','Noah','Iris','Leo','Mira','Axel','Nora','Eli','Lou','Gaby'];
+const nameBook = {};   // agent id → unique first name within the session
+function uniqueName(id, h) {
+  if (nameBook[id]) return nameBook[id]; const taken = new Set(Object.values(nameBook));
+  for (let k = 0; k < NAMES.length; k++) { const n = NAMES[(h + k) % NAMES.length]; if (!taken.has(n)) return (nameBook[id] = n); }
+  return (nameBook[id] = NAMES[h % NAMES.length] + ' ' + (taken.size + 1));
+}
+const PAL = ['#ff7a6b','#ffb347','#ffd84a','#4fd1a5','#4cc3ff','#7c8cff','#b583ff','#ff7eb6'];
+const hexRGB = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const mix = (a, b, t) => { const A = hexRGB(a), B = hexRGB(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+function persona(a) {
+  const h = hash(a.id), base = { ...a };
+  if (a.id === 'main') return { ...base, name: 'Claude', role: L('Chef', 'Lead'), shirt: '#e8845f', shape: 0, acc: 1, eye: 0, glasses: false, scene: 6, prop: 1, acc2: '#f5c04a', lead: true, vi: 0, gid: 'main' };
+  if (a.id === 'user') return { ...base, name: L('Vous', 'You'), role: L('Humain', 'Human'), shirt: '#8a94c9', shape: 1, acc: 2, eye: 1, glasses: false, scene: 7, prop: 1, acc2: '#ff7a6b', vi: 3, gid: 'user' };
+  return { ...base, name: uniqueName(a.id, h), shirt: PAL[(h >>> 6) % 8], shape: (h >>> 3) % 5, acc: (h >>> 9) % 6, eye: (h >>> 12) % 3, glasses: ((h >>> 15) % 4) === 0,
+           scene: (h >>> 18) % 6, prop: (h >>> 21) % 3, acc2: PAL[(h >>> 24) % 8], vi: h >>> 4, gid: h.toString(36) };
+}
+
+// ---------- illustrated rooms (viewBox 100×75) ----------
+const star = (x, y, s, f = '#ffe58a') => `<path d="M${x} ${y - s}L${x + s * .3} ${y - s * .3}L${x + s} ${y}L${x + s * .3} ${y + s * .3}L${x} ${y + s}L${x - s * .3} ${y + s * .3}L${x - s} ${y}L${x - s * .3} ${y - s * .3}Z" fill="${f}"/>`;
+const grad = (id, a, b, c) => `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/>${c ? `<stop offset=".55" stop-color="${b}"/><stop offset="1" stop-color="${c}"/>` : `<stop offset="1" stop-color="${b}"/>`}</linearGradient>`;
+const SCENES = [
+  { desk: ['#c98a5a', '#9a6238'], svg: () => `<defs>${grad('gs0', '#ffc2a8', '#ff93b4', '#9a7bff')}</defs><rect width="100" height="75" fill="url(#gs0)"/>
+    <circle cx="74" cy="31" r="19" fill="#fff3d0" opacity=".22"/><circle cx="74" cy="31" r="11" fill="#fff3d0"/>
+    <path d="M0 50Q24 34 48 48T100 44V75H0z" fill="#7b5fd6"/><path d="M0 57Q30 45 62 56T100 53V75H0z" fill="#5b46b8"/>
+    <path d="M18 22q2-3 4 0M26 17q2-3 4 0" stroke="#5a3d8a" stroke-width=".8" fill="none" stroke-linecap="round"/>` },
+  { desk: ['#6b6fa8', '#43467a'], svg: () => `<defs>${grad('gs1', '#0d1230', '#2a2e68')}</defs><rect width="100" height="75" fill="url(#gs1)"/>
+    ${[[12, 10, 1], [30, 18, .8], [58, 8, 1.1], [88, 22, .8], [72, 14, .7], [44, 24, .6], [8, 30, .7], [94, 8, .9]].map(([x, y, r], i) => `<circle class="tw" style="animation-delay:-${i * .4}s" cx="${x}" cy="${y}" r="${r * .7}" fill="#fff"/>`).join('')}
+    <circle cx="80" cy="18" r="7" fill="#fff4cf"/><circle cx="83" cy="16" r="6.2" fill="#1d2150"/>
+    <g fill="#161a45">${[[0, 40, 12], [12, 34, 9], [21, 44, 11], [32, 30, 8], [40, 41, 12], [52, 36, 9], [61, 45, 11], [72, 33, 10], [82, 42, 9], [91, 37, 10]].map(([x, y, w]) => `<rect x="${x}" y="${y}" width="${w}" height="${75 - y}"/>`).join('')}</g>
+    <g fill="#ffd36e">${Array.from({ length: 26 }, (_, i) => `<rect x="${3 + (i * 37) % 92}" y="${42 + (i * 13) % 14}" width="1.4" height="1.8" opacity="${.5 + (i % 3) * .2}"/>`).join('')}</g>` },
+  { desk: ['#caa27a', '#9c7650'], svg: () => `<defs>${grad('gs2', '#ffeadb', '#ffd2b5')}${grad('gw2', '#bfe9ff', '#eaf8ff')}</defs><rect width="100" height="75" fill="url(#gs2)"/>
+    <rect x="9" y="9" width="30" height="30" rx="3" fill="#fff" /><rect x="11" y="11" width="26" height="26" rx="2" fill="url(#gw2)"/><path d="M24 11v26M11 24h26" stroke="#fff" stroke-width="1.6"/>
+    <circle cx="30" cy="18" r="3.2" fill="#fff" opacity=".8"/>
+    <rect x="62" y="22" width="32" height="2.4" rx="1" fill="#b98a64"/><rect x="62" y="40" width="32" height="2.4" rx="1" fill="#b98a64"/>
+    ${[['#ff7a6b', 64, 12], ['#4cc3ff', 68, 14], ['#ffd84a', 72, 10], ['#7c8cff', 76, 13], ['#4fd1a5', 80, 11]].map(([c, x, h]) => `<rect x="${x}" y="${22 - h}" width="3.6" height="${h}" rx=".8" fill="${c}"/>`).join('')}
+    <path d="M70 40q-7-5-3-10q5 3 3 10zM74 40q3-8 9-6q-2 7-9 6z" fill="#46b97f"/><rect x="70" y="40" width="9" height="0"/>` },
+  { desk: ['#b9e0c4', '#86be9a'], svg: () => `<defs>${grad('gs3', '#bdf1ff', '#effff6')}</defs><rect width="100" height="75" fill="url(#gs3)"/>
+    <g fill="#fff" class="drift"><ellipse cx="22" cy="16" rx="9" ry="3.6"/><ellipse cx="28" cy="13.5" rx="6" ry="3.6"/><ellipse cx="74" cy="24" rx="8" ry="3"/><ellipse cx="79" cy="21.8" rx="5" ry="3"/></g>
+    <path d="M0 48Q25 36 52 47T100 42V75H0z" fill="#7ddc9a"/><path d="M0 56Q30 46 64 56T100 52V75H0z" fill="#4fc482"/>
+    <rect x="80" y="30" width="2.6" height="14" fill="#8a5a3a"/><circle cx="81.3" cy="27" r="8" fill="#3fae6c"/><circle cx="77" cy="30" r="5" fill="#4fc482"/>
+    ${[[14, 56, '#ff7eb6'], [24, 59, '#ffd84a'], [36, 55, '#fff'], [48, 58, '#ff7eb6']].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="1.1" fill="${c}"/>`).join('')}` },
+  { desk: ['#e6c48f', '#bf9a63'], svg: () => `<defs>${grad('gs4', '#ffe9ae', '#a4e8ff')}</defs><rect width="100" height="75" fill="url(#gs4)"/>
+    <circle cx="22" cy="22" r="9" fill="#fff6d6"/><path d="M0 46Q12 41 24 46T48 46T72 46T100 46V75H0z" fill="#3cb7d9"/><path d="M0 52Q12 47 24 52T48 52T72 52T100 52V75H0z" fill="#2a95c4"/>
+    <path d="M70 42V26L82 42z" fill="#fff"/><path d="M69 43h14l-2 3H71z" fill="#c4705a"/><path d="M69 43V24" stroke="#8a5a3a" stroke-width=".8"/>` },
+  { desk: ['#7a5ea8', '#4d3a7a'], svg: () => `<defs>${grad('gs5', '#190f3d', '#4c2183')}</defs><rect width="100" height="75" fill="url(#gs5)"/>
+    ${Array.from({ length: 16 }, (_, i) => `<circle class="tw" style="animation-delay:-${i * .3}s" cx="${(i * 53) % 97 + 2}" cy="${(i * 29) % 50 + 3}" r=".7" fill="#fff"/>`).join('')}
+    <circle cx="22" cy="26" r="11" fill="#ff9bb8"/><ellipse cx="22" cy="26" rx="18" ry="3.6" fill="none" stroke="#ffe0a8" stroke-width="1.6" transform="rotate(-18 22 26)"/><path d="M13 22q9 4 18 1" stroke="#e86f98" stroke-width="1.4" fill="none"/>
+    <circle cx="80" cy="20" r="6" fill="#6fd3ff"/><circle cx="77.5" cy="18" r="1.4" fill="#4ab6e6"/>${star(60, 14, 3)}${star(90, 40, 2.2, '#cfc2ff')}` },
+  { desk: ['#506b73', '#2f4850'], svg: () => `<defs>${grad('gs6', '#10282f', '#18444f')}</defs><rect width="100" height="75" fill="url(#gs6)"/>
+    ${[[5, 8], [36, 6], [67, 8]].map(([x, y], i) => `<rect x="${x}" y="${y}" width="28" height="22" rx="2.5" fill="#0a1a1f" stroke="#2b6a78" stroke-width=".8"/>
+      <polyline points="${x + 3},${y + 17} ${x + 9},${y + 11} ${x + 14},${y + 14} ${x + 20},${y + 6} ${x + 25},${y + 9}" fill="none" stroke="${['#ff9a6b', '#4fd1a5', '#ffd84a'][i]}" stroke-width="1.3" stroke-linejoin="round"/>
+      <rect x="${x + 3}" y="${y + 3}" width="9" height="1.4" rx=".7" fill="#4cc3ff" opacity=".7"/>`).join('')}
+    <g fill="#ffe9a8" opacity=".7"><circle cx="20" cy="36" r="1" class="pulse"/><circle cx="50" cy="38" r="1" class="pulse" style="animation-delay:-.6s"/><circle cx="80" cy="36" r="1" class="pulse" style="animation-delay:-1.1s"/></g>` },
+  { desk: ['#a87a56', '#7c5438'], svg: () => `<defs>${grad('gs7', '#3a2b52', '#6b4a68')}<radialGradient id="gl7"><stop offset="0" stop-color="#ffd98a" stop-opacity=".75"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient></defs>
+    <rect width="100" height="75" fill="url(#gs7)"/><circle cx="82" cy="30" r="26" fill="url(#gl7)"/>
+    <path d="M82 54V36" stroke="#2a2233" stroke-width="1.6"/><path d="M75 36q7-9 14 0z" fill="#ffd98a"/>
+    <rect x="12" y="10" width="22" height="16" rx="1.5" fill="#2a2233"/><rect x="14" y="12" width="18" height="12" rx="1" fill="#ff9a8b"/><path d="M14 24l6-6 5 4 4-3 3 5z" fill="#6b4a98"/><circle cx="27" cy="16" r="2" fill="#ffe9a8"/>` },
+];
+
+// ---------- the characters ----------
+const SHAPES = [{ top: 20, fy: 40, hw: 23 }, { top: 14, fy: 35, hw: 19 }, { top: 15, fy: 41, hw: 24 }, { top: 16, fy: 40, hw: 22 }, { top: 22, fy: 40, hw: 22 }];
+const EYES = [{ rx: 3.1, ry: 4.3 }, { rx: 3.7, ry: 3.7 }, { rx: 2.5, ry: 5 }];
+function bodyShape(i, fill, dark) {
+  return [`<rect x="27" y="20" width="46" height="56" rx="22" fill="${fill}"/>`, `<rect x="31" y="14" width="38" height="64" rx="19" fill="${fill}"/>`,
+    `<g fill="${fill}"><circle cx="38" cy="36" r="13"/><circle cx="50" cy="29" r="15"/><circle cx="62" cy="36" r="13"/><rect x="26" y="36" width="48" height="40" rx="12"/></g>`,
+    `<path d="M28 78V38a22 22 0 0 1 44 0V78z" fill="${fill}"/>`,
+    `<rect x="28" y="22" width="44" height="54" rx="11" fill="${fill}"/><rect x="23.5" y="36" width="4.4" height="11" rx="2.2" fill="${dark}"/><rect x="72.1" y="36" width="4.4" height="11" rx="2.2" fill="${dark}"/><path d="M50 22V13" stroke="${dark}" stroke-width="1.5" stroke-linecap="round"/><circle class="pulse" cx="50" cy="11.4" r="2.8" fill="#8ff0ff"/>`][i];
+}
+const ACC = [
+  (t, c) => `<path d="M50 ${t + 1}v-7" stroke="#3a9d68" stroke-width="1.6" stroke-linecap="round"/><path d="M50 ${t - 5}q-8-1-8-8q7 0 8 8z" fill="#53c98a"/><path d="M50 ${t - 5}q8-1 8-8q-7 0-8 8z" fill="#3fb677"/>`,
+  (t, c, fy, hw) => `<path d="M${50 - hw - .5} ${fy - 3}Q${50 - hw} ${t - 7} 50 ${t - 7}Q${50 + hw} ${t - 7} ${50 + hw + .5} ${fy - 3}" fill="none" stroke="#2c2f40" stroke-width="3" stroke-linecap="round"/>
+    <rect x="${50 - hw - 4}" y="${fy - 7}" width="7" height="14" rx="3.5" fill="${c}" stroke="#2c2f40" stroke-width="1.4"/><rect x="${50 + hw - 3}" y="${fy - 7}" width="7" height="14" rx="3.5" fill="${c}" stroke="#2c2f40" stroke-width="1.4"/>`,
+  (t, c) => `<path d="M30 ${t + 11}Q30 ${t - 9} 50 ${t - 9}Q70 ${t - 9} 70 ${t + 11}z" fill="${c}"/><rect x="29" y="${t + 7}" width="42" height="7" rx="3.5" fill="${mix(c, '#000000', .16)}"/><circle cx="50" cy="${t - 10}" r="4" fill="${mix(c, '#ffffff', .45)}"/>`,
+  (t, c) => `<path d="M31 ${t + 8}Q31 ${t - 8} 50 ${t - 8}Q69 ${t - 8} 69 ${t + 8}z" fill="${c}"/><path d="M45 ${t + 7}q22-3 30 3q-12 3-30-1z" fill="${mix(c, '#000000', .16)}"/>`,
+  (t, c) => `<g transform="translate(60 ${t + 3}) rotate(14)"><path d="M0 0L-9-5V5z" fill="${c}"/><path d="M0 0L9-5V5z" fill="${c}"/><circle r="2.6" fill="${mix(c, '#000000', .18)}"/></g>`,
+  (t, c) => `<path d="M44 ${t + 2}L40 ${t - 8}M56 ${t + 2}L60 ${t - 8}" stroke="#2c2f40" stroke-width="1.2" stroke-linecap="round"/><circle cx="40" cy="${t - 9}" r="2.4" fill="${c}"/><circle cx="60" cy="${t - 9}" r="2.4" fill="${c}"/>`,
+];
+function avatarSVG(p, o, uid = '') {   // uid keeps SVG ids unique per instance: duplicate ids made gradients vanish when the first copy was in a hidden element
+  const st = !!o, sh = SHAPES[p.shape], fy = sh.fy, top = sh.top, bot = p.shape === 4, c = p.shirt, c1 = mix(c, '#ffffff', .3), c2 = mix(c, '#000000', .2);
+  const ink = bot ? '#8ff0ff' : '#2a2233', gid = uid + 'b' + p.gid, sc = SCENES[p.scene], eg = EYES[p.eye], ex = p.shape === 1 ? [43, 57] : [41.5, 58.5];
+  const V = (cls, show, html) => (st ? (show ? html : '') : `<g class="${cls}">${html}</g>`);
+  const d0 = -((hash(p.id) % 45) / 10);
+  const eye = (x) => `<g class="eye"><ellipse cx="${x}" cy="${fy}" rx="${eg.rx}" ry="${eg.ry}" fill="${ink}"/><g class="pupil"><circle cx="${x + 1}" cy="${fy - 1.5}" r="1.1" fill="#fff"/><circle cx="${x - 1}" cy="${fy + 1.4}" r=".55" fill="#fff" opacity=".7"/></g></g>`;
+  const happy = (x) => `<path d="M${x - 3.6} ${fy + 1.4}Q${x} ${fy - 4.2} ${x + 3.6} ${fy + 1.4}" fill="none" stroke="${ink}" stroke-width="1.7" stroke-linecap="round"/>`;
+  const brow = (x, s) => `<path class="brow ${s}" d="M${x - 3.6} ${fy - eg.ry - 3}q3.6-2 7.2 0" fill="none" stroke="${ink}" stroke-width="1.4" stroke-linecap="round"/>`;
+  const my = fy + 10.5, working = st && o.working, done = st && o.done, speaking = st && o.m > 0, mopen = st && o.m === 2;
+  const face = `${bot ? '<rect x="33" y="29" width="34" height="26" rx="9" fill="#1d2138"/>' : `<ellipse cx="${ex[0] - 6}" cy="${fy + 6}" rx="3.3" ry="2" fill="#ff6f91" opacity=".34"/><ellipse cx="${ex[1] + 6}" cy="${fy + 6}" rx="3.3" ry="2" fill="#ff6f91" opacity=".34"/>`}
+    ${V('eyes-open', !done, eye(ex[0]) + eye(ex[1]))}${V('eyes-happy', done, happy(ex[0]) + happy(ex[1]))}${brow(ex[0], 'l')}${brow(ex[1], 'r')}
+    ${V('smile', !speaking && !done, `<path d="M${46} ${my}q4 3.6 8 0" fill="none" stroke="${ink}" stroke-width="1.6" stroke-linecap="round"/>`)}
+    ${V('grin', done && !speaking, `<path d="M44.5 ${my - .6}q5.5 8 11 0z" fill="${bot ? '#8ff0ff' : '#4b1c2c'}"/>`)}
+    ${V('mouth', speaking, `<ellipse class="mouthE" cx="50" cy="${my + 1}" rx="${mopen ? 4 : 4.6}" ry="${mopen ? 4.4 : .9}" fill="${bot ? '#8ff0ff' : '#4b1c2c'}"/>`)}
+    ${p.glasses ? `<g fill="rgba(255,255,255,.16)" stroke="#2c2f40" stroke-width="1.1"><circle cx="${ex[0]}" cy="${fy}" r="6.2"/><circle cx="${ex[1]}" cy="${fy}" r="6.2"/><path d="M${ex[0] + 6.2} ${fy}h${ex[1] - ex[0] - 12.4}" fill="none"/></g>` : ''}`;
+  const acc = ACC[p.acc](top, p.acc2, fy, sh.hw) + (p.lead ? `<path d="M${50 - sh.hw} ${fy + 5}q-2 11 13 12" fill="none" stroke="#2c2f40" stroke-width="1.2" stroke-linecap="round"/><circle cx="${50 - sh.hw + 13}" cy="${fy + 17}" r="1.9" fill="#2c2f40"/>` : '');
+  const arm = (side) => `<g class="arm ${side}"><ellipse cx="${side === 'l' ? 25 : 75}" cy="56" rx="4.6" ry="9" fill="${c2}" transform="rotate(${side === 'l' ? 12 : -12} ${side === 'l' ? 25 : 75} 56)"/></g>`;
+  const prop = [`<path d="M11 62.4l1.6-7.4h7.2l1.6 7.4z" fill="#e07a5f"/><path d="M16 55q-6-8-2-12q5 4 2 12z" fill="#3fbf7f"/><path d="M16 55q6-7 10-5q-1 6-10 5z" fill="#53c98a"/>`,
+    `<rect x="79" y="55.6" width="7.4" height="6.8" rx="1.6" fill="#f6f2ea"/><path d="M86.2 57q3.2 0 3.2 2.2t-3.2 2.2" fill="none" stroke="#f6f2ea" stroke-width="1.3"/><g class="steam" fill="none" stroke="#fff" stroke-width=".8" stroke-linecap="round" opacity=".7"><path d="M81.5 53q-1.4-1.8 0-3.4M84.3 53q-1.4-1.8 0-3.4"/></g>`,
+    `<rect x="76" y="58.2" width="14" height="4.2" rx="1" fill="#ff7a6b"/><rect x="77.5" y="54.4" width="12" height="3.8" rx="1" fill="#4cc3ff"/><rect x="76.5" y="50.8" width="11" height="3.6" rx="1" fill="#ffd84a"/>`][p.prop];
+  const lap = `<rect x="33" y="46" width="34" height="18" rx="2.8" fill="#d3d8e6"/><rect x="33" y="46" width="34" height="18" rx="2.8" fill="url(#${uid}lg)" opacity=".5"/><circle cx="50" cy="55" r="2.3" fill="${c1}"/><rect x="29.5" y="63.4" width="41" height="3" rx="1.5" fill="#aab1c2"/>`;
+  const hands = `<circle class="hand l" cx="38" cy="65.6" r="3.1" fill="${c2}"/><circle class="hand r" cx="62" cy="65.6" r="3.1" fill="${c2}"/>`;
+  const sparks = star(22, 28, 3) + star(78, 22, 2.6, '#ff9bb8') + star(70, 40, 1.9, '#9be7ff') + star(30, 46, 1.6, '#ffe58a');
+  return `<svg viewBox="0 0 100 75" preserveAspectRatio="xMidYMid slice"${st ? ' xmlns="http://www.w3.org/2000/svg" width="400" height="300"' : ''}>
+    <defs><linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="0" y1="12" x2="0" y2="72"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c}"/></linearGradient>
+      <linearGradient id="${uid}dk${p.scene}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sc.desk[0]}"/><stop offset="1" stop-color="${sc.desk[1]}"/></linearGradient>
+      <linearGradient id="${uid}lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+    ${sc.svg().replace(/id="(g[a-z]\d)"/g, `id="${uid}$1"`).replace(/url\(#(g[a-z]\d)\)/g, `url(#${uid}$1)`)}
+    <g class="fig" style="--d:${d0}s">
+      ${arm('l')}${bodyShape(p.shape, `url(#${gid})`, c2)}${arm('r')}${face}${acc}
+    </g>
+    <rect y="62" width="100" height="13" fill="url(#${uid}dk${p.scene})"/><rect y="62" width="100" height="1.3" fill="#fff" opacity=".38"/><rect y="63.3" width="100" height="2.6" fill="#000" opacity=".1"/>
+    ${prop}${V('laptop', working, lap)}${V('hands', working, hands)}${V('sparks', done, `<g class="sparks">${sparks}</g>`)}
+  </svg>`;
+}
+
+
+
+// ---- the little illustration ----
+const cast = ['main', 'remy', 'iris', 'hugo'].map((id) => persona({ id }));
+const names = ['Claude', 'Remy', 'Iris', 'Hugo'];
+const stage = document.getElementById('stage');
+cast.forEach((p, i) => {
+  p.name = names[i];
+  const d = document.createElement('div'); d.className = 'tile'; d.id = 'c' + i;
+  d.innerHTML = avatarSVG(p, undefined, 'h' + i + '_') + '<div class="bubble"></div><div class="tag">' + names[i] + '</div>';
+  stage.appendChild(d);
+});
+const script = [
+  { who: 0, say: ['Team: audit the login flow. Read-only, please.', 'Équipe : audit du login. En lecture seule, merci.'], state: ['', '', '', ''] },
+  { who: 1, say: ['On it, boss.', 'Je m’en occupe, chef.'], state: ['', 'working', '', ''] },
+  { who: 2, say: ['Reading 14 files…', 'Je lis 14 fichiers…'], state: ['', 'working', 'working', ''] },
+  { who: 3, say: ['Two bugs. Report incoming.', 'Deux bugs. Rapport en route.'], state: ['', 'working', 'working', 'working'] },
+  { who: 1, say: ['Done ✓ Tests are green.', 'Terminé ✓ Tests au vert.'], state: ['', 'done', 'working', 'working'] },
+  { who: 0, say: ['Perfect. Coffee’s on the dev.', 'Parfait. Le café est pour le dev.'], state: ['', 'done', 'done', 'done'] },
+];
+let step = 0, mouth = null;
+function play() {
+  const s = script[step % script.length]; step++;
+  cast.forEach((p, i) => { const t = document.getElementById('c' + i); t.className = 'tile ' + (s.state[i] || '') + (i === s.who ? ' speaking' : ''); });
+  const t = document.getElementById('c' + s.who); t.querySelector('.bubble').textContent = s.say[LANG === 'fr' ? 1 : 0];
+  clearInterval(mouth); const m = t.querySelector('.mouthE'); let open = false;
+  mouth = setInterval(() => { open = !open; if (m) { m.setAttribute('ry', open ? 4.2 : 1.1); m.setAttribute('rx', open ? 4 : 4.7); } }, 120);
+  setTimeout(() => clearInterval(mouth), 1900);
+}
+play(); setInterval(play, 3200);
+
+// ---- language + latest release ----
+function applyLang() {
+  document.documentElement.lang = LANG; document.getElementById('lang').textContent = LANG === 'fr' ? 'EN' : 'FR';
+  document.querySelectorAll('[data-en]').forEach((el) => { el.innerHTML = LANG === 'fr' ? el.dataset.fr : el.dataset.en; });
+  if (window.__rel) showRelease();
+  const cur = script[(step - 1 + script.length) % script.length], b = document.querySelector('.tile.speaking .bubble'); if (b && cur) b.textContent = cur.say[LANG === 'fr' ? 1 : 0];
+}
+document.getElementById('lang').onclick = () => { LANG = LANG === 'fr' ? 'en' : 'fr'; try { localStorage.setItem('as.site.lang', LANG); } catch {} applyLang(); };
+function showRelease() {
+  const r = window.__rel, a = (r.assets || []).find((x) => /\.vsix$/.test(x.name)); if (!a) return;
+  document.getElementById('dl').href = a.browser_download_url;
+  document.getElementById('dlS').textContent = r.tag_name + ' · ' + Math.max(1, Math.round(a.size / 1024)) + ' KB';
+}
+fetch('https://api.github.com/repos/Atoll92/agent-standup/releases/latest').then((r) => (r.ok ? r.json() : null)).then((r) => { if (r) { window.__rel = r; showRelease(); } }).catch(() => {});
+applyLang();
+</script>
+</body>
+</html>

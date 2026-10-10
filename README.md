@@ -2,6 +2,8 @@
 
 **Your Claude Code session as a live team call.** The lead gives orders, sub-agents join the call, work at their desks, share their screen and report back — with voices, expressions and a view of the real work as it happens.
 
+**→ Website & download: https://atoll92.github.io/agent-standup/**
+
 [![Buy me a coffee](https://img.shields.io/badge/-Buy%20the%20(replaced)%20dev%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/bored_dev_and_his_robots)
 
 > Unofficial community project, not affiliated with or endorsed by Anthropic. "Claude" is a trademark of Anthropic.
@@ -45,7 +47,7 @@ Outputs are trimmed (about 1–2 KB each) to keep the call fast. Results of inte
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.8.1/agent-standup-1.8.1.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.9.0/agent-standup-1.9.0.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself

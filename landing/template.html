@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent Standup — your AI agents in a stand-up call</title>
+<meta name="description" content="Agent Standup turns your Claude Code session into a live team call: the lead gives orders, sub-agents join, share their screen and report back. Free VS Code extension.">
+<meta property="og:title" content="Agent Standup">
+<meta property="og:description" content="Your AI agents, in a stand-up call. A free VS Code extension for Claude Code.">
+<meta property="og:image" content="https://atoll92.github.io/agent-standup/icon.png">
+<link rel="icon" href="icon.png">
+<style>
+:root { --bg:#fbf8f3; --ink:#1f1b16; --dim:#70675c; --line:#e9e1d5; --card:#fff; --accent:#d9604a; --accent-ink:#fff; --coffee:#ffdd00 }
+@media (prefers-color-scheme:dark) { :root { --bg:#14120f; --ink:#f4eee5; --dim:#a79e90; --line:#2b2720; --card:#1c1915; --accent:#ff8a70; --accent-ink:#1a0d08 } }
+* { box-sizing:border-box }
+html { scroll-behavior:smooth }
+body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.65 ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased }
+.wrap { max-width:780px; margin:0 auto; padding:0 22px }
+header { display:flex; align-items:center; justify-content:space-between; padding:22px 0 }
+.brand { display:flex; align-items:center; gap:10px; font-weight:700; text-decoration:none; color:inherit }
+.brand img { width:30px; height:30px; border-radius:8px }
+nav { display:flex; gap:18px; align-items:center; font-size:15px }
+nav a, nav button { color:var(--dim); text-decoration:none; background:none; border:0; font:inherit; cursor:pointer; padding:0 }
+nav a:hover, nav button:hover { color:var(--ink) }
+h1 { font:800 clamp(34px,6.4vw,56px)/1.06 Georgia,"Iowan Old Style","Palatino Linotype",serif; letter-spacing:-.02em; margin:30px 0 14px }
+h2 { font:700 24px/1.2 Georgia,"Iowan Old Style",serif; margin:56px 0 14px; letter-spacing:-.01em }
+p { margin:0 0 14px } .lead { font-size:19px; color:var(--dim); max-width:620px }
+.stage { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:34px 0 8px }
+@media (max-width:620px) { .stage { grid-template-columns:repeat(2,1fr) } }
+.tile { position:relative; aspect-ratio:4/3; border-radius:16px; overflow:hidden; background:#222; box-shadow:0 6px 22px rgba(60,40,20,.18); transition:transform .25s }
+.tile svg { width:100%; height:100%; display:block }
+.tile.speaking { transform:translateY(-4px); box-shadow:0 0 0 3px var(--accent), 0 12px 28px rgba(60,40,20,.25) }
+.tag { position:absolute; left:7px; bottom:7px; background:rgba(14,15,24,.6); color:#fff; padding:1px 9px; border-radius:99px; font-size:12px }
+.bubble { position:absolute; left:7px; right:7px; top:7px; background:#fff; color:#1b1d27; border-radius:12px; padding:5px 9px; font-size:12.5px; line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,.3); opacity:0; transform:translateY(-4px); transition:.2s; pointer-events:none }
+.tile.speaking .bubble { opacity:1; transform:none }
+.note { color:var(--dim); font-size:14px; text-align:center; margin:6px 0 0 }
+.cta { display:inline-flex; align-items:center; gap:10px; background:var(--accent); color:var(--accent-ink); font-weight:700; font-size:18px; padding:15px 28px; border-radius:99px; text-decoration:none; box-shadow:0 8px 22px rgba(217,96,74,.35); transition:transform .15s }
+.cta:hover { transform:translateY(-2px) } .cta small { font-weight:500; opacity:.85; font-size:14px }
+.cta-row { display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin:26px 0 6px }
+.fine { color:var(--dim); font-size:14px }
+ol.steps { list-style:none; counter-reset:s; padding:0; margin:0 }
+ol.steps li { counter-increment:s; position:relative; padding:0 0 14px 48px }
+ol.steps li::before { content:counter(s); position:absolute; left:0; top:0; width:32px; height:32px; border-radius:50%; background:var(--card); border:1.5px solid var(--line); display:grid; place-items:center; font-weight:700; font-size:15px }
+code { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:.9em }
+ul.list { padding-left:22px } ul.list li { margin-bottom:8px }
+.coffee { margin-top:40px; background:var(--card); border:1.5px dashed var(--line); border-radius:20px; padding:26px 26px 24px; text-align:center }
+.coffee p { margin:0 auto 16px; max-width:480px }
+.coffee a { display:inline-block; background:var(--coffee); color:#1a1500; font-weight:700; padding:11px 22px; border-radius:99px; text-decoration:none }
+.coffee a:hover { filter:brightness(.96) }
+footer { margin:54px 0 40px; padding-top:22px; border-top:1px solid var(--line); color:var(--dim); font-size:14px; display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:space-between }
+footer a { color:inherit }
+.soon { color:var(--dim); font-size:14px }
+/*ART_CSS*/
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="#"><img src="icon.png" alt=""> Agent Standup</a>
+    <nav><a href="https://github.com/Atoll92/agent-standup" target="_blank" rel="noopener">GitHub</a><button id="lang" aria-label="Language">FR</button></nav>
+  </header>
+
+  <main>
+    <h1 data-en="Your AI agents,<br>in a stand-up call." data-fr="Vos agents IA,<br>en réunion d’équipe.">Your AI agents,<br>in a stand-up call.</h1>
+    <p class="lead" data-en="Agent Standup turns your Claude Code session into a live team meeting: the lead gives orders, sub-agents join, share their screen and report back. It’s a bit silly. It’s also weirdly useful." data-fr="Agent Standup transforme votre session Claude Code en réunion d’équipe en direct : le chef donne des ordres, les sous-agents rejoignent l’appel, partagent leur écran et font leur rapport. C’est un peu idiot. C’est aussi étonnamment utile.">Agent Standup turns your Claude Code session into a live team meeting: the lead gives orders, sub-agents join, share their screen and report back. It’s a bit silly. It’s also weirdly useful.</p>
+
+    <div class="stage" id="stage" aria-hidden="true"></div>
+    <p class="note" data-en="(An illustration. The real thing is live, has voices, and follows your actual session.)" data-fr="(Une illustration. La vraie version est en direct, avec des voix, et suit votre vraie session.)">(An illustration. The real thing is live, has voices, and follows your actual session.)</p>
+
+    <div class="cta-row">
+      <a class="cta" id="dl" href="https://github.com/Atoll92/agent-standup/releases/latest"><span id="dlT" data-en="Download for VS Code" data-fr="Télécharger pour VS Code">Download for VS Code</span><small id="dlS">v__VERSION__</small></a>
+      <span class="fine" data-en="Free · open source · Mac, Windows, Linux" data-fr="Gratuit · open source · Mac, Windows, Linux">Free · open source · Mac, Windows, Linux</span>
+    </div>
+
+    <h2 data-en="Install it in a minute" data-fr="Installez-la en une minute">Install it in a minute</h2>
+    <ol class="steps">
+      <li data-en="Download the <code>.vsix</code> file above." data-fr="Téléchargez le fichier <code>.vsix</code> ci-dessus.">Download the <code>.vsix</code> file above.</li>
+      <li data-en="In VS Code: Extensions → the <code>…</code> menu → <b>Install from VSIX…</b> and pick the file." data-fr="Dans VS Code : Extensions → menu <code>…</code> → <b>Install from VSIX…</b> puis choisissez le fichier.">In VS Code: Extensions → the <code>…</code> menu → <b>Install from VSIX…</b> and pick the file.</li>
+      <li data-en="Reload, click the camera icon in the sidebar, press <b>Join</b>. That’s it." data-fr="Rechargez, cliquez sur l’icône caméra dans la barre latérale, puis sur <b>Rejoindre</b>. C’est tout.">Reload, click the camera icon in the sidebar, press <b>Join</b>. That’s it.</li>
+    </ol>
+    <p class="fine" data-en="You need VS Code 1.80+ and to have used Claude Code on this machine at least once. Voices are best on a Mac." data-fr="Il faut VS Code 1.80+ et avoir déjà utilisé Claude Code sur cette machine. Les voix sont meilleures sur Mac.">You need VS Code 1.80+ and to have used Claude Code on this machine at least once. Voices are best on a Mac.</p>
+
+    <h2 data-en="What you actually get" data-fr="Ce que vous obtenez vraiment">What you actually get</h2>
+    <ul class="list">
+      <li data-en="<b>A live call</b> that follows your Claude Code session. No setup." data-fr="<b>Un appel en direct</b> qui suit votre session Claude Code. Aucune configuration.">A live call that follows your Claude Code session.</li>
+      <li data-en="Sub-agents <b>join</b> when they get a task, <b>share their screen</b> (real commands, real output, real diffs), and <b>leave</b> when they’re done." data-fr="Les sous-agents <b>rejoignent</b> l’appel quand on leur confie une tâche, <b>partagent leur écran</b> (vraies commandes, vraies sorties, vrais diffs) et <b>quittent</b> l’appel une fois finis.">Sub-agents join, share their screen, leave.</li>
+      <li data-en="<b>Voices</b> with lip-sync, in English or French." data-fr="<b>Des voix</b> avec synchronisation labiale, en français ou en anglais.">Voices.</li>
+      <li data-en="A <b>tree</b> of who asked whom, a timeline, and a recap of what changed." data-fr="Un <b>arbre</b> de qui a demandé quoi à qui, une frise chronologique et un récap de ce qui a changé.">A tree, a timeline, a recap.</li>
+      <li data-en="<b>Replay</b> any past session, or export it as a video." data-fr="<b>Rejouez</b> n’importe quelle session passée, ou exportez-la en vidéo.">Replay.</li>
+      <li data-en="Optional <b>office music</b> (FIP radio) that fades down when agents talk." data-fr="<b>Musique d’ambiance</b> facultative (radio FIP) qui baisse quand les agents parlent.">Office music.</li>
+    </ul>
+
+    <h2 data-en="Is it serious?" data-fr="C’est sérieux ?">Is it serious?</h2>
+    <p data-en="Mostly for fun. A little for clarity: when eight sub-agents are working at once, seeing who’s doing what, and what’s on their screen, is easier than scrolling through a log." data-fr="Surtout pour le plaisir. Un peu pour la clarté : quand huit sous-agents travaillent en même temps, voir qui fait quoi, et ce qu’il y a sur leur écran, est plus simple que de faire défiler un journal.">Mostly for fun.</p>
+    <p data-en="<b>Is my code sent anywhere?</b> No. Everything runs on your machine and reads the session files Claude Code already writes. (If you pick French, short lines are translated through your own Claude login.)" data-fr="<b>Mon code part-il quelque part ?</b> Non. Tout tourne sur votre machine et lit les fichiers de session que Claude Code écrit déjà. (Si vous choisissez le français, de courtes phrases sont traduites via votre propre connexion Claude.)">No.</p>
+
+    <div class="coffee">
+      <p data-en="Made by a bored dev and his robots. <br>This dev was replaced by his own agents. If this made you smile, spare a coffee for his career change? ☕" data-fr="Fait par un dev qui s’ennuie et ses robots.<br>Ce développeur a été remplacé par ses propres agents. Si ça vous a fait sourire, un café pour sa reconversion ? ☕">Made by a bored dev and his robots.</p>
+      <a href="https://www.buymeacoffee.com/bored_dev_and_his_robots" target="_blank" rel="noopener" data-en="☕ Buy him a coffee" data-fr="☕ Lui offrir un café">☕ Buy him a coffee</a>
+    </div>
+  </main>
+
+  <footer>
+    <span data-en="MIT licensed. Unofficial: not affiliated with Anthropic." data-fr="Licence MIT. Non officiel : sans lien avec Anthropic.">MIT licensed. Unofficial: not affiliated with Anthropic.</span>
+    <span><a href="https://github.com/Atoll92/agent-standup" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/Atoll92/agent-standup/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> · <a href="https://github.com/Atoll92/agent-standup/issues" target="_blank" rel="noopener">Say hi / report a bug</a></span>
+  </footer>
+</div>
+
+<script>
+const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
+let LANG = /^fr/i.test(navigator.language || '') ? 'fr' : 'en';
+try { LANG = localStorage.getItem('as.site.lang') || LANG; } catch {}
+const L = (fr, en) => (LANG === 'fr' ? fr : en);
+/*ART_JS*/
+
+// ---- the little illustration ----
+const cast = ['main', 'remy', 'iris', 'hugo'].map((id) => persona({ id }));
+const names = ['Claude', 'Remy', 'Iris', 'Hugo'];
+const stage = document.getElementById('stage');
+cast.forEach((p, i) => {
+  p.name = names[i];
+  const d = document.createElement('div'); d.className = 'tile'; d.id = 'c' + i;
+  d.innerHTML = avatarSVG(p, undefined, 'h' + i + '_') + '<div class="bubble"></div><div class="tag">' + names[i] + '</div>';
+  stage.appendChild(d);
+});
+const script = [
+  { who: 0, say: ['Team: audit the login flow. Read-only, please.', 'Équipe : audit du login. En lecture seule, merci.'], state: ['', '', '', ''] },
+  { who: 1, say: ['On it, boss.', 'Je m’en occupe, chef.'], state: ['', 'working', '', ''] },
+  { who: 2, say: ['Reading 14 files…', 'Je lis 14 fichiers…'], state: ['', 'working', 'working', ''] },
+  { who: 3, say: ['Two bugs. Report incoming.', 'Deux bugs. Rapport en route.'], state: ['', 'working', 'working', 'working'] },
+  { who: 1, say: ['Done ✓ Tests are green.', 'Terminé ✓ Tests au vert.'], state: ['', 'done', 'working', 'working'] },
+  { who: 0, say: ['Perfect. Coffee’s on the dev.', 'Parfait. Le café est pour le dev.'], state: ['', 'done', 'done', 'done'] },
+];
+let step = 0, mouth = null;
+function play() {
+  const s = script[step % script.length]; step++;
+  cast.forEach((p, i) => { const t = document.getElementById('c' + i); t.className = 'tile ' + (s.state[i] || '') + (i === s.who ? ' speaking' : ''); });
+  const t = document.getElementById('c' + s.who); t.querySelector('.bubble').textContent = s.say[LANG === 'fr' ? 1 : 0];
+  clearInterval(mouth); const m = t.querySelector('.mouthE'); let open = false;
+  mouth = setInterval(() => { open = !open; if (m) { m.setAttribute('ry', open ? 4.2 : 1.1); m.setAttribute('rx', open ? 4 : 4.7); } }, 120);
+  setTimeout(() => clearInterval(mouth), 1900);
+}
+play(); setInterval(play, 3200);
+
+// ---- language + latest release ----
+function applyLang() {
+  document.documentElement.lang = LANG; document.getElementById('lang').textContent = LANG === 'fr' ? 'EN' : 'FR';
+  document.querySelectorAll('[data-en]').forEach((el) => { el.innerHTML = LANG === 'fr' ? el.dataset.fr : el.dataset.en; });
+  if (window.__rel) showRelease();
+  const cur = script[(step - 1 + script.length) % script.length], b = document.querySelector('.tile.speaking .bubble'); if (b && cur) b.textContent = cur.say[LANG === 'fr' ? 1 : 0];
+}
+document.getElementById('lang').onclick = () => { LANG = LANG === 'fr' ? 'en' : 'fr'; try { localStorage.setItem('as.site.lang', LANG); } catch {} applyLang(); };
+function showRelease() {
+  const r = window.__rel, a = (r.assets || []).find((x) => /\.vsix$/.test(x.name)); if (!a) return;
+  document.getElementById('dl').href = a.browser_download_url;
+  document.getElementById('dlS').textContent = r.tag_name + ' · ' + Math.max(1, Math.round(a.size / 1024)) + ' KB';
+}
+fetch('https://api.github.com/repos/Atoll92/agent-standup/releases/latest').then((r) => (r.ok ? r.json() : null)).then((r) => { if (r) { window.__rel = r; showRelease(); } }).catch(() => {});
+applyLang();
+</script>
+</body>
+</html>

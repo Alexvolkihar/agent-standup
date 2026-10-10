@@ -1,2 +1,6 @@
 .vscode/**
 *.vsix
+docs/**
+landing/**
+scripts/**
+.github/**

@@ -2,7 +2,7 @@
   "name": "agent-standup",
   "displayName": "Agent Standup",
   "description": "Watch your Claude Code session as a live, animated team call: the lead gives orders, sub-agents join, share their screen and report back \u2014 with voices, a sub-agent tree, timeline, recap and video export.",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "publisher": "arthur",
   "license": "MIT",
   "engines": {
@@ -19,7 +19,8 @@
   ],
   "scripts": {
     "start": "node server.js",
-    "package": "npx --yes @vscode/vsce package --allow-missing-repository --skip-license"
+    "package": "npx --yes @vscode/vsce package --allow-missing-repository --skip-license",
+    "landing": "node scripts/build-landing.js"
   },
   "contributes": {
     "commands": [
@@ -101,7 +102,7 @@
     "type": "git",
     "url": "https://github.com/Atoll92/agent-standup.git"
   },
-  "homepage": "https://github.com/Atoll92/agent-standup#readme",
+  "homepage": "https://atoll92.github.io/agent-standup/",
   "bugs": {
     "url": "https://github.com/Atoll92/agent-standup/issues"
   }
