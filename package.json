@@ -2,8 +2,8 @@
   "name": "agent-standup",
   "displayName": "Agent Standup",
   "description": "Watch your Claude Code session as a live, animated team call: the lead gives orders, sub-agents join, share their screen and report back \u2014 with voices, a sub-agent tree, timeline, recap and video export.",
-  "version": "1.11.0",
-  "publisher": "arthur",
+  "version": "1.11.1",
+  "publisher": "DoubleGeste",
   "license": "MIT",
   "engines": {
     "vscode": "^1.80.0"

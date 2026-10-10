@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.11.1
+- Live view now honours `CLAUDE_CONFIG_DIR` (and `AGENT_STANDUP_PROJECTS`) and lets you pin the project to follow, instead of always the most recent session anywhere (menu → Source → Live).
+
 ## 1.11.0
 - **Token usage per agent**: ⚡ counter in the header and on each tile, per-agent breakdown in the detail drawer and the recap (counted once per message, as recorded in the session files).
 - **Stuck / quiet / failed**: tiles pulse amber with ⏳ when a command has been running for 1 min+, show 💤 after 3 min of silence, and count failed tool calls (✗). The tab title shows how many agents are working.

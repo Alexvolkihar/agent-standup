@@ -10,7 +10,8 @@ const zlib = require('zlib');
 const { execFileSync } = require('child_process');
 
 const PORT = process.env.PORT || 4747;
-const ROOT = path.join(os.homedir(), '.claude', 'projects');
+// Same place Claude Code writes to: honours CLAUDE_CONFIG_DIR (custom config dirs are common on Linux); AGENT_STANDUP_PROJECTS overrides it.
+const ROOT = process.env.AGENT_STANDUP_PROJECTS || path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');
 const PUBLIC = path.join(__dirname, 'public');
 
 const blocks = (rec) => {
@@ -399,6 +400,10 @@ function start(port = PORT) {
       return req.on('end', async () => { try { const b = JSON.parse(body); json(await quips(b.texts || [], b.lang)); } catch (e) { json({ error: String(e) }, 400); } });
     }
     if (url.pathname === '/api/sessions') return json(listSessions());
+    if (url.pathname === '/api/projects') {   // projects (working folders) ordered by latest activity — lets the live view follow one of them
+      const m = new Map(); for (const r of listSessions()) { const p = m.get(r.proj) || { proj: r.proj, mtime: 0, sessions: 0 }; p.mtime = Math.max(p.mtime, r.mtime); p.sessions++; m.set(r.proj, p); }
+      return json([...m.values()].sort((a, b) => b.mtime - a.mtime));
+    }
     if (url.pathname === '/api/audio') {   // only one window at a time plays sound: the last one that claimed it (expires if that window stops answering)
       const cid = url.searchParams.get('cid') || '', ok = /^[\w-]{4,40}$/.test(cid);
       if (ok && url.searchParams.get('claim')) audioOwner = { id: cid, seen: Date.now() };
