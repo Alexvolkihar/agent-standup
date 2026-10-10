@@ -23,7 +23,8 @@
     "landing": "node scripts/build-landing.js",
     "capture": "node scripts/capture-demo.js all",
     "stats": "node scripts/stats.js",
-    "promo": "node scripts/capture-promo.js"
+    "promo": "node scripts/capture-promo.js",
+    "story": "node scripts/make-story.js"
   },
   "contributes": {
     "commands": [
