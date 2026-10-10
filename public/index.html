@@ -795,14 +795,14 @@ const applyStatus = (ev) => {
   if (ev.kind === 'report') { if (S.waitOn[ev.to]) S.waitOn[ev.to].delete(ev.agent); S.status[ev.agent] = 'done'; S.doneAt[ev.agent] = S.clock; delete S.run[ev.agent]; }
 };
 function recomputeStatus(upTo) {
-  S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; hidePresent();
+  S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.lastTool = {}; S.mainBusyAt = 0; S.recomputing = true; document.querySelectorAll('.tile').forEach((t) => { clearTimeout(t._byeT); t.classList.remove('bye'); }); hidePresent();
   S.status = {}; S.tc = {}; S.doneAt = {}; S.gone.clear(); S.leaving.clear(); document.querySelectorAll('.tile.vanishing').forEach((t) => t.classList.remove('vanishing')); const doneIdx = {}; document.querySelectorAll('.ticker').forEach((x) => { x.classList.remove('on'); x.innerHTML = ''; });
   for (let i = 0; i < upTo; i++) {
     const e = S.events[i]; applyStatus(e); tally(e); if (e.kind === 'tools') S.tc[e.agent] = (S.tc[e.agent] || 0) + e.tools.length;
     if (i >= upTo - 160) { if (e.kind === 'tools') e.tools.forEach((t) => pushTerm(e.agent, t)); else if (e.kind === 'results') applyResults(e, true); }
     if (e.kind === 'report' || e.kind === 'finish') doneIdx[e.agent] = i; if (e.kind === 'order') delete doneIdx[e.to];
   }
-  later('tok', renderTokens, 50); later('badges', renderBadges, 50);
+  S.recomputing = false; later('tok', renderTokens, 50); later('badges', renderBadges, 50);
   const now = S.events[Math.max(0, upTo - 1)];   // agents that finished long before this point are already gone
   if (prefs.vanish && now) for (const id in doneIdx) if (now.t - S.events[doneIdx[id]].t >= VANISH_MS) S.gone.add(id);
 }
@@ -835,12 +835,13 @@ function renderTokens() {
 // One boring signal per tile: working · waiting on another agent · may need you · stalled · done. Stalled hand-offs are what really cost time.
 // file edits are instant, so one that stays pending is almost surely an approval prompt; a Bash command may legitimately run long (⏳ badge instead)
 const NEEDS_OK = /^(Edit|Write|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMode)/, ASKS = /^(AskUserQuestion|ExitPlanMode)/;
+const atTail = () => S.idx >= S.events.length - 3;   // only trust wall-clock ages when playback has caught up with the live end
 function agentState(id, now) {
   let s = S.status[id]; const r = S.run[id], w = S.waitOn[id], la = S.lastAct[id];
   if (id === 'main' && !s) { if (r || (w && w.size) || (S.live && la && now - la < 25000)) s = 'working'; else if (S.live && la) return { k: 'done', txt: '✓ ' + L('à vous', 'your turn') }; }
   if (s === 'done') return { k: 'done', txt: '✓ ' + L('terminé', 'done') };
   if (!s) return { k: 'idle', txt: '' };
-  if (S.live && r && r.ts && r.name && NEEDS_OK.test(r.name)) { const age = now - r.ts; if (age > (ASKS.test(r.name) ? 4000 : 15000)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(age) }; }
+  if (S.live && atTail() && r && r.ts && r.name && NEEDS_OK.test(r.name)) { const age = now - r.ts; if (age > (ASKS.test(r.name) ? 4000 : 15000)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(age) }; }
   if (w && w.size) {   // really waiting only while the lead has a sub-agent call pending, or while those agents are still active (background agents never block the lead)
     const pendingSub = r && /^(Task|Agent)$/.test(r.name), open = [...w].filter((c) => S.status[c] !== 'done' && (pendingSub || !S.live || now - Math.max(S.lastAct[c] || 0, S.orderTs[c] || 0) < 120000));
     if (open.length) {
@@ -887,7 +888,7 @@ function renderBadges() {   // per tile: failed tool calls, a command that has b
     if (S.errs[id]) parts.push(`<span class="e">✗ ${S.errs[id]}</span>`);
     if (S.live && S.status[id] === 'working') {
       const r = S.run[id];
-      if (r && r.ts && now - r.ts > 60000) { slow = true; parts.push(`<span class="s">⏳ ${fmtShort(now - r.ts)}</span>`); }
+      if (r && r.ts && atTail() && now - r.ts > 60000) { slow = true; parts.push(`<span class="s">⏳ ${fmtShort(now - r.ts)}</span>`); }
       else if (!r && S.lastAct[id] && now - S.lastAct[id] > 180000) { quiet = true; parts.push(`<span class="q">💤 ${fmtShort(now - S.lastAct[id])}</span>`); }
     }
     t.classList.toggle('slow', slow); t.classList.toggle('quiet', quiet); const h = parts.join(''); if (b.innerHTML !== h) b.innerHTML = h;
@@ -1051,9 +1052,9 @@ function vanish(id) {
   S.gone.add(id); const t = $('#t-' + id), p = S.agents[id]; if (!t || !p) return;
   toast(`${p.name} ${L('a quitté l’appel', 'left the call')} 👋`);
   if (t.style.display === 'none' || document.body.classList.contains('tree')) return;
-  S.leaving.add(id); const say = prefs.banter && !S.hurry && !S.speakers.has(id), go = () => { if (!S.leaving.has(id)) return; t.classList.remove('bye'); t.classList.add('vanishing'); poof(t, p.shirt); AUD.tone(660, .35, 'sine', .07); AUD.tone(330, .5, 'sine', .06, .12);
+  S.leaving.add(id); const say = prefs.banter && !S.hurry && !S.speakers.has(id), go = () => { t.classList.remove('bye'); if (!S.leaving.has(id)) return; t.classList.add('vanishing'); poof(t, p.shirt); AUD.tone(660, .35, 'sine', .07); AUD.tone(330, .5, 'sine', .06, .12);
     setTimeout(() => { S.leaving.delete(id); t.classList.remove('vanishing'); if (S.gone.has(id)) t.style.display = 'none'; }, 1250); };
-  if (say) { const b = t.querySelector('.bubble'), line = byeLine(id); b.innerHTML = `<small>👋</small>${esc(line)}`; t.classList.add('bye'); setTimeout(go, 1500); } else go();   // a short goodbye before the poof
+  if (say) { const b = t.querySelector('.bubble'), line = byeLine(id); b.innerHTML = `<small>👋</small>${esc(line)}`; t.classList.add('bye'); t._byeT = setTimeout(go, 1500); } else go();   // a short goodbye before the poof
 }
 setInterval(() => {
   if (!S.playing) return; S.clock += 500 * spd();
@@ -1082,7 +1083,7 @@ setInterval(() => {   // now and then a busy agent has a little thought; never w
   if (!prefs.banter || !S.playing || S.speakers.size || document.hidden) return; const busy = Object.keys(S.agents).filter((id) => id !== 'user' && agentState(id, Date.now()).k === 'working' && $('#t-' + id) && $('#t-' + id).style.display !== 'none');
   if (busy.length && Math.random() < 0.5) { const id = busy[Math.floor(Math.random() * busy.length)], tl = S.lastTool[id] || ''; thought(id, /^Bash/.test(tl) ? '⌨️' : /^(Grep|Glob|Read)/.test(tl) ? '🔍' : ['💭', '🎧', '🧠', '☕', '🎵'][Math.floor(Math.random() * 5)]); }
 }, 7000);
-function oops(id) { if (!prefs.banter || !S.playing) return; const t = $('#t-' + id); if (!t || t.style.display === 'none' || (t._oops && Date.now() - t._oops < 4000)) return; t._oops = Date.now(); t.classList.remove('oops'); void t.offsetWidth; t.classList.add('oops'); thought(id, '😬'); }
+function oops(id) { if (!prefs.banter || !S.playing || S.recomputing) return; const t = $('#t-' + id); if (!t || t.style.display === 'none' || (t._oops && Date.now() - t._oops < 4000)) return; t._oops = Date.now(); t.classList.remove('oops'); void t.offsetWidth; t.classList.add('oops'); thought(id, '😬'); }
 function confetti() {
   if (!prefs.banter || document.hidden) return; const box = $('#center'), cols = ['#f5c04a', '#7c9cff', '#ff7a6b', '#5ad19a', '#c58bff'];
   for (let i = 0; i < 26; i++) { const c = document.createElement('i'); c.className = 'confetti'; c.style.left = Math.random() * 100 + '%'; c.style.background = cols[i % cols.length]; c.style.animationDelay = Math.random() * 0.6 + 's'; c.style.animationDuration = 1.8 + Math.random() * 1.4 + 's'; box.appendChild(c); setTimeout(() => c.remove(), 4200); }
@@ -1251,7 +1252,7 @@ const SPK = new Set(['say', 'report', 'order', 'user']);
 function aheadSpeakable(i, limit) { let n = 0; for (let k = i, m = Math.min(S.events.length, i + 800); k < m; k++) if (SPK.has(S.events[k].kind) && ++n > limit) break; return n; }
 const isSub = (id) => id !== 'main' && id !== 'user';
 async function run(i) {
-  const token = ++S.token; S.playing = true; S.idle = false; syncUI(); AUD.init();
+  const token = ++S.token; S.playing = true; S.idle = false; S.hurry = false; S.boost = 1; syncUI(); AUD.init();
   if (i === 0 && prefs.epi && !S.live) { await card(L('ÉPISODE 1', 'EPISODE 1'), S.title); if (token !== S.token) return; }
   while (token === S.token) {
     const lim = S.stopAt || S.events.length;
@@ -1301,7 +1302,7 @@ async function run(i) {
     if (!S.exporting && !S.stopAt && !S.live) { S.idx = S.events.length - 1; paintStatus(); if (prefs.epi) await card(L('FIN', 'THE END'), L('Aucun agent n’a été maltraité durant ce tournage.', 'No agents were harmed.'), 2600); openRecap(); }
   }
 }
-function pause() { S.playing = false; S.token++; synth && synth.cancel(); AUD.stopAll(); clearSpeaking(); $('#card').classList.remove('on'); syncUI(); }
+function pause() { S.playing = false; S.hurry = false; S.boost = 1; S.token++; synth && synth.cancel(); AUD.stopAll(); clearSpeaking(); $('#card').classList.remove('on'); syncUI(); }
 function togglePlay() {
   if (S.locked) return;
   if (S.playing) { S.userPaused = true; pause(); } else { claimAudio(); S.userPaused = false; run(S.idx >= S.events.length - 1 && !S.live ? (recomputeStatus(0), 0) : S.idx); }
@@ -1331,7 +1332,7 @@ async function loadSession(proj, id) {
   S.events = data.events; S.joinAt = Date.now(); S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on');
   const opt = $('#sessions').selectedOptions[0]; S.title = (S.live ? niceProj(proj) : opt && opt.dataset.title) || '';
   if (proj === '_demo') S.events.forEach((e) => { if (e.fr) trMem.set(baseText(e), e.fr); });   // the demo ships its own French
-  $('#subtitle').textContent = S.title; buildStage(); setFocus('main'); renderLog(true); computeGantt(); layout(); paintStatus(); prefetchTr(0); return true;
+  $('#subtitle').textContent = S.title; recomputeStatus(0); buildStage(); setFocus('main'); renderLog(true); computeGantt(); layout(); paintStatus(); prefetchTr(0); return true;
 }
 const niceProj = (p) => (p === '_demo' ? '' : String(p).replace(/^-+/, '').replace(/-/g, '/').split('/').slice(-2).join('/'));
 async function fillProjects() {   // live view: follow the latest activity anywhere, or pin one project

@@ -86,11 +86,11 @@ const tlCache = new Map();   // "proj/id" → { st (file stamp), tl, at, ms, fil
 const MAX_CACHED_SESSIONS = 3;
 function timelineEntry(proj, id) {
   const key = proj + '/' + id, st = stamp(proj, id), hit = tlCache.get(key), now = Date.now();
-  if (hit && hit.st === st) return hit;
+  if (hit && hit.st === st && !(hit.recentUntil && now > hit.recentUntil)) return hit;   // a sub-agent's 4-minute silence rule can flip without any file change
   if (hit && now - hit.at < Math.max(250, hit.ms * 2)) return hit;   // very big sessions: don't rebuild on every poll
   const t0 = Date.now(), tl = buildTimeline(proj, id), base = path.join(ROOT, proj), sd = path.join(base, id, 'subagents');
   const files = [path.join(base, id + '.jsonl')]; try { for (const f of fs.readdirSync(sd)) files.push(path.join(sd, f)); } catch {}
-  const entry = { st, tl, at: Date.now(), ms: Date.now() - t0, files };
+  const entry = { st, tl, at: Date.now(), ms: Date.now() - t0, files, recentUntil: tl.recentUntil || 0 };
   tlCache.delete(key); tlCache.set(key, entry);
   while (tlCache.size > MAX_CACHED_SESSIONS) {   // free the memory of sessions nobody is looking at any more
     const [oldKey, old] = tlCache.entries().next().value; tlCache.delete(oldKey);
@@ -105,9 +105,10 @@ const readTail = (file, bytes) => { const fd = fs.openSync(file, 'r'); try { con
 const readHead = (file, bytes) => { const fd = fs.openSync(file, 'r'); try { const n = Math.min(bytes, fs.fstatSync(fd).size), buf = Buffer.alloc(n); fs.readSync(fd, buf, 0, n, 0); return buf.toString('utf8'); } finally { fs.closeSync(fd); } };
 const APPROVAL = /^(Edit|Write|MultiEdit|NotebookEdit)/, ASKS = /^(AskUserQuestion|ExitPlanMode)/, SUBTOOL = /^(Task|Agent)$/;
 const boardCache = new Map();   // file → { sig, parsed, title }
+let boardMemo = { at: 0, rows: [] };
 function parseTail(file, st) {
   const sig = st.mtimeMs + ':' + st.size, hit = boardCache.get(file); if (hit && hit.sig === sig) return hit;
-  const { text, cut } = readTail(file, 96 * 1024), lines = text.split('\n'); if (cut) lines.shift();
+  const { text, cut } = readTail(file, 192 * 1024), lines = text.split('\n'); if (cut) lines.shift();
   const pend = new Map(); let lastType = null, lastTool = false, lastTs = 0;
   for (const l of lines) {
     if (!l) continue; let r; try { r = JSON.parse(l); } catch { continue; }
@@ -115,17 +116,21 @@ function parseTail(file, st) {
     if (r.type === 'assistant' || r.type === 'user') { lastType = r.type; lastTool = bl.some((b) => b.type === 'tool_use'); if (t) lastTs = t; }
     for (const b of bl) { if (b.type === 'tool_use') pend.set(b.id, { name: b.name, ts: t }); else if (b.type === 'tool_result') pend.delete(b.tool_use_id); }
   }
-  let title = hit && hit.title;
-  if (!title) {
+  let title = hit && hit.title, tried = hit && hit.tried;
+  if (!title && !tried) {
     const big = readTail(file, 256 * 1024).text, m = [...big.matchAll(/"type":"ai-title","aiTitle":"((?:[^"\\]|\\.)*)"/g)].pop();
     if (m) { try { title = JSON.parse('"' + m[1] + '"'); } catch {} }
     if (!title) { const hd = readHead(file, 64 * 1024), u2 = hd.match(/"type":"user"[\s\S]{0,3000}?"type":"text","text":"(?!<)((?:[^"\\]|\\.)*)"/); if (u2) { try { title = JSON.parse('"' + u2[1] + '"').replace(/\s+/g, ' ').slice(0, 90); } catch {} } }
     if (!title) { const u = readHead(file, 64 * 1024).match(/"role":"user","content":"((?:[^"\\]|\\.)*)"/); if (u) { try { title = JSON.parse('"' + u[1] + '"').replace(/\s+/g, ' ').slice(0, 90); } catch {} } }
   }
-  const out = { sig, title: title || null, lastType, lastTool, lastTs, pending: [...pend.values()] };
+  const out = { sig, title: title || null, tried: true, lastType, lastTool, lastTs, pending: [...pend.values()] };
   boardCache.set(file, out); if (boardCache.size > 200) boardCache.delete(boardCache.keys().next().value); return out;
 }
 function boardRows() {
+  if (Date.now() - boardMemo.at < 1200) return boardMemo.rows;   // several windows polling at once share one scan
+  const out = boardRows0(); boardMemo = { at: Date.now(), rows: out }; return out;
+}
+function boardRows0() {
   const now = Date.now(), rows = [];
   if (!fs.existsSync(ROOT)) return rows;
   for (const proj of fs.readdirSync(ROOT)) {
@@ -149,7 +154,7 @@ function boardRows() {
 }
 // Most recently active session (optionally limited to one project dir) — drives the live feed.
 function currentSession(projFilter, idFilter) {
-  if (idFilter && projFilter && /^[\w.\-]+$/.test(idFilter) && /^[\w.\-]+$/.test(projFilter) && fs.existsSync(path.join(ROOT, projFilter, idFilter + '.jsonl'))) return { proj: projFilter, id: idFilter, mtime: Date.now() };   // pinned from the board
+  if (idFilter && projFilter && projFilter !== '..' && idFilter !== '..' && /^[\w.\-]+$/.test(idFilter) && /^[\w.\-]+$/.test(projFilter) && fs.existsSync(path.join(ROOT, projFilter, idFilter + '.jsonl'))) return { proj: projFilter, id: idFilter, mtime: Date.now() };   // pinned from the board
   let best = null;
   if (!fs.existsSync(ROOT)) return {};
   const consider = (proj, id, m) => { if (!best || m > best.mtime) best = { proj, id, mtime: m }; };
@@ -176,17 +181,18 @@ function readNew(file, agent) {
   let size; try { size = fs.statSync(file).size; } catch { fileStates.delete(file); return null; }
   let st = fileStates.get(file);
   if (!st || size < st.offset) { st = { agent, offset: 0, tail: Buffer.alloc(0), raw: [], toolName: {}, msgUsage: new Map() }; fileStates.set(file, st); }
-  if (size > st.offset) {
+  while (size > st.offset) {   // read in chunks of at most 16 MB so a huge transcript never needs one giant buffer
     const fd = fs.openSync(file, 'r'); let buf;
-    try { buf = Buffer.alloc(size - st.offset); fs.readSync(fd, buf, 0, buf.length, st.offset); } finally { fs.closeSync(fd); }
-    st.offset = size;
+    try { buf = Buffer.alloc(Math.min(16 * 1024 * 1024, size - st.offset)); fs.readSync(fd, buf, 0, buf.length, st.offset); } finally { fs.closeSync(fd); }
+    st.offset += buf.length;
     const all = st.tail.length ? Buffer.concat([st.tail, buf]) : buf, cut = all.lastIndexOf(10);   // only complete lines; a half-written last line waits for the next read
-    if (cut < 0) { st.tail = all; return st; }
+    if (cut < 0) { st.tail = all; continue; }
     st.tail = all.subarray(cut + 1);
     for (const line of all.subarray(0, cut).toString('utf8').split('\n')) {
       if (!line) continue;
       let r; try { r = JSON.parse(line); } catch { continue; }
-      parseRecord(st, r);
+      if (!r || typeof r !== 'object') continue;
+      try { parseRecord(st, r); } catch {}   // one odd record must not take the whole timeline down
     }
   }
   return st;
@@ -216,7 +222,7 @@ function parseRecord(st, r) {
       st.msgUsage.set(m.id, { ts: prev ? prev.ts : ts, u: { i: u.input_tokens || 0, o: u.output_tokens || 0, r: u.cache_read_input_tokens || 0, w: u.cache_creation_input_tokens || 0 }, model: m.model });
     }
     for (const b of blocks(r)) {
-      if (b.type === 'text' && b.text.trim()) st.raw.push({ ts, agent, kind: 'say', text: b.text.trim() });
+      if (b.type === 'text' && typeof b.text === 'string' && b.text.trim()) st.raw.push({ ts, agent, kind: 'say', text: b.text.trim() });
       else if (b.type === 'tool_use') {
         st.toolName[b.id] = b.name; if (b.input && b.input.run_in_background) (st.bg = st.bg || {})[b.id] = true;
         if (b.name === 'Agent' || b.name === 'Task') st.raw.push({ ts, agent, kind: 'agentcall', toolId: b.id, text: (b.input && b.input.prompt) || '', title: (b.input && b.input.description) || '' });
@@ -248,7 +254,8 @@ function buildTimeline(proj, id) {
   for (const a of Object.values(agents)) if (a.toolUseId) childByTool[a.toolUseId] = a.id;
 
   const finished = new Set(), now0 = Date.now(); for (const st of states) if (st) for (const e of st.raw) if (e.kind === 'agentdone' && childByTool[e.toolId]) finished.add(childByTool[e.toolId]);
-  for (const a of Object.values(agents)) if (a.id !== 'main' && now0 - (a.mtime || 0) > 90000) finished.add(a.id);   // old transcripts without a completion record: silent for 90 s counts as finished
+  let recentUntil = 0; for (const a of Object.values(agents)) if (a.id !== 'main' && a.mtime && now0 - a.mtime <= 240000) recentUntil = Math.max(recentUntil, a.mtime + 241000);
+  for (const a of Object.values(agents)) if (a.id !== 'main' && now0 - (a.mtime || 0) > 240000) finished.add(a.id);   // old transcripts without a completion record: silent for 4 min counts as finished
   const events = [], parent = {}, doneSeen = new Set();
   for (const st of states) {
     if (!st) continue;
@@ -273,7 +280,7 @@ function buildTimeline(proj, id) {
     else { merged.push(e.kind === 'tool' ? { ts: e.ts, agent: e.agent, kind: 'tools', tools: [e.tool] } : e); lastReal = merged.length - 1; }
   }
   const real = merged.find((e) => e.kind !== 'usage' && e.kind !== 'finish'), first = real ? real.ts : 0, last = merged.length ? merged[merged.length - 1].ts : 0;   // time zero = the first thing said or done
-  return { id, proj, agents: Object.values(agents), events: merged.map((e) => ({ ...e, t: Math.max(0, e.ts - first) })), durationMs: last - first };
+  return { id, proj, agents: Object.values(agents), events: merged.map((e) => ({ ...e, t: Math.max(0, e.ts - first) })), durationMs: last - first, recentUntil };
 }
 
 // Ask the local `claude` CLI (uses the user's existing login) to map a JSON array of strings to another array. Cached.

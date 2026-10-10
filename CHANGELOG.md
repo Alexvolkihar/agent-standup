@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.19.1
+Fixes from a code review (two read-only sub-agents, each finding checked before applying):
+- Live: "needs you?" and the slow badge only trust wall-clock ages when playback has caught up with the live end (no false alerts while voices are queued).
+- Switching sessions resets all per-session state (no stale 🎉/confetti/waiting states); past errors no longer replay as 😬 shakes when skipping ahead; a goodbye bubble can no longer stay stuck on a tile; the catch-up mode flags reset on pause.
+- Server: one malformed transcript record no longer breaks the whole timeline; huge transcripts are read in 16 MB chunks; the Sessions board memoises its scan and caches untitled sessions; the 4-minute "silent sub-agent is finished" fallback (old transcripts only) now refreshes the cache when it kicks in; `..` is rejected for the pinned session.
+- Known limitation, not changed: in Live, tool calls issued in parallel can be merged into a beat that was already delivered, so the tile may show them one update late.
+
 ## 1.19.0
 - **Little lines and animations** (on by default, ⚙ → Little lines & animations; local, no API, never in the transcript): a sub-agent answers briefly when it receives an order, with variants by what it was asked (tests, review, exploring, bug fixing, docs, UI, cleanup, performance) and a generic pool, in English and French; it says goodbye before leaving the call; other agents sometimes comment when one reports back.
 - Small touches: a thought emoji now and then above a busy agent (⌨️ for commands, 🔍 for reads), a little shake and 😬 when a tool call fails (also a quick cue for errors), and confetti when the lead hands the turn back after a long job.
