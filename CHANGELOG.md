@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.11.2
+- The app now always starts in English (switch to Français in the menu; your choice is remembered).
+
 ## 1.11.1
 - Live view now honours `CLAUDE_CONFIG_DIR` (and `AGENT_STANDUP_PROJECTS`) and lets you pin the project to follow, instead of always the most recent session anywhere (menu → Source → Live).
 
