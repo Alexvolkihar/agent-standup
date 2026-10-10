@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.0
+- Office music: live FIP web radio (8 stations) with a volume control. The music fades down quickly while agents talk and back up slowly afterwards (ducking). Never recorded in video exports.
+
 ## 1.6.0
 - Final name: **Agent Standup** (extension id `agent-standup`, commands `Agent Standup: …`, settings `agentStandup.*`). Uninstall *Agent Calling* / *Claude Call* first; settings and saved preferences start fresh.
 

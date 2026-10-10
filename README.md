@@ -15,6 +15,7 @@
 - **Replay** — pick any past session, scrub through it, see a timeline of who worked when, and get a **recap** (agents, tool calls, commands, files changed, busiest agents).
 - **Video export** — records the call as a 1280×720 `.webm` with voices and subtitles.
 - **French or English** — agent text is translated on the fly (see below).
+- **Office music** — optional live web radio (FIP and its themed stations) that fades down smoothly while an agent talks and fades back up when the room goes quiet.
 - Optional: office ambience and sound effects, small reactions and jokes between agents ("episode mode").
 
 ## What you see for each agent
@@ -83,10 +84,14 @@ The first click on **Join** is required by browsers to allow sound.
 | **⏸ / ▶** (Space) | pause / resume |
 | **☰** | transcript |
 | **🔊 / 🔇** (M) | mute everything |
-| **⚙** | language · voices · ambience · reactions · remove finished agents · **Live ↔ Replay** (and session picker) · recap · export video |
+| **⚙** | language · voices · ambience · **office music (station + volume)** · reactions · remove finished agents · **Live ↔ Replay** (and session picker) · recap · export video |
 | Esc | close recap / menu |
 
 In Replay, a slider and a speed control appear at the bottom, and clicking a transcript line jumps there.
+
+## Office music
+
+Turn on **Office music** in ⚙ and pick a station (FIP, Groove, Jazz, Electro, Reggae, Rock, Nouveautés, Pop) and a volume. The stream is played live from Radio France's public Icecast servers directly in the page; it starts when you press **Join** (browsers require a click). When any agent speaks, the music drops to ~15 % within a fraction of a second and returns slowly after the last line. Muting (🔊 / M) stops the stream. Music is for your ears only: it is **never included in video exports**. Stations are for personal listening; nothing is stored or redistributed.
 
 ## Voices
 
@@ -106,7 +111,7 @@ Agent messages are in the language of the session. With French selected, each li
 
 Optional speed-up: set `ANTHROPIC_API_KEY` in the environment of VS Code / the server and translation calls the Anthropic API directly (~1–2 s).
 
-**Privacy & security:** everything runs locally. The server listens on `127.0.0.1` only and rejects requests that do not come from `localhost` (other websites and DNS-rebinding attempts get a 403), so no web page can read your sessions. Translation and jokes send the shortened agent lines to Claude through your own Claude Code login (or your API key if you set one). With English selected nothing leaves your machine.
+**Privacy & security:** everything runs locally. The server listens on `127.0.0.1` only and rejects requests that do not come from `localhost` (other websites and DNS-rebinding attempts get a 403), so no web page can read your sessions. Translation and jokes send the shortened agent lines to Claude through your own Claude Code login (or your API key if you set one). With English selected and music off, nothing leaves your machine. (Office music connects your browser to `icecast.radiofrance.fr` while it is on.)
 
 ## Standalone (no VS Code)
 
