@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.19.0
+- **Little lines and animations** (on by default, ⚙ → Little lines & animations; local, no API, never in the transcript): a sub-agent answers briefly when it receives an order, with variants by what it was asked (tests, review, exploring, bug fixing, docs, UI, cleanup, performance) and a generic pool, in English and French; it says goodbye before leaving the call; other agents sometimes comment when one reports back.
+- Small touches: a thought emoji now and then above a busy agent (⌨️ for commands, 🔍 for reads), a little shake and 😬 when a tool call fails (also a quick cue for errors), and confetti when the lead hands the turn back after a long job.
+
 ## 1.18.1
 - Fix: sub-agents looked finished the moment they were launched (since 1.17.3). Recent Claude Code answers an Agent/Task call with "Async agent launched" immediately, which is not a completion. Completion now comes from Claude Code's task-notification record (background agents) or from a real synchronous answer; a sub-agent's last sentence is only treated as its final report once it is finished (or silent for 90 s).
 - Measured on real sessions: the average number of agents shown as working went from 0.0 back to 0.8 / 2.3 on two multi-agent sessions.

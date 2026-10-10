@@ -68,6 +68,10 @@
   @media (max-width:760px) { .meet { display:none } }
   #reactBar { display:none; position:absolute; right:12px; bottom:98px; z-index:5; gap:4px; padding:4px 6px; border-radius:99px; background:rgba(20,22,32,.82); border:1px solid var(--line); backdrop-filter:blur(8px); opacity:.55; transition:opacity .2s }
   body.react:not(.tree):not(.board) #reactBar { display:flex } #reactBar:hover { opacity:1 } #reactBar button { font-size:17px; padding:2px 6px; border-radius:99px; background:none; transition:transform .12s } #reactBar button:hover { transform:scale(1.25) } #reactBar button:active { transform:scale(.9) }
+  .thought { position:absolute; top:34%; right:10%; font-size:22px; z-index:3; pointer-events:none; opacity:0 } .thought.go { animation:thought 2.6s ease-out both }
+  @keyframes thought { 0% { opacity:0; transform:translateY(8px) scale(.6) } 15% { opacity:1; transform:scale(1) } 70% { opacity:1 } 100% { opacity:0; transform:translateY(-26px) } }
+  .tile.oops { animation:oops .5s } @keyframes oops { 20% { transform:translateX(-5px) rotate(-1.2deg); box-shadow:0 0 0 3px rgba(255,82,82,.6) } 50% { transform:translateX(5px) rotate(1.2deg) } 80% { transform:translateX(-2px) } }
+  .confetti { position:absolute; top:-12px; width:8px; height:12px; z-index:7; pointer-events:none; animation:fall 2.4s ease-in forwards } @keyframes fall { to { transform:translateY(105vh) rotate(720deg); opacity:.9 } }
   .prop { position:absolute; top:26px; left:8px; font-size:26px; z-index:3; pointer-events:none; filter:drop-shadow(0 2px 4px rgba(0,0,0,.5)) } .prop:empty { display:none }
   .prop.blocked { animation:wave .7s ease-in-out infinite; transform-origin:70% 90% } @keyframes wave { 50% { transform:rotate(-24deg) translateY(-3px) } }
   .prop.stalled { animation:shake .5s ease-in-out infinite } @keyframes shake { 25% { transform:translateX(-3px) } 75% { transform:translateX(3px) } }
@@ -135,7 +139,7 @@
   .board .working { color:var(--gold) } .board .waiting { color:#8fd3ff } .board .blocked { color:#fff; background:#c0392b; border-color:#c0392b } .board .stalled { color:#1b1d27; background:#ffb347; border-color:#ffb347 } .board .done { color:var(--ok) }
   @media (max-width:640px) { .board { display:none } }
   .bubble { display:none; position:absolute; top:6px; left:6px; right:62px; background:#fff; color:#1b1d27; border-radius:11px; padding:6px 10px; font-size:12.5px; line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,.35); max-height:58%; overflow:hidden }
-  .tile.speaking .bubble { display:block; font-size:14.5px; max-height:50% } .bubble small { display:block; color:#6a6f85; font-size:10.5px }
+  .tile.bye .bubble { display:block; font-size:13.5px; animation:fadein .25s } .tile.speaking .bubble { display:block; font-size:14.5px; max-height:50% } .bubble small { display:block; color:#6a6f85; font-size:10.5px }
   .ticker { display:none; position:absolute; left:6px; right:6px; bottom:30px; font:10.5px/1.3 ui-monospace,Menlo,monospace; color:#fff; background:rgba(15,20,35,.8); border-radius:5px; padding:2px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
   .ticker.on { display:block } .ticker i { font-style:normal; color:#ffd24a } .ticker.flash { animation:flash .25s } @keyframes flash { from { background:#3b5bdb } }
   /* character animation: all state-driven from the tile's classes */
@@ -232,6 +236,7 @@
   <div class="box" id="vstyleBox"><select id="vstyle"></select></div>
   <button class="mi" data-t="roster"><span data-fr="Liste des agents (à gauche)" data-en="Agents list (left)">Liste des agents (à gauche)</span><i class="sw"></i></button>
   <button class="mi" data-t="reactions"><span data-fr="Barre de réactions (👍 👏 ☕)" data-en="Reactions bar (👍 👏 ☕)">Barre de réactions (👍 👏 ☕)</span><i class="sw"></i></button>
+  <button class="mi" data-t="banter"><span data-fr="Petites répliques et animations" data-en="Little lines & animations">Petites répliques et animations</span><i class="sw"></i></button>
   <button class="mi" data-t="vanish"><span data-fr="Retirer les agents terminés (2 min)" data-en="Remove finished agents (2 min)">Retirer les agents terminés (2 min)</span><i class="sw"></i></button>
   <button class="mi" data-t="epi"><span data-fr="Réactions et blagues" data-en="Reactions & jokes">Réactions et blagues</span><i class="sw"></i></button>
   <h4 data-fr="Source" data-en="Source">Source</h4>
@@ -279,7 +284,7 @@ const CID = Math.random().toString(36).slice(2, 12);   // identifies this window
 const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
 
-let prefs = { lang: 'en', voice: true, roster: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'cartoon', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call' };
+let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'cartoon', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call' };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem('cc.prefs') || '{}')); } catch {}
 if (prefs.vstyle === 'babble') prefs.vstyle = 'animal', prefs.vstyleChosen = true;
 if (!prefs.vstyleChosen && (prefs.vstyle === 'animal' || prefs.vstyle === 'sims')) prefs.vstyle = 'cartoon';   // the gibberish styles are opt-in: understandable voices by default
@@ -735,7 +740,7 @@ async function speakLine(text, p, primary, token, fr = FR()) {
 // =====================================================================
 function addTile(p) {
   const d = document.createElement('div'); d.className = 'tile' + (p.lead ? ' lead' : ''); d.id = 't-' + p.id; d.style.display = 'none'; d.onclick = () => openDetail(p.id);
-  d.innerHTML = `${avatarSVG(p, undefined, 't' + p.gid + '_')}<div class="bubble"></div><div class="status"></div><div class="prop"></div><div class="ticker"></div><div class="tbadge"></div><div class="tag"><b>${esc(p.name)}</b><span>${esc(p.role)}</span><span class="tk"></span></div>`;
+  d.innerHTML = `${avatarSVG(p, undefined, 't' + p.gid + '_')}<div class="bubble"></div><div class="status"></div><div class="prop"></div><div class="thought"></div><div class="ticker"></div><div class="tbadge"></div><div class="tag"><b>${esc(p.name)}</b><span>${esc(p.role)}</span><span class="tk"></span></div>`;
   $('#stage').appendChild(d);
 }
 function buildStage() { $('#stage').innerHTML = ''; Object.values(S.agents).forEach(addTile); }
@@ -817,7 +822,7 @@ const fmtTok = (n) => (n < 1000 ? String(n) : n < 1e6 ? (n / 1000).toFixed(n < 1
 const tokTotal = (u) => (u ? u.i + u.o + u.w : 0);   // headline = input + output + cache writes; cache reads are cheap and shown separately
 function tally(ev) {   // numbers that pile up over a session: token usage, errors, last sign of life
   if (ev.kind === 'usage') { const u = (S.usage[ev.agent] = S.usage[ev.agent] || { i: 0, o: 0, r: 0, w: 0 }); u.i += ev.u.i; u.o += ev.u.o; u.r += ev.u.r; u.w += ev.u.w; later('tok', renderTokens, 300); }
-  else if (ev.kind === 'results') ev.items.forEach((it) => { if (it.err) { S.errs[ev.agent] = (S.errs[ev.agent] || 0) + 1; later('badges', renderBadges, 300); } });
+  else if (ev.kind === 'results') ev.items.forEach((it) => { if (it.err) { S.errs[ev.agent] = (S.errs[ev.agent] || 0) + 1; later('badges', renderBadges, 300); oops(ev.agent); } });
   else if (ev.kind === 'tools' || ev.kind === 'say') S.lastAct[ev.agent] = ev.ts;
 }
 const tokTip = (u) => `${L('Jetons enregistrés par Claude Code (comptés une fois par message, ce n’est pas une facture)', 'Tokens recorded by Claude Code (counted once per message, not a bill)')}\n${L('entrée', 'input')} ${fmtTok(u.i)} · ${L('sortie', 'output')} ${fmtTok(u.o)} · ${L('écriture cache', 'cache write')} ${fmtTok(u.w)} · ${L('lecture cache', 'cache read')} ${fmtTok(u.r)}`;
@@ -857,6 +862,8 @@ function paintStates() {
     if (st.k === 'done' && was && was !== 'done' && was !== 'idle') { pr.textContent = '🎉'; pr.className = 'prop cheer'; setTimeout(() => { if (pr.classList.contains('cheer')) { pr.textContent = ''; pr.className = 'prop'; } }, 1200); }
     else if (!pr.classList.contains('cheer')) { if (pr.textContent !== want) pr.textContent = want; pr.className = 'prop ' + (want ? st.k : ''); }
     if (shown && !S.gone.has(p.id)) ros.push({ p, st });
+    if (p.id === 'main' && st.k === 'done' && was && was !== 'done' && was !== 'idle' && S.live && S.playing && Date.now() - (S.mainBusyAt || 0) > 45000) confetti();
+    if (p.id === 'main') { if (st.k === 'working' || st.k === 'waiting') S.mainBusyAt = S.mainBusyAt || Date.now(); else if (st.k === 'done') S.mainBusyAt = 0; }
     S.prevState[p.id] = st.k; const tip = `${p.name} — ${p.role}${st.txt ? '\n' + st.txt : ''}${S.lastTool[p.id] ? '\n' + S.lastTool[p.id] : ''}`; if (t.title !== tip) t.title = tip;
   }
   const b = $('#board'), parts = [['working', '⚙', L('au travail', 'working')], ['waiting', '🔗', L('en attente', 'waiting')], ['blocked', '✋', L('vous attendent', 'need you')], ['stalled', '⚠', L('bloqués', 'stalled')], ['done', '✓', L('terminés', 'done')]]
@@ -1037,12 +1044,16 @@ function poof(tile, color) {
   }
 }
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; const c = $('#toasts'); c.appendChild(t); while (c.children.length > 3) c.firstChild.remove(); setTimeout(() => t.remove(), 3100); }
+const BYE = { en: ['Bye, everyone!', 'Off I go. 👋', 'Thanks, see you!', 'My work here is done.', 'Catch you later!', 'Logging off, bye!', 'That’s a wrap!', 'Good luck with the rest!', 'Mic drop. 🎤', 'Leaving the call… ☕'],
+  fr: ['Salut tout le monde !', 'Je file. 👋', 'Merci, à plus !', 'Ma mission est terminée.', 'À tout à l’heure !', 'Je me déconnecte, ciao !', 'C’est dans la boîte !', 'Bon courage pour la suite !', 'Mic drop. 🎤', 'Je quitte l’appel… ☕'] };
+function byeLine(id) { const P = BYE[prefs.lang] || BYE.en, seed = hash(id + String(S.clock | 0)); let l = P[seed % P.length]; if (l === S.lastBye) l = P[(seed + 1) % P.length]; return (S.lastBye = l); }
 function vanish(id) {
   S.gone.add(id); const t = $('#t-' + id), p = S.agents[id]; if (!t || !p) return;
   toast(`${p.name} ${L('a quitté l’appel', 'left the call')} 👋`);
   if (t.style.display === 'none' || document.body.classList.contains('tree')) return;
-  S.leaving.add(id); t.classList.add('vanishing'); poof(t, p.shirt); AUD.tone(660, .35, 'sine', .07); AUD.tone(330, .5, 'sine', .06, .12);
-  setTimeout(() => { S.leaving.delete(id); t.classList.remove('vanishing'); if (S.gone.has(id)) t.style.display = 'none'; }, 1250);
+  S.leaving.add(id); const say = prefs.banter && !S.hurry && !S.speakers.has(id), go = () => { if (!S.leaving.has(id)) return; t.classList.remove('bye'); t.classList.add('vanishing'); poof(t, p.shirt); AUD.tone(660, .35, 'sine', .07); AUD.tone(330, .5, 'sine', .06, .12);
+    setTimeout(() => { S.leaving.delete(id); t.classList.remove('vanishing'); if (S.gone.has(id)) t.style.display = 'none'; }, 1250); };
+  if (say) { const b = t.querySelector('.bubble'), line = byeLine(id); b.innerHTML = `<small>👋</small>${esc(line)}`; t.classList.add('bye'); setTimeout(go, 1500); } else go();   // a short goodbye before the poof
 }
 setInterval(() => {
   if (!S.playing) return; S.clock += 500 * spd();
@@ -1064,6 +1075,17 @@ function startTalk(id, text, label) {
     else { open = !open; m.setAttribute('ry', open ? 4.2 : 1.1); m.setAttribute('rx', open ? 4 : 4.7); if (pm) { pm.setAttribute('ry', open ? 4.2 : 1.1); pm.setAttribute('rx', open ? 4 : 4.7); } }
   }, 70));
   if (document.body.classList.contains('tree')) renderTree();
+}
+
+function thought(id, em) { const t = $('#t-' + id); if (!t || t.style.display === 'none') return; const el = t.querySelector('.thought'); el.textContent = em; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); }
+setInterval(() => {   // now and then a busy agent has a little thought; never while someone is talking
+  if (!prefs.banter || !S.playing || S.speakers.size || document.hidden) return; const busy = Object.keys(S.agents).filter((id) => id !== 'user' && agentState(id, Date.now()).k === 'working' && $('#t-' + id) && $('#t-' + id).style.display !== 'none');
+  if (busy.length && Math.random() < 0.5) { const id = busy[Math.floor(Math.random() * busy.length)], tl = S.lastTool[id] || ''; thought(id, /^Bash/.test(tl) ? '⌨️' : /^(Grep|Glob|Read)/.test(tl) ? '🔍' : ['💭', '🎧', '🧠', '☕', '🎵'][Math.floor(Math.random() * 5)]); }
+}, 7000);
+function oops(id) { if (!prefs.banter || !S.playing) return; const t = $('#t-' + id); if (!t || t.style.display === 'none' || (t._oops && Date.now() - t._oops < 4000)) return; t._oops = Date.now(); t.classList.remove('oops'); void t.offsetWidth; t.classList.add('oops'); thought(id, '😬'); }
+function confetti() {
+  if (!prefs.banter || document.hidden) return; const box = $('#center'), cols = ['#f5c04a', '#7c9cff', '#ff7a6b', '#5ad19a', '#c58bff'];
+  for (let i = 0; i < 26; i++) { const c = document.createElement('i'); c.className = 'confetti'; c.style.left = Math.random() * 100 + '%'; c.style.background = cols[i % cols.length]; c.style.animationDelay = Math.random() * 0.6 + 's'; c.style.animationDuration = 1.8 + Math.random() * 1.4 + 's'; box.appendChild(c); setTimeout(() => c.remove(), 4200); }
 }
 function stopTalk(id) {
   clearInterval(mouths.get(id)); mouths.delete(id); S.speakers.delete(id); if (!S.speakers.size) AUD.duck(false); if (S.focus === id && S.speakers.size) setFocus([...S.speakers][0]);
@@ -1193,12 +1215,29 @@ function prefetchQuips(i) {
   const need = texts.filter((t) => !quipMem.has(t)); if (!need.length) return; need.forEach((t) => quipMem.set(t, null));
   fetch('/api/quips', { method: 'POST', body: JSON.stringify({ texts: need, lang: prefs.lang }) }).then((r) => r.json()).then((d) => (d.texts || []).forEach((q, i) => d.ok && q && q !== need[i] && quipMem.set(need[i], q))).catch(() => {});
 }
+
+// Little lines that make the call feel alive. They never appear in the transcript and never replace real content: they are short, local (no API) and can be turned off in ⚙.
+const ACK = {
+  en: { tests: ['Running the tests, as usual.', 'Tests? Always.', 'Let’s see what breaks.', 'Green or red, I’ll tell you.'], review: ['Putting on my reviewer glasses.', 'Reading everything twice.', 'I’ll be nice. Maybe.', 'Auditing, brb.'], explore: ['Off to explore the codebase.', 'Grepping like there’s no tomorrow.', 'Time to dig.', 'I’ll find it.'],
+    fix: ['Bug hunting time.', 'I smell a bug.', 'Debugger mode: on.', 'Who broke this?'], docs: ['Writing it up.', 'Documentation, my favorite.', 'Words incoming.'], ui: ['Pixels, here I come.', 'Making it pretty.', 'Let me look at the layout.'], cleanup: ['Cleaning up the mess.', 'Tidying time.', 'Deleting things. Carefully.'],
+    perf: ['Let’s make it fast.', 'Profiling, one moment.', 'Chasing milliseconds.'], any: ['On it!', 'Got it, boss.', 'Reading the brief.', 'Consider it done. Probably.', 'Okay okay okay.', 'Say no more.', 'Already on my way.', 'Roger that.', 'Coffee first. Then this.'] },
+  fr: { tests: ['Je lance les tests, comme d’hab.', 'Des tests ? Toujours.', 'On va voir ce qui casse.', 'Vert ou rouge, je te dirai.'], review: ['Je mets mes lunettes de relecteur.', 'Je relis tout deux fois.', 'Je serai gentil. Peut-être.', 'Audit en cours, je reviens.'], explore: ['Je pars explorer le code.', 'Je grep comme si c’était la fin du monde.', 'Allez, on creuse.', 'Je vais le trouver.'],
+    fix: ['L’heure de la chasse aux bugs.', 'Je sens un bug.', 'Mode débogueur : activé.', 'Qui a cassé ça ?'], docs: ['Je rédige ça.', 'La doc, mon truc préféré.', 'Des mots arrivent.'], ui: ['Pixels, me voilà.', 'On va rendre ça joli.', 'Je regarde la mise en page.'], cleanup: ['Je nettoie ce désordre.', 'Séance de rangement.', 'Je supprime. Prudemment.'],
+    perf: ['On va rendre ça rapide.', 'Je profile, un instant.', 'À la chasse aux millisecondes.'], any: ['Je m’en occupe !', 'Compris, chef.', 'Je lis le brief.', 'C’est comme fait. Sûrement.', 'Ok ok ok.', 'Pas un mot de plus.', 'Je suis déjà parti.', 'Reçu cinq sur cinq.', 'D’abord un café. Ensuite ça.'] },
+};
+const ACK_RE = [['tests', /test|qa\b|spec|jest|vitest|coverage/], ['review', /review|audit|check|inspect|lint|critique/], ['explore', /explor|search|research|find|investigat|look|map|scan/], ['fix', /fix|bug|debug|error|crash|broken/], ['docs', /\bdoc|readme|write|changelog|spec/], ['ui', /\bui\b|design|css|style|layout|front|page|component/], ['cleanup', /refactor|clean|tidy|dead code/], ['perf', /perf|speed|slow|optimi|latenc|profil/]];
+function ackLine(ev) {
+  // classify on role and title only: the prompt text is too noisy
+  const R = ACK[prefs.lang] || ACK.en, text = `${ev.title || ''} ${(S.agents[ev.to] || {}).role || ''}`.toLowerCase(), cat = (ACK_RE.find(([, re]) => re.test(text)) || [])[0];
+  const pool = cat && hash(String(ev.ts)) % 4 ? R[cat] : R.any, seed = hash(String(ev.ts) + ev.to); let line = pool[seed % pool.length];
+  if (line === S.lastAck) line = pool[(seed + 1) % pool.length]; S.lastAck = line; return line;
+}
 async function react(ev, token) {
-  if (!prefs.epi || S.boost > 1) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[prefs.lang]; let who, line;
-  if (ev.kind === 'order') { if (seed % 100 > 55) return; who = ev.to; line = R.ack[seed % R.ack.length]; }
-  else if (ev.kind === 'report') { if (seed % 100 > 60) return; const others = Object.keys(S.status).concat(['main']).filter((x) => x !== ev.agent && S.agents[x] && !S.gone.has(x)); who = others[(seed >>> 3) % others.length]; line = quipMem.get(baseText(ev, 160)) || R.done[seed % R.done.length]; }
+  if ((!prefs.epi && !prefs.banter) || S.boost > 1 || S.hurry) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[prefs.lang]; let who, line;
+  if (ev.kind === 'order') { if (!prefs.banter && seed % 100 > 55) return; who = ev.to; line = prefs.banter ? ackLine(ev) : R.ack[seed % R.ack.length]; }
+  else if (ev.kind === 'report') { if (!prefs.epi && seed % 100 > 35) return; if (seed % 100 > 60) return; const others = Object.keys(S.status).concat(['main']).filter((x) => x !== ev.agent && S.agents[x] && !S.gone.has(x)); who = others[(seed >>> 3) % others.length]; line = quipMem.get(baseText(ev, 160)) || R.done[seed % R.done.length]; }
   else return;
-  if (!S.agents[who]) return; startTalk(who, line, '🎬'); await speakLine(line, S.agents[who], true, token); stopTalk(who);
+  if (!S.agents[who]) return; startTalk(who, line, ev.kind === 'order' && prefs.banter ? '💬' : '🎬'); await speakLine(line, S.agents[who], true, token); stopTalk(who);
 }
 async function card(text, sub, ms = 2500) {
   const c = $('#card'); c.innerHTML = `<div><h1>${esc(text)}</h1><p>${esc(sub || '')}</p></div>`; c.classList.add('on'); AUD.tone(392, .5, 'triangle', .12); AUD.tone(523, .6, 'triangle', .12, .25);
