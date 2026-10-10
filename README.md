@@ -215,5 +215,8 @@ This dev was replaced by his own agents. If Agent Standup made your sessions mor
 
 MIT
 
+## Support the project / work with me
+Agent Standup is free and MIT licensed. If it saves you time you can [buy the (replaced) dev a coffee](https://www.buymeacoffee.com/bored_dev_and_his_robots). I'm also available for work around AI agents and developer tooling: reach me through my GitHub profile, [Atoll92](https://github.com/Atoll92).
+
 ## Privacy and usage counting
 Agent Standup reads local session files and sends nothing anywhere by default. The only optional network uses are: French translation / jokes (your own Claude login, off unless you turn them on), the FIP radio stream (if you turn it on), and the **optional usage counter**: if you set `agentStandup.shareUsage` to `true` (off by default, and ignored when VS Code telemetry is off), the extension makes at most one empty request per day to a 1-pixel file in this repository's releases. There is no identifier and no content; GitHub sees your IP like for any download. It lets the maintainer count active installs (`npm run stats`).
