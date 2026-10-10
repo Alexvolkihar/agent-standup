@@ -761,13 +761,13 @@ function renderTokens() {
   for (const id in S.agents) { const t = $('#t-' + id); if (!t) continue; const u = S.usage[id], el = t.querySelector('.tk'); el.textContent = u && tokTotal(u) ? `⚡${fmtTok(tokTotal(u))}` : ''; if (u) t.title = tokTip(u); }
 }
 // One boring signal per tile: working · waiting on another agent · may need you · stalled · done. Stalled hand-offs are what really cost time.
-const NEEDS_OK = /^(Bash|Edit|Write|MultiEdit|NotebookEdit|WebFetch|AskUserQuestion|ExitPlanMode)/, ASKS = /^(AskUserQuestion|ExitPlanMode)/;
+const NEEDS_OK = /^(Edit|Write|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMode)/   // file edits are instant, so one that stays pending is almost surely an approval prompt; a Bash command may legitimately run long (⏳ badge instead), ASKS = /^(AskUserQuestion|ExitPlanMode)/;
 function agentState(id, now) {
   let s = S.status[id]; const r = S.run[id], w = S.waitOn[id], la = S.lastAct[id];
   if (id === 'main' && !s) { if (r || (w && w.size) || (S.live && la && now - la < 25000)) s = 'working'; else if (S.live && la) return { k: 'done', txt: '✓ ' + L('à vous', 'your turn') }; }
   if (s === 'done') return { k: 'done', txt: '✓ ' + L('terminé', 'done') };
   if (!s) return { k: 'idle', txt: '' };
-  if (S.live && r && r.ts && r.name && NEEDS_OK.test(r.name)) { const age = now - r.ts; if (age > (ASKS.test(r.name) ? 4000 : 25000)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(age) }; }
+  if (S.live && r && r.ts && r.name && NEEDS_OK.test(r.name)) { const age = now - r.ts; if (age > (ASKS.test(r.name) ? 4000 : 15000)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(age) }; }
   if (w && w.size) {
     const names = [...w].map(nameOf); let stale = S.live; for (const c of w) if (!(now - Math.max(S.lastAct[c] || 0, S.orderTs[c] || 0) > 120000)) stale = false;
     return { k: stale ? 'stalled' : 'waiting', txt: (stale ? '⚠ ' + L('bloqué · ', 'stalled · ') : '🔗 ') + L('attend ', 'waiting on ') + names.slice(0, 2).join(', ') + (names.length > 2 ? ' +' + (names.length - 2) : '') };

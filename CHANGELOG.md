@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.14.1
+- "Needs you?" no longer fires for Bash commands (11.8% of them legitimately run 25 s+ in real sessions); it now covers file edits/writes pending for 15 s+ and questions/plans waiting.
+
 ## 1.14.0
 - **One status per tile**: working · waiting on another agent (who) · needs you? · stalled hand-off · done, with a summary in the header and in the tab title. "Needs you?" is a heuristic (a tool that normally needs approval has been pending for 25 s, or a question/plan is waiting); the notification option also fires for it.
 - **Cartoon voices** (default): a character per agent (chipmunk, deep, robot, wobbly, radio, monster, squeaky) applied to the system voice. New ⚙ choice: Cartoon / Natural / Babble (syllable babble for sub-agents).

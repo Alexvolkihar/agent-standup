@@ -57,7 +57,7 @@ Outputs are trimmed (about 1–2 KB each) to keep the call fast. Results of inte
 | ![todo](https://atoll92.github.io/agent-standup/media/todo.jpg) | ![recap](https://atoll92.github.io/agent-standup/media/recap.jpg) | ![fr](https://atoll92.github.io/agent-standup/media/hero-fr.jpg) |
 
 ## At a glance
-Every tile carries one status: **working** (with what it is doing), **waiting on another agent** (who), **needs you?** (a tool call that usually needs your approval has been pending), **stalled** (waiting on an agent that has been silent for 2 min+), or **done**. A summary sits in the header, and the tab title shows how many agents need you. The "needs you?" signal is a heuristic: Claude Code does not record permission prompts, so a long-running command can trigger it too.
+Every tile carries one status: **working** (with what it is doing), **waiting on another agent** (who), **needs you?** (a file edit or write, or a question, has been pending for 15 s+), **stalled** (waiting on an agent that has been silent for 2 min+), or **done**. A summary sits in the header, and the tab title shows how many agents need you. The "needs you?" signal is a heuristic: Claude Code does not record permission prompts, so commands (Bash) are not flagged because they can legitimately run for minutes (they get a ⏳ badge after 1 min instead). Measured on real sessions, edits that stay pending for 15 s+ are rare, so the signal is mostly right.
 
 ## Voices
 Voices are cartoon by default: each agent gets its own character (chipmunk, deep, robot, wobbly, radio, monster, squeaky) on top of your system voice. ⚙ also offers **natural** voices and **babble** (Animal-Crossing-style syllables for the sub-agents; the lead keeps a real voice).
@@ -78,7 +78,7 @@ In VS Code: Extensions view → search **Agent Standup** → Install. Or: https:
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.14.0/agent-standup-1.14.0.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.14.1/agent-standup-1.14.1.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself
