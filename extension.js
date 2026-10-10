@@ -1,0 +1,83 @@
+// Agent Standup — VS Code extension host. Runs the local server in-process and shows it in a webview.
+const vscode = require('vscode');
+const http = require('http');
+
+let panel = null, status = null, started = null;
+
+const cfg = () => vscode.workspace.getConfiguration('agentStandup');
+const projKey = () => {
+  const f = vscode.workspace.workspaceFolders;
+  if (!f || !f.length || !cfg().get('onlyThisWorkspace')) return '';
+  return f[0].uri.fsPath.replace(/[^a-zA-Z0-9]/g, '-');   // Claude Code's project-dir naming
+};
+const ping = (port) => new Promise((res) => {
+  const r = http.get({ host: '127.0.0.1', port, path: '/api/current', timeout: 1500 }, (m) => { m.resume(); res(m.statusCode === 200); });
+  r.on('error', () => res(false)); r.on('timeout', () => { r.destroy(); res(false); });
+});
+
+// Start our server, or reuse one already running on the port (e.g. `node server.js` in a terminal).
+function ensureServer() {
+  if (started) return started;
+  const port = cfg().get('port');
+  started = new Promise((resolve) => {
+    const srv = require('./server.js').start(port);
+    srv.once('listening', () => resolve({ port, server: srv }));
+    srv.once('error', async () => resolve((await ping(port)) ? { port } : { port, error: true }));
+  });
+  return started;
+}
+async function url() {
+  const { port, error } = await ensureServer();
+  if (error) throw new Error(`Port ${port} is busy and not serving Agent Standup. Change agentStandup.port.`);
+  const q = `?live=1&proj=${encodeURIComponent(projKey())}`;
+  return `http://localhost:${port}/${q}`;
+}
+
+async function openPanel() {
+  if (panel) { panel.reveal(); return; }
+  let u;
+  try { u = await url(); } catch (e) { return vscode.window.showErrorMessage(e.message); }
+  const ext = await vscode.env.asExternalUri(vscode.Uri.parse(u + '&embed=1'));
+  panel = vscode.window.createWebviewPanel('agentStandup', 'Agent Standup', vscode.ViewColumn.Beside, { enableScripts: true, retainContextWhenHidden: true });
+  relay(panel.webview); panel.webview.html = frameHtml(ext.toString(true));
+  panel.onDidDispose(() => (panel = null));
+}
+const frameHtml = (src) => `<!doctype html><html><head><meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src http: https:; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+    <style>html,body{margin:0;height:100%;background:#12131a}iframe{border:0;width:100%;height:100vh}</style></head>
+    <body><iframe src="${src}" allow="autoplay; clipboard-write"></iframe>
+    <script>const vs = acquireVsCodeApi(); addEventListener('message', (e) => { if (e.data && e.data.agentStandup) vs.postMessage(e.data); });</script></body></html>`;
+const relay = (webview) => webview.onDidReceiveMessage((m) => { if (m && m.agentStandup === 'openBrowser') openBrowser(); });
+
+// Sidebar view: the same live call, in the activity bar.
+const sidebar = {
+  async resolveWebviewView(view) {
+    view.webview.options = { enableScripts: true }; relay(view.webview);
+    try {
+      const ext = await vscode.env.asExternalUri(vscode.Uri.parse((await url()) + '&embed=1'));
+      view.webview.html = frameHtml(ext.toString(true));
+    } catch (e) { view.webview.html = `<body style="font:13px sans-serif;color:#ccc;padding:12px">${e.message}</body>`; }
+  },
+};
+
+async function openBrowser() {
+  try { vscode.env.openExternal(vscode.Uri.parse(await url())); } catch (e) { vscode.window.showErrorMessage(e.message); }
+}
+
+function activate(ctx) {
+  ctx.subscriptions.push(
+    vscode.commands.registerCommand('agentStandup.open', openPanel),
+    vscode.commands.registerCommand('agentStandup.openInBrowser', openBrowser),
+    vscode.commands.registerCommand('agentStandup.focus', () => vscode.commands.executeCommand('workbench.view.extension.agentStandup')),
+    vscode.window.registerWebviewViewProvider('agentStandup.view', sidebar, { webviewOptions: { retainContextWhenHidden: true } }),
+  );
+  status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 90);
+  status.text = '$(device-camera-video) Agent Standup'; status.tooltip = 'Open the live Agent Standup call'; status.command = 'agentStandup.open';
+  status.show(); ctx.subscriptions.push(status);
+  // If another VS Code window was serving the port and closes, take over so this window keeps working.
+  const watch = setInterval(async () => { if (started && !(await ping(cfg().get('port')))) { started = null; ensureServer(); } }, 5000);
+  ctx.subscriptions.push({ dispose: () => clearInterval(watch) });
+  if (cfg().get('autoOpen')) openPanel();
+}
+async function deactivate() { try { if (started) { const s = await started; s.server && s.server.close(); } require('./server.js').shutdown(); } catch {} }
+module.exports = { activate, deactivate };

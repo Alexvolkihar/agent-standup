@@ -1,0 +1,103 @@
+{
+  "name": "agent-standup",
+  "displayName": "Agent Standup",
+  "description": "Watch your Claude Code session as a live, animated team call: the lead gives orders, sub-agents join, share their screen and report back \u2014 with voices, a sub-agent tree, timeline, recap and video export.",
+  "version": "1.6.0",
+  "publisher": "arthur",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Visualization",
+    "AI",
+    "Other"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "scripts": {
+    "start": "node server.js",
+    "package": "npx --yes @vscode/vsce package --allow-missing-repository --skip-license"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "agentStandup.open",
+        "title": "Agent Standup: Open live call"
+      },
+      {
+        "command": "agentStandup.openInBrowser",
+        "title": "Agent Standup: Open in browser (voice + sound)"
+      },
+      {
+        "command": "agentStandup.focus",
+        "title": "Agent Standup: Show sidebar"
+      }
+    ],
+    "configuration": {
+      "title": "Agent Standup",
+      "properties": {
+        "agentStandup.port": {
+          "type": "number",
+          "default": 4747,
+          "description": "Local port for the Agent Standup server."
+        },
+        "agentStandup.autoOpen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open the live call automatically when VS Code starts."
+        },
+        "agentStandup.onlyThisWorkspace": {
+          "type": "boolean",
+          "default": true,
+          "description": "Follow only Claude Code sessions started in the current workspace folder."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agentStandup",
+          "title": "Agent Standup",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "agentStandup": [
+        {
+          "type": "webview",
+          "id": "agentStandup.view",
+          "name": "Live call"
+        }
+      ]
+    }
+  },
+  "icon": "media/icon.png",
+  "keywords": [
+    "standup",
+    "claude",
+    "claude code",
+    "agents",
+    "subagents",
+    "visualization",
+    "live",
+    "call",
+    "ai"
+  ],
+  "galleryBanner": {
+    "color": "#12131a",
+    "theme": "dark"
+  },
+  "qna": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Atoll92/agent-standup.git"
+  },
+  "homepage": "https://github.com/Atoll92/agent-standup#readme",
+  "bugs": {
+    "url": "https://github.com/Atoll92/agent-standup/issues"
+  }
+}
