@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.20.1
+Fixes from a second review pass by sub-agents:
+- Loop watch: a batch of failing calls now counts once (it used to count each call), so four failures in a row means four failed steps.
+- A pinned session that no longer exists no longer keeps the view silently pinned; the status bar refreshes the moment VS Code regains focus; a disposed panel is recreated instead of throwing.
+- README: `statusBar` setting listed, duplicate sections merged, and the "zero token cost" claim now says it holds unless French translation or jokes are turned on.
+
 ## 1.20.0
 Three features and a round of polish (chosen from a research pass by sub-agents; each approved before building):
 - **VS Code status bar**: live counts for your workspace — "⚠ 1 needs you", "⟳ 3 working", "✓ your turn" — red when an agent may be waiting for you, with the sessions listed on hover. A click opens the call on the most urgent session (new setting `agentStandup.statusBar`, on by default). It reads the session files directly, so it works even before the panel is opened.

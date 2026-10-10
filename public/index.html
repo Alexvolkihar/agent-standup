@@ -836,7 +836,7 @@ function loopStep(R, ev) {   // R: per-agent repetition state; returns a detecti
   const a = ev.agent, st = (R[a] = R[a] || { key: '', n: 0, e: 0 });
   if (ev.kind === 'tools') { for (const t of ev.tools) { const key = t.name + '|' + (t.d ? JSON.stringify(t.d) : (t.arg || ''));   // the whole call, not just the file name: three different edits of one file are not a loop
      if (LOOP_SKIP.test(t.name) || (t.name === 'Bash' && POLLY.test(t.arg || ''))) { st.key = ''; st.n = 0; continue; } if (key === st.key) st.n++; else { st.key = key; st.n = 1; } if (st.n >= 3) return { kind: 'calls', n: st.n, tool: t.name }; } }
-  else if (ev.kind === 'results') { for (const it of ev.items) { st.e = it.err ? st.e + 1 : 0; if (st.e >= 4) return { kind: 'errors', n: st.e }; } }
+  else if (ev.kind === 'results') { if (ev.items.some((it) => it.err)) st.e++; else st.e = 0; if (st.e >= 4) return { kind: 'errors', n: st.e }; }   // one batch of failures counts once
   return null;
 }
 const WIN1M = /(opus-4-[78]|opus-5|sonnet-5|fable-5)/;
@@ -1408,6 +1408,7 @@ $('#liveProj').onchange = () => { prefs.proj = $('#liveProj').value; S.pin = '';
 async function followCurrent() {
   const cur = await (await fetch('/api/current?proj=' + encodeURIComponent(Q.get('proj') || prefs.proj || '') + (S.pin ? '&id=' + encodeURIComponent(S.pin) : ''))).json();
   if (!cur.id) { $('#empty').classList.add('on'); return false; } $('#empty').classList.remove('on');
+  if (S.pin && cur.id !== S.pin) S.pin = '';   // the pinned session is gone: follow the latest one instead of staying silently pinned
   if (S.cur && S.cur.id === cur.id && S.cur.proj === cur.proj) return false;
   if (!(await loadSession(cur.proj, cur.id))) return false;
   const start = Math.max(0, S.events.length - 16); recomputeStatus(start); S.idx = start; trNew(start); paintStatus();

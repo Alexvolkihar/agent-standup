@@ -1,6 +1,6 @@
 # Agent Standup
 
-**See who is waiting on whom, and who is blocked — across all your Claude Code sessions — at zero token cost.** Agent Standup turns the session files Claude Code already writes into a live team call (and a board of every session): it only reads local files, it never calls Claude by default.
+**See who is waiting on whom, and who is blocked — across all your Claude Code sessions — at zero token cost.** Agent Standup turns the session files Claude Code already writes into a live team call (and a board of every session): it only reads local files and never calls Claude unless you turn on French translation or the jokes.
 
 **Your Claude Code session as a live team call.** The lead gives orders, sub-agents join the call, work at their desks, share their screen and report back — with voices, expressions and a view of the real work as it happens.
 
@@ -101,7 +101,7 @@ In VS Code: Extensions view → search **Agent Standup** → Install. Or: https:
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.20.0/agent-standup-1.20.0.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.20.1/agent-standup-1.20.1.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself
@@ -131,6 +131,7 @@ The first click on **Join** is required by browsers to allow sound.
 | Setting | Default | |
 |---|---|---|
 | `agentStandup.port` | `0` | Local port of the server. `0` = a free port is picked automatically for each VS Code window (recommended) |
+| `agentStandup.statusBar` | `true` | Live counts in the VS Code status bar (needs you / working / your turn) for this workspace |
 | `agentStandup.shareUsage` | `false` | Opt-in, anonymous: at most one empty request per day to a 1-pixel file on GitHub, to count active installs (ignored when VS Code telemetry is off) |
 | `agentStandup.claudePath` | _(auto)_ | Full path to the Claude Code executable if it isn't found automatically (needed only for French translation) |
 | `agentStandup.autoOpen` | `false` | Open the call when VS Code starts |
@@ -203,7 +204,6 @@ The website counts visits anonymously (a 1-pixel file hosted on GitHub per chann
 - **Two voices at once (e.g. French and English)** — update to ≥ 1.8.1: only one window plays sound now. A line that could not be translated in time is read by an English voice, not by a French voice reading English.
 - **No sound** — press **Join** (or Play) once; check 🔊 isn't muted and *Agent voices* is on in ⚙.
 - **French is read in English / hint about translation** — Agent Standup looks for Claude Code in your `PATH`, the usual install folders (Homebrew, npm, nvm, `~/.local/bin`, Windows `%APPDATA%\npm`) and the copy bundled with the official VS Code *Claude Code* extension. If none is found the app quietly stays in English; set `agentStandup.claudePath`, or run `claude` once in a terminal to sign in. If VS Code itself was started from inside a Claude Code session, restart it normally.
-- **French is read in English** — `claude` CLI not found or not logged in (hint in ⚙); install a French system voice.
 - **Characters or backgrounds look empty** — update to ≥ 1.2.1 (fixed a duplicate SVG id bug).
 - **Terminal output missing for a command** — the call is still running (spinner), or it is an internal call (sub-agent launch / message); outputs are only recorded once a call finishes.
 - **Pill says OFFLINE** — the local server stopped answering (another VS Code window that was serving the port was closed: the extension takes over within a few seconds), or restart `node server.js`.
@@ -217,16 +217,14 @@ The website counts visits anonymously (a 1-pixel file hosted on GitHub per chann
 - Very large sessions (10 MB+ of transcript) take a second or two to load the first time (about 1.9 s for a 12 MB, 168-sub-agent session on a recent Mac); after that updates take milliseconds.
 - Video export records in real time and needs a Chromium-based browser/VS Code.
 
-## Support
-
-This dev was replaced by his own agents. If Agent Standup made your sessions more fun, you can [buy him a coffee](https://www.buymeacoffee.com/bored_dev_and_his_robots) ☕ — there is also a ☕ line in the ⚙ menu and at the end of each recap.
-
 ## License
 
 MIT
 
 ## Support the project / work with me
-Agent Standup is free and MIT licensed. If it saves you time you can [buy the (replaced) dev a coffee](https://www.buymeacoffee.com/bored_dev_and_his_robots). I'm also available for work around AI agents and developer tooling: reach me through my GitHub profile, [Atoll92](https://github.com/Atoll92).
+This dev was replaced by his own agents. If Agent Standup made your sessions more fun, you can [buy him a coffee](https://www.buymeacoffee.com/bored_dev_and_his_robots) ☕ — there is also a ☕ line in the ⚙ menu and at the end of each recap.
+
+Agent Standup is free and MIT licensed. I'm also available for work around AI agents and developer tooling: reach me through my GitHub profile, [Atoll92](https://github.com/Atoll92).
 
 ## Privacy and usage counting
 Agent Standup reads local session files and sends nothing anywhere by default. The only optional network uses are: French translation / jokes (your own Claude login, off unless you turn them on), the FIP radio stream (if you turn it on), and the **optional usage counter**: if you set `agentStandup.shareUsage` to `true` (off by default, and ignored when VS Code telemetry is off), the extension makes at most one empty request per day to a 1-pixel file in this repository's releases. There is no identifier and no content; GitHub sees your IP like for any download. It lets the maintainer count active installs (`npm run stats`).

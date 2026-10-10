@@ -35,7 +35,7 @@ async function url() {
 }
 
 async function openPanel(pin) {   // pin: { id, proj } of the session to follow (from the status bar)
-  if (panel) { panel.reveal(); if (pin && pin.id) panel.webview.postMessage({ agentStandup: 'pin', id: pin.id, proj: pin.proj }); return; }
+  if (panel) { try { panel.reveal(); if (pin && pin.id) panel.webview.postMessage({ agentStandup: 'pin', id: pin.id, proj: pin.proj }); return; } catch { panel = null; } }   // a disposed panel falls through and is recreated
   let u;
   try { u = await url(); } catch (e) { return vscode.window.showErrorMessage(e.message); }
   if (pin && pin.id) u += `&pin=${encodeURIComponent(pin.id)}&proj=${encodeURIComponent(pin.proj || '')}`;
@@ -113,6 +113,7 @@ function activate(ctx) {
   };
   ctx.subscriptions.push(vscode.commands.registerCommand('agentStandup.openStatus', () => openPanel(target)));
   status.command = 'agentStandup.openStatus';
+  ctx.subscriptions.push(vscode.window.onDidChangeWindowState((s) => { if (s.focused) poll(); }));   // refresh the moment the window regains focus
   const pollT = setInterval(poll, 4000); poll(); ctx.subscriptions.push({ dispose: () => clearInterval(pollT) });
   // If another VS Code window was serving the port and closes, take over so this window keeps working.
   const watch = setInterval(async () => { if (!started) return; const s = await started; if (!s.error && !(await ping(s.port))) { started = null; ensureServer(); } }, 5000);
