@@ -22,7 +22,8 @@
     "package": "npx --yes @vscode/vsce package --allow-missing-repository --skip-license",
     "landing": "node scripts/build-landing.js",
     "capture": "node scripts/capture-demo.js all",
-    "stats": "node scripts/stats.js"
+    "stats": "node scripts/stats.js",
+    "promo": "node scripts/capture-promo.js"
   },
   "contributes": {
     "commands": [
