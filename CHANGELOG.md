@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.17.3
+- Fix: agents showed "stalled" (and never left the call) after finishing. A sub-agent that ended without a final sentence was never marked done, so the lead kept "waiting" on it. Completion is now taken from the lead getting the sub-agent's answer back; background agents no longer block the lead's status.
+
 ## 1.17.2
 - Fix: the reactions bar was still visible in 1.17.1 (a leftover CSS rule overrode the hiding); it is now really hidden by default.
 

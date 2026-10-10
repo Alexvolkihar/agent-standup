@@ -195,6 +195,7 @@ function parseRecord(st, r) {
   const agent = st.agent, ts = Date.parse(r.timestamp) || 0;
   if (r.type === 'user') {
     const items = [];   // tool results: the real output that appeared on the agent's screen
+    for (const b of blocks(r)) if (b.type === 'tool_result' && (st.toolName[b.tool_use_id] === 'Agent' || st.toolName[b.tool_use_id] === 'Task') && !(st.bg && st.bg[b.tool_use_id])) st.raw.push({ ts, agent, kind: 'agentdone', toolId: b.tool_use_id });   // the lead got the sub-agent's answer back: it has finished
     for (const b of blocks(r)) if (b.type === 'tool_result' && st.toolName[b.tool_use_id] && !NO_RESULT.has(st.toolName[b.tool_use_id])) {
       const n = st.toolName[b.tool_use_id];
       items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || 600) });
@@ -212,7 +213,7 @@ function parseRecord(st, r) {
     for (const b of blocks(r)) {
       if (b.type === 'text' && b.text.trim()) st.raw.push({ ts, agent, kind: 'say', text: b.text.trim() });
       else if (b.type === 'tool_use') {
-        st.toolName[b.id] = b.name;
+        st.toolName[b.id] = b.name; if (b.input && b.input.run_in_background) (st.bg = st.bg || {})[b.id] = true;
         if (b.name === 'Agent' || b.name === 'Task') st.raw.push({ ts, agent, kind: 'agentcall', toolId: b.id, text: (b.input && b.input.prompt) || '', title: (b.input && b.input.description) || '' });
         else st.raw.push({ ts, agent, kind: 'tool', tool: toolLabel(b, ts) });
       }
@@ -246,7 +247,8 @@ function buildTimeline(proj, id) {
     let lastSay = -1;   // the last thing a sub-agent says is its report back to the lead
     if (st.agent !== 'main') for (let i = st.raw.length - 1; i >= 0; i--) if (st.raw[i].kind === 'say') { lastSay = i; break; }
     st.raw.forEach((e, i) => {
-      if (e.kind === 'agentcall') { const to = childByTool[e.toolId]; if (to) { parent[to] = e.agent; events.push({ ts: e.ts, agent: e.agent, to, kind: 'order', text: e.text, title: e.title }); } }
+      if (e.kind === 'agentdone') { const to = childByTool[e.toolId]; if (to) events.push({ ts: e.ts, agent: to, kind: 'finish', to: e.agent }); }
+      else if (e.kind === 'agentcall') { const to = childByTool[e.toolId]; if (to) { parent[to] = e.agent; events.push({ ts: e.ts, agent: e.agent, to, kind: 'order', text: e.text, title: e.title }); } }
       else if (i === lastSay) events.push({ ...e, kind: 'report', to: null });   // `to` filled below, once every order is known
       else events.push(e);
     });
@@ -258,11 +260,11 @@ function buildTimeline(proj, id) {
   const merged = []; let lastReal = -1;   // consecutive tool calls of one agent become one activity beat; usage events are transparent to that rule
   for (const e of events) {
     const p = lastReal >= 0 ? merged[lastReal] : null;
-    if (e.kind === 'usage') { merged.push(e); continue; }
+    if (e.kind === 'usage' || e.kind === 'finish') { merged.push(e); continue; }
     if (e.kind === 'tool' && p && p.kind === 'tools' && p.agent === e.agent) p.tools.push(e.tool);
     else { merged.push(e.kind === 'tool' ? { ts: e.ts, agent: e.agent, kind: 'tools', tools: [e.tool] } : e); lastReal = merged.length - 1; }
   }
-  const real = merged.find((e) => e.kind !== 'usage'), first = real ? real.ts : 0, last = merged.length ? merged[merged.length - 1].ts : 0;   // time zero = the first thing said or done
+  const real = merged.find((e) => e.kind !== 'usage' && e.kind !== 'finish'), first = real ? real.ts : 0, last = merged.length ? merged[merged.length - 1].ts : 0;   // time zero = the first thing said or done
   return { id, proj, agents: Object.values(agents), events: merged.map((e) => ({ ...e, t: Math.max(0, e.ts - first) })), durationMs: last - first };
 }
 

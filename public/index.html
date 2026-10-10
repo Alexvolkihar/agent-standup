@@ -761,7 +761,7 @@ function renderLog(full) {
   if (full || S.logTo < from || S.logTo > S.events.length) { log.innerHTML = ''; S.logTo = from; }
   const html = [];
   for (let i = S.logTo; i < S.events.length; i++) {
-    if (S.events[i].kind === 'results' || S.events[i].kind === 'usage') continue;
+    if (S.events[i].kind === 'results' || S.events[i].kind === 'usage' || S.events[i].kind === 'finish') continue;
     const e = S.events[i], arrow = e.to ? ` <span class="arrow">→</span> <span class="who">${esc(nameOf(e.to))}</span>` : '';
     const body = e.kind === 'tools' ? e.tools.map((t) => t.name).join(', ') : spoken(e), k = { order: L('tâche', 'task'), report: L('rapport', 'report'), say: '', user: L('brief', 'brief'), tools: L('outils', 'tools') }[e.kind];
     html.push(`<div class="row ${e.kind}" data-i="${i}"><span class="who">${esc(nameOf(e.agent))}</span>${arrow} <span class="k">${k}</span><div class="txt">${esc(body)}</div></div>`);
@@ -786,6 +786,7 @@ function paintStatus() {
 }
 const applyStatus = (ev) => {
   if (ev.kind === 'order') { (S.waitOn[ev.agent] = S.waitOn[ev.agent] || new Set()).add(ev.to); S.orderTs[ev.to] = ev.ts || 0; S.status[ev.to] = 'working'; delete S.doneAt[ev.to]; S.gone.delete(ev.to); S.leaving.delete(ev.to); const t = $('#t-' + ev.to); if (t) t.classList.remove('vanishing'); }
+  if (ev.kind === 'finish') { if (S.waitOn[ev.to]) S.waitOn[ev.to].delete(ev.agent); if (S.status[ev.agent] !== 'done') { S.status[ev.agent] = 'done'; S.doneAt[ev.agent] = S.clock; } delete S.run[ev.agent]; const lr = S.run[ev.to]; if (lr && /^(Task|Agent)$/.test(lr.name) && !(S.waitOn[ev.to] && S.waitOn[ev.to].size)) delete S.run[ev.to]; }
   if (ev.kind === 'report') { if (S.waitOn[ev.to]) S.waitOn[ev.to].delete(ev.agent); S.status[ev.agent] = 'done'; S.doneAt[ev.agent] = S.clock; delete S.run[ev.agent]; }
 };
 function recomputeStatus(upTo) {
@@ -794,7 +795,7 @@ function recomputeStatus(upTo) {
   for (let i = 0; i < upTo; i++) {
     const e = S.events[i]; applyStatus(e); tally(e); if (e.kind === 'tools') S.tc[e.agent] = (S.tc[e.agent] || 0) + e.tools.length;
     if (i >= upTo - 160) { if (e.kind === 'tools') e.tools.forEach((t) => pushTerm(e.agent, t)); else if (e.kind === 'results') applyResults(e, true); }
-    if (e.kind === 'report') doneIdx[e.agent] = i; if (e.kind === 'order') delete doneIdx[e.to];
+    if (e.kind === 'report' || e.kind === 'finish') doneIdx[e.agent] = i; if (e.kind === 'order') delete doneIdx[e.to];
   }
   later('tok', renderTokens, 50); later('badges', renderBadges, 50);
   const now = S.events[Math.max(0, upTo - 1)];   // agents that finished long before this point are already gone
@@ -835,9 +836,12 @@ function agentState(id, now) {
   if (s === 'done') return { k: 'done', txt: '✓ ' + L('terminé', 'done') };
   if (!s) return { k: 'idle', txt: '' };
   if (S.live && r && r.ts && r.name && NEEDS_OK.test(r.name)) { const age = now - r.ts; if (age > (ASKS.test(r.name) ? 4000 : 15000)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(age) }; }
-  if (w && w.size) {
-    const names = [...w].map(nameOf); let stale = S.live; for (const c of w) if (!(now - Math.max(S.lastAct[c] || 0, S.orderTs[c] || 0) > 120000)) stale = false;
-    return { k: stale ? 'stalled' : 'waiting', txt: (stale ? '⚠ ' + L('bloqué · ', 'stalled · ') : '🔗 ') + L('attend ', 'waiting on ') + names.slice(0, 2).join(', ') + (names.length > 2 ? ' +' + (names.length - 2) : '') };
+  if (w && w.size) {   // really waiting only while the lead has a sub-agent call pending, or while those agents are still active (background agents never block the lead)
+    const pendingSub = r && /^(Task|Agent)$/.test(r.name), open = [...w].filter((c) => S.status[c] !== 'done' && (pendingSub || !S.live || now - Math.max(S.lastAct[c] || 0, S.orderTs[c] || 0) < 120000));
+    if (open.length) {
+      const names = open.map(nameOf); let stale = S.live && pendingSub; for (const c of open) if (!(now - Math.max(S.lastAct[c] || 0, S.orderTs[c] || 0) > 120000)) stale = false;
+      return { k: stale ? 'stalled' : 'waiting', txt: (stale ? '⚠ ' + L('bloqué · ', 'stalled · ') : '🔗 ') + L('attend ', 'waiting on ') + names.slice(0, 2).join(', ') + (names.length > 2 ? ' +' + (names.length - 2) : '') };
+    }
   }
   return { k: 'working', txt: '⚙ ' + (S.act[id] || L('au travail', 'working')) };
 }
@@ -902,7 +906,7 @@ function updateTitle() {
 setInterval(() => { if (!S.agents || !S.live) return; renderBadges(); updateTitle(); if (document.body.classList.contains('tree')) renderTree(); }, 2000);
 const base = (f) => String(f || '').split('/').pop();
 const fmtDur = (ms) => (ms < 950 ? `${Math.max(1, Math.round(ms))} ms` : ms < 60000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.floor(ms / 60000)} min ${Math.round((ms % 60000) / 1000)} s`);
-const quiet = (e) => e.kind === 'tools' || e.kind === 'results' || e.kind === 'usage';
+const quiet = (e) => e.kind === 'tools' || e.kind === 'results' || e.kind === 'usage' || e.kind === 'finish';
 function activityLabel(t) {   // the short "what is on their screen" tag
   const d = t.d || {}, f = base(d.file || t.arg);
   switch (d.kind) {
@@ -1225,6 +1229,7 @@ async function run(i) {
     S.boost = S.hurry || (S.live && S.events.length - i > 60) ? 3 : 1;
     const ev = S.events[i]; S.idx = i; tally(ev);
     if (ev.kind === 'usage') { i++; continue; }
+    if (ev.kind === 'finish') { applyStatus(ev); paintStatus(); i++; continue; }
     if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.demo ? 900 : S.live ? 30 : 80) / spd()); i++; continue; }
     if (ev.kind === 'tools') { applyStatus(ev); tickTools(ev); AUD.click(); OFFICE.kick(ev.tools[ev.tools.length - 1].name); paintStatus(); await sleep((S.demo ? 1100 : S.live ? 110 : 250) / spd()); i++; continue; }
     const group = [ev]; let j = i + 1;   // sub-agents talking back-to-back were running in parallel: they talk over each other
@@ -1232,6 +1237,7 @@ async function run(i) {
       while (j < Math.min(S.events.length, i + 28) && group.length < 3) {
         const e2 = S.events[j];
         if (e2.kind === 'usage') { tally(e2); j++; continue; }
+        if (e2.kind === 'finish') { applyStatus(e2); j++; continue; }
         if (e2.kind === 'tools') { tally(e2); tickTools(e2); applyStatus(e2); j++; continue; }
         if (e2.kind === 'results') { tally(e2); applyResults(e2, true); j++; continue; }
         if (e2.kind !== 'order' && isSub(e2.agent) && !group.some((g) => g.agent === e2.agent)) { group.push(e2); j++; } else break;
