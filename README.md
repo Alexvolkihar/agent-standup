@@ -67,6 +67,16 @@ The status bar shows live counts for your workspace (needs you, working, your tu
 ## Context gauge, highlights, loop watch
 The header shows how full the lead's context is (`ctx 62%`, orange then red, with a warning before auto-compaction); tiles and list rows show it from 50%. In Replay, the **Highlights** bar jumps to the first error, the longest wait, compactions and possible loops. A 🔁 badge marks an agent repeating the exact same call or failing repeatedly. The context window (200k or 1M) is inferred, because transcripts do not state it.
 
+## Languages
+Pick one in ⚙ → Language: **English, Français, 繁體中文, 简体中文, Español, Deutsch, Português (Brasil), 日本語**. The interface (menus, chips, tooltips, recap) is translated; VS Code's command titles, setting descriptions and status bar follow VS Code's own display language. English and French are written by hand; the other languages are **AI-drafted and not yet reviewed by native speakers**, so corrections are very welcome: each language is one small JSON file (`public/locales/<code>.json`), see [public/locales/README.md](public/locales/README.md) to fix or add one (`npm run i18n` checks the files). The words the agents say stay in the language of your session (French translation of their lines is optional); the little banter lines and the demo exist in English and French.
+
+## Your own characters
+Replace the drawn characters with your own pixel art. Drop PNG (or GIF/WebP) files, 300 KB at most each, into `~/.agent-standup/characters` (⚙ → Characters shows the folder, and in VS Code *Open folder* opens it; the `agentStandup.charactersPath` setting changes it):
+- `lead.png` (or `claude.png`) is the lead, `you.png` is you, any other image becomes a sub-agent (one per agent, repeated if you have fewer images than agents);
+- `name-talk.png` next to `name.png` is an optional open-mouth frame that shows while the character speaks;
+- 32×32 or 64×64 px, transparent background, facing front, feet at the bottom looks best. The art is shown crisp (no smoothing) on top of the usual scene and desk, and every status, hand and badge still works.
+Press **Reload** in the menu to see changes. A starter pack is in [examples/characters](examples/characters).
+
 ## Agents list
 On wide windows (900 px+), a fixed list sits left of the call: every agent with its role and one status line, **most urgent first** (needs you, stalled, working, waiting, done) and the lead pinned on top. It stays readable with dozens of agents, which a grid of tiles does not. Click a name to put that agent in the spotlight (kept for 25 s even when someone else speaks), double-click for details. Toggle it in ⚙ → Agents list.
 
@@ -101,7 +111,7 @@ In VS Code: Extensions view → search **Agent Standup** → Install. Or: https:
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.20.3/agent-standup-1.20.3.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.21.0/agent-standup-1.21.0.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself

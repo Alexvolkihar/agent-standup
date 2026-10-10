@@ -9,7 +9,7 @@
   :root { --bg:#12131a; --panel:#1b1d27; --panel2:#232634; --line:#2a2d3b; --text:#e9eaf0; --dim:#9aa0b6; --ease:cubic-bezier(.2,.8,.2,1); --accent:#7c9cff; --gold:#f5c04a; --ok:#58d68d; --warn:#f0a020; --red:#ff5a5a; --r:10px }
   * { box-sizing:border-box }
   html, body { height:100%; margin:0 }
-  body { background:var(--bg); color:var(--text); font:13.5px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; display:flex; flex-direction:column; overflow:hidden }
+  body { background:var(--bg); color:var(--text); font:13.5px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,"PingFang TC","PingFang SC","Hiragino Sans","Microsoft JhengHei","Microsoft YaHei","Noto Sans CJK TC","Noto Sans CJK SC","Noto Sans CJK JP",sans-serif; display:flex; flex-direction:column; overflow:hidden }
   button, select { font:inherit; color:inherit }
   button { background:none; border:0; cursor:pointer; padding:0 }
   button:focus-visible, select:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px }
@@ -232,7 +232,7 @@
 
 <div id="menu">
   <h4 data-fr="Langue" data-en="Language">Langue</h4>
-  <div class="box"><div class="seg" style="width:100%" id="langSeg"><button data-l="fr" style="flex:1">Français</button><button data-l="en" style="flex:1">English</button></div></div>
+  <div class="box"><select id="langSel" aria-label="Language"></select></div>
   <div class="hint" id="trHint" style="display:none"></div>
   <h4 data-fr="Son" data-en="Sound">Son</h4>
   <button class="mi" data-t="voice"><span data-fr="Voix des agents" data-en="Agent voices">Voix des agents</span><i class="sw"></i></button>
@@ -251,6 +251,8 @@
   <div class="box"><div class="seg" style="width:100%" id="modeSeg"><button data-m="live" style="flex:1">Live</button><button data-m="replay" style="flex:1">Replay</button><button data-m="demo" style="flex:1">Demo</button></div>
     <select id="liveProj" style="display:none;margin-top:6px" title="Project to follow"></select>
     <select id="sessions" style="display:none"></select></div>
+  <h4 data-fr="Personnages" data-en="Characters">Personnages</h4>
+  <div class="box"><div id="charInfo" class="dim" style="font-size:11.5px;line-height:1.5"></div><div style="display:flex;gap:6px;margin-top:6px"><button class="btn" id="charReload" data-fr="Recharger" data-en="Reload">Recharger</button><button class="btn" id="charOpen" style="display:none" data-fr="Ouvrir le dossier" data-en="Open folder">Ouvrir le dossier</button></div></div>
   <h4 data-fr="Outils" data-en="Tools">Outils</h4>
   <button class="mi" id="mCoffee" style="display:none"><span id="mCoffeeT"></span></button>
   <button class="mi" id="mRecap"><span data-fr="📋 Récapitulatif" data-en="📋 Recap">📋 Récapitulatif</span></button>
@@ -299,8 +301,18 @@ try { Object.assign(prefs, JSON.parse(localStorage.getItem('cc.prefs') || '{}'))
 if (prefs.vstyle === 'babble') prefs.vstyle = 'animal', prefs.vstyleChosen = true;
 if (!prefs.vstyleChosen && (prefs.vstyle === 'animal' || prefs.vstyle === 'sims')) prefs.vstyle = 'cartoon';   // the gibberish styles are opt-in: understandable voices by default
 const savePrefs = () => { try { localStorage.setItem('cc.prefs', JSON.stringify(prefs)); } catch {} };
+// Languages: French and English live in the code as pairs L(french, english); every other language is a catalogue public/locales/<code>.json mapping the English text to its translation.
+// A missing string falls back to English, so a half-translated language still works. See public/locales/README.md to add one.
+const LANGS = [['en', 'English', 'en'], ['fr', 'Français', 'fr'], ['zh-TW', '繁體中文', 'zh-Hant-TW'], ['zh-CN', '简体中文', 'zh-Hans-CN'], ['es', 'Español', 'es'], ['de', 'Deutsch', 'de'], ['pt-BR', 'Português (Brasil)', 'pt-BR'], ['ja', '日本語', 'ja']];
+let LOC = {};
 const FR = () => prefs.lang === 'fr';
-const L = (fr, en) => (FR() ? fr : en);
+const tr = (en) => (prefs.lang === 'en' || prefs.lang === 'fr' ? en : LOC[en] || en);
+const L = (fr, en) => (FR() ? fr : tr(en));
+async function loadLocale(code) { LOC = {}; if (code === 'en' || code === 'fr') return; try { const r = await fetch('/locales/' + encodeURIComponent(code) + '.json'); if (r.ok) LOC = await r.json(); } catch {} }
+async function setLang(code, save) {
+  if (!LANGS.some((l) => l[0] === code)) code = 'en'; prefs.lang = code; await loadLocale(code); if (save) { prefs.langChosen = true; savePrefs(); }
+  if (FR()) fetch('/api/warm').catch(() => {}); AUD.stopAll(); synth && synth.cancel(); applyLang(); if (FR()) prefetchTr(S.idx);
+}
 
 // =====================================================================
 //  cast: soft mascots at their desks, in front of illustrated rooms
@@ -315,7 +327,26 @@ function uniqueName(id, h) {
 const PAL = ['#ff7a6b','#ffb347','#ffd84a','#4fd1a5','#4cc3ff','#7c8cff','#b583ff','#ff7eb6'];
 const hexRGB = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const mix = (a, b, t) => { const A = hexRGB(a), B = hexRGB(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
-function persona(a) {
+// ---- custom characters: the person's own pixel art (folder served by /api/characters) replaces the drawn figure, scene and desk stay ----
+let CHARS = { lead: null, you: null, pool: [], dir: '', n: 0 };
+const toData = (url) => fetch(url).then((r) => r.blob()).then((b) => new Promise((res) => { const f = new FileReader(); f.onload = () => res(f.result); f.readAsDataURL(b); }));
+async function loadChars() {
+  const next = { lead: null, you: null, pool: [], dir: '', n: 0 };
+  try {
+    const d = await (await fetch('/api/characters')).json(); next.dir = d.dir || '';
+    for (const c of d.chars || []) { try { const e = { name: c.stem, idle: await toData('/characters/' + encodeURIComponent(c.file)), talk: c.talk ? await toData('/characters/' + encodeURIComponent(c.talk)) : null };
+      if (c.role === 'lead') next.lead = e; else if (c.role === 'you') next.you = e; else next.pool.push(e); next.n++; } catch {} }
+  } catch {}
+  CHARS = next;
+}
+const customFor = (id) => (id === 'main' ? CHARS.lead : id === 'user' ? CHARS.you : CHARS.pool.length ? CHARS.pool[hash(id) % CHARS.pool.length] : null);
+function renderCharInfo() {
+  const el = $('#charInfo'); if (!el) return;
+  el.innerHTML = CHARS.n ? `✓ ${CHARS.n} ${esc(L('personnage(s) personnalisé(s) chargé(s)', 'custom character(s) loaded'))}` : `${esc(L('Déposez vos images (PNG) dans ce dossier pour remplacer les personnages :', 'Drop your pixel art (PNG) in this folder to replace the characters:'))}<br><code style="word-break:break-all">${esc(CHARS.dir)}</code><br>${esc(L('lead.png = le chef · you.png = vous · les autres = les sous-agents · nom-talk.png = bouche ouverte', 'lead.png = the lead · you.png = you · others = the sub-agents · name-talk.png = open mouth'))}`;
+  $('#charOpen').style.display = EMBED ? '' : 'none';
+}
+function persona(a) { const p = persona0(a); p.custom = customFor(a.id); return p; }
+function persona0(a) {
   const h = hash(a.id), base = { ...a };
   if (a.id === 'main') return { ...base, name: 'Claude', role: L('Chef', 'Lead'), shirt: '#e8845f', shape: 0, acc: 1, eye: 0, glasses: false, scene: 6, prop: 1, acc2: '#f5c04a', lead: true, vi: 0, gid: 'main' };
   if (a.id === 'user') return { ...base, name: L('Vous', 'You'), role: L('Humain', 'Human'), shirt: '#8a94c9', shape: 1, acc: 2, eye: 1, glasses: false, scene: 7, prop: 1, acc2: '#ff7a6b', vi: 3, gid: 'user' };
@@ -406,16 +437,19 @@ function avatarSVG(p, o, uid = '') {   // uid keeps SVG ids unique per instance:
   const lap = `<rect x="33" y="46" width="34" height="18" rx="2.8" fill="#d3d8e6"/><rect x="33" y="46" width="34" height="18" rx="2.8" fill="url(#${uid}lg)" opacity=".5"/><circle cx="50" cy="55" r="2.3" fill="${c1}"/><rect x="29.5" y="63.4" width="41" height="3" rx="1.5" fill="#aab1c2"/>`;
   const hands = `<circle class="hand l" cx="38" cy="65.6" r="3.1" fill="${c2}"/><circle class="hand r" cx="62" cy="65.6" r="3.1" fill="${c2}"/>`;
   const sparks = star(22, 28, 3) + star(78, 22, 2.6, '#ff9bb8') + star(70, 40, 1.9, '#9be7ff') + star(30, 46, 1.6, '#ffe58a');
+  const custFig = (c, talking) => { const base = 'x="20" y="6" width="60" height="58" preserveAspectRatio="xMidYMax meet"', px = 'image-rendering:pixelated;';
+    return `<image class="cimg" href="${c.idle}" ${base} style="${px}${talking && c.talk ? 'display:none' : ''}"/>` + (c.talk ? `<image class="cimg cimg-talk" href="${c.talk}" ${base} style="${px}${talking ? '' : 'display:none'}"/>` : ''); };
+  const fig = p.custom ? custFig(p.custom, st && o.m > 0) : `${arm('l')}${bodyShape(p.shape, `url(#${gid})`, c2)}${arm('r')}${face}${acc}`;
   return `<svg viewBox="0 0 100 75" preserveAspectRatio="xMidYMid slice"${st ? ' xmlns="http://www.w3.org/2000/svg" width="400" height="300"' : ''}>
     <defs><linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="0" y1="12" x2="0" y2="72"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c}"/></linearGradient>
       <linearGradient id="${uid}dk${p.scene}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sc.desk[0]}"/><stop offset="1" stop-color="${sc.desk[1]}"/></linearGradient>
       <linearGradient id="${uid}lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
     ${sc.svg().replace(/id="(g[a-z]\d)"/g, `id="${uid}$1"`).replace(/url\(#(g[a-z]\d)\)/g, `url(#${uid}$1)`)}
     <g class="fig" style="--d:${d0}s">
-      ${arm('l')}${bodyShape(p.shape, `url(#${gid})`, c2)}${arm('r')}${face}${acc}
+      ${fig}
     </g>
     <rect y="62" width="100" height="13" fill="url(#${uid}dk${p.scene})"/><rect y="62" width="100" height="1.3" fill="#fff" opacity=".38"/><rect y="63.3" width="100" height="2.6" fill="#000" opacity=".1"/>
-    ${prop}${V('laptop', working, lap)}${V('hands', working, hands)}${V('sparks', done, `<g class="sparks">${sparks}</g>`)}
+    ${prop}${p.custom ? '' : V('laptop', working, lap) + V('hands', working, hands)}${V('sparks', done, `<g class="sparks">${sparks}</g>`)}
   </svg>`;
 }
 
@@ -589,7 +623,7 @@ const OFFICE = {
   },
   start() { if (!this.timer) this.timer = setInterval(() => this.tick(), 60); },
 };
-const L10 = (fr, en) => (prefs.lang === 'fr' ? fr : en);
+const L10 = (fr, en) => L(fr, en);
 const STATIONS = [['fip', 'FIP', 'fip'], ['groove', 'FIP Groove', 'fipgroove'], ['jazz', 'FIP Jazz', 'fipjazz'], ['electro', 'FIP Electro', 'fipelectro'], ['reggae', 'FIP Reggae', 'fipreggae'], ['rock', 'FIP Rock', 'fiprock'], ['new', 'FIP Nouveautés', 'fipnouveautes'], ['pop', 'FIP Pop', 'fippop']]
   .map(([id, name, slug]) => ({ id, name, url: `https://icecast.radiofrance.fr/${slug}-midfi.mp3` }));
 const RADIO = {   // live web radio through WebAudio (so it can be faded when agents talk)
@@ -1088,7 +1122,7 @@ function poof(tile, color) {
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; const c = $('#toasts'); c.appendChild(t); while (c.children.length > 3) c.firstChild.remove(); setTimeout(() => t.remove(), 3100); }
 const BYE = { en: ['Bye, everyone!', 'Off I go. 👋', 'Thanks, see you!', 'My work here is done.', 'Catch you later!', 'Logging off, bye!', 'That’s a wrap!', 'Good luck with the rest!', 'Mic drop. 🎤', 'Leaving the call… ☕'],
   fr: ['Salut tout le monde !', 'Je file. 👋', 'Merci, à plus !', 'Ma mission est terminée.', 'À tout à l’heure !', 'Je me déconnecte, ciao !', 'C’est dans la boîte !', 'Bon courage pour la suite !', 'Mic drop. 🎤', 'Je quitte l’appel… ☕'] };
-function byeLine(id) { const P = BYE[prefs.lang] || BYE.en, seed = hash(id + String(S.clock | 0)); let l = P[seed % P.length]; if (l === S.lastBye) l = P[(seed + 1) % P.length]; return (S.lastBye = l); }
+function byeLine(id) { const P = BYE[FR() ? 'fr' : 'en'], seed = hash(id + String(S.clock | 0)); let l = P[seed % P.length]; if (l === S.lastBye) l = P[(seed + 1) % P.length]; return (S.lastBye = l); }
 function vanish(id) {
   S.gone.add(id); const t = $('#t-' + id), p = S.agents[id]; if (!t || !p) return;
   toast(`${p.name} ${L('a quitté l’appel', 'left the call')} 👋`);
@@ -1113,6 +1147,7 @@ function startTalk(id, text, label) {
   if (S.present === id) { $('#pcap').textContent = text; $('#pcam').classList.add('speaking'); }
   const m = t.querySelector('.mouthE'); let open = false; clearInterval(mouths.get(id));
   mouths.set(id, setInterval(() => {
+    if (!m) { const ct = t.querySelector('.cimg-talk'); if (ct) { const lv0 = S.level[id], op = lv0 ? lv0() > 0.05 : (open = !open); ct.style.display = op ? '' : 'none'; t.querySelector('.cimg').style.display = op ? 'none' : ''; } return; }   // custom character: swap between its two frames
     const pm = S.present === id ? $('#pcam .mouthE') : null, lv = S.level[id]; if (lv) { const v = lv(); const ry = (.9 + Math.min(4.2, v * 28)).toFixed(1), rx = (4.8 - Math.min(1.1, v * 6)).toFixed(1); m.setAttribute('ry', ry); m.setAttribute('rx', rx); if (pm) { pm.setAttribute('ry', ry); pm.setAttribute('rx', rx); } }
     else { open = !open; m.setAttribute('ry', open ? 4.2 : 1.1); m.setAttribute('rx', open ? 4 : 4.7); if (pm) { pm.setAttribute('ry', open ? 4.2 : 1.1); pm.setAttribute('rx', open ? 4 : 4.7); } }
   }, 70));
@@ -1134,6 +1169,7 @@ function stopTalk(id) {
   if (S.present === id) { $('#pcap').textContent = ''; $('#pcam').classList.remove('speaking'); const pm = $('#pcam .mouthE'); if (pm) { pm.setAttribute('ry', .9); pm.setAttribute('rx', 4.6); } }
   const t = $('#t-' + id); if (!t) return;
   t.classList.remove('speaking'); const m = t.querySelector('.mouthE'); if (m) { m.setAttribute('ry', .9); m.setAttribute('rx', 4.6); }
+  const ct = t.querySelector('.cimg-talk'); if (ct) { ct.style.display = 'none'; t.querySelector('.cimg').style.display = ''; }
 }
 const clearSpeaking = () => [...S.speakers].forEach(stopTalk);
 
@@ -1278,7 +1314,7 @@ function prefetchQuips(i) {
   if (!prefs.epi) return; const texts = [];
   for (let k = i; k < Math.min(S.events.length, i + 60) && texts.length < 6; k++) if (S.events[k].kind === 'report') texts.push(baseText(S.events[k], 160));
   const need = texts.filter((t) => !quipMem.has(t)); if (!need.length) return; need.forEach((t) => quipMem.set(t, null));
-  fetch('/api/quips', { method: 'POST', body: JSON.stringify({ texts: need, lang: prefs.lang }) }).then((r) => r.json()).then((d) => (d.texts || []).forEach((q, i) => d.ok && q && q !== need[i] && quipMem.set(need[i], q))).catch(() => {});
+  fetch('/api/quips', { method: 'POST', body: JSON.stringify({ texts: need, lang: FR() ? 'fr' : 'en' }) }).then((r) => r.json()).then((d) => (d.texts || []).forEach((q, i) => d.ok && q && q !== need[i] && quipMem.set(need[i], q))).catch(() => {});
 }
 
 // Little lines that make the call feel alive. They never appear in the transcript and never replace real content: they are short, local (no API) and can be turned off in ⚙.
@@ -1293,12 +1329,12 @@ const ACK = {
 const ACK_RE = [['tests', /test|qa\b|spec|jest|vitest|coverage/], ['review', /review|audit|check|inspect|lint|critique/], ['explore', /explor|search|research|find|investigat|look|map|scan/], ['fix', /fix|bug|debug|error|crash|broken/], ['docs', /\bdoc|readme|write|changelog|spec/], ['ui', /\bui\b|design|css|style|layout|front|page|component/], ['cleanup', /refactor|clean|tidy|dead code/], ['perf', /perf|speed|slow|optimi|latenc|profil/]];
 function ackLine(ev) {
   // classify on role and title only: the prompt text is too noisy
-  const R = ACK[prefs.lang] || ACK.en, text = `${ev.title || ''} ${(S.agents[ev.to] || {}).role || ''}`.toLowerCase(), cat = (ACK_RE.find(([, re]) => re.test(text)) || [])[0];
+  const R = ACK[FR() ? 'fr' : 'en'], text = `${ev.title || ''} ${(S.agents[ev.to] || {}).role || ''}`.toLowerCase(), cat = (ACK_RE.find(([, re]) => re.test(text)) || [])[0];
   const pool = cat && hash(String(ev.ts)) % 4 ? R[cat] : R.any, seed = hash(String(ev.ts) + ev.to); let line = pool[seed % pool.length];
   if (line === S.lastAck) line = pool[(seed + 1) % pool.length]; S.lastAck = line; return line;
 }
 async function react(ev, token) {
-  if ((!prefs.epi && !prefs.banter) || S.boost > 1 || S.hurry) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[prefs.lang]; let who, line;
+  if ((!prefs.epi && !prefs.banter) || S.boost > 1 || S.hurry) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[FR() ? 'fr' : 'en']; let who, line;
   if (ev.kind === 'order') { if (!prefs.banter && seed % 100 > 55) return; who = ev.to; line = prefs.banter ? ackLine(ev) : R.ack[seed % R.ack.length]; }
   else if (ev.kind === 'report') { if (!prefs.epi && seed % 100 > 35) return; if (seed % 100 > 60) return; const others = Object.keys(S.status).concat(['main']).filter((x) => x !== ev.agent && S.agents[x] && !S.gone.has(x)); who = others[(seed >>> 3) % others.length]; line = quipMem.get(baseText(ev, 160)) || R.done[seed % R.done.length]; }
   else return;
@@ -1564,9 +1600,10 @@ async function exportVideo(from = 0, to = 0) {
 //  UI wiring
 // =====================================================================
 function applyLang() {
-  document.documentElement.lang = prefs.lang;
-  document.querySelectorAll('[data-fr]').forEach((el) => (el.textContent = FR() ? el.dataset.fr : el.dataset.en));
-  document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.l === prefs.lang));
+  renderCharInfo();
+  document.documentElement.lang = (LANGS.find((l) => l[0] === prefs.lang) || LANGS[0])[2];
+  document.querySelectorAll('[data-fr]').forEach((el) => (el.textContent = FR() ? el.dataset.fr : tr(el.dataset.en)));
+  const sel = $('#langSel'); if (!sel.options.length) sel.innerHTML = LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join(''); sel.value = prefs.lang;
   [['#bPlay', L('Pause / Lecture (espace)', 'Pause / Play (space)')], ['#bLog', 'Transcript'], ['#bMute', L('Son (touche M)', 'Sound (M key)')], ['#bMenu', L('Réglages', 'Settings')], ['#dclose', L('Fermer', 'Close')], ['#officeVol', L('Volume de l’ambiance', 'Ambience volume')], ['#musicVol', L('Volume de la musique', 'Music volume')], ['#liveProj', L('Projet à suivre', 'Project to follow')], ['#reactBar', L('Réactions', 'Reactions')], ['#logQ', L('Rechercher dans la transcription', 'Search the transcript')], ['#roster', L('Agents', 'Agents')]].forEach(([q, t]) => { const el = $(q); if (!el) return; el.title = t; el.setAttribute('aria-label', t); }); $('#logQ').placeholder = L('Rechercher…', 'Search…'); document.querySelectorAll('#reactBar button').forEach((b) => b.setAttribute('aria-label', b.dataset.e));
   $('#gT').textContent = L('Rejoindre l’appel', 'Join the call'); $('#gP').textContent = L('Cliquez pour activer le son et suivre votre session Claude Code en direct.', 'Click to enable sound and follow your Claude Code session live.'); $('#gB').textContent = L('▶ Rejoindre', '▶ Join');
   $('#eDemo').textContent = L('▶ Voir la démo', '▶ Watch the demo'); $('#eT').textContent = L('En attente d’une session', 'Waiting for a session'); $('#eP').textContent = L('Lancez Claude Code dans ce dossier : l’appel démarrera tout seul.', 'Start Claude Code in this folder — the call will start by itself.');
@@ -1591,7 +1628,9 @@ function toggleMute() { if (elsewhere()) { AUD.muted = false; claimAudio(); retu
 function setView(v) { prefs.view = v; savePrefs(); document.body.classList.toggle('tree', v === 'tree'); document.body.classList.toggle('board', v === 'board'); if (v === 'board') renderBoardView(); document.querySelectorAll('#viewSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); renderTree(); }
 
 $('#viewSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); };
-$('#langSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; prefs.lang = b.dataset.l; prefs.langChosen = true; savePrefs(); if (FR()) fetch('/api/warm').catch(() => {}); AUD.stopAll(); synth && synth.cancel(); applyLang(); if (FR()) prefetchTr(S.idx); };
+$('#langSel').onchange = () => setLang($('#langSel').value, true);
+$('#charReload').onclick = async () => { await loadChars(); for (const id in S.agents) S.agents[id].custom = customFor(id); buildStage(); paintStatus(); renderCharInfo(); };
+$('#charOpen').onclick = () => window.parent.postMessage({ agentStandup: 'openCharacters' }, '*');
 $('#modeSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m); };
 $('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
   if (b.dataset.t === 'music') { $('#musicBox').style.display = prefs.music ? '' : 'none'; if (prefs.music) { AUD.init(); AUD.apply(); } } };
@@ -1625,13 +1664,14 @@ addEventListener('keydown', (e) => {
 if (EMBED) $('#mBrowser').style.display = '';
 
 (async function init() {
+  if (!LANGS.some((l) => l[0] === prefs.lang)) prefs.lang = 'en'; await loadLocale(prefs.lang); await loadChars();
   document.body.classList.toggle('rost', prefs.roster !== false); document.body.classList.toggle('react', !!prefs.reactions); setView(prefs.view); applyLang(); applyMute(); TTS.init().then(updateHint);
   loadHealth().then(() => {   // French by default only if translation can actually work; otherwise stay in English without a warning
     const h = S.health || {};
     if (!prefs.langChosen && FR() && h.claude === null && !h.apiKey) { prefs.lang = 'en'; applyLang(); }
     if (FR()) fetch('/api/warm').catch(() => {});
   });
-  if (Q.get('lang')) { prefs.lang = Q.get('lang') === 'fr' ? 'fr' : 'en'; applyLang(); }   // not saved: lets a link force a language
+  if (Q.get('lang')) { await setLang(Q.get('lang'), false); }   // not saved: lets a link force a language
   if (Q.get('demo')) {
     if (Q.get('view') === 'tree') setView('tree');
     await setMode('demo'); if (Q.get('speed')) $('#speed').value = Q.get('speed');

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.21.0
+- **Languages**: English, Français, 繁體中文, 简体中文, Español, Deutsch, Português (Brasil), 日本語, chosen in ⚙ → Language and remembered. Translations are plain JSON catalogues (`public/locales/`), with fallback to English for anything missing, a checker (`npm run i18n`) and a contributor guide. The VS Code manifest (command titles, setting descriptions) and the status bar texts are localised with VS Code's own `package.nls` / `l10n` mechanism. Non-English and non-French catalogues are AI drafts awaiting native review.
+- **Your own characters**: drop your pixel art (PNG/GIF/WebP) in `~/.agent-standup/characters` — `lead.png`, `you.png`, any other image for the sub-agents, `name-talk.png` for an open-mouth frame — and it replaces the drawn figures, crisp and animated (bob, talking frame), with all states still shown. New command "Open characters folder", setting `agentStandup.charactersPath`, and a starter pack in `examples/characters`.
+
 ## 1.20.3
 - Fix: the raised-hand animation of an agent that may need you shared its name with the talking arm animation, so one overrode the other; each now has its own.
 

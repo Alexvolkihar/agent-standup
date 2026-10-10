@@ -450,7 +450,20 @@ function tts(text, voice, rate) {
   ttsJobs.set(key, job); return job;
 }
 
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8' };
+
+// ---- Custom characters: the person's own pixel art replaces the drawn characters. Plain image files in one folder, nothing else is ever served from it.
+//   lead.png / claude.png → the lead · you.png → the human · any other image → a pool for the sub-agents · name-talk.png → optional open-mouth frame of name.png
+const CHAR_NAME = /^[\w][\w .()\-]{0,78}\.(png|gif|webp|jpe?g)$/i, CHAR_MAX = 300 * 1024, CHAR_TYPES = { png: 'image/png', gif: 'image/gif', webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
+const charactersDir = () => process.env.AGENT_STANDUP_CHARACTERS || path.join(os.homedir(), '.agent-standup', 'characters');
+function listCharacters() {
+  const dir = charactersDir(); let names = []; try { names = fs.readdirSync(dir); } catch {}
+  const ok = names.filter((f) => CHAR_NAME.test(f)).filter((f) => { try { const st = fs.statSync(path.join(dir, f)); return st.isFile() && st.size <= CHAR_MAX; } catch { return false; } }).slice(0, 80);
+  const stem = (f) => f.replace(/\.[^.]+$/, ''), by = new Map(ok.map((f) => [stem(f).toLowerCase(), f]));
+  const chars = ok.filter((f) => !/-talk$/i.test(stem(f))).map((f) => { const st = stem(f), l = st.toLowerCase();
+    return { stem: st, file: f, talk: by.get(l + '-talk') || null, role: /^(lead|claude)$/.test(l) ? 'lead' : /^(you|human|user)$/.test(l) ? 'you' : 'agent' }; }).sort((a, b) => a.stem.localeCompare(b.stem));
+  return { dir, max: CHAR_MAX, chars };
+}
 let audioOwner = { id: null, seen: 0 };
 function start(port = PORT) {
   return http.createServer((req, res) => {
@@ -491,6 +504,7 @@ function start(port = PORT) {
     }
     if (url.pathname === '/api/current') return json(currentSession(url.searchParams.get('proj') || '', url.searchParams.get('id') || ''));
     if (url.pathname === '/api/board') return json(boardRows());
+    if (url.pathname === '/api/characters') return json(listCharacters());
     if (url.pathname === '/api/session') {
       const proj = url.searchParams.get('proj') || '', sid = url.searchParams.get('id') || '', SAFE = /^[\w.\-]+$/;
       if (!SAFE.test(proj) || !SAFE.test(sid) || proj === '..' || sid === '..' || proj.length > 200 || sid.length > 200) { res.writeHead(400); return res.end('bad request'); }
@@ -506,6 +520,12 @@ function start(port = PORT) {
       }
       return json({ id: tl.id, agents: tl.agents, total: tl.events.length, events: tl.events.slice(+after) });
     }
+    if (url.pathname.startsWith('/characters/')) {   // only plain image files of the characters folder, by exact name
+      let f = ''; try { f = decodeURIComponent(url.pathname.slice('/characters/'.length)); } catch {}
+      const dir = charactersDir(), fp = path.join(dir, f);
+      try { if (!CHAR_NAME.test(f) || !fp.startsWith(dir + path.sep) || fs.statSync(fp).size > CHAR_MAX) throw 0; } catch { res.writeHead(404); return res.end('not found'); }
+      res.writeHead(200, { 'content-type': CHAR_TYPES[f.split('.').pop().toLowerCase()] || 'application/octet-stream', 'cache-control': 'no-cache' }); return fs.createReadStream(fp).pipe(res);
+    }
     const file = path.join(PUBLIC, url.pathname === '/' ? 'index.html' : url.pathname);
     if (!file.startsWith(PUBLIC) || !fs.existsSync(file)) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
@@ -513,7 +533,7 @@ function start(port = PORT) {
   } catch (e) { json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', () => console.log(`Agent Standup → http://localhost:${port}`));
 }
-module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows };
+module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, charactersDir, listCharacters };
 if (require.main === module) {
   start().on('error', (e) => {
     console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use (maybe Agent Standup is already running, e.g. inside VS Code). Try: PORT=4790 node server.js` : String(e));
