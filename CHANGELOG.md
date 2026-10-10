@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.19.2
+- Fix: the header could overflow the window when several status pills were shown. The pills now collapse to icon + number on windows narrower than 1180 px (full label on hover), and the call timer hides there.
+
 ## 1.19.1
 Fixes from a code review (two read-only sub-agents, each finding checked before applying):
 - Live: "needs you?" and the slow badge only trust wall-clock ages when playback has caught up with the live end (no false alerts while voices are queued).

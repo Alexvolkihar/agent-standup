@@ -135,8 +135,9 @@
   .status.working { color:var(--gold) } .status.done { color:var(--ok) }
   .status.waiting { color:#8fd3ff } .status.blocked { color:#fff; background:#c0392b; font-weight:700 } .status.stalled { color:#1b1d27; background:#ffb347; font-weight:700 }
   .tile.waiting { border-color:rgba(110,190,255,.85) } .tile.blocked { border-color:#ff5252 !important; animation:slowp 1.2s ease-in-out infinite } .tile.stalled { border-color:#ffb347 !important }
-  .board { display:flex; gap:6px; font-size:11.5px; flex-wrap:wrap } .board span { padding:2px 8px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); white-space:nowrap }
+  .board { display:flex; gap:6px; font-size:11.5px; flex-wrap:nowrap; min-width:0; overflow:hidden } .board em { font-style:normal } .board span { flex:none; padding:2px 8px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); white-space:nowrap }
   .board .working { color:var(--gold) } .board .waiting { color:#8fd3ff } .board .blocked { color:#fff; background:#c0392b; border-color:#c0392b } .board .stalled { color:#1b1d27; background:#ffb347; border-color:#ffb347 } .board .done { color:var(--ok) }
+  @media (max-width:1180px) { .board em { display:none } .meet { display:none } }
   @media (max-width:640px) { .board { display:none } }
   .bubble { display:none; position:absolute; top:6px; left:6px; right:62px; background:#fff; color:#1b1d27; border-radius:11px; padding:6px 10px; font-size:12.5px; line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,.35); max-height:58%; overflow:hidden }
   .tile.bye .bubble { display:block; font-size:13.5px; animation:fadein .25s } .tile.speaking .bubble { display:block; font-size:14.5px; max-height:50% } .bubble small { display:block; color:#6a6f85; font-size:10.5px }
@@ -868,7 +869,7 @@ function paintStates() {
     S.prevState[p.id] = st.k; const tip = `${p.name} — ${p.role}${st.txt ? '\n' + st.txt : ''}${S.lastTool[p.id] ? '\n' + S.lastTool[p.id] : ''}`; if (t.title !== tip) t.title = tip;
   }
   const b = $('#board'), parts = [['working', '⚙', L('au travail', 'working')], ['waiting', '🔗', L('en attente', 'waiting')], ['blocked', '✋', L('vous attendent', 'need you')], ['stalled', '⚠', L('bloqués', 'stalled')], ['done', '✓', L('terminés', 'done')]]
-    .filter(([k]) => n[k]).map(([k, i, l]) => `<span class="${k}">${i} ${n[k]} ${l}</span>`).join('');
+    .filter(([k]) => n[k]).map(([k, i, l]) => `<span class="${k}" title="${n[k]} ${l}">${i} ${n[k]}<em> ${l}</em></span>`).join('');
   if (b.innerHTML !== parts) b.innerHTML = parts; S.nBlocked = n.blocked + n.stalled; paintRoster(ros); return n;
 }
 const RORDER = { blocked: 0, stalled: 1, working: 2, waiting: 3, idle: 4, done: 5 };
