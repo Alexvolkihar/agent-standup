@@ -1,4 +1,4 @@
-// Records the short launch video (about 35 s, silent, captioned) from the built-in fictional demo.
+// Records the short launch video (about 45 s, captioned, with original synthesised music) from the built-in fictional demo.
 //   npm i --no-save puppeteer-core     (and have Chrome + ffmpeg installed)
 //   CAPTURE_LANG=fr node scripts/capture-promo.js     → docs/media/promo-fr.mp4   (default: en → promo.mp4)
 // Nothing here reads your real sessions: the Sessions board is fed with made-up rows through a request interception.
@@ -73,7 +73,9 @@ const BOARD = [
   const font = '/System/Library/Fonts/Helvetica.ttc', filters = cap.map(([a, b, text]) =>
     `drawtext=fontfile=${font}:text='${text}':fontsize=${text.length > 52 ? 30 : 36}:fontcolor=white:box=1:boxcolor=0x000000B8:boxborderw=16:x=(w-text_w)/2:y=h-86:enable='between(t,${(marks[a] + 0.3).toFixed(1)},${(b ? marks[b] - 0.2 : vdur).toFixed(1)})'`).join(',');
   const script = path.join(os.tmpdir(), 'promo-filter' + SUF + '.txt'); fs.writeFileSync(script, `[0:v]${filters}[out]`);
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', plain, '-filter_complex_script', script, '-map', '[out]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '23', '-movflags', '+faststart', '-an', path.join(out, 'promo' + SUF + '.mp4')]);
+  const wav = require('./promo-music.js')(path.join(os.tmpdir(), 'promo-music' + SUF + '.wav'), vdur + 0.4, [marks.status, marks.ctx, marks.board, marks.replay, marks.end].map((x) => x + 0.1));   // original music, a soft chime at each scene change
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', plain, '-i', wav, '-filter_complex_script', script, '-map', '[out]', '-map', '1:a', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '23', '-c:a', 'aac', '-b:a', '160k', '-ar', '44100',
+    '-af', `loudnorm=I=-16:TP=-1.5:LRA=9,afade=t=out:st=${(vdur - 2.5).toFixed(1)}:d=2.5`, '-shortest', '-movflags', '+faststart', path.join(out, 'promo' + SUF + '.mp4')]);
   console.log('video promo' + SUF + '.mp4', vdur.toFixed(1) + 's', JSON.stringify(marks));
   process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });
