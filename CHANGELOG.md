@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.18.1
+- Fix: sub-agents looked finished the moment they were launched (since 1.17.3). Recent Claude Code answers an Agent/Task call with "Async agent launched" immediately, which is not a completion. Completion now comes from Claude Code's task-notification record (background agents) or from a real synchronous answer; a sub-agent's last sentence is only treated as its final report once it is finished (or silent for 90 s).
+- Measured on real sessions: the average number of agents shown as working went from 0.0 back to 0.8 / 2.3 on two multi-agent sessions.
+
 ## 1.18.0
 - **Optional usage counter** (`agentStandup.shareUsage`, off by default, ignored when VS Code telemetry is off): at most one empty request per day to a 1-pixel file on GitHub, so active installs can be counted without any server or identifier. Documented in the README.
 - `npm run stats` (maintainers): landing visits per source, release downloads, opt-in active installs, with the change since the last run.

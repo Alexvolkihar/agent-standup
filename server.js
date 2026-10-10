@@ -193,9 +193,14 @@ function readNew(file, agent) {
 }
 function parseRecord(st, r) {
   const agent = st.agent, ts = Date.parse(r.timestamp) || 0;
+  if (r.type === 'queue-operation' && typeof r.content === 'string' && r.content.includes('<task-notification>')) {   // how Claude Code reports that a background sub-agent has stopped
+    const id = (r.content.match(/<tool-use-id>([^<]+)<\/tool-use-id>/) || [])[1], status = (r.content.match(/<status>([^<]+)<\/status>/) || [])[1];
+    if (id && status && status !== 'running') st.raw.push({ ts, agent, kind: 'agentdone', toolId: id });
+    return;
+  }
   if (r.type === 'user') {
     const items = [];   // tool results: the real output that appeared on the agent's screen
-    for (const b of blocks(r)) if (b.type === 'tool_result' && (st.toolName[b.tool_use_id] === 'Agent' || st.toolName[b.tool_use_id] === 'Task') && !(st.bg && st.bg[b.tool_use_id])) st.raw.push({ ts, agent, kind: 'agentdone', toolId: b.tool_use_id });   // the lead got the sub-agent's answer back: it has finished
+    for (const b of blocks(r)) if (b.type === 'tool_result' && (st.toolName[b.tool_use_id] === 'Agent' || st.toolName[b.tool_use_id] === 'Task') && !(st.bg && st.bg[b.tool_use_id]) && !/^\s*Async agent launched/i.test(resultText(b.content))) st.raw.push({ ts, agent, kind: 'agentdone', toolId: b.tool_use_id });   // a synchronous call: the lead got the sub-agent's answer back, so it has finished (async launches answer immediately and are not a completion)
     for (const b of blocks(r)) if (b.type === 'tool_result' && st.toolName[b.tool_use_id] && !NO_RESULT.has(st.toolName[b.tool_use_id])) {
       const n = st.toolName[b.tool_use_id];
       items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || 600) });
@@ -235,19 +240,22 @@ function buildTimeline(proj, id) {
     for (const f of fs.readdirSync(subDir).filter((x) => x.endsWith('.jsonl'))) {
       const aid = f.replace(/^agent-/, '').replace(/\.jsonl$/, ''), m = readMeta(path.join(subDir, f.replace(/\.jsonl$/, '.meta.json')));
       agents[aid] = { id: aid, role: m.description || m.agentType || 'Agent', type: m.agentType || 'agent', toolUseId: m.toolUseId };
+      try { agents[aid].mtime = fs.statSync(path.join(subDir, f)).mtimeMs; } catch {}
       const st = readNew(path.join(subDir, f), aid); if (st) states.push(st);
     }
   }
   const childByTool = {};   // Agent tool_use id → the sub-agent it created, so we know who ordered whom
   for (const a of Object.values(agents)) if (a.toolUseId) childByTool[a.toolUseId] = a.id;
 
-  const events = [], parent = {};
+  const finished = new Set(), now0 = Date.now(); for (const st of states) if (st) for (const e of st.raw) if (e.kind === 'agentdone' && childByTool[e.toolId]) finished.add(childByTool[e.toolId]);
+  for (const a of Object.values(agents)) if (a.id !== 'main' && now0 - (a.mtime || 0) > 90000) finished.add(a.id);   // old transcripts without a completion record: silent for 90 s counts as finished
+  const events = [], parent = {}, doneSeen = new Set();
   for (const st of states) {
     if (!st) continue;
     let lastSay = -1;   // the last thing a sub-agent says is its report back to the lead
-    if (st.agent !== 'main') for (let i = st.raw.length - 1; i >= 0; i--) if (st.raw[i].kind === 'say') { lastSay = i; break; }
+    if (st.agent !== 'main' && finished.has(st.agent)) for (let i = st.raw.length - 1; i >= 0; i--) if (st.raw[i].kind === 'say') { lastSay = i; break; }
     st.raw.forEach((e, i) => {
-      if (e.kind === 'agentdone') { const to = childByTool[e.toolId]; if (to) events.push({ ts: e.ts, agent: to, kind: 'finish', to: e.agent }); }
+      if (e.kind === 'agentdone') { const to = childByTool[e.toolId]; if (to && !doneSeen.has(to)) { doneSeen.add(to); events.push({ ts: e.ts, agent: to, kind: 'finish', to: e.agent }); } }
       else if (e.kind === 'agentcall') { const to = childByTool[e.toolId]; if (to) { parent[to] = e.agent; events.push({ ts: e.ts, agent: e.agent, to, kind: 'order', text: e.text, title: e.title }); } }
       else if (i === lastSay) events.push({ ...e, kind: 'report', to: null });   // `to` filled below, once every order is known
       else events.push(e);
