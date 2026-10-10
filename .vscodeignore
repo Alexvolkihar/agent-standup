@@ -6,3 +6,10 @@ scripts/**
 .github/**
 
 examples/**
+
+bin/**
+desktop/**
+dist-cli/**
+dist-desktop/**
+dist-release/**
+ROADMAP.md

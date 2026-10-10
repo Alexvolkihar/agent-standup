@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.22.0
+- **`agent-standup` command line** (npm package `@doublegeste/agent-standup`, also attached to the release as a `.tgz`): `agent-standup --open` starts the local server and opens the call without any editor; `agent-standup status [--here] [--json]` prints what is going on; `agent-standup statusline` is a one-line indicator for the Claude Code status line, tmux and Neovim.
+- **Desktop app for macOS** (Apple Silicon and Intel, unsigned): its own window plus a menu bar indicator (`⚙2 ✋1`) and a notification when an agent may need you. Built with Electron from the same server; Windows/Linux builds are set up in CI (experimental).
+- **Publishing automation**: `.github/workflows/publish.yml` publishes tagged releases to the VS Code Marketplace, Open VSX (Cursor, Windsurf, VSCodium…) and npm when the corresponding tokens are set; `ci.yml` checks syntax, translations and the CLI package on every push.
+- `ROADMAP.md`: what works where, plus research notes on other agent tools and on Rive.
+
 ## 1.21.0
 - **Languages**: English, Français, 繁體中文, 简体中文, Español, Deutsch, Português (Brasil), 日本語, chosen in ⚙ → Language and remembered. Translations are plain JSON catalogues (`public/locales/`), with fallback to English for anything missing, a checker (`npm run i18n`) and a contributor guide. The VS Code manifest (command titles, setting descriptions) and the status bar texts are localised with VS Code's own `package.nls` / `l10n` mechanism. Non-English and non-French catalogues are AI drafts awaiting native review.
 - **Your own characters**: drop your pixel art (PNG/GIF/WebP) in `~/.agent-standup/characters` — `lead.png`, `you.png`, any other image for the sub-agents, `name-talk.png` for an open-mouth frame — and it replaces the drawn figures, crisp and animated (bob, talking frame), with all states still shown. New command "Open characters folder", setting `agentStandup.charactersPath`, and a starter pack in `examples/characters`.

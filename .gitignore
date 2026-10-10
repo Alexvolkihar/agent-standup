@@ -4,3 +4,9 @@ node_modules/
 
 # social media exports (not part of the site)
 docs/media/story*.mp4
+
+dist-cli/
+dist-desktop/
+desktop/node_modules/
+desktop/core/
+dist-release/

@@ -67,6 +67,20 @@ The status bar shows live counts for your workspace (needs you, working, your tu
 ## Context gauge, highlights, loop watch
 The header shows how full the lead's context is (`ctx 62%`, orange then red, with a warning before auto-compaction); tiles and list rows show it from 50%. In Replay, the **Highlights** bar jumps to the first error, the longest wait, compactions and possible loops. A 🔁 badge marks an agent repeating the exact same call or failing repeatedly. The context window (200k or 1M) is inferred, because transcripts do not state it.
 
+## Works with your tools
+| Where | How |
+|---|---|
+| **VS Code** | Install **Agent Standup** from the Extensions view (Marketplace). |
+| **Cursor, Windsurf, VSCodium…** | Download `agent-standup-<version>.vsix` from the [latest release](https://github.com/Atoll92/agent-standup/releases/latest) and use *Extensions → … → Install from VSIX*. |
+| **Any terminal, no editor** | `npx @doublegeste/agent-standup --open` (Node 18+). Until the package is on npm: `npx https://github.com/Atoll92/agent-standup/releases/latest/download/doublegeste-agent-standup-1.22.0.tgz --open`. |
+| **A small desktop app (macOS)** | Download `Agent-Standup-<version>-mac-apple-silicon.zip` (or `-mac-intel.zip`) from the release, unzip, move *Agent Standup* to Applications. The app is **not signed with an Apple developer ID**, so the first time: right-click the app → *Open* → *Open* (or run `xattr -dr com.apple.quarantine "/Applications/Agent Standup.app"`). It has a window and an indicator in the menu bar, and notifies you when an agent may need you. |
+| **Claude Code status line** | `npm i -g @doublegeste/agent-standup`, then in `~/.claude/settings.json`: `{ "statusLine": { "type": "command", "command": "agent-standup statusline" } }` → shows `⚙2 ✋1` under your prompt. |
+| **tmux** *(not tested here)* | `set -g status-right '#(agent-standup status --here)'` |
+| **Neovim** *(not tested here)* | call `vim.fn.system('agent-standup status --here')` from a timer and show the result in your statusline plugin; `agent-standup status --json` gives machine-readable output. |
+| **JetBrains IDEs** *(not native yet)* | *Settings → Tools → External Tools → +*: program `npx`, arguments `-y @doublegeste/agent-standup --open`, working directory `$ProjectFileDir$`. |
+
+Other agent tools than Claude Code (Codex CLI, Gemini CLI, OpenCode…) are researched in [ROADMAP.md](ROADMAP.md): their log formats are mostly undocumented, so no adapter is shipped yet.
+
 ## Languages
 Pick one in ⚙ → Language: **English, Français, 繁體中文, 简体中文, Español, Deutsch, Português (Brasil), 日本語**. The interface (menus, chips, tooltips, recap) is translated; VS Code's command titles, setting descriptions and status bar follow VS Code's own display language. English and French are written by hand; the other languages are **AI-drafted and not yet reviewed by native speakers**, so corrections are very welcome: each language is one small JSON file (`public/locales/<code>.json`), see [public/locales/README.md](public/locales/README.md) to fix or add one (`npm run i18n` checks the files). The words the agents say stay in the language of your session (French translation of their lines is optional); the little banter lines and the demo exist in English and French.
 
@@ -111,7 +125,7 @@ In VS Code: Extensions view → search **Agent Standup** → Install. Or: https:
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.21.0/agent-standup-1.21.0.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.22.0/agent-standup-1.22.0.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself

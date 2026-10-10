@@ -2,7 +2,7 @@
   "name": "agent-standup",
   "displayName": "Agent Standup",
   "description": "%extension.description%",
-  "version": "1.21.0",
+  "version": "1.22.0",
   "publisher": "DoubleGeste",
   "license": "MIT",
   "engines": {
@@ -26,7 +26,8 @@
     "promo": "node scripts/capture-promo.js",
     "story": "node scripts/make-story.js",
     "i18n": "node scripts/i18n.js check",
-    "i18n:extract": "node scripts/i18n.js extract"
+    "i18n:extract": "node scripts/i18n.js extract",
+    "build:cli": "node scripts/build-cli.js"
   },
   "contributes": {
     "commands": [
@@ -131,5 +132,8 @@
   "bugs": {
     "url": "https://github.com/Atoll92/agent-standup/issues"
   },
-  "l10n": "./l10n"
+  "l10n": "./l10n",
+  "bin": {
+    "agent-standup": "bin/agent-standup.js"
+  }
 }
