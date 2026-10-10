@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.13.0
+- **Copy as Markdown** in the recap: a standup report you can paste in Slack, a PR or a ticket.
+- **Notify me when agents finish** (⚙, off by default): chime + tab title + VS Code notification after the team has worked 20 s+ and gone quiet.
+- **Search box** above the transcript.
+- **Ambience volume** slider (⚙ → Office ambience).
+- **Compact layout** for narrow panels such as the VS Code side bar (smaller tiles, banner spotlight).
+
 ## 1.12.1
 - Office ambience is now off by default (⚙ → Office ambience to turn it on).
 
