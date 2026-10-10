@@ -43,7 +43,7 @@ Outputs are trimmed (about 1–2 KB each) to keep the call fast. Results of inte
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.7.0/agent-standup-1.7.0.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.7.1/agent-standup-1.7.1.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself
