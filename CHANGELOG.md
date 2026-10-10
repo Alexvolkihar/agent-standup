@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.1
+- Translation: finds Claude Code much more reliably (PATH, Homebrew/npm/nvm/Bun/Volta, Windows `.exe`/`.cmd`, and the binary bundled with the official VS Code Claude Code extension); new `agentStandup.claudePath` setting; precise hints (not found / not signed in / VS Code started from a Claude Code session); stays in English without a warning when French cannot work and was not chosen explicitly.
+- The extension now always runs its own server on a free port (`agentStandup.port` = 0) instead of reusing whatever already answers on 4747, which could be a server without the right environment.
+
 ## 1.7.0
 - Office music: live FIP web radio (8 stations) with a volume control. The music fades down quickly while agents talk and back up slowly afterwards (ducking). Never recorded in video exports.
 

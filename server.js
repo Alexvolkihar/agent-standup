@@ -207,10 +207,34 @@ function buildTimeline(proj, id) {
 // Ask the local `claude` CLI (uses the user's existing login) to map a JSON array of strings to another array. Cached.
 const { spawn } = require('child_process');
 const cache = new Map();
+// Find a usable `claude` binary: explicit setting → PATH → usual install spots → the one bundled with the VS Code Claude Code extension.
+let lastTrError = '', claudeCache = null;
+const exists = (f) => { try { return fs.statSync(f).isFile(); } catch { return false; } };
+function bundledClaude() {
+  const home = os.homedir(); let best = null;
+  for (const dir of ['.vscode', '.vscode-insiders', '.cursor', '.windsurf', '.vscode-oss']) {
+    let names; try { names = fs.readdirSync(path.join(home, dir, 'extensions')); } catch { continue; }
+    for (const d of names.filter((x) => x.startsWith('anthropic.claude-code-')))
+      for (const n of ['claude', 'claude.exe']) { const f = path.join(home, dir, 'extensions', d, 'resources', 'native-binary', n); if (exists(f) && (!best || d.localeCompare(best.d, undefined, { numeric: true }) > 0)) best = { d, f }; }
+  }
+  return best && best.f;
+}
 function findClaude() {
-  const home = os.homedir();
-  for (const f of ['/opt/homebrew/bin/claude', '/usr/local/bin/claude', path.join(home, '.claude/local/claude'), path.join(home, '.local/bin/claude')]) if (fs.existsSync(f)) return f;
-  return 'claude';
+  if (claudeCache && exists(claudeCache)) return claudeCache;
+  const home = os.homedir(), win = process.platform === 'win32', names = win ? ['claude.exe', 'claude.cmd', 'claude.bat'] : ['claude'], cands = [];
+  if (process.env.AGENT_STANDUP_CLAUDE) cands.push(process.env.AGENT_STANDUP_CLAUDE);
+  for (const d of (process.env.PATH || '').split(path.delimiter)) for (const n of names) cands.push(path.join(d, n));
+  const dirs = win ? [path.join(home, '.local', 'bin'), path.join(home, '.claude', 'local'), path.join(process.env.APPDATA || '', 'npm'), path.join(process.env.LOCALAPPDATA || '', 'Programs', 'claude')]
+    : ['/opt/homebrew/bin', '/usr/local/bin', path.join(home, '.claude/local'), path.join(home, '.local/bin'), path.join(home, '.npm-global/bin'), path.join(home, '.bun/bin'), path.join(home, '.volta/bin')];
+  try { const nvm = path.join(home, '.nvm', 'versions', 'node'); for (const v of fs.readdirSync(nvm)) dirs.push(path.join(nvm, v, 'bin')); } catch {}
+  for (const d of dirs) for (const n of names) cands.push(path.join(d, n));
+  const found = cands.find(exists) || bundledClaude() || null;
+  return (claudeCache = found);
+}
+function spawnClaude(args, opts) {
+  const bin = findClaude(); if (!bin) { lastTrError = 'not-found'; return null; }
+  if (process.platform === 'win32' && /\.(cmd|bat)$/i.test(bin)) return spawn('"' + bin + '"', args, { ...opts, shell: true, windowsHide: true });   // npm's Windows shims need a shell
+  return spawn(bin, args, { ...opts, windowsHide: true });
 }
 let running = 0; const queue = [];
 const pump = () => { while (running < 3 && queue.length) { running++; queue.shift()(); } };
@@ -229,7 +253,7 @@ function claudeMap(kind, instruction, texts) {
   if (!need.length) return Promise.resolve(done(true));
   const prompt = instruction + ' Output ONLY a JSON array of strings, same length and order, no markdown.\n' + JSON.stringify(need);
   return apiMap(prompt, need).then((arr) => { need.forEach((t, i) => cache.set(kind + '|' + t, String(arr[i]))); return done(true); }).catch(() => schedule(() => new Promise((resolve) => {
-    const p = spawn(findClaude(), ['-p', '--model', 'haiku', '--no-session-persistence'], { cwd: os.tmpdir() });
+    const p = spawnClaude(['-p', '--model', 'haiku', '--no-session-persistence'], { cwd: os.tmpdir() }); if (!p) return resolve(done(false));
     let out = ''; const timer = setTimeout(() => p.kill(), 60000);
     p.stdout.on('data', (d) => (out += d));
     p.on('error', () => resolve(done(false)));
@@ -253,13 +277,15 @@ const TR_SYS = 'You are a translation engine. Translate the user message into na
 class TrWorker {
   constructor() { this.q = []; this.busy = false; this.n = 0; this.p = null; this.cur = null; this.buf = ''; }
   start() {
-    const p = (this.p = spawn(findClaude(), ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--model', 'haiku', '--no-session-persistence', '--system-prompt', TR_SYS], { cwd: os.tmpdir() }));
-    this.buf = ''; this.n = 0;
+    const p = spawnClaude(['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--model', 'haiku', '--no-session-persistence', '--system-prompt', TR_SYS], { cwd: os.tmpdir() });
+    if (!p) return;
+    this.p = p; this.buf = ''; this.n = 0;
+    p.stderr.on('data', (d) => { lastTrError = String(d).slice(-300); });
     p.stdout.on('data', (d) => {
       this.buf += d; let i;
       while ((i = this.buf.indexOf('\n')) >= 0) {
         const l = this.buf.slice(0, i); this.buf = this.buf.slice(i + 1);
-        try { const m = JSON.parse(l); if (m.type === 'result' && this.cur) this.finish(m.is_error ? null : String(m.result || '').trim()); } catch {}
+        try { const m = JSON.parse(l); if (m.type === 'result' && this.cur) { if (m.is_error) lastTrError = String(m.result || '').slice(0, 200); else lastTrError = ''; this.finish(m.is_error ? null : String(m.result || '').trim()); } } catch {}
       }
     });
     const dead = () => { if (this.p !== p) return; this.p = null; this.finish(null); };
@@ -270,7 +296,7 @@ class TrWorker {
   kill() { clearTimeout(this.idle); if (this.p) { const p = this.p; this.p = null; try { p.kill(); } catch {} } }
   pump() {
     if (this.busy || !this.q.length) return;
-    if (!this.p || this.n >= 30) { if (this.p) { const old = this.p; this.p = null; old.kill(); } this.start(); }   // restart now and then: the conversation context grows
+    if (!this.p || this.n >= 30) { if (this.p) { const old = this.p; this.p = null; old.kill(); } this.start(); if (!this.p) { while (this.q.length) this.q.shift().res(null); return; } }   // restart now and then: the conversation context grows
     clearTimeout(this.idle); this.idle = setTimeout(() => { if (!this.busy && !this.q.length) this.kill(); }, 10 * 60 * 1000);   // free the process when nothing was translated for 10 min
     const job = this.q.shift(); this.busy = true; this.n++; this.cur = job;
     job.timer = setTimeout(() => { if (this.cur === job && this.p) this.p.kill(); }, 45000);
@@ -360,6 +386,7 @@ function start(port = PORT) {
       return req.on('end', async () => { try { const b = JSON.parse(body); json(await quips(b.texts || [], b.lang)); } catch (e) { json({ error: String(e) }, 400); } });
     }
     if (url.pathname === '/api/sessions') return json(listSessions());
+    if (url.pathname === '/api/health') return json({ claude: findClaude(), apiKey: !!process.env.ANTHROPIC_API_KEY, trError: lastTrError, platform: process.platform });
     if (url.pathname === '/api/warm') { trWorkers.forEach((w) => { if (!w.p) w.start(); }); return json({ ok: true }); }
     if (url.pathname === '/api/voices') return json(listVoices());
     if (url.pathname === '/api/tts') {
@@ -383,5 +410,5 @@ function start(port = PORT) {
   } catch (e) { json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', () => console.log(`Agent Standup → http://localhost:${port}`));
 }
-module.exports = { start, currentSession, shutdown };
+module.exports = { start, currentSession, shutdown, findClaude, bundledClaude };
 if (require.main === module) start();

@@ -15,20 +15,21 @@ const ping = (port) => new Promise((res) => {
   r.on('error', () => res(false)); r.on('timeout', () => { r.destroy(); res(false); });
 });
 
-// Start our server, or reuse one already running on the port (e.g. `node server.js` in a terminal).
+// Each window runs its own server on a free port (a fixed port can be set; if that port already serves Agent Standup it is reused).
+// Reusing someone else's server by default caused trouble: it may run without the right environment (e.g. no way to call `claude`).
 function ensureServer() {
   if (started) return started;
-  const port = cfg().get('port');
+  const wanted = cfg().get('port') || 0;
   started = new Promise((resolve) => {
-    const srv = require('./server.js').start(port);
-    srv.once('listening', () => resolve({ port, server: srv }));
-    srv.once('error', async () => resolve((await ping(port)) ? { port } : { port, error: true }));
+    const srv = require('./server.js').start(wanted);
+    srv.once('listening', () => resolve({ port: srv.address().port, server: srv }));
+    srv.once('error', async () => resolve((await ping(wanted)) ? { port: wanted } : { port: wanted, error: true }));
   });
   return started;
 }
 async function url() {
   const { port, error } = await ensureServer();
-  if (error) throw new Error(`Port ${port} is busy and not serving Agent Standup. Change agentStandup.port.`);
+  if (error) throw new Error(`Port ${port} is busy and not serving Agent Standup. Set agentStandup.port to 0 (automatic) or another port.`);
   const q = `?live=1&proj=${encodeURIComponent(projKey())}`;
   return `http://localhost:${port}/${q}`;
 }
@@ -65,6 +66,8 @@ async function openBrowser() {
 }
 
 function activate(ctx) {
+  const applyPath = () => { process.env.AGENT_STANDUP_CLAUDE = cfg().get('claudePath') || ''; };
+  applyPath(); ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration((ev) => { if (ev.affectsConfiguration('agentStandup.claudePath')) applyPath(); }));
   ctx.subscriptions.push(
     vscode.commands.registerCommand('agentStandup.open', openPanel),
     vscode.commands.registerCommand('agentStandup.openInBrowser', openBrowser),
@@ -75,7 +78,7 @@ function activate(ctx) {
   status.text = '$(device-camera-video) Agent Standup'; status.tooltip = 'Open the live Agent Standup call'; status.command = 'agentStandup.open';
   status.show(); ctx.subscriptions.push(status);
   // If another VS Code window was serving the port and closes, take over so this window keeps working.
-  const watch = setInterval(async () => { if (started && !(await ping(cfg().get('port')))) { started = null; ensureServer(); } }, 5000);
+  const watch = setInterval(async () => { if (!started) return; const s = await started; if (!s.error && !(await ping(s.port))) { started = null; ensureServer(); } }, 5000);
   ctx.subscriptions.push({ dispose: () => clearInterval(watch) });
   if (cfg().get('autoOpen')) openPanel();
 }

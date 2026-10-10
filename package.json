@@ -2,7 +2,7 @@
   "name": "agent-standup",
   "displayName": "Agent Standup",
   "description": "Watch your Claude Code session as a live, animated team call: the lead gives orders, sub-agents join, share their screen and report back \u2014 with voices, a sub-agent tree, timeline, recap and video export.",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "publisher": "arthur",
   "license": "MIT",
   "engines": {
@@ -41,8 +41,8 @@
       "properties": {
         "agentStandup.port": {
           "type": "number",
-          "default": 4747,
-          "description": "Local port for the Agent Standup server."
+          "default": 0,
+          "description": "Local port of the Agent Standup server. 0 (default) picks a free port automatically for each VS Code window."
         },
         "agentStandup.autoOpen": {
           "type": "boolean",
@@ -53,6 +53,11 @@
           "type": "boolean",
           "default": true,
           "description": "Follow only Claude Code sessions started in the current workspace folder."
+        },
+        "agentStandup.claudePath": {
+          "type": "string",
+          "default": "",
+          "description": "Full path to the Claude Code executable, if it is not found automatically (used for French translation)."
         }
       }
     },
