@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.20.2
+- Fix: in Live, the lead's orders to sub-agents and the sub-agents' answers were often not heard. A burst of orders set off a catch-up mode that skipped voices and sped everything up. Now every line is read: when many are waiting each one is shortened to its first sentence (the bubble still shows the full text), only a backlog of more than a dozen lines is skipped, and in Live the voices speak one at a time instead of over each other.
+
 ## 1.20.1
 Fixes from a second review pass by sub-agents:
 - Loop watch: a batch of failing calls now counts once (it used to count each call), so four failures in a row means four failed steps.

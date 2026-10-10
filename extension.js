@@ -113,7 +113,7 @@ function activate(ctx) {
   };
   ctx.subscriptions.push(vscode.commands.registerCommand('agentStandup.openStatus', () => openPanel(target)));
   status.command = 'agentStandup.openStatus';
-  ctx.subscriptions.push(vscode.window.onDidChangeWindowState((s) => { if (s.focused) poll(); }));   // refresh the moment the window regains focus
+  try { ctx.subscriptions.push(vscode.window.onDidChangeWindowState((s) => { if (s.focused) poll(); })); } catch {}   // refresh the moment the window regains focus
   const pollT = setInterval(poll, 4000); poll(); ctx.subscriptions.push({ dispose: () => clearInterval(pollT) });
   // If another VS Code window was serving the port and closes, take over so this window keeps working.
   const watch = setInterval(async () => { if (!started) return; const s = await started; if (!s.error && !(await ping(s.port))) { started = null; ensureServer(); } }, 5000);
