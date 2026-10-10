@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.15.0
+- **Animal Crossing and Simlish voices** (new default): every agent, lead included, talks in gibberish with a sentence melody and its own register. Works identically on macOS/Windows/Linux and in any language, with no system voice or translation needed. Cartoon (real voice + character) and Natural remain in ⚙.
+
 ## 1.14.1
 - "Needs you?" no longer fires for Bash commands (11.8% of them legitimately run 25 s+ in real sessions); it now covers file edits/writes pending for 15 s+ and questions/plans waiting.
 
