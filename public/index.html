@@ -237,8 +237,6 @@
   <h4 data-fr="Son" data-en="Sound">Son</h4>
   <button class="mi" data-t="voice"><span data-fr="Voix des agents" data-en="Agent voices">Voix des agents</span><i class="sw"></i></button>
   <button class="mi" data-t="office"><span data-fr="Ambiance de bureau (clavier, café…)" data-en="Office ambience (keys, coffee…)">Ambiance de bureau (clavier, café…)</span><i class="sw"></i></button>
-  <button class="mi" data-t="meme"><span data-fr="🔥 Mode mème (n’importe quoi)" data-en="🔥 Meme mode (unhinged)">🔥 Mode mème (n’importe quoi)</span><i class="sw"></i></button>
-  <div class="box" id="memeBox" style="display:none"><div class="lbl"><span data-fr="Intensité" data-en="Intensity">Intensité</span> <span id="memeLvlVal"></span></div><input id="memeLvl" type="range" min="1" max="11" step="1" style="width:100%" aria-label="Meme intensity"><div class="lbl"><span data-fr="Volume des effets" data-en="Effects volume">Volume des effets</span></div><input id="memeVol" type="range" min="0.1" max="1" step="0.05" style="width:100%" aria-label="Meme volume"></div>
   <div class="box" id="officeBox" style="display:none"><input id="officeVol" type="range" min="0.1" max="1" step="0.05" style="width:100%" aria-label="Ambience volume"></div>
   <button class="mi" data-t="notify"><span data-fr="Me prévenir quand les agents ont fini" data-en="Notify me when agents finish">Me prévenir quand les agents ont fini</span><i class="sw"></i></button>
   <button class="mi" data-t="music"><span data-fr="Musique d’ambiance (radio FIP)" data-en="Office music (FIP radio)">Musique d’ambiance (radio FIP)</span><i class="sw"></i></button>
@@ -285,8 +283,6 @@
 </footer>
 <div id="card"></div><div id="recap"><div class="box"></div></div>
 
-<link rel="stylesheet" href="/meme.css">
-<script src="/meme.js"></script>
 <script src="/api/prefs.js"></script>
 <script>
 // =====================================================================
@@ -542,7 +538,7 @@ const AUD = {
     const src = c.createBufferSource(); src.buffer = buf; src.loop = true; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
     const g = c.createGain(); g.gain.value = 0.3; src.connect(lp).connect(g).connect(this.sfx); src.start(); this.apply(); OFFICE.start();
   },
-  apply() { if (!this.ctx) return; this.sfx.gain.value = prefs.office && !this.off() ? 1 : 0; this.voice.gain.value = prefs.voice && !this.off() ? 1 : 0; this.applyMusic(); RADIO.sync(); if (typeof MEME !== 'undefined') MEME.apply(); },
+  apply() { if (!this.ctx) return; this.sfx.gain.value = prefs.office && !this.off() ? 1 : 0; this.voice.gain.value = prefs.voice && !this.off() ? 1 : 0; this.applyMusic(); RADIO.sync();  },
   // Music fades down quickly when an agent starts talking and comes back slowly once the room is quiet.
   applyMusic() { if (!this.ctx) return; this.amb.gain.setTargetAtTime((this.ducked ? 0.35 : 1) * (prefs.officeVol ?? 0.8), this.ctx.currentTime, 0.25); const v = prefs.music && !this.off() ? (prefs.musicVol ?? 0.35) * (this.ducked ? 0.16 : 1) : 0; this.music.gain.setTargetAtTime(v, this.ctx.currentTime, this.ducked ? 0.12 : 0.7); },
   blip(f) { if (!this.ctx || this.off()) return; const c = this.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.1); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22); o.connect(g).connect(c.destination); o.start(t); o.stop(t + 0.25); },
@@ -1166,7 +1162,7 @@ function vanish(id) {
   S.gone.add(id); const t = $('#t-' + id), p = S.agents[id]; if (!t || !p) return;
   toast(`${p.name} ${L('a quitté l’appel', 'left the call')} 👋`);
   if (t.style.display === 'none' || document.body.classList.contains('tree')) return;
-  S.leaving.add(id); const say = prefs.banter && !S.hurry && !S.speakers.has(id), go = () => { t.classList.remove('bye'); if (!S.leaving.has(id)) return; t.classList.add('vanishing'); poof(t, p.shirt); MEME.fire('leave', { id }); AUD.tone(660, .35, 'sine', .07); AUD.tone(330, .5, 'sine', .06, .12);
+  S.leaving.add(id); const say = prefs.banter && !S.hurry && !S.speakers.has(id), go = () => { t.classList.remove('bye'); if (!S.leaving.has(id)) return; t.classList.add('vanishing'); poof(t, p.shirt); AUD.tone(660, .35, 'sine', .07); AUD.tone(330, .5, 'sine', .06, .12);
     setTimeout(() => { S.leaving.delete(id); t.classList.remove('vanishing'); if (S.gone.has(id)) t.style.display = 'none'; }, 1250); };
   if (say) { const b = t.querySelector('.bubble'), line = byeLine(id); b.innerHTML = `<small>👋</small>${esc(line)}`; t.classList.add('bye'); t._byeT = setTimeout(go, 1500); } else go();   // a short goodbye before the poof
 }
@@ -1181,7 +1177,7 @@ const mouths = new Map();
 function startTalk(id, text, label) {
   const t = $('#t-' + id); if (!t) return;
   if (S.present && S.present !== id) hidePresent();
-  if (!S.speakers.size && !(S.focusLock > Date.now())) setFocus(id); S.gone.delete(id); if (S.doneAt[id] != null) S.doneAt[id] = S.clock; t.style.display = ''; t.classList.add('speaking'); S.speakers.add(id); S.say[id] = { text, label }; AUD.duck(true); if (id === 'user' && [...S.speakers].some((x) => x !== 'user')) MEME.fire('interrupt'); MEME.fire('talk', { id, text });
+  if (!S.speakers.size && !(S.focusLock > Date.now())) setFocus(id); S.gone.delete(id); if (S.doneAt[id] != null) S.doneAt[id] = S.clock; t.style.display = ''; t.classList.add('speaking'); S.speakers.add(id); S.say[id] = { text, label }; AUD.duck(true); if (id === 'user' && [...S.speakers].some((x) => x !== 'user'))
   const shown0 = pieces(text), first = shown0.length > 1 ? shown0[0] : text; const b = t.querySelector('.bubble'); b.innerHTML = (label ? `<small>${esc(label)}</small>` : '') + esc(first);
   if (S.present === id) { $('#pcap').textContent = first; $('#pcam').classList.add('speaking'); }
   const m = t.querySelector('.mouthE'); let open = false; clearInterval(mouths.get(id));
@@ -1198,9 +1194,9 @@ setInterval(() => {   // now and then a busy agent has a little thought; never w
   if (!prefs.banter || !S.playing || S.speakers.size || document.hidden) return; const busy = Object.keys(S.agents).filter((id) => id !== 'user' && agentState(id, Date.now()).k === 'working' && $('#t-' + id) && $('#t-' + id).style.display !== 'none');
   if (busy.length && Math.random() < 0.5) { const id = busy[Math.floor(Math.random() * busy.length)], tl = S.lastTool[id] || ''; thought(id, /^Bash/.test(tl) ? '⌨️' : /^(Grep|Glob|Read)/.test(tl) ? '🔍' : ['💭', '🎧', '🧠', '☕', '🎵'][Math.floor(Math.random() * 5)]); }
 }, 7000);
-function oops(id) { MEME.fire('fail', { id }); if (!prefs.banter || !S.playing || S.recomputing) return; const t = $('#t-' + id); if (!t || t.style.display === 'none' || (t._oops && Date.now() - t._oops < 4000)) return; t._oops = Date.now(); t.classList.remove('oops'); void t.offsetWidth; t.classList.add('oops'); thought(id, '😬'); }
+function oops(id) { if (!prefs.banter || !S.playing || S.recomputing) return; const t = $('#t-' + id); if (!t || t.style.display === 'none' || (t._oops && Date.now() - t._oops < 4000)) return; t._oops = Date.now(); t.classList.remove('oops'); void t.offsetWidth; t.classList.add('oops'); thought(id, '😬'); }
 function confetti() {
-  MEME.fire('win'); if (!prefs.banter || document.hidden) return; const box = $('#center'), cols = ['#f5c04a', '#7c9cff', '#ff7a6b', '#5ad19a', '#c58bff'];
+  if (!prefs.banter || document.hidden) return; const box = $('#center'), cols = ['#f5c04a', '#7c9cff', '#ff7a6b', '#5ad19a', '#c58bff'];
   for (let i = 0; i < 26; i++) { const c = document.createElement('i'); c.className = 'confetti'; c.style.left = Math.random() * 100 + '%'; c.style.background = cols[i % cols.length]; c.style.animationDelay = Math.random() * 0.6 + 's'; c.style.animationDuration = 1.8 + Math.random() * 1.4 + 's'; box.appendChild(c); setTimeout(() => c.remove(), 4200); }
 }
 function stopTalk(id) {
@@ -1382,7 +1378,7 @@ async function react(ev, token) {
   if (!S.agents[who]) return; startTalk(who, line, ev.kind === 'order' && prefs.banter ? '💬' : '🎬'); await speakLine(line, S.agents[who], true, token); stopTalk(who);
 }
 async function card(text, sub, ms = 2500) {
-  MEME.fire('card', { text });
+ 
   const c = $('#card'); c.innerHTML = `<div><h1>${esc(text)}</h1><p>${esc(sub || '')}</p></div>`; c.classList.add('on'); AUD.tone(392, .5, 'triangle', .12); AUD.tone(523, .6, 'triangle', .12, .25);
   await sleep(ms / Math.min(2, spd())); c.classList.remove('on');
 }
@@ -1414,7 +1410,7 @@ async function run(i) {
     if (ev.kind === 'usage' || ev.kind === 'compact') { if (ev.kind === 'compact' && S.live && prefs.banter) toast(`${nameOf(ev.agent)}: ${L('contexte compacté 🗜', 'context compacted 🗜')}`); i++; continue; }
     if (ev.kind === 'finish') { applyStatus(ev); paintStatus(); i++; continue; }
     if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.demo ? 900 : S.live ? 30 : 80) / spd()); i++; continue; }
-    if (ev.kind === 'tools') { applyStatus(ev); tickTools(ev); AUD.click(); OFFICE.kick(ev.tools[ev.tools.length - 1].name); MEME.fire('tool', { id: ev.agent }); paintStatus(); await sleep((S.demo ? 1100 : S.live ? 110 : 250) / spd()); i++; continue; }
+    if (ev.kind === 'tools') { applyStatus(ev); tickTools(ev); AUD.click(); OFFICE.kick(ev.tools[ev.tools.length - 1].name); paintStatus(); await sleep((S.demo ? 1100 : S.live ? 110 : 250) / spd()); i++; continue; }
     const group = [ev]; let j = i + 1;   // sub-agents talking back-to-back were running in parallel: they talk over each other
     if (isSub(ev.agent) && ev.kind !== 'order') {
       while (j < Math.min(S.events.length, i + 28) && group.length < 3) {
@@ -1427,14 +1423,14 @@ async function run(i) {
       }
     }
     if (FR() && !S.hurry) { prefetchTr(i); await Promise.race([ensureTr(group.map((g) => baseText(g))), sleep(S.live ? 7000 : 14000)]); if (token !== S.token) return; }
-    if (group.length >= 3) MEME.fire('combo', { ids: group.map((g) => g.agent) });
+    if (group.length >= 3)
     prefetchQuips(i); warmTTS(i);
     const playOne = (g) => {
       applyStatus(g);
       const label = g.kind === 'order' ? `${L('pour', 'to')} ${nameOf(g.to)}` : g.kind === 'report' ? `${L('rapport à', 'report to')} ${nameOf(g.to)}` : '', line = spoken(g);
       startTalk(g.agent, line, label);
-      if (g.kind === 'order') { S.status[g.to] = 'working'; AUD.join(); MEME.fire('order', { from: g.agent, to: g.to }); setTimeout(() => { paintStatus(); fly(g.agent, g.to, '📨'); popTile(g.to); }, 30); }
-      if (g.kind === 'report') { AUD.ding(); MEME.fire('report', { from: g.agent, to: g.to }); setTimeout(() => { fly(g.agent, g.to, '✅'); popTile(g.agent); }, 30); }
+      if (g.kind === 'order') { S.status[g.to] = 'working'; AUD.join(); setTimeout(() => { paintStatus(); fly(g.agent, g.to, '📨'); popTile(g.to); }, 30); }
+      if (g.kind === 'report') { AUD.ding(); setTimeout(() => { fly(g.agent, g.to, '✅'); popTile(g.agent); }, 30); }
       return speakLine(clipSpeech(line, S.pace), S.agents[g.agent], true, token, FR() && trMem.has(baseText(g))).then(() => stopTalk(g.agent));
     };
     let plays; if (S.live) { plays = []; let chain = Promise.resolve(); for (const g of group) { chain = chain.then(() => (token === S.token ? playOne(g) : null)); plays.push(chain); } } else plays = group.map(playOne);   // live: one voice at a time so each can be heard; replay keeps the overlapping chatter
@@ -1675,7 +1671,7 @@ $('#langSel').onchange = () => setLang($('#langSel').value, true);
 $('#charReload').onclick = async () => { await loadChars(); for (const k in imgCache) delete imgCache[k]; for (const id in S.agents) S.agents[id].custom = customFor(id); buildStage(); paintStatus(); renderCharInfo(); };
 $('#charOpen').onclick = () => window.parent.postMessage({ agentStandup: 'openCharacters' }, '*');
 $('#modeSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m); };
-$('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify', 'meme'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'meme') { $('#memeBox').style.display = prefs.meme ? '' : 'none'; if (prefs.meme) { claimAudio(); AUD.init(); } MEME.apply(); } if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
+$('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
   if (b.dataset.t === 'music') { $('#musicBox').style.display = prefs.music ? '' : 'none'; if (prefs.music) { AUD.init(); AUD.apply(); } } };
 $('#station').innerHTML = STATIONS.map((s) => `<option value="${s.id}">📻 ${s.name}</option>`).join('');
 $('#station').value = prefs.station; $('#musicVol').value = prefs.musicVol; $('#musicBox').style.display = prefs.music ? '' : 'none';
@@ -1697,10 +1693,6 @@ async function kokoroUI() {
 }
 $('#kokoroInstall').onclick = async () => { try { await fetch('/api/kokoro/install', { method: 'POST' }); } catch {} kokoroUI(); };
 kokoroUI();
-const showMemeLvl = () => { const l = prefs.memeLevel ?? 11; $('#memeLvl').value = l; $('#memeLvlVal').textContent = l + ' / 11' + (l === 11 ? ' 🔥' : ''); }; showMemeLvl();
-$('#memeLvl').oninput = (e) => { prefs.memeLevel = +e.target.value; savePrefs(); showMemeLvl(); };
-$('#memeVol').value = prefs.memeVol ?? 0.8; $('#memeBox').style.display = prefs.meme ? '' : 'none';
-$('#memeVol').oninput = (e) => { prefs.memeVol = +e.target.value; savePrefs(); MEME.apply(); };
 $('#officeVol').value = prefs.officeVol; $('#officeBox').style.display = prefs.office ? '' : 'none';
 $('#officeVol').oninput = (e) => { prefs.officeVol = +e.target.value; savePrefs(); AUD.applyMusic(); };
 $('#musicVol').oninput = (e) => { prefs.musicVol = +e.target.value; savePrefs(); AUD.applyMusic(); };
@@ -1728,14 +1720,13 @@ if (EMBED) $('#mBrowser').style.display = '';
 
 (async function init() {
   if (!LANGS.some((l) => l[0] === prefs.lang)) prefs.lang = 'en'; await loadLocale(prefs.lang); await loadChars();
-  document.body.classList.toggle('rost', prefs.roster !== false); document.body.classList.toggle('react', !!prefs.reactions); setView(prefs.view); applyLang(); MEME.apply(); applyMute(); TTS.init().then(updateHint);
+  document.body.classList.toggle('rost', prefs.roster !== false); document.body.classList.toggle('react', !!prefs.reactions); setView(prefs.view); applyLang(); applyMute(); TTS.init().then(updateHint);
   loadHealth().then(() => {   // French by default only if translation can actually work; otherwise stay in English without a warning
     const h = S.health || {};
     if (!prefs.langChosen && FR() && h.claude === null && !h.apiKey) { prefs.lang = 'en'; applyLang(); }
     if (FR()) fetch('/api/warm').catch(() => {});
   });
   if (Q.get('lang')) { await setLang(Q.get('lang'), false); }
-  if (Q.get('meme') === '1') { prefs.meme = true; $('#memeBox').style.display = ''; MEME.apply(); }   // a link can force meme mode (demo links)   // not saved: lets a link force a language
   if (Q.get('demo')) {
     if (Q.get('view') === 'tree') setView('tree');
     await setMode('demo'); if (Q.get('speed')) $('#speed').value = Q.get('speed');

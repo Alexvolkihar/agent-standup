@@ -112,11 +112,6 @@ Four styles in ⚙ (default: **Cartoon voices**, so everything stays understanda
 
 Long lines are subtitled one sentence at a time, in step with the voice.
 
-### 🔥 Meme mode
-⚙ → **🔥 Meme mode**, off by default, intensity 1–11. The same call in a 2010s montage costume: an airhorn and "DEPLOYING ADA" when the lead gives an order, hitmarkers and "+300 XP" when a sub-agent reports, a vine boom on errors, a record scratch when you cut a line, Impact captions, emoji rain. It never changes what is shown or said, only how loudly; full-screen flashes are capped at 3 a second and skipped under reduced motion.
-
-The two gibberish styles need no system voice and no translation, so they sound the same on macOS, Windows and Linux and in any language; the words stay on screen.
-
 ## Handy extras
 - **Copy as Markdown** in the recap: a ready-to-paste standup report (who did what, files, tokens, final report of each agent).
 - **Notify me when agents finish** (⚙): a soft chime, the tab title and, in VS Code, a notification once the team has worked for a while and gone quiet.
@@ -255,7 +250,7 @@ The website counts visits anonymously (a 1-pixel file hosted on GitHub per chann
 - Video export records in real time and needs a Chromium-based browser/VS Code.
 
 ## Credits
-Several ideas in 1.23 (settings kept in a file, session stickiness, subtitles that follow the voice, Kokoro voices, meme mode and its sound clips) started in [neondragon's fork](https://github.com/neondragon/agent-standup) of this project. Thank you! Their code was read and rewritten for this codebase, and the sound clips were checked as free to reuse. The Traditional Chinese wording was polished with suggestions from a Taiwanese reader on Reddit. Unofficial: not affiliated with Anthropic.
+Several ideas in 1.23 (settings kept in a file, session stickiness, subtitles that follow the voice, Kokoro voices) started in [neondragon's fork](https://github.com/neondragon/agent-standup) of this project. Thank you!  Their code was read and rewritten for this codebase. The Traditional Chinese wording was polished with suggestions from a Taiwanese reader on Reddit. Unofficial: not affiliated with Anthropic.
 
 ## License
 

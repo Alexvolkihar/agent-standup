@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.23.1
+- Meme mode removed: it disturbed the layout.
 - Natural voices (Kokoro): the default model is now q4 (about 305 MB). The smaller q4f16 returned silence on some lines. A line the model cannot make is now handed to a system voice instead of being dropped; Nicole (Kokoro's whisper voice, hard to hear) is replaced by Sarah. Found by [neondragon](https://github.com/neondragon/agent-standup) in their fork, thank you.
 
 ## 1.23.0
@@ -10,7 +11,6 @@ Ideas from [neondragon's fork](https://github.com/neondragon/agent-standup), rew
 - **What you typed**: the blocks Claude Code wraps around your message (system reminders, IDE context, command echoes) are no longer shown as if you had said them.
 - **Subtitles follow the voice**: a long line is shown one sentence at a time.
 - **Very natural voices (Kokoro-82M)**, optional and installed on demand from ⚙ → Sound.
-- **Meme mode** (⚙ → 🔥), off by default, intensity 1–11.
 - Traditional Chinese wording polished with a native reader's suggestions. `npm test` runs the new tests.
 
 ## 1.22.1
