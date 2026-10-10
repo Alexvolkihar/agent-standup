@@ -7,9 +7,9 @@ What exists today, what was investigated, and what is deliberately not built yet
 |---|---|
 | **VS Code** | Extension from the Marketplace (panel, side bar, status bar, localised commands). |
 | **Cursor, Windsurf, VSCodium, other VS Code forks** | Install `agent-standup-<version>.vsix` from the GitHub release with *Extensions → … → Install from VSIX*. (Open VSX publication is wired up in `.github/workflows/publish.yml` and only needs an account token.) |
-| **Any terminal** | `agent-standup` (npm package `@doublegeste/agent-standup`): the local page in your browser, plus `status` and `statusline` for status bars (Claude Code status line, tmux, Neovim…). |
+| **Any terminal** | `agent-standup` (npm package `@double_geste/agent-standup`): the local page in your browser, plus `status` and `statusline` for status bars (Claude Code status line, tmux, Neovim…). |
 | **Desktop** | Small app for macOS (Apple Silicon and Intel, unsigned): window + menu bar indicator + notification when an agent may need you. Windows and Linux builds are set up in CI but untested. |
-| **JetBrains IDEs** | Not native yet. Recipe: *Settings → Tools → External Tools → +*, program `npx`, arguments `-y @doublegeste/agent-standup --open`, working directory `$ProjectFileDir$`; the call opens in your browser. |
+| **JetBrains IDEs** | Not native yet. Recipe: *Settings → Tools → External Tools → +*, program `npx`, arguments `-y @double_geste/agent-standup --open`, working directory `$ProjectFileDir$`; the call opens in your browser. |
 
 ## Other agent tools (researched, not built)
 Agent Standup reads Claude Code's transcripts. Reading other tools needs one adapter each. A web research pass found that **almost every format is undocumented or reverse-engineered and sources disagree**, and no real log of these tools was available to test against, so no adapter was written blind. Ranking if/when someone wants to take one (sources are third-party; verify against a real install first):

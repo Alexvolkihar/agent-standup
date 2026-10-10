@@ -3,7 +3,7 @@
 // The extension keeps the name "agent-standup" (its Marketplace identity); the npm package is scoped because the unscoped npm name belongs to another project.
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..'), out = path.join(root, 'dist-cli'), pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-const NAME = process.env.CLI_PACKAGE_NAME || '@doublegeste/agent-standup';
+const NAME = process.env.CLI_PACKAGE_NAME || '@double_geste/agent-standup';
 fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive: true });
 const cp = (rel) => fs.cpSync(path.join(root, rel), path.join(out, rel), { recursive: true });
 ['server.js', 'demo.js', 'LICENSE', 'public', 'bin'].forEach(cp);
