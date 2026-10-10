@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.14.0
+- **One status per tile**: working · waiting on another agent (who) · needs you? · stalled hand-off · done, with a summary in the header and in the tab title. "Needs you?" is a heuristic (a tool that normally needs approval has been pending for 25 s, or a question/plan is waiting); the notification option also fires for it.
+- **Cartoon voices** (default): a character per agent (chipmunk, deep, robot, wobbly, radio, monster, squeaky) applied to the system voice. New ⚙ choice: Cartoon / Natural / Babble (syllable babble for sub-agents).
+
 ## 1.13.0
 - **Copy as Markdown** in the recap: a standup report you can paste in Slack, a PR or a ticket.
 - **Notify me when agents finish** (⚙, off by default): chime + tab title + VS Code notification after the team has worked 20 s+ and gone quiet.

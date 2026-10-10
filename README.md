@@ -56,6 +56,12 @@ Outputs are trimmed (about 1–2 KB each) to keep the call fast. Results of inte
 |---|---|---|
 | ![todo](https://atoll92.github.io/agent-standup/media/todo.jpg) | ![recap](https://atoll92.github.io/agent-standup/media/recap.jpg) | ![fr](https://atoll92.github.io/agent-standup/media/hero-fr.jpg) |
 
+## At a glance
+Every tile carries one status: **working** (with what it is doing), **waiting on another agent** (who), **needs you?** (a tool call that usually needs your approval has been pending), **stalled** (waiting on an agent that has been silent for 2 min+), or **done**. A summary sits in the header, and the tab title shows how many agents need you. The "needs you?" signal is a heuristic: Claude Code does not record permission prompts, so a long-running command can trigger it too.
+
+## Voices
+Voices are cartoon by default: each agent gets its own character (chipmunk, deep, robot, wobbly, radio, monster, squeaky) on top of your system voice. ⚙ also offers **natural** voices and **babble** (Animal-Crossing-style syllables for the sub-agents; the lead keeps a real voice).
+
 ## Handy extras
 - **Copy as Markdown** in the recap: a ready-to-paste standup report (who did what, files, tokens, final report of each agent).
 - **Notify me when agents finish** (⚙): a soft chime, the tab title and, in VS Code, a notification once the team has worked for a while and gone quiet.
@@ -72,7 +78,7 @@ In VS Code: Extensions view → search **Agent Standup** → Install. Or: https:
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.13.0/agent-standup-1.13.0.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.14.0/agent-standup-1.14.0.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself

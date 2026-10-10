@@ -65,7 +65,7 @@
   .ln.ctx b { width:34px; text-align:right; color:#4b5069 } .ln.ctx { color:#d3d7e6 } .ln.err { color:#ff7b72 } .ln.dim { color:#6b7089 } .ln.run { color:#ffd24a }
   .spin { display:inline-block; width:9px; height:9px; margin-right:6px; border:2px solid #ffd24a; border-top-color:transparent; border-radius:50%; animation:spin .7s linear infinite; vertical-align:-1px } @keyframes spin { to { transform:rotate(360deg) } }
   .ticker em { font-style:normal; color:#9aa3bd; font-size:10px } .ticker em.ok { color:#58d68d } .ticker em.bad { color:#ff7b72 }
-  .status { max-width:62%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .status { max-width:84%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
   #pbadge { margin-left:auto; flex:none; background:rgba(240,160,32,.94); color:#201400; font-weight:600; font-size:11px; padding:1px 10px; border-radius:99px; white-space:nowrap }
   #present.has-todo #pcam { right:270px } #pcam { position:absolute; right:28px; bottom:22px; width:158px; height:118px; z-index:2; cursor:default; box-shadow:0 8px 24px rgba(0,0,0,.6) }
   #pcap { display:none; position:absolute; left:24px; right:200px; bottom:20px; z-index:2; background:rgba(10,11,16,.84); backdrop-filter:blur(6px); border-radius:10px; padding:6px 12px; font-size:13px } #pcap:not(:empty) { display:block }
@@ -102,6 +102,11 @@
   .tag span { color:#cfd2de; font-size:10.5px; overflow:hidden; text-overflow:ellipsis; min-width:0 }
   .status { position:absolute; top:6px; right:6px; font-size:10.5px; padding:2px 9px; border-radius:99px; background:rgba(14,15,24,.6); backdrop-filter:blur(6px) }
   .status.working { color:var(--gold) } .status.done { color:var(--ok) }
+  .status.waiting { color:#8fd3ff } .status.blocked { color:#fff; background:#c0392b; font-weight:700 } .status.stalled { color:#1b1d27; background:#ffb347; font-weight:700 }
+  .tile.waiting { border-color:rgba(110,190,255,.85) } .tile.blocked { border-color:#ff5252 !important; animation:slowp 1.2s ease-in-out infinite } .tile.stalled { border-color:#ffb347 !important }
+  .board { display:flex; gap:6px; font-size:11.5px; flex-wrap:wrap } .board span { padding:2px 8px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); white-space:nowrap }
+  .board .working { color:var(--gold) } .board .waiting { color:#8fd3ff } .board .blocked { color:#fff; background:#c0392b; border-color:#c0392b } .board .stalled { color:#1b1d27; background:#ffb347; border-color:#ffb347 } .board .done { color:var(--ok) }
+  @media (max-width:640px) { .board { display:none } }
   .bubble { display:none; position:absolute; top:6px; left:6px; right:62px; background:#fff; color:#1b1d27; border-radius:11px; padding:6px 10px; font-size:12.5px; line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,.35); max-height:58%; overflow:hidden }
   .tile.speaking .bubble { display:block; font-size:14.5px; max-height:50% } .bubble small { display:block; color:#6a6f85; font-size:10.5px }
   .ticker { display:none; position:absolute; left:6px; right:6px; bottom:30px; font:10.5px/1.3 ui-monospace,Menlo,monospace; color:#fff; background:rgba(15,20,35,.8); border-radius:5px; padding:2px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
@@ -176,7 +181,7 @@
 <body>
 <header>
   <div class="brand"><div class="logo">🎥</div><div><b>Agent Standup</b><small id="subtitle"></small></div></div>
-  <span id="pill">REPLAY</span><button id="tok" class="tok" style="display:none"></button>
+  <span id="pill">REPLAY</span><button id="tok" class="tok" style="display:none"></button><span id="board" class="board" aria-live="polite"></span>
   <div class="sp"></div>
   <div class="seg" id="viewSeg"><button data-v="call" class="on" data-fr="Appel" data-en="Call">Appel</button><button data-v="tree" data-fr="Arbre" data-en="Tree">Arbre</button></div>
   <button class="ic" id="bPlay" title="Pause / Lecture (espace)">⏸</button>
@@ -197,6 +202,7 @@
   <button class="mi" data-t="notify"><span data-fr="Me prévenir quand les agents ont fini" data-en="Notify me when agents finish">Me prévenir quand les agents ont fini</span><i class="sw"></i></button>
   <button class="mi" data-t="music"><span data-fr="Musique d’ambiance (radio FIP)" data-en="Office music (FIP radio)">Musique d’ambiance (radio FIP)</span><i class="sw"></i></button>
   <div class="box" id="musicBox" style="display:none"><select id="station"></select><input id="musicVol" type="range" min="0" max="1" step="0.05" style="width:100%" aria-label="Music volume"></div>
+  <div class="box" id="vstyleBox"><select id="vstyle"></select></div>
   <button class="mi" data-t="vanish"><span data-fr="Retirer les agents terminés (2 min)" data-en="Remove finished agents (2 min)">Retirer les agents terminés (2 min)</span><i class="sw"></i></button>
   <button class="mi" data-t="epi"><span data-fr="Réactions et blagues" data-en="Reactions & jokes">Réactions et blagues</span><i class="sw"></i></button>
   <h4 data-fr="Source" data-en="Source">Source</h4>
@@ -242,7 +248,7 @@ const CID = Math.random().toString(36).slice(2, 12);   // identifies this window
 const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
 
-let prefs = { lang: 'en', voice: true, office: false, officeVol: 0.8, notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call' };
+let prefs = { lang: 'en', voice: true, office: false, officeVol: 0.8, vstyle: 'cartoon', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call' };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem('cc.prefs') || '{}')); } catch {}
 const savePrefs = () => { try { localStorage.setItem('cc.prefs', JSON.stringify(prefs)); } catch {} };
 const FR = () => prefs.lang === 'fr';
@@ -587,16 +593,50 @@ function warmTTS(i) {   // synthesize the next few lines ahead of time
     const p = S.agents[e.agent], v = p && TTS.voiceFor(p, FR() && trMem.has(baseText(e))); if (v) TTS.buf(speakable(spoken(e)), v, TTS.rate()).catch(() => {});
   }
 }
+
+// ---- Cartoon voices: the same system voice, given a character by a small WebAudio chain (pitch, vibrato, robot, radio…), or syllable "babble" in the spirit of Animal Crossing.
+const VFX = [{ rate: 1.26 }, { rate: 0.86, low: 7 }, { ring: 75, rate: 1.02 }, { rate: 1.08, vib: [5.5, 0.006] }, { band: [420, 3200], drive: 1 }, { rate: 0.74, vib: [9, 0.003], lp: 2200 }, { rate: 1.16, vib: [7, 0.004] }];
+const fxFor = (p) => (p.id === 'main' ? { rate: 0.95, low: 4 } : p.id === 'user' ? {} : VFX[(p.vi >>> 3) % VFX.length]);
+function fxChain(c, src, fx) {   // returns the last node; `stops` are oscillators to stop when the line ends
+  const stops = []; let node = src; const link = (n) => { node.connect(n); node = n; };
+  if (fx.rate) src.playbackRate.value = fx.rate;
+  if (fx.low) { const f = c.createBiquadFilter(); f.type = 'lowshelf'; f.frequency.value = 250; f.gain.value = fx.low; link(f); }
+  if (fx.band) { const a = c.createBiquadFilter(), b = c.createBiquadFilter(); a.type = 'highpass'; a.frequency.value = fx.band[0]; b.type = 'lowpass'; b.frequency.value = fx.band[1]; link(a); link(b); }
+  if (fx.lp) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = fx.lp; link(f); }
+  if (fx.drive) { const w = c.createWaveShaper(), k = new Float32Array(257); for (let i = 0; i < 257; i++) { const x = (i - 128) / 128; k[i] = Math.tanh(x * 4) * 0.8; } w.curve = k; link(w); }
+  if (fx.vib) { const d = c.createDelay(0.05), l = c.createOscillator(), lg = c.createGain(); d.delayTime.value = 0.012; l.frequency.value = fx.vib[0]; lg.gain.value = fx.vib[1]; l.connect(lg).connect(d.delayTime); l.start(); stops.push(l); link(d); }
+  if (fx.ring) { const o = c.createOscillator(), rm = c.createGain(), dry = c.createGain(), wet = c.createGain(), mix = c.createGain(); rm.gain.value = 0; o.frequency.value = fx.ring; o.connect(rm.gain); o.start(); stops.push(o);
+    dry.gain.value = 0.35; wet.gain.value = 0.9; node.connect(dry); node.connect(rm).connect(wet); dry.connect(mix); wet.connect(mix); node = mix; }
+  return { node, stops };
+}
+const VOWELS = { a: 800, e: 530, i: 300, o: 500, u: 350, y: 300 };
+async function speakBabble(text, p, gain, token) {   // every letter becomes a short blip: the pitch follows the letters, the character sets the register
+  const c = AUD.ctx, letters = [...speakable(text).toLowerCase()], dur = estMs(text) / 1000, step = Math.max(0.045, Math.min(0.085, dur / Math.max(8, letters.length)));
+  const base = 170 + ((p.vi >>> 2) % 9) * 32, an = c.createAnalyser(); an.fftSize = 256; const g = c.createGain(); g.gain.value = gain * 0.5; an.connect(g); g.connect(AUD.voice);
+  let t = c.currentTime + 0.03; const end = t + dur, nodes = [];
+  for (const ch of letters) {
+    if (t >= end) break; if (/[.!?;:]/.test(ch)) { t += step * 3; continue; } if (/[\s,]/.test(ch)) { t += step * 0.8; continue; } if (!/[a-zà-ÿ0-9]/.test(ch)) continue;
+    const code = ch.charCodeAt(0), f = base * 2 ** (((code % 7) * 2 - 4 + (/[aeiouyàâéèêîôù]/.test(ch) ? 3 : 0)) / 12), vw = [...'aeiou'][code % 5];
+    const o = c.createOscillator(), bp = c.createBiquadFilter(), e = c.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(f, t); o.frequency.linearRampToValueAtTime(f * (1 + ((code % 3) - 1) * 0.07), t + step);
+    bp.type = 'bandpass'; bp.frequency.value = VOWELS[vw] * 1.3; bp.Q.value = 1.4; e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(1, t + 0.008); e.gain.exponentialRampToValueAtTime(0.0001, t + step * 0.95);
+    o.connect(bp).connect(e).connect(an); o.start(t); o.stop(t + step); AUD.live.add(o); nodes.push(o); t += step;
+  }
+  const data = new Uint8Array(an.fftSize); S.level[p.id] = () => { an.getByteTimeDomainData(data); let s = 0; for (const v of data) { const x = (v - 128) / 128; s += x * x; } return Math.sqrt(s / data.length) * 2.2; };
+  await new Promise((res) => setTimeout(res, Math.max(100, (Math.min(t, end) - c.currentTime) * 1000 + 60)));
+  nodes.forEach((o) => AUD.live.delete(o)); delete S.level[p.id];
+}
 async function speakServer(text, p, gain, token, fr = FR()) {
   const voice = TTS.voiceFor(p, fr); if (!voice) throw new Error('no voice');
   const buf = await TTS.buf(speakable(text), voice, TTS.rate()); if (token !== S.token) return;
   const c = AUD.ctx, src = c.createBufferSource(); src.buffer = buf;
-  const an = c.createAnalyser(); an.fftSize = 256; const g = c.createGain(); g.gain.value = gain; src.connect(an); an.connect(g); g.connect(AUD.voice);
+  const an = c.createAnalyser(); an.fftSize = 256; const g = c.createGain(); g.gain.value = gain; let stops = [];
+  if (prefs.vstyle === 'natural') src.connect(an); else { const ch = fxChain(c, src, fxFor(p)); stops = ch.stops; ch.node.connect(an); }
+  an.connect(g); g.connect(AUD.voice);
   const data = new Uint8Array(an.fftSize);
   S.level[p.id] = () => { an.getByteTimeDomainData(data); let s = 0; for (const v of data) { const x = (v - 128) / 128; s += x * x; } return Math.sqrt(s / data.length); };   // drives the mouth
   AUD.live.add(src);
   await new Promise((res) => { src.onended = res; setTimeout(res, buf.duration * 1000 + 800); src.start(); });
-  AUD.live.delete(src); delete S.level[p.id];
+  AUD.live.delete(src); delete S.level[p.id]; stops.forEach((o) => { try { o.stop(); } catch {} });
 }
 function speakBrowser(text, p, token, fr = FR()) {   // fallback where no server voice exists (Windows/Linux)
   return new Promise((resolve) => {
@@ -609,7 +649,7 @@ function speakBrowser(text, p, token, fr = FR()) {   // fallback where no server
     const next = () => {
       if (i >= parts.length || done || token !== S.token) return fin(true);
       const part = parts[i++].trim(); if (!part) return next();
-      const u = new SpeechSynthesisUtterance(part); u.lang = fr ? 'fr-FR' : 'en-US'; u.voice = voice; u.pitch = 0.95 + ((p.vi >>> 5) % 5) * 0.03; u.rate = Math.min(1.7, 0.97 * spd());
+      const u = new SpeechSynthesisUtterance(part); u.lang = fr ? 'fr-FR' : 'en-US'; u.voice = voice; u.pitch = prefs.vstyle === 'natural' ? 0.95 + ((p.vi >>> 5) % 5) * 0.03 : p.id === 'main' ? 0.8 : [1.5, 0.6, 1.2, 1.7, 0.9, 0.5, 1.35][(p.vi >>> 3) % 7]; u.rate = Math.min(1.7, 0.97 * spd());
       u.onstart = () => (started = true); u.onend = () => setTimeout(next, 120); u.onerror = () => fin(started); synth.speak(u);
     };
     next();
@@ -618,6 +658,7 @@ function speakBrowser(text, p, token, fr = FR()) {   // fallback where no server
 async function speakLine(text, p, primary, token, fr = FR()) {
   if (AUD.off() || !prefs.voice) { if (!AUD.off() && prefs.office) AUD.murmur(0.5 + (p.vi % 5) / 10, estMs(text) / 1000); return sleep(estMs(text)); }
   if (S.boost > 1) return sleep(estMs(text));
+  if (prefs.vstyle === 'babble' && !p.lead && p.id !== 'user' && AUD.ctx) { try { await speakBabble(text, p, primary ? 1 : 0.5, token); return; } catch {} }
   if (TTS.server && AUD.ctx) { try { await speakServer(text, p, primary ? 1 : 0.5, token, fr); return; } catch {} }
   if (primary && synth && !EMBED && (await speakBrowser(text, p, token, fr))) return;
   AUD.murmur(0.5 + (p.vi % 5) / 10, estMs(text) / 1000); return sleep(estMs(text));
@@ -670,20 +711,19 @@ function paintStatus() {
   for (const p of Object.values(S.agents)) {
     const t = $('#t-' + p.id); if (!t) continue; const s = S.status[p.id];
     t.style.display = p.id === 'main' || p.id === 'user' || (s && (!S.gone.has(p.id) || S.leaving.has(p.id))) ? '' : 'none';
-    t.classList.toggle('done', s === 'done'); t.classList.toggle('working', s === 'working');
-    const el = t.querySelector('.status'); el.textContent = s === 'working' ? '⚙ ' + (S.act[p.id] || L('au travail', 'working')) : s === 'done' ? '✓ ' + L('terminé', 'done') : ''; el.className = 'status ' + (s || '');
   }
+  paintStates();
   const prev = $('.row.now'); if (prev) prev.classList.remove('now');
   const now = $(`.row[data-i="${S.idx}"]`); if (now) { now.classList.add('now'); if (document.body.classList.contains('log')) now.scrollIntoView({ block: 'nearest' }); }
   later('detail', renderDetail); later('tree', renderTree); drawGantt();
   $('#seek').value = S.idx; $('#pos').textContent = `${Math.min(S.idx + 1, S.events.length)} / ${S.events.length}`;
 }
 const applyStatus = (ev) => {
-  if (ev.kind === 'order') { S.status[ev.to] = 'working'; delete S.doneAt[ev.to]; S.gone.delete(ev.to); S.leaving.delete(ev.to); const t = $('#t-' + ev.to); if (t) t.classList.remove('vanishing'); }
-  if (ev.kind === 'report') { S.status[ev.agent] = 'done'; S.doneAt[ev.agent] = S.clock; delete S.run[ev.agent]; }
+  if (ev.kind === 'order') { (S.waitOn[ev.agent] = S.waitOn[ev.agent] || new Set()).add(ev.to); S.orderTs[ev.to] = ev.ts || 0; S.status[ev.to] = 'working'; delete S.doneAt[ev.to]; S.gone.delete(ev.to); S.leaving.delete(ev.to); const t = $('#t-' + ev.to); if (t) t.classList.remove('vanishing'); }
+  if (ev.kind === 'report') { if (S.waitOn[ev.to]) S.waitOn[ev.to].delete(ev.agent); S.status[ev.agent] = 'done'; S.doneAt[ev.agent] = S.clock; delete S.run[ev.agent]; }
 };
 function recomputeStatus(upTo) {
-  S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; hidePresent();
+  S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; hidePresent();
   S.status = {}; S.tc = {}; S.doneAt = {}; S.gone.clear(); S.leaving.clear(); document.querySelectorAll('.tile.vanishing').forEach((t) => t.classList.remove('vanishing')); const doneIdx = {}; document.querySelectorAll('.ticker').forEach((x) => { x.classList.remove('on'); x.innerHTML = ''; });
   for (let i = 0; i < upTo; i++) {
     const e = S.events[i]; applyStatus(e); tally(e); if (e.kind === 'tools') S.tc[e.agent] = (S.tc[e.agent] || 0) + e.tools.length;
@@ -704,7 +744,7 @@ function syncUI() {
 
 // ---------- tool ticker, shared screen, flying messages ----------
 // ---------- what each agent is doing: tool calls with their real outputs ----------
-S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.present = null; S.camFor = null; let presentTimer = null;
+S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.present = null; S.camFor = null; let presentTimer = null;
 const later = (k, fn, ms = 160) => { later.p = later.p || {}; if (later.p[k]) return; later.p[k] = setTimeout(() => { later.p[k] = 0; fn(); }, ms); };   // coalesce bursts of repaints
 const fmtTok = (n) => (n < 1000 ? String(n) : n < 1e6 ? (n / 1000).toFixed(n < 1e4 ? 1 : 0) + 'k' : (n / 1e6).toFixed(n < 1e7 ? 2 : 1) + 'M');
 const tokTotal = (u) => (u ? u.i + u.o + u.w : 0);   // headline = input + output + cache writes; cache reads are cheap and shown separately
@@ -719,6 +759,33 @@ function renderTokens() {
   const b = $('#tok'), tot = tokTotal(all); b.style.display = tot ? '' : 'none';
   if (tot) { b.textContent = `⚡ ${fmtTok(tot)} ${L('jetons', 'tokens')}`; b.title = tokTip(all); }
   for (const id in S.agents) { const t = $('#t-' + id); if (!t) continue; const u = S.usage[id], el = t.querySelector('.tk'); el.textContent = u && tokTotal(u) ? `⚡${fmtTok(tokTotal(u))}` : ''; if (u) t.title = tokTip(u); }
+}
+// One boring signal per tile: working · waiting on another agent · may need you · stalled · done. Stalled hand-offs are what really cost time.
+const NEEDS_OK = /^(Bash|Edit|Write|MultiEdit|NotebookEdit|WebFetch|AskUserQuestion|ExitPlanMode)/, ASKS = /^(AskUserQuestion|ExitPlanMode)/;
+function agentState(id, now) {
+  let s = S.status[id]; const r = S.run[id], w = S.waitOn[id], la = S.lastAct[id];
+  if (id === 'main' && !s) { if (r || (w && w.size) || (S.live && la && now - la < 25000)) s = 'working'; else if (S.live && la) return { k: 'done', txt: '✓ ' + L('à vous', 'your turn') }; }
+  if (s === 'done') return { k: 'done', txt: '✓ ' + L('terminé', 'done') };
+  if (!s) return { k: 'idle', txt: '' };
+  if (S.live && r && r.ts && r.name && NEEDS_OK.test(r.name)) { const age = now - r.ts; if (age > (ASKS.test(r.name) ? 4000 : 25000)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(age) }; }
+  if (w && w.size) {
+    const names = [...w].map(nameOf); let stale = S.live; for (const c of w) if (!(now - Math.max(S.lastAct[c] || 0, S.orderTs[c] || 0) > 120000)) stale = false;
+    return { k: stale ? 'stalled' : 'waiting', txt: (stale ? '⚠ ' + L('bloqué · ', 'stalled · ') : '🔗 ') + L('attend ', 'waiting on ') + names.slice(0, 2).join(', ') + (names.length > 2 ? ' +' + (names.length - 2) : '') };
+  }
+  return { k: 'working', txt: '⚙ ' + (S.act[id] || L('au travail', 'working')) };
+}
+const STATE_CLASSES = ['working', 'waiting', 'blocked', 'stalled', 'done'];
+function paintStates() {
+  const now = Date.now(), n = { working: 0, waiting: 0, blocked: 0, stalled: 0, done: 0 };
+  for (const p of Object.values(S.agents)) {
+    if (p.id === 'user') continue; const t = $('#t-' + p.id); if (!t) continue;
+    const st = agentState(p.id, now), shown = t.style.display !== 'none'; if (shown && n[st.k] !== undefined && !S.gone.has(p.id)) n[st.k]++;
+    STATE_CLASSES.forEach((c) => t.classList.toggle(c, st.k === c));
+    const el = t.querySelector('.status'); if (el.textContent !== st.txt) el.textContent = st.txt; el.className = 'status ' + st.k;
+  }
+  const b = $('#board'), parts = [['working', '⚙', L('au travail', 'working')], ['waiting', '🔗', L('en attente', 'waiting')], ['blocked', '✋', L('vous attendent', 'need you')], ['stalled', '⚠', L('bloqués', 'stalled')], ['done', '✓', L('terminés', 'done')]]
+    .filter(([k]) => n[k]).map(([k, i, l]) => `<span class="${k}">${i} ${n[k]} ${l}</span>`).join('');
+  if (b.innerHTML !== parts) b.innerHTML = parts; S.nBlocked = n.blocked + n.stalled; return n;
 }
 function renderBadges() {   // per tile: failed tool calls, a command that has been running a long time, an agent that went quiet
   const now = Date.now();
@@ -745,9 +812,10 @@ function watchDone(n) {   // live: the team was busy for a while and has now bee
   else { try { if (document.hidden && 'Notification' in window && Notification.permission === 'granted') new Notification('Agent Standup', { body: msg }); } catch {} }
 }
 function updateTitle() {
+  paintStates(); if (S.live && S.nBlocked && !S.wasBlocked && prefs.notify) { AUD.alert(); const msg = L('Un agent attend peut-être votre feu vert ✋', 'An agent may be waiting for you ✋'); if (EMBED) window.parent.postMessage({ agentStandup: 'notify', text: msg }, '*'); else { try { if (document.hidden && 'Notification' in window && Notification.permission === 'granted') new Notification('Agent Standup', { body: msg }); } catch {} } } S.wasBlocked = S.nBlocked > 0;
   let n = 0; for (const id in S.status) if (S.status[id] === 'working' && !S.gone.has(id)) n++;
   watchDone(n);
-  document.title = S.doneUntil > Date.now() && !n ? '✓ ' + L('Terminé', 'Done') + ' · Agent Standup' : S.live && S.playing && n ? `● ${n} ${L('au travail', 'working')} · Agent Standup` : 'Agent Standup';
+  document.title = S.live && S.nBlocked ? `✋ ${S.nBlocked} ${L('à voir', 'need you')} · Agent Standup` : S.doneUntil > Date.now() && !n ? '✓ ' + L('Terminé', 'Done') + ' · Agent Standup' : S.live && S.playing && n ? `● ${n} ${L('au travail', 'working')} · Agent Standup` : 'Agent Standup';
 }
 setInterval(() => { if (!S.agents || !S.live) return; renderBadges(); updateTitle(); }, 2000);
 const base = (f) => String(f || '').split('/').pop();
@@ -791,7 +859,7 @@ function tickTools(ev) {
   ev.tools.forEach((tool) => pushTerm(ev.agent, tool));
   const buf = S.term[ev.agent], k = ev.tools[ev.tools.length - 1];
   S.tc[ev.agent] = (S.tc[ev.agent] || 0) + ev.tools.length; S.lastTool[ev.agent] = k.name + ' ' + (k.arg || '').slice(-38);
-  S.run[ev.agent] = { id: k.id, start: performance.now(), ts: k.ts }; setTicker(ev.agent, buf[buf.length - 1]); showPresent(ev.agent);
+  S.run[ev.agent] = { id: k.id, start: performance.now(), ts: k.ts, name: k.name }; setTicker(ev.agent, buf[buf.length - 1]); showPresent(ev.agent);
 }
 setInterval(() => {   // live "running…" counters
   if (!S.playing) return;
@@ -1276,6 +1344,7 @@ $('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b)
 $('#station').innerHTML = STATIONS.map((s) => `<option value="${s.id}">📻 ${s.name}</option>`).join('');
 $('#station').value = prefs.station; $('#musicVol').value = prefs.musicVol; $('#musicBox').style.display = prefs.music ? '' : 'none';
 $('#station').onchange = (e) => { prefs.station = e.target.value; savePrefs(); AUD.init(); RADIO.sync(); };
+$('#vstyle').innerHTML = [['cartoon', 'Voix cartoon', 'Cartoon voices'], ['natural', 'Voix naturelles', 'Natural voices'], ['babble', 'Babillage (sous-agents)', 'Babble (sub-agents)']].map(([v, fr, en]) => `<option value="${v}" data-fr="${fr}" data-en="${en}">${L(fr, en)}</option>`).join(''); $('#vstyle').value = prefs.vstyle; $('#vstyle').onchange = () => { prefs.vstyle = $('#vstyle').value; savePrefs(); };
 $('#officeVol').value = prefs.officeVol; $('#officeBox').style.display = prefs.office ? '' : 'none';
 $('#officeVol').oninput = (e) => { prefs.officeVol = +e.target.value; savePrefs(); AUD.applyMusic(); };
 $('#musicVol').oninput = (e) => { prefs.musicVol = +e.target.value; savePrefs(); AUD.applyMusic(); };
