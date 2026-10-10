@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.23.0
-Ideas from a community fork, rewritten and merged.
+Ideas from [neondragon's fork](https://github.com/neondragon/agent-standup), rewritten and merged.
 - **Settings are kept in a file** (`~/.config/agent-standup/prefs.json`, or `%APPDATA%` on Windows) shared by every window. Before, each VS Code window and each port started from scratch, because the browser stores settings per port.
 - **The call stays with the session you follow** while it is active (90 s), so another session writing elsewhere no longer steals it mid-line. A workspace folder also matches the sessions of its sub-folders.
 - **What you typed**: the blocks Claude Code wraps around your message (system reminders, IDE context, command echoes) are no longer shown as if you had said them.

@@ -255,7 +255,7 @@ The website counts visits anonymously (a 1-pixel file hosted on GitHub per chann
 - Video export records in real time and needs a Chromium-based browser/VS Code.
 
 ## Credits
-Several ideas in 1.23 (settings kept in a file, session stickiness, subtitles that follow the voice, Kokoro voices, meme mode and its sound clips) started in a community fork of this project, whose author we thank. Their code was read and rewritten for this codebase, and the sound clips were checked as free to reuse. The Traditional Chinese wording was polished with suggestions from a Taiwanese reader on Reddit. Unofficial: not affiliated with Anthropic.
+Several ideas in 1.23 (settings kept in a file, session stickiness, subtitles that follow the voice, Kokoro voices, meme mode and its sound clips) started in [neondragon's fork](https://github.com/neondragon/agent-standup) of this project. Thank you! Their code was read and rewritten for this codebase, and the sound clips were checked as free to reuse. The Traditional Chinese wording was polished with suggestions from a Taiwanese reader on Reddit. Unofficial: not affiliated with Anthropic.
 
 ## License
 
