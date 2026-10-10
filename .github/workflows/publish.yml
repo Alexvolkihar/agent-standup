@@ -12,7 +12,7 @@ jobs:
     env:
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}   # not called NODE_AUTH_TOKEN on purpose: setup-node fills that one with a placeholder when it is unset, which would make the check below always true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,7 +28,9 @@ jobs:
         if: env.OVSX_PAT != ''
         run: npx --yes ovsx publish extension.vsix -p "$OVSX_PAT" --skip-duplicate
       - name: npm
-        if: env.NODE_AUTH_TOKEN != ''
+        if: env.NPM_TOKEN != ''
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           node scripts/build-cli.js
           cd dist-cli
