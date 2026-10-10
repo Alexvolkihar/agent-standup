@@ -72,7 +72,18 @@ async function openBrowser() {
   try { vscode.env.openExternal(vscode.Uri.parse(await url())); } catch (e) { vscode.window.showErrorMessage(e.message); }
 }
 
+// Opt-in only (agentStandup.shareUsage, off by default, and never when VS Code telemetry is off): at most one request per day to a 1-pixel file on GitHub, so the project can count how many installs are used. Nothing is sent in the request: no id, no path, no content.
+function pingActive(ctx) {
+  try {
+    if (!cfg().get('shareUsage') || vscode.env.isTelemetryEnabled === false) return;
+    const day = new Date().toISOString().slice(0, 10); if (ctx.globalState.get('lastActivePing') === day) return;
+    ctx.globalState.update('lastActivePing', day);
+    const r = require('https').get({ host: 'github.com', path: '/Atoll92/agent-standup/releases/download/stats/app-active.gif', headers: { 'user-agent': 'agent-standup' }, timeout: 5000 }, (m) => { m.resume(); m.destroy(); });
+    r.on('error', () => {}); r.on('timeout', () => r.destroy());
+  } catch {}
+}
 function activate(ctx) {
+  pingActive(ctx);
   const applyPath = () => { process.env.AGENT_STANDUP_CLAUDE = cfg().get('claudePath') || ''; };
   applyPath(); ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration((ev) => { if (ev.affectsConfiguration('agentStandup.claudePath')) applyPath(); }));
   ctx.subscriptions.push(
@@ -90,4 +101,4 @@ function activate(ctx) {
   if (cfg().get('autoOpen')) openPanel();
 }
 async function deactivate() { try { if (started) { const s = await started; s.server && s.server.close(); } require('./server.js').shutdown(); } catch {} }
-module.exports = { activate, deactivate };
+module.exports = { activate, deactivate, _pingActive: pingActive };

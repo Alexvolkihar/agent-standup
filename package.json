@@ -2,7 +2,7 @@
   "name": "agent-standup",
   "displayName": "Agent Standup",
   "description": "Watch your Claude Code session as a live, animated team call: the lead gives orders, sub-agents join, share their screen and report back \u2014 with voices, a sub-agent tree, timeline, recap and video export.",
-  "version": "1.17.3",
+  "version": "1.18.0",
   "publisher": "DoubleGeste",
   "license": "MIT",
   "engines": {
@@ -21,7 +21,8 @@
     "start": "node server.js",
     "package": "npx --yes @vscode/vsce package --allow-missing-repository --skip-license",
     "landing": "node scripts/build-landing.js",
-    "capture": "node scripts/capture-demo.js all"
+    "capture": "node scripts/capture-demo.js all",
+    "stats": "node scripts/stats.js"
   },
   "contributes": {
     "commands": [
@@ -55,6 +56,11 @@
           "type": "boolean",
           "default": true,
           "description": "Follow only Claude Code sessions started in the current workspace folder."
+        },
+        "agentStandup.shareUsage": {
+          "type": "boolean",
+          "default": false,
+          "description": "Help the project count active installs: once a day, send one empty request to a 1-pixel file on GitHub (no identifier, no content; GitHub sees your IP like for any download). Off by default; ignored if VS Code telemetry is off."
         },
         "agentStandup.claudePath": {
           "type": "string",

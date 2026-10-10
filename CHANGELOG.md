@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.18.0
+- **Optional usage counter** (`agentStandup.shareUsage`, off by default, ignored when VS Code telemetry is off): at most one empty request per day to a 1-pixel file on GitHub, so active installs can be counted without any server or identifier. Documented in the README.
+- `npm run stats` (maintainers): landing visits per source, release downloads, opt-in active installs, with the change since the last run.
+
 ## 1.17.3
 - Fix: agents showed "stalled" (and never left the call) after finishing. A sub-agent that ended without a final sentence was never marked done, so the lead kept "waiting" on it. Completion is now taken from the lead getting the sub-agent's answer back; background agents no longer block the lead's status.
 
