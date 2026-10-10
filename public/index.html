@@ -146,6 +146,7 @@
   #recap .box { max-width:860px; margin:0 auto; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px 26px }
   #recap h1 { margin:0 0 14px; font:900 26px "Comic Sans MS","Chalkboard SE",sans-serif; text-shadow:2px 2px 0 #d8372b } #recap h3 { margin:20px 0 6px; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim) }
   .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px } .kpi { background:var(--bg); border-radius:10px; padding:10px 12px } .kpi b { display:block; font-size:22px } .kpi span { color:var(--dim); font-size:11.5px }
+  .coffee { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:20px; padding:12px 14px; background:var(--bg); border:1px dashed #4a4f66; border-radius:10px; font-size:13px; color:#c3c6d4 }
   #recap table { width:100%; border-collapse:collapse; font-size:12.5px } #recap td, #recap th { padding:4px 8px; border-bottom:1px solid var(--line); text-align:left } #recap th { color:var(--dim); font-weight:500 } #recap .f { font:12px ui-monospace,Menlo,monospace; word-break:break-all }
 
   /* ---------- tree ---------- */
@@ -187,6 +188,7 @@
   <div class="box"><div class="seg" style="width:100%" id="modeSeg"><button data-m="live" style="flex:1">Live</button><button data-m="replay" style="flex:1">Replay</button></div>
     <select id="sessions" style="display:none"></select></div>
   <h4 data-fr="Outils" data-en="Tools">Outils</h4>
+  <button class="mi" id="mCoffee" style="display:none"><span id="mCoffeeT"></span></button>
   <button class="mi" id="mRecap"><span data-fr="📋 Récapitulatif" data-en="📋 Recap">📋 Récapitulatif</span></button>
   <button class="mi" id="mExport"><span data-fr="🎞 Exporter la vidéo" data-en="🎞 Export video">🎞 Exporter la vidéo</span></button>
   <button class="mi" id="mBrowser" style="display:none"><span data-fr="↗ Ouvrir dans le navigateur" data-en="↗ Open in browser">↗ Ouvrir dans le navigateur</span></button>
@@ -218,6 +220,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const SUPPORT = { url: '' };   // e.g. 'https://www.buymeacoffee.com/yourname' — the coffee button stays hidden while this is empty
 const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
 
@@ -838,6 +841,14 @@ function drawGantt() {
 $('#gantt').onclick = (e) => { const r = e.currentTarget.getBoundingClientRect(); seekTo(Math.floor(((e.clientX - r.left) / r.width) * S.events.length)); };
 
 // =====================================================================
+//  support the dev
+// =====================================================================
+const coffeeMsg = () => L('Ce développeur a été remplacé par ses propres agents. Un café pour sa reconversion ? ☕', 'This dev was replaced by his own agents. Spare a coffee for his career change? ☕');
+function openExternal(url) { if (EMBED) window.parent.postMessage({ agentStandup: 'openExternal', url }, '*'); else window.open(url, '_blank', 'noopener'); }   // VS Code webviews must ask the extension
+function renderCoffee() { const b = $('#mCoffee'); b.style.display = SUPPORT.url ? '' : 'none'; $('#mCoffeeT').textContent = L('☕ Offrir un café au développeur', '☕ Buy the (replaced) dev a coffee'); b.title = coffeeMsg(); }
+$('#mCoffee').onclick = () => { $('#menu').classList.remove('on'); openExternal(SUPPORT.url); };
+
+// =====================================================================
 //  recap
 // =====================================================================
 const fmt = (ms) => { const s = Math.round(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60), d = Math.floor(h / 24); return d ? `${d}j ${h % 24}h` : h ? `${h}h${String(m % 60).padStart(2, '0')}` : `${m}:${String(s % 60).padStart(2, '0')}`; };
@@ -856,7 +867,9 @@ function openRecap() {
     <h3>${L('Agents les plus actifs', 'Busiest agents')}</h3><table><tr><th></th><th>${L('Rôle', 'Role')}</th><th>${L('Outils', 'Tools')}</th><th>${L('Fichiers', 'Files')}</th><th>${L('Durée', 'Time')}</th></tr>
     ${rows.map((a) => `<tr><td><b>${esc(nameOf(a.id))}</b></td><td>${esc(S.agents[a.id].role)}</td><td>${a.tools}</td><td>${a.files.size || ''}</td><td>${a.t0 != null && a.t1 != null ? fmt(a.t1 - a.t0) : ''}</td></tr>`).join('')}</table>
     <h3>${L('Fichiers touchés', 'Files touched')}</h3>${fl.length ? `<table>${fl.map(([f, v]) => `<tr><td class="f">${esc(f)}</td><td>×${v.n}</td><td>${esc([...v.who].join(', '))}</td></tr>`).join('')}</table>` : `<div class="dim">${L('Aucune modification.', 'No edits.')}</div>`}
+    ${SUPPORT.url ? `<div class="coffee"><span>${esc(coffeeMsg())}</span><button class="btn" id="recapCoffee">☕ ${L('Offrir un café', 'Buy a coffee')}</button></div>` : ''}
     <p style="text-align:right;margin:18px 0 0"><button class="cta" id="recapx">${L('Fermer', 'Close')}</button></p>`;
+  if ($('#recapCoffee')) $('#recapCoffee').onclick = () => openExternal(SUPPORT.url);
   $('#recapx').onclick = () => $('#recap').classList.remove('on'); $('#recap').classList.add('on');
 }
 
@@ -1054,7 +1067,7 @@ function applyLang() {
   $('#gT').textContent = L('Rejoindre l’appel', 'Join the call'); $('#gP').textContent = L('Cliquez pour activer le son et suivre votre session Claude Code en direct.', 'Click to enable sound and follow your Claude Code session live.'); $('#gB').textContent = L('▶ Rejoindre', '▶ Join');
   $('#eT').textContent = L('En attente d’une session', 'Waiting for a session'); $('#eP').textContent = L('Lancez Claude Code dans ce dossier : l’appel démarrera tout seul.', 'Start Claude Code in this folder — the call will start by itself.');
   for (const id in S.agents) { const p = persona(S.agents[id]); Object.assign(S.agents[id], { name: p.name, role: S.agents[id].type === 'main' || id === 'user' ? p.role : S.agents[id].role }); const t = $('#t-' + id); if (t) { t.querySelector('.tag b').textContent = p.name; if (id === 'main' || id === 'user') t.querySelector('.tag span').textContent = p.role; } }
-  document.querySelectorAll('#menu .mi[data-t]').forEach((b) => b.querySelector('.sw').classList.toggle('on', !!prefs[b.dataset.t])); updateHint(); renderLog(true); syncUI();
+  document.querySelectorAll('#menu .mi[data-t]').forEach((b) => b.querySelector('.sw').classList.toggle('on', !!prefs[b.dataset.t])); renderCoffee(); updateHint(); renderLog(true); syncUI();
 }
 function applyMute() { $('#bMute').textContent = AUD.muted ? '🔇' : '🔊'; AUD.apply(); if (AUD.muted) { synth && synth.cancel(); AUD.stopAll(); } }
 function setView(v) { prefs.view = v; savePrefs(); document.body.classList.toggle('tree', v === 'tree'); document.querySelectorAll('#viewSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); renderTree(); }

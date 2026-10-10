@@ -411,4 +411,9 @@ function start(port = PORT) {
   }).listen(port, '127.0.0.1', () => console.log(`Agent Standup → http://localhost:${port}`));
 }
 module.exports = { start, currentSession, shutdown, findClaude, bundledClaude };
-if (require.main === module) start();
+if (require.main === module) {
+  start().on('error', (e) => {
+    console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use (maybe Agent Standup is already running, e.g. inside VS Code). Try: PORT=4790 node server.js` : String(e));
+    process.exit(1);
+  });
+}

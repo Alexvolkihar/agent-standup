@@ -48,7 +48,13 @@ const frameHtml = (src) => `<!doctype html><html><head><meta charset="utf-8">
     <style>html,body{margin:0;height:100%;background:#12131a}iframe{border:0;width:100%;height:100vh}</style></head>
     <body><iframe src="${src}" allow="autoplay; clipboard-write"></iframe>
     <script>const vs = acquireVsCodeApi(); addEventListener('message', (e) => { if (e.data && e.data.agentStandup) vs.postMessage(e.data); });</script></body></html>`;
-const relay = (webview) => webview.onDidReceiveMessage((m) => { if (m && m.agentStandup === 'openBrowser') openBrowser(); });
+// Messages from the page: open it in the browser, or open a donation link (https only, known donation sites only).
+const DONATE_HOSTS = /^(www\.)?(buymeacoffee\.com|ko-fi\.com|paypal\.me|paypal\.com|github\.com)$/;
+const relay = (webview) => webview.onDidReceiveMessage((m) => {
+  if (!m) return;
+  if (m.agentStandup === 'openBrowser') openBrowser();
+  if (m.agentStandup === 'openExternal') { try { const u = new URL(m.url); if (u.protocol === 'https:' && DONATE_HOSTS.test(u.hostname)) vscode.env.openExternal(vscode.Uri.parse(u.toString())); } catch {} }
+});
 
 // Sidebar view: the same live call, in the activity bar.
 const sidebar = {
