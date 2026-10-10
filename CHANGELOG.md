@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.17.1
+- The reactions bar is now hidden by default (it took too much room); turn it on in ⚙ → Reactions bar.
+
 ## 1.17.0
 - **Agents list**: a fixed column left of the call (wide windows) with each agent's role and one status line, urgent first, lead on top. Click = spotlight that agent (25 s), double-click = details. Toggle in ⚙ → Agents list.
 
