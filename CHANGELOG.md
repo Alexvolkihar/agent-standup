@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.23.0
+Ideas from a community fork, rewritten and merged.
+- **Settings are kept in a file** (`~/.config/agent-standup/prefs.json`, or `%APPDATA%` on Windows) shared by every window. Before, each VS Code window and each port started from scratch, because the browser stores settings per port.
+- **The call stays with the session you follow** while it is active (90 s), so another session writing elsewhere no longer steals it mid-line. A workspace folder also matches the sessions of its sub-folders.
+- **What you typed**: the blocks Claude Code wraps around your message (system reminders, IDE context, command echoes) are no longer shown as if you had said them.
+- **Subtitles follow the voice**: a long line is shown one sentence at a time.
+- **Very natural voices (Kokoro-82M)**, optional and installed on demand from ⚙ → Sound.
+- **Meme mode** (⚙ → 🔥), off by default, intensity 1–11.
+- Traditional Chinese wording polished with a native reader's suggestions. `npm test` runs the new tests.
+
 ## 1.22.1
 - Security and robustness (found by a pre-release audit): custom-character folders no longer follow symlinks, side-effect endpoints refuse cross-site requests, a request error can no longer crash the server, translation helpers run with no tools, the TTS cache is private to the user, `--port` is validated.
 - A lead waiting on a synchronous sub-agent now shows "stalled?" after a long silence; the repeated-command loop badge stays visible; the project picker works when the page was opened with a pinned project.

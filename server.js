@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const kokoro = require('./kokoro.js');   // natural voices, installed on demand (see kokoro.js)
 const zlib = require('zlib');
 const { execFileSync } = require('child_process');
 
@@ -47,6 +48,8 @@ const toolLabel = (b, ts) => {
 const resultText = (c) => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => x.text || '').join('\n') : '');
 const RESULT_MAX = { AskUserQuestion: 900, Skill: 300, ToolSearch: 500, Read: 1900, Bash: 1300, Grep: 900, Glob: 800, WebFetch: 800, WebSearch: 800, Edit: 200, MultiEdit: 200, Write: 200 };
 const NO_RESULT = new Set(['Agent', 'Task', 'SendMessage', 'TodoWrite']);   // internal bookkeeping, nothing to show
+const HARNESS = /<(system-reminder|browser_instruction|ide_selection|ide_opened_file|task-notification|command-name|command-message|command-args|local-command-stdout|local-command-caveat)>[\s\S]*?<\/\1>\s*/g;   // blocks the harness wraps around what the human typed
+
 
 let sessionsMemo = { at: 0, rows: [] };
 function listSessions() {
@@ -155,14 +158,24 @@ function boardRows0() {
     return { proj, id, title: p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal };
   });
 }
+// Settings live in a file, not only in the page's localStorage: the port changes between VS Code windows and reloads, and localStorage is per origin (port included).
+const PREFS = process.env.AGENT_STANDUP_PREFS || (process.platform === 'win32' ? path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'agent-standup', 'prefs.json') : path.join(os.homedir(), '.config', 'agent-standup', 'prefs.json'));
+function readPrefs() { try { const v = JSON.parse(fs.readFileSync(PREFS, 'utf8')); return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch { return null; } }
+function writePrefs(v) { fs.mkdirSync(path.dirname(PREFS), { recursive: true }); const tmp = PREFS + '.' + process.pid + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(v, null, 1)); fs.renameSync(tmp, PREFS); }
 // Most recently active session (optionally limited to one project dir) — drives the live feed.
-function currentSession(projFilter, idFilter) {
+const STICK_MS = 90000;   // a session written to in the last 90 s keeps the call, so another session writing elsewhere does not steal it mid-line
+function sessionMtime(proj, id) {
+  try { let m = fs.statSync(path.join(ROOT, proj, id + '.jsonl')).mtimeMs; const sd = path.join(ROOT, proj, id, 'subagents'); if (fs.existsSync(sd)) for (const x of fs.readdirSync(sd)) m = Math.max(m, fs.statSync(path.join(sd, x)).mtimeMs); return m; } catch { return 0; }
+}
+function currentSession(projFilter, idFilter, stick) {
+  const safe = (x) => typeof x === 'string' && /^[\w.\-]+$/.test(x) && x !== '..';
+  if (stick && safe(stick.id) && safe(stick.proj) && (!projFilter || stick.proj === projFilter || stick.proj.startsWith(projFilter + '-')) && Date.now() - sessionMtime(stick.proj, stick.id) < STICK_MS) return { proj: stick.proj, id: stick.id, mtime: sessionMtime(stick.proj, stick.id) };
   if (idFilter && projFilter && projFilter !== '..' && idFilter !== '..' && /^[\w.\-]+$/.test(idFilter) && /^[\w.\-]+$/.test(projFilter) && fs.existsSync(path.join(ROOT, projFilter, idFilter + '.jsonl'))) return { proj: projFilter, id: idFilter, mtime: Date.now() };   // pinned from the board
   let best = null;
   if (!fs.existsSync(ROOT)) return {};
   const consider = (proj, id, m) => { if (!best || m > best.mtime) best = { proj, id, mtime: m }; };
   for (const proj of fs.readdirSync(ROOT)) {
-    if (projFilter && proj !== projFilter) continue;
+    if (projFilter && proj !== projFilter && !proj.startsWith(projFilter + '-')) continue;   // the folder itself, or a folder inside it
     const dir = path.join(ROOT, proj); let files;
     try { files = fs.readdirSync(dir); } catch { continue; }
     for (const f of files) {
@@ -173,7 +186,7 @@ function currentSession(projFilter, idFilter) {
       consider(proj, id, m);
     }
   }
-  if (!best && projFilter) return currentSession('');
+  if (!best && projFilter) return currentSession('', '', stick);
   return best || {};
 }
 
@@ -217,7 +230,7 @@ function parseRecord(st, r) {
     }
     if (items.length) st.raw.push({ ts, agent, kind: 'results', items });
     if (agent !== 'main') return;   // a sub-agent's first user message is the order, emitted from the parent's side
-    const txt = blocks(r).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    const txt = blocks(r).filter((b) => b.type === 'text').map((b) => b.text).join('\n').replace(HARNESS, '').replace(/^\s*\[Request interrupted[^\]]*\]\s*/i, '').trim();   // what the human typed, without the blocks the harness wraps around it
     if (txt && !/^<(system-reminder|command-|local-command|task-notification)/.test(txt) && !r.isMeta) st.raw.push({ ts, agent: 'user', kind: 'user', text: txt });
   } else if (r.type === 'assistant') {
     const m = r.message || {};
@@ -387,7 +400,7 @@ class TrWorker {
   }
 }
 const trWorkers = [new TrWorker(), new TrWorker()];
-const shutdown = () => trWorkers.forEach((w) => w.kill());
+const shutdown = () => { trWorkers.forEach((w) => w.kill()); kokoro.shutdown(); };
 process.on('exit', shutdown);
 const pickWorker = () => trWorkers.reduce((a, b) => (a.q.length + a.busy <= b.q.length + b.busy ? a : b));
 async function translateFast(texts) {
@@ -438,16 +451,17 @@ function synthesize(voice, wpm, text, out) {
     p.on('error', reject); p.on('close', (code) => (code === 0 && fs.existsSync(out) ? resolve() : reject(new Error('tts failed'))));
   });
 }
-function tts(text, voice, rate) {
-  const vs = listVoices();
-  if (!vs.available || !vs.voices.some((v) => v.name === voice)) return Promise.reject(new Error('unknown voice'));
-  text = String(text).slice(0, 700); rate = Math.max(90, Math.min(360, Math.round(+rate || 180)));
-  const key = crypto.createHash('sha1').update([voice, rate, text].join('|')).digest('hex'), file = path.join(ttsDir, key + '.wav');
+function tts(text, voice, rate, engine) {
+  const kk = engine === 'kokoro';
+  if (kk) { if (!kokoro.hasVoice(voice)) return Promise.reject(new Error('unknown voice')); }
+  else { const vs = listVoices(); if (!vs.available || !vs.voices.some((v) => v.name === voice)) return Promise.reject(new Error('unknown voice')); }
+  text = String(text).slice(0, kk ? 1500 : 700); rate = Math.max(90, Math.min(360, Math.round(+rate || 180)));
+  const key = crypto.createHash('sha1').update([kk ? 'kokoro' : 'system', voice, rate, text].join('|')).digest('hex'), file = path.join(ttsDir, key + '.wav');
   if (fs.existsSync(file)) return Promise.resolve(file);
   if (ttsJobs.has(key)) return ttsJobs.get(key);
   fs.mkdirSync(ttsDir, { recursive: true });
   const tmp = file + '.part.wav';
-  const job = synthesize(voice, rate, text, tmp).then(() => { fs.renameSync(tmp, file); return file; }).finally(() => ttsJobs.delete(key));
+  const job = (kk ? kokoro.synth(text, voice, kokoro.speedFor(rate), tmp) : synthesize(voice, rate, text, tmp)).then(() => { fs.renameSync(tmp, file); return file; }).finally(() => ttsJobs.delete(key));
   ttsJobs.set(key, job); return job;
 }
 
@@ -477,7 +491,7 @@ function start(port = PORT) {
   const json = (o, code = 200) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(o)); };
   // Endpoints with side effects (they spawn programs or claim the sound) refuse requests that a browser marks as coming from another site, e.g. an <img> on a web page.
   const sfs = req.headers['sec-fetch-site'];
-  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts'].includes(url.pathname)) { res.writeHead(403); return res.end('forbidden'); }
+  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts', '/api/prefs', '/api/voices', '/api/kokoro', '/api/kokoro/install'].includes(url.pathname)) { res.writeHead(403); return res.end('forbidden'); }
   const readBody = (cb) => {   // request bodies are small JSON: stop reading beyond 256 KB and give up after 10 s
     let body = '', over = false; req.setTimeout(10000, () => req.destroy());
     req.on('data', (d) => { if (over) return; body += d; if (body.length > 262144) { over = true; res.writeHead(413); res.end('too large'); req.destroy(); } });
@@ -501,13 +515,21 @@ function start(port = PORT) {
     }
     if (url.pathname === '/api/health') return json({ claude: findClaude(), apiKey: !!process.env.ANTHROPIC_API_KEY, trError: lastTrError, platform: process.platform });
     if (url.pathname === '/api/warm') { trWorkers.forEach((w) => { if (!w.p) w.start(); }); return json({ ok: true }); }
-    if (url.pathname === '/api/voices') return json(listVoices());
+    if (url.pathname === '/api/voices') {
+      if (url.searchParams.get('engine') === 'kokoro') { const st = kokoro.status(); if (st.installed && !st.gaveUp) kokoro.warm(); return json({ available: st.installed && !st.gaveUp, ready: st.ready, voices: kokoro.voices(), platform: process.platform, engine: 'kokoro' }); }
+      return json(listVoices());
+    }
+    if (url.pathname === '/api/kokoro/install' && req.method === 'POST') return json(kokoro.install());
+    if (url.pathname === '/api/kokoro') return json(kokoro.status());
     if (url.pathname === '/api/tts') {
-      return tts(url.searchParams.get('text') || '', url.searchParams.get('voice'), url.searchParams.get('rate'))
+      return tts(url.searchParams.get('text') || '', url.searchParams.get('voice'), url.searchParams.get('rate'), url.searchParams.get('engine'))
         .then((f) => { res.writeHead(200, { 'content-type': 'audio/wav', 'cache-control': 'max-age=86400' }); fs.createReadStream(f).pipe(res); })
         .catch((e) => json({ error: String(e.message) }, 400));
     }
-    if (url.pathname === '/api/current') return json(currentSession(url.searchParams.get('proj') || '', url.searchParams.get('id') || ''));
+    if (url.pathname === '/api/prefs.js') { res.writeHead(200, { 'content-type': 'application/javascript', 'cache-control': 'no-store' }); return res.end('window.SAVED_PREFS = ' + JSON.stringify(readPrefs()).replace(/</g, '\\u003c') + ';'); }
+    if (url.pathname === '/api/prefs' && req.method === 'PUT') return readBody((body) => { try { const v = JSON.parse(body); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('prefs must be an object'); writePrefs(v); json({ ok: true }); } catch (e) { json({ error: String(e.message || e) }, 400); } });
+    if (url.pathname === '/api/prefs') return json(readPrefs() || {});
+    if (url.pathname === '/api/current') return json(currentSession(url.searchParams.get('proj') || '', url.searchParams.get('id') || '', { proj: url.searchParams.get('sproj') || '', id: url.searchParams.get('sid') || '' }));
     if (url.pathname === '/api/board') return json(boardRows());
     if (url.pathname === '/api/characters') return json(listCharacters());
     if (url.pathname === '/api/session') {

@@ -165,5 +165,16 @@
  "Open folder": "打开文件夹",
  "custom character(s) loaded": "个自定义角色已加载",
  "Drop your pixel art (PNG) in this folder to replace the characters:": "把你的像素画（PNG）放进此文件夹即可替换角色：",
- "lead.png = the lead · you.png = you · others = the sub-agents · name-talk.png = open mouth": "lead.png = 主代理 · you.png = 你 · 其他 = 子代理 · name-talk.png = 张嘴"
+ "lead.png = the lead · you.png = you · others = the sub-agents · name-talk.png = open mouth": "lead.png = 主代理 · you.png = 你 · 其他 = 子代理 · name-talk.png = 张嘴",
+ "🔥 Meme mode (unhinged)": "🔥 梗图模式（彻底放飞）",
+ "Downloading, you can carry on: system voices are used meanwhile.": "正在下载，你可以继续使用：期间会使用系统语音。",
+ "Effects volume": "音效音量",
+ "Good-quality local voices, mostly English (one French voice). Free, nothing leaves your machine.": "高质量的本地语音，以英语为主（法语只有一种声音）。免费，数据不会离开你的电脑。",
+ "Installing…": "正在安装…",
+ "Intensity": "强度",
+ "Loading the model (downloaded on first use, about 155 MB)…": "正在加载模型（首次使用时下载，约 155 MB）…",
+ "npm not found: install Node.js to enable this option.": "未找到 npm：请安装 Node.js 以启用此选项。",
+ "The engine stopped: system voices are used instead.": "引擎已停止：改用系统语音。",
+ "Very natural voices (installs on demand)": "超自然语音（按需安装）",
+ "Voices ready.": "语音已就绪。"
 }

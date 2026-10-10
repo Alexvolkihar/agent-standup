@@ -17,6 +17,8 @@ jobs:
           node --check extension.js
           node --check bin/agent-standup.js
           node -e "new Function('return async function(){' + require('fs').readFileSync('public/index.html','utf8').split('<script>')[1].split('</script>')[0] + '}')"
+      - name: Tests
+        run: npm test
       - name: Translations are complete and consistent
         run: npm run i18n
       - name: Package the command line tool and smoke-test it

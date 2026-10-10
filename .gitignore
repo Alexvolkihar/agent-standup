@@ -10,3 +10,4 @@ dist-desktop/
 desktop/node_modules/
 desktop/core/
 dist-release/
+dist-release-*/

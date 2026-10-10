@@ -108,6 +108,12 @@ Four styles in ⚙ (default: **Cartoon voices**, so everything stays understanda
 - **Simlish** — the same idea with flowing syllables, vowels and little consonant noises.
 - **Cartoon voices** — the real words read by your system voice, with a character per agent (chipmunk, deep, robot, wobbly, radio, monster, squeaky).
 - **Natural voices** — plain system voices.
+- **Very natural voices** — [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M), a small open speech model that runs on your machine. Optional: pick it in ⚙ and click Install (about 580 MB, one folder in your user cache, installed with npm; the model is fetched on first use). Until it is ready the system voices keep talking. Mostly English voices, one French voice.
+
+Long lines are subtitled one sentence at a time, in step with the voice.
+
+### 🔥 Meme mode
+⚙ → **🔥 Meme mode**, off by default, intensity 1–11. The same call in a 2010s montage costume: an airhorn and "DEPLOYING ADA" when the lead gives an order, hitmarkers and "+300 XP" when a sub-agent reports, a vine boom on errors, a record scratch when you cut a line, Impact captions, emoji rain. It never changes what is shown or said, only how loudly; full-screen flashes are capped at 3 a second and skipped under reduced motion.
 
 The two gibberish styles need no system voice and no translation, so they sound the same on macOS, Windows and Linux and in any language; the words stay on screen.
 
@@ -247,6 +253,9 @@ The website counts visits anonymously (a 1-pixel file hosted on GitHub per chann
 - Voices on macOS/Windows/Linux differ in quality; Windows needs a French voice installed for French.
 - Very large sessions (10 MB+ of transcript) take a second or two to load the first time (about 1.9 s for a 12 MB, 168-sub-agent session on a recent Mac); after that updates take milliseconds.
 - Video export records in real time and needs a Chromium-based browser/VS Code.
+
+## Credits
+Several ideas in 1.23 (settings kept in a file, session stickiness, subtitles that follow the voice, Kokoro voices, meme mode and its sound clips) started in a community fork of this project, whose author we thank. Their code was read and rewritten for this codebase, and the sound clips were checked as free to reuse. The Traditional Chinese wording was polished with suggestions from a Taiwanese reader on Reddit. Unofficial: not affiliated with Anthropic.
 
 ## License
 

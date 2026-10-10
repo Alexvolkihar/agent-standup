@@ -13,3 +13,4 @@ dist-cli/**
 dist-desktop/**
 dist-release/**
 ROADMAP.md
+dist-release-*/**

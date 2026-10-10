@@ -1,5 +1,9 @@
 {
- "_meta": {"language": "pt-BR", "reviewed": false, "note": "AI draft, native review welcome"},
+ "_meta": {
+  "language": "pt-BR",
+  "reviewed": false,
+  "note": "AI draft, native review welcome"
+ },
  "Characters": "Personagens",
  "Reload": "Recarregar",
  "Open folder": "Abrir pasta",
@@ -161,5 +165,16 @@
  "Writing ": "Escrevendo ",
  "You": "Você",
  "Your agents are done 🎉": "Seus agentes terminaram 🎉",
- "your turn": "sua vez"
+ "your turn": "sua vez",
+ "🔥 Meme mode (unhinged)": "🔥 Modo meme (sem noção)",
+ "Downloading, you can carry on: system voices are used meanwhile.": "Baixando, pode continuar: enquanto isso, as vozes do sistema são usadas.",
+ "Effects volume": "Volume dos efeitos",
+ "Good-quality local voices, mostly English (one French voice). Free, nothing leaves your machine.": "Vozes locais de boa qualidade, principalmente em inglês (só uma voz em francês). Grátis, nada sai do seu computador.",
+ "Installing…": "Instalando…",
+ "Intensity": "Intensidade",
+ "Loading the model (downloaded on first use, about 155 MB)…": "Carregando o modelo (baixado no primeiro uso, cerca de 155 MB)…",
+ "npm not found: install Node.js to enable this option.": "npm não encontrado: instale o Node.js para ativar esta opção.",
+ "The engine stopped: system voices are used instead.": "O mecanismo parou: as vozes do sistema são usadas no lugar.",
+ "Very natural voices (installs on demand)": "Vozes muito naturais (instaladas sob demanda)",
+ "Voices ready.": "Vozes prontas."
 }
