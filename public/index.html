@@ -165,7 +165,8 @@
   .drift { animation:drift 24s ease-in-out infinite alternate } @keyframes drift { to { transform:translateX(9px) } }
   .steam { animation:steam 2.6s ease-in-out infinite } @keyframes steam { 50% { transform:translateY(-1.4px); opacity:.25 } }
   .tile.done .sparks path { animation:tw 1.6s ease-in-out infinite }
-  @media (prefers-reduced-motion:reduce) { .tile *, .tile { animation:none !important } }
+  @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none !important; transition:none !important } .confetti, .fly { display:none !important } }
+  .tile:focus-visible, .rr:focus-visible, .bcard:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
   .fly { position:fixed; left:0; top:0; font-size:28px; z-index:8; pointer-events:none; filter:drop-shadow(0 3px 4px rgba(0,0,0,.5)) }
 
   /* ---------- overlays ---------- */
@@ -259,7 +260,7 @@
     <div id="stage"></div><div id="tree"></div><div id="boardv"></div>
     <div id="reactBar" aria-label="Reactions"><button data-e="👍">👍</button><button data-e="👏">👏</button><button data-e="☕">☕</button><button data-e="🔥">🔥</button><button data-e="🙌">🙌</button></div>
     <canvas id="gantt" height="90"></canvas>
-    <div id="toasts"></div>
+    <div id="toasts" role="status" aria-live="polite"></div>
     <div id="empty"><h2 id="eT"></h2><p id="eP"></p><button class="cta" id="eDemo"></button></div>
     <div id="gate"><h2 id="gT"></h2><p id="gP"></p><button class="cta" id="gB"></button><button class="glink" id="gCoffee" style="display:none"></button></div>
     <div id="detail"><div class="hd"><b id="dname"></b><button class="ic" id="dclose">✕</button></div><div id="dbody"></div></div>
@@ -740,7 +741,7 @@ async function speakLine(text, p, primary, token, fr = FR()) {
 //  rendering
 // =====================================================================
 function addTile(p) {
-  const d = document.createElement('div'); d.className = 'tile' + (p.lead ? ' lead' : ''); d.id = 't-' + p.id; d.style.display = 'none'; d.onclick = () => openDetail(p.id);
+  const d = document.createElement('div'); d.className = 'tile' + (p.lead ? ' lead' : ''); d.id = 't-' + p.id; d.tabIndex = 0; d.setAttribute('role', 'button'); d.setAttribute('aria-label', p.name + ' — ' + p.role); d.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(p.id); } }; d.style.display = 'none'; d.onclick = () => openDetail(p.id);
   d.innerHTML = `${avatarSVG(p, undefined, 't' + p.gid + '_')}<div class="bubble"></div><div class="status"></div><div class="prop"></div><div class="thought"></div><div class="ticker"></div><div class="tbadge"></div><div class="tag"><b>${esc(p.name)}</b><span>${esc(p.role)}</span><span class="tk"></span></div>`;
   $('#stage').appendChild(d);
 }
@@ -876,11 +877,12 @@ const RORDER = { blocked: 0, stalled: 1, working: 2, waiting: 3, idle: 4, done: 
 function paintRoster(ros) {   // a fixed list beside the call: who is doing what, urgent first, readable even with dozens of agents
   const box = $('#roster'); if (!box || !document.body.classList.contains('rost')) return;
   ros.sort((a, b) => (a.p.id === 'main' ? -1 : b.p.id === 'main' ? 1 : (RORDER[a.st.k] - RORDER[b.st.k]) || (S.lastAct[b.p.id] || 0) - (S.lastAct[a.p.id] || 0)));
-  const rows = ros.slice(0, 60).map(({ p, st }) => `<div class="rr k-${st.k}${S.focus === p.id ? ' sel' : ''}${S.speakers.has(p.id) ? ' speaking' : ''}" data-id="${esc(p.id)}"><div class="n"><span class="dot" style="background:${p.shirt}"></span><b>${esc(p.name)}</b><span class="ro">${esc(p.role)}</span></div><div class="st">${esc(st.txt || '·')}</div></div>`).join('');
+  const rows = ros.slice(0, 60).map(({ p, st }) => `<div class="rr k-${st.k}${S.focus === p.id ? ' sel' : ''}${S.speakers.has(p.id) ? ' speaking' : ''}" data-id="${esc(p.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}, ${esc(st.txt || '')}"><div class="n"><span class="dot" style="background:${p.shirt}"></span><b>${esc(p.name)}</b><span class="ro">${esc(p.role)}</span></div><div class="st">${esc(st.txt || '·')}</div></div>`).join('');
   const html = `<h3>${L('Agents', 'Agents')} · ${ros.length}</h3>${rows}${ros.length > 60 ? `<div class="ro" style="padding:4px 8px">+${ros.length - 60}</div>` : ''}`;
   if (box.dataset.h !== html) { box.dataset.h = html; box.innerHTML = html; }
 }
 $('#roster').onclick = (e) => { const r = e.target.closest('.rr'); if (!r) return; S.focusLock = Date.now() + 25000; setFocus(r.dataset.id); paintStates(); };
+$('#roster').onkeydown = (e) => { const r = e.target.closest('.rr'); if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); S.focusLock = Date.now() + 25000; setFocus(r.dataset.id); paintStates(); } else if (r && e.key === 'i') openDetail(r.dataset.id); };
 $('#roster').ondblclick = (e) => { const r = e.target.closest('.rr'); if (r) openDetail(r.dataset.id); };
 function renderBadges() {   // per tile: failed tool calls, a command that has been running a long time, an agent that went quiet
   const now = Date.now();
@@ -927,6 +929,7 @@ function activityLabel(t) {   // the short "what is on their screen" tag
     case 'glob': return L('Liste ', 'Listing ') + String(d.pattern || '').slice(0, 24);
     case 'todo': return L('Met à jour sa todo', 'Updating todo list');
     case 'web': return d.url ? L('Consulte ', 'Fetching ') + d.url.replace(/^https?:\/\//, '').slice(0, 26) : L('Recherche sur le web', 'Web search');
+    case 'text': { const w = d.what; if (w === 'question') return L('Pose une question', 'Asking a question'); if (w === 'skill') return L('Utilise ', 'Using skill ') + (d.v || ''); if (w === 'mcp') return d.v || t.name; if (w === 'toolsearch') return L('Cherche un outil', 'Looking for a tool'); return t.name; }
     default: return t.name;
   }
 }
@@ -1373,7 +1376,7 @@ function renderMeet() {
   const s = Math.max(0, Math.floor(ms / 1000)), hh = Math.floor(s / 3600), mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0'), ss = String(s % 60).padStart(2, '0');
   const html = `${S.live ? '<i title="live"></i>' : ''}<span>👥 ${n}</span><span>${hh ? hh + ':' : ''}${mm}:${ss}</span>`; if (m.innerHTML !== html) m.innerHTML = html;
 }
-setInterval(() => { if (S.live && S.events && S.events.length) renderMeet(); }, 1000);
+setInterval(() => { if (!document.hidden && S.live && S.events && S.events.length) renderMeet(); }, 1000);
 
 // ---------- reactions: send a little emoji to whoever has the floor ----------
 $('#reactBar').onclick = (e) => {
@@ -1492,7 +1495,7 @@ function applyLang() {
   document.documentElement.lang = prefs.lang;
   document.querySelectorAll('[data-fr]').forEach((el) => (el.textContent = FR() ? el.dataset.fr : el.dataset.en));
   document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.l === prefs.lang));
-  [['#bPlay', L('Pause / Lecture (espace)', 'Pause / Play (space)')], ['#bLog', 'Transcript'], ['#bMute', L('Son (touche M)', 'Sound (M key)')], ['#bMenu', L('Réglages', 'Settings')], ['#dclose', L('Fermer', 'Close')]].forEach(([q, t]) => { const el = $(q); el.title = t; el.setAttribute('aria-label', t); });
+  [['#bPlay', L('Pause / Lecture (espace)', 'Pause / Play (space)')], ['#bLog', 'Transcript'], ['#bMute', L('Son (touche M)', 'Sound (M key)')], ['#bMenu', L('Réglages', 'Settings')], ['#dclose', L('Fermer', 'Close')], ['#officeVol', L('Volume de l’ambiance', 'Ambience volume')], ['#musicVol', L('Volume de la musique', 'Music volume')], ['#liveProj', L('Projet à suivre', 'Project to follow')], ['#reactBar', L('Réactions', 'Reactions')], ['#logQ', L('Rechercher dans la transcription', 'Search the transcript')], ['#roster', L('Agents', 'Agents')]].forEach(([q, t]) => { const el = $(q); if (!el) return; el.title = t; el.setAttribute('aria-label', t); }); $('#logQ').placeholder = L('Rechercher…', 'Search…'); document.querySelectorAll('#reactBar button').forEach((b) => b.setAttribute('aria-label', b.dataset.e));
   $('#gT').textContent = L('Rejoindre l’appel', 'Join the call'); $('#gP').textContent = L('Cliquez pour activer le son et suivre votre session Claude Code en direct.', 'Click to enable sound and follow your Claude Code session live.'); $('#gB').textContent = L('▶ Rejoindre', '▶ Join');
   $('#eDemo').textContent = L('▶ Voir la démo', '▶ Watch the demo'); $('#eT').textContent = L('En attente d’une session', 'Waiting for a session'); $('#eP').textContent = L('Lancez Claude Code dans ce dossier : l’appel démarrera tout seul.', 'Start Claude Code in this folder — the call will start by itself.');
   for (const id in S.agents) { const p = persona(S.agents[id]); Object.assign(S.agents[id], { name: p.name, role: p.role }); const t = $('#t-' + id); if (t) { t.querySelector('.tag span').textContent = p.role; t.querySelector('.tag b').textContent = p.name; if (id === 'main' || id === 'user') t.querySelector('.tag span').textContent = p.role; } }

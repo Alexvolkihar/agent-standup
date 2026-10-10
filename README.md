@@ -95,7 +95,7 @@ In VS Code: Extensions view → search **Agent Standup** → Install. Or: https:
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.19.2/agent-standup-1.19.2.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.19.3/agent-standup-1.19.3.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself
@@ -125,6 +125,7 @@ The first click on **Join** is required by browsers to allow sound.
 | Setting | Default | |
 |---|---|---|
 | `agentStandup.port` | `0` | Local port of the server. `0` = a free port is picked automatically for each VS Code window (recommended) |
+| `agentStandup.shareUsage` | `false` | Opt-in, anonymous: at most one empty request per day to a 1-pixel file on GitHub, to count active installs (ignored when VS Code telemetry is off) |
 | `agentStandup.claudePath` | _(auto)_ | Full path to the Claude Code executable if it isn't found automatically (needed only for French translation) |
 | `agentStandup.autoOpen` | `false` | Open the call when VS Code starts |
 | `agentStandup.onlyThisWorkspace` | `true` | Follow only sessions started in the open folder (falls back to the newest session if there is none) |
@@ -133,11 +134,11 @@ The first click on **Join** is required by browsers to allow sound.
 
 | | |
 |---|---|
-| **Appel / Call · Arbre / Tree** | tiles or hierarchy |
+| **Appel / Call · Arbre / Tree · Sessions** | tiles, hierarchy, or one card per recent session |
 | **⏸ / ▶** (Space) | pause / resume |
 | **☰** | transcript |
 | **🔊 / 🔇** (M) | mute everything |
-| **⚙** | language · voices · ambience · **office music (station + volume)** · reactions · remove finished agents · **Live ↔ Replay** (and session picker) · recap · export video |
+| **⚙** | language · voices · ambience · **office music (station + volume)** · agents list · little lines & animations · reactions bar · remove finished agents · **Live / Replay / Demo** (and project / session picker) · recap · export video |
 | **T** · **R** · **L** | tree/call · recap · transcript |
 | Esc | close recap / menu |
 
@@ -151,7 +152,7 @@ Turn on **Office music** in ⚙ and pick a station (FIP, Groove, Jazz, Electro, 
 
 If several Agent Standup windows are open on the same machine (sidebar, editor panel, browser tab), only the last one where you pressed **Join / Play / 🔊** plays sound; the others stay silent and show 🔈 (click it to take the sound back). This avoids hearing the same call twice, possibly in two languages. A window that stops answering releases the sound after a few seconds.
 
-## Voices
+## Voice engines (per OS)
 
 Voices are generated on your machine and played identically in the editor and in the browser:
 

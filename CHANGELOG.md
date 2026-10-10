@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.19.3
+Found by eight read-only sub-agents testing the app (each finding checked before applying):
+- API: an unknown session now answers 404 (was 500), over-long ids answer 400; `/api/sessions` is ~10x faster cold (titles from a cached tail read instead of reading whole files) and cached for 2 s. A title you typed (custom title) now wins over the generated one.
+- Tool calls shown properly instead of raw JSON: questions to the user (with the options), skills, tool search, notebook edits and MCP tools ("server · tool").
+- Accessibility: tiles and agent-list rows are reachable and openable from the keyboard (Tab, Enter/Space), visible focus ring, "reduce motion" now stops every animation including confetti, toasts are announced politely, and a few labels that were English-only are translated.
+- README: Sessions tab, `shareUsage` setting, exact menu labels, and the second "Voices" section renamed "Voice engines (per OS)".
+- The call timer rests while the tab is hidden.
+
 ## 1.19.2
 - Fix: the header could overflow the window when several status pills were shown. The pills now collapse to icon + number on windows narrower than 1180 px (full label on hover), and the call timer hides there.
 
