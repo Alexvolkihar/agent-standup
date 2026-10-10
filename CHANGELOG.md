@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.23.1
+- Natural voices (Kokoro): the default model is now q4 (about 305 MB). The smaller q4f16 returned silence on some lines. A line the model cannot make is now handed to a system voice instead of being dropped; Nicole (Kokoro's whisper voice, hard to hear) is replaced by Sarah. Found by [neondragon](https://github.com/neondragon/agent-standup) in their fork, thank you.
+
 ## 1.23.0
 Ideas from [neondragon's fork](https://github.com/neondragon/agent-standup), rewritten and merged.
 - **Settings are kept in a file** (`~/.config/agent-standup/prefs.json`, or `%APPDATA%` on Windows) shared by every window. Before, each VS Code window and each port started from scratch, because the browser stores settings per port.

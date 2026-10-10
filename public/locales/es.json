@@ -172,7 +172,7 @@
  "Good-quality local voices, mostly English (one French voice). Free, nothing leaves your machine.": "Voces locales de buena calidad, sobre todo en inglés (una sola voz en francés). Gratis, nada sale de tu equipo.",
  "Installing…": "Instalando…",
  "Intensity": "Intensidad",
- "Loading the model (downloaded on first use, about 155 MB)…": "Cargando el modelo (se descarga la primera vez, unos 155 MB)…",
+ "Loading the model (downloaded on first use, about 305 MB)…": "Cargando el modelo (se descarga la primera vez, unos 305 MB)…",
  "npm not found: install Node.js to enable this option.": "No se encontró npm: instala Node.js para activar esta opción.",
  "The engine stopped: system voices are used instead.": "El motor se detuvo: se usan las voces del sistema.",
  "Very natural voices (installs on demand)": "Voces muy naturales (se instalan bajo demanda)",

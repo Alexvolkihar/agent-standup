@@ -172,7 +172,7 @@
  "Good-quality local voices, mostly English (one French voice). Free, nothing leaves your machine.": "高质量的本地语音，以英语为主（法语只有一种声音）。免费，数据不会离开你的电脑。",
  "Installing…": "正在安装…",
  "Intensity": "强度",
- "Loading the model (downloaded on first use, about 155 MB)…": "正在加载模型（首次使用时下载，约 155 MB）…",
+ "Loading the model (downloaded on first use, about 305 MB)…": "正在加载模型（首次使用时下载，约 305 MB）…",
  "npm not found: install Node.js to enable this option.": "未找到 npm：请安装 Node.js 以启用此选项。",
  "The engine stopped: system voices are used instead.": "引擎已停止：改用系统语音。",
  "Very natural voices (installs on demand)": "超自然语音（按需安装）",

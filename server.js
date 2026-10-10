@@ -461,7 +461,8 @@ function tts(text, voice, rate, engine) {
   if (ttsJobs.has(key)) return ttsJobs.get(key);
   fs.mkdirSync(ttsDir, { recursive: true });
   const tmp = file + '.part.wav';
-  const job = (kk ? kokoro.synth(text, voice, kokoro.speedFor(rate), tmp) : synthesize(voice, rate, text, tmp)).then(() => { fs.renameSync(tmp, file); return file; }).finally(() => ttsJobs.delete(key));
+  const job = (kk ? kokoro.synth(text, voice, kokoro.speedFor(rate), tmp).catch((e) => { const vs = listVoices(), v = vs.voices.find((x) => x.locale.startsWith((voice.startsWith('ff_') ? 'fr' : 'en') + '_')); if (!v) throw e; return synthesize(v.name, rate, text, tmp); }) : synthesize(voice, rate, text, tmp))   // a line Kokoro cannot make goes to a system voice instead of being dropped
+    .then(() => { fs.renameSync(tmp, file); return file; }).finally(() => ttsJobs.delete(key));
   ttsJobs.set(key, job); return job;
 }
 
