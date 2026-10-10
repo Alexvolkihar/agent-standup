@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.0
+- **Office ambience** (on by default, ⚙ → Office ambience): keyboards typing while agents work and on every real command, mouse clicks when they read, a coffee machine (grinder, pouring, steam, beep) with a little "Someone is making coffee…" note, a phone buzzing, a chair, a far-away door, paper, a knock on the meeting-room door. All synthesised in the browser, no audio files; it fades down when someone talks.
+- In Live, the header shows which project is being followed.
+
 ## 1.11.2
 - The app now always starts in English (switch to Français in the menu; your choice is remembered).
 
