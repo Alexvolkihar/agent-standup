@@ -221,6 +221,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;
 const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const SUPPORT = { url: 'https://www.buymeacoffee.com/bored_dev_and_his_robots' };   // e.g. 'https://www.buymeacoffee.com/yourname' — the coffee button stays hidden while this is empty
+const CID = Math.random().toString(36).slice(2, 12);   // identifies this window for the audio-ownership handshake
 const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
 
@@ -350,7 +351,7 @@ function avatarSVG(p, o, uid = '') {   // uid keeps SVG ids unique per instance:
 // =====================================================================
 //  state
 // =====================================================================
-const S = { agents: {}, events: [], idx: 0, playing: false, token: 0, status: {}, tc: {}, cur: null, live: true, userPaused: false, boost: 1, stopAt: 0,
+const S = { owner: null, agents: {}, events: [], idx: 0, playing: false, token: 0, status: {}, tc: {}, cur: null, live: true, userPaused: false, boost: 1, stopAt: 0,
             speakers: new Set(), say: {}, lastTool: {}, level: {}, detail: null, collapsed: new Set(), title: '', idle: false, locked: true, logTo: 0, trOk: true,
             clock: 0, doneAt: {}, gone: new Set(), leaving: new Set() };
 const VANISH_MS = 120000;   // a finished agent leaves the call after 2 minutes (playback time)
@@ -406,9 +407,9 @@ function trProblem() {   // why translation can't work, with what to do about it
   return L('Traduction indisponible pour l’instant : vérifiez que « claude » fonctionne dans un terminal.', 'Translation unavailable right now: check that “claude” works in a terminal.');
 }
 function updateHint() {
-  const h = $('#trHint'), noFr = FR() && TTS.server && !TTS.pool.fr.length, noTts = prefs.voice && !TTS.server && TTS.platform !== '', noRadio = prefs.music && RADIO.err, bad = (FR() && !S.trOk) || noFr || noTts || noRadio;
+  const h = $('#trHint'), noFr = FR() && TTS.server && !TTS.pool.fr.length, noTts = prefs.voice && !TTS.server && TTS.platform !== '', noRadio = prefs.music && RADIO.err, other = elsewhere(), bad = (FR() && !S.trOk) || noFr || noTts || noRadio || other;
   h.style.display = bad ? '' : 'none';
-  h.textContent = noRadio ? L('Radio injoignable : vérifiez votre connexion ou changez de station.', 'Radio unreachable: check your connection or pick another station.') : noFr ? L('Aucune voix française installée (Windows : Paramètres › Heure et langue › Voix).', 'No French voice installed (Windows: Settings › Time & language › Speech).') : noTts ? L('Aucune voix système trouvée : les agents marmonneront.', 'No system voice found: agents will mumble.') : trProblem();
+  h.textContent = other ? L('Le son est joué dans une autre fenêtre Agent Standup. Cliquez sur 🔈 pour le reprendre ici.', 'Sound is playing in another Agent Standup window. Click 🔈 to take it over here.') : noRadio ? L('Radio injoignable : vérifiez votre connexion ou changez de station.', 'Radio unreachable: check your connection or pick another station.') : noFr ? L('Aucune voix française installée (Windows : Paramètres › Heure et langue › Voix).', 'No French voice installed (Windows: Settings › Time & language › Speech).') : noTts ? L('Aucune voix système trouvée : les agents marmonneront.', 'No system voice found: agents will mumble.') : trProblem();
 }
 
 // =====================================================================
@@ -416,6 +417,7 @@ function updateHint() {
 // =====================================================================
 const AUD = {
   ctx: null, muted: false, live: new Set(), lastClick: 0,
+  off() { return this.muted || !!(S.owner && S.owner !== CID); },   // muted here, or another window holds the sound
   init() {
     if (this.ctx) { this.ctx.resume(); return; }
     let c; try { c = this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; }
@@ -427,9 +429,9 @@ const AUD = {
     const src = c.createBufferSource(); src.buffer = buf; src.loop = true; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
     const g = c.createGain(); g.gain.value = 0.3; src.connect(lp).connect(g).connect(this.sfx); src.start(); this.apply();
   },
-  apply() { if (!this.ctx) return; this.sfx.gain.value = prefs.sfx && !this.muted ? 1 : 0; this.voice.gain.value = prefs.voice && !this.muted ? 1 : 0; this.applyMusic(); RADIO.sync(); },
+  apply() { if (!this.ctx) return; this.sfx.gain.value = prefs.sfx && !this.off() ? 1 : 0; this.voice.gain.value = prefs.voice && !this.off() ? 1 : 0; this.applyMusic(); RADIO.sync(); },
   // Music fades down quickly when an agent starts talking and comes back slowly once the room is quiet.
-  applyMusic() { if (!this.ctx) return; const v = prefs.music && !this.muted ? (prefs.musicVol ?? 0.35) * (this.ducked ? 0.16 : 1) : 0; this.music.gain.setTargetAtTime(v, this.ctx.currentTime, this.ducked ? 0.12 : 0.7); },
+  applyMusic() { if (!this.ctx) return; const v = prefs.music && !this.off() ? (prefs.musicVol ?? 0.35) * (this.ducked ? 0.16 : 1) : 0; this.music.gain.setTargetAtTime(v, this.ctx.currentTime, this.ducked ? 0.12 : 0.7); },
   duck(on) { clearTimeout(this.duckT); if (on) { this.ducked = true; this.applyMusic(); } else this.duckT = setTimeout(() => { this.ducked = false; this.applyMusic(); }, 900); },
   tone(freq, dur, type = 'sine', vol = 0.12, when = 0) {
     if (!this.ctx) return; const c = this.ctx, t = c.currentTime + when, o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = freq;
@@ -462,7 +464,7 @@ const RADIO = {   // live web radio through WebAudio (so it can be faded when ag
       a.addEventListener('error', () => { this.err = !!this.cur; updateHint(); }); a.addEventListener('playing', () => { this.err = false; updateHint(); });
       AUD.ctx.createMediaElementSource(a).connect(AUD.music);
     }
-    const want = prefs.music && !AUD.muted, url = (STATIONS.find((s) => s.id === prefs.station) || STATIONS[0]).url;
+    const want = prefs.music && !AUD.off(), url = (STATIONS.find((s) => s.id === prefs.station) || STATIONS[0]).url;
     if (want) { if (this.cur !== url) { this.cur = url; this.err = false; this.el.src = url; } if (this.el.paused) this.el.play().catch(() => {}); }
     else if (this.cur) { this.cur = null; this.el.pause(); this.el.removeAttribute('src'); this.el.load(); }   // stop downloading; it reconnects live next time
   },
@@ -484,7 +486,7 @@ const TTS = {
     try { const d = await (await fetch('/api/voices')).json(); this.platform = d.platform || ''; if (!d.available) return; this.server = true;
       for (const l of ['fr', 'en']) this.pool[l] = rankVoices(d.voices.filter((v) => v.locale.startsWith(l + '_')).map((v) => v.name)); } catch {}
   },
-  voiceFor(p) { const pool = this.pool[FR() ? 'fr' : 'en']; return pool.length ? (p.id === 'main' ? pool[0] : pool[(p.vi >>> 2) % pool.length]) : null; },
+  voiceFor(p, fr = FR()) { const pool = this.pool[fr ? 'fr' : 'en']; return pool.length ? (p.id === 'main' ? pool[0] : pool[(p.vi >>> 2) % pool.length]) : null; },
   rate() { return Math.round(Math.max(120, Math.min(330, 178 * spd())) / 10) * 10; },
   buf(text, voice, rate) {
     const key = voice + '|' + rate + '|' + text;
@@ -500,11 +502,11 @@ function warmTTS(i) {   // synthesize the next few lines ahead of time
   if (!TTS.server || !AUD.ctx || !prefs.voice) return;
   let n = 0; for (let k = i; k < S.events.length && n < 4; k++) {
     const e = S.events[k]; if (quiet(e)) continue; n++;
-    const p = S.agents[e.agent], v = p && TTS.voiceFor(p); if (v) TTS.buf(speakable(spoken(e)), v, TTS.rate()).catch(() => {});
+    const p = S.agents[e.agent], v = p && TTS.voiceFor(p, FR() && trMem.has(baseText(e))); if (v) TTS.buf(speakable(spoken(e)), v, TTS.rate()).catch(() => {});
   }
 }
-async function speakServer(text, p, gain, token) {
-  const voice = TTS.voiceFor(p); if (!voice) throw new Error('no voice');
+async function speakServer(text, p, gain, token, fr = FR()) {
+  const voice = TTS.voiceFor(p, fr); if (!voice) throw new Error('no voice');
   const buf = await TTS.buf(speakable(text), voice, TTS.rate()); if (token !== S.token) return;
   const c = AUD.ctx, src = c.createBufferSource(); src.buffer = buf;
   const an = c.createAnalyser(); an.fftSize = 256; const g = c.createGain(); g.gain.value = gain; src.connect(an); an.connect(g); g.connect(AUD.voice);
@@ -514,9 +516,9 @@ async function speakServer(text, p, gain, token) {
   await new Promise((res) => { src.onended = res; setTimeout(res, buf.duration * 1000 + 800); src.start(); });
   AUD.live.delete(src); delete S.level[p.id];
 }
-function speakBrowser(text, p, token) {   // fallback where no server voice exists (Windows/Linux)
+function speakBrowser(text, p, token, fr = FR()) {   // fallback where no server voice exists (Windows/Linux)
   return new Promise((resolve) => {
-    const vs = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith(FR() ? 'fr' : 'en')); if (!vs.length) return resolve(false);
+    const vs = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith(fr ? 'fr' : 'en')); if (!vs.length) return resolve(false);
     const ranked = rankVoices(vs.map((v) => v.name)), voice = vs.find((v) => v.name === (p.id === 'main' ? ranked[0] : ranked[(p.vi >>> 2) % ranked.length])) || vs[0];
     const parts = speakable(text).match(/[^.!?;:]+[.!?;:]*/g) || [text]; synth.cancel(); let i = 0, done = false, started = false;
     const fin = (ok) => { if (!done) { done = true; resolve(ok); } };
@@ -525,17 +527,17 @@ function speakBrowser(text, p, token) {   // fallback where no server voice exis
     const next = () => {
       if (i >= parts.length || done || token !== S.token) return fin(true);
       const part = parts[i++].trim(); if (!part) return next();
-      const u = new SpeechSynthesisUtterance(part); u.lang = FR() ? 'fr-FR' : 'en-US'; u.voice = voice; u.pitch = 0.95 + ((p.vi >>> 5) % 5) * 0.03; u.rate = Math.min(1.7, 0.97 * spd());
+      const u = new SpeechSynthesisUtterance(part); u.lang = fr ? 'fr-FR' : 'en-US'; u.voice = voice; u.pitch = 0.95 + ((p.vi >>> 5) % 5) * 0.03; u.rate = Math.min(1.7, 0.97 * spd());
       u.onstart = () => (started = true); u.onend = () => setTimeout(next, 120); u.onerror = () => fin(started); synth.speak(u);
     };
     next();
   });
 }
-async function speakLine(text, p, primary, token) {
-  if (AUD.muted || !prefs.voice) { if (!AUD.muted && prefs.sfx) AUD.murmur(0.5 + (p.vi % 5) / 10, estMs(text) / 1000); return sleep(estMs(text)); }
+async function speakLine(text, p, primary, token, fr = FR()) {
+  if (AUD.off() || !prefs.voice) { if (!AUD.off() && prefs.sfx) AUD.murmur(0.5 + (p.vi % 5) / 10, estMs(text) / 1000); return sleep(estMs(text)); }
   if (S.boost > 1) return sleep(estMs(text));
-  if (TTS.server && AUD.ctx) { try { await speakServer(text, p, primary ? 1 : 0.5, token); return; } catch {} }
-  if (primary && synth && !EMBED && (await speakBrowser(text, p, token))) return;
+  if (TTS.server && AUD.ctx) { try { await speakServer(text, p, primary ? 1 : 0.5, token, fr); return; } catch {} }
+  if (primary && synth && !EMBED && (await speakBrowser(text, p, token, fr))) return;
   AUD.murmur(0.5 + (p.vi % 5) / 10, estMs(text) / 1000); return sleep(estMs(text));
 }
 
@@ -930,7 +932,7 @@ async function run(i) {
       startTalk(g.agent, line, label);
       if (g.kind === 'order') { S.status[g.to] = 'working'; AUD.join(); setTimeout(() => { paintStatus(); fly(g.agent, g.to, '📨'); popTile(g.to); }, 30); }
       if (g.kind === 'report') { AUD.ding(); setTimeout(() => { fly(g.agent, g.to, '✅'); popTile(g.agent); }, 30); }
-      return speakLine(line, S.agents[g.agent], true, token).then(() => stopTalk(g.agent));
+      return speakLine(line, S.agents[g.agent], true, token, FR() && trMem.has(baseText(g))).then(() => stopTalk(g.agent));
     });
     S.idx = j - 1; paintStatus(); await Promise.all(plays); if (token !== S.token) return;
     for (const g of group) { await react(g, token); if (token !== S.token) return; }
@@ -944,7 +946,7 @@ async function run(i) {
 function pause() { S.playing = false; S.token++; synth && synth.cancel(); AUD.stopAll(); clearSpeaking(); $('#card').classList.remove('on'); syncUI(); }
 function togglePlay() {
   if (S.locked) return;
-  if (S.playing) { S.userPaused = true; pause(); } else { S.userPaused = false; run(S.idx >= S.events.length - 1 && !S.live ? (recomputeStatus(0), 0) : S.idx); }
+  if (S.playing) { S.userPaused = true; pause(); } else { claimAudio(); S.userPaused = false; run(S.idx >= S.events.length - 1 && !S.live ? (recomputeStatus(0), 0) : S.idx); }
 }
 function seekTo(i) {
   pause(); i = Math.max(0, Math.min(S.events.length - 1, i)); S.idx = i; recomputeStatus(i); paintStatus(); S.userPaused = false; run(i);
@@ -1045,7 +1047,7 @@ function drawFrame(cv) {
 let recorder = null;
 async function exportVideo(from = 0, to = 0) {
   if (recorder) { recorder.stop(); return; }
-  const wasLive = S.live; if (wasLive) await setMode('replay'); pause(); AUD.init(); await AUD.ctx.resume(); AUD.muted = false; AUD.apply();
+  const wasLive = S.live; if (wasLive) await setMode('replay'); pause(); claimAudio(); AUD.init(); await AUD.ctx.resume(); AUD.muted = false; AUD.apply();
   const cv = document.createElement('canvas'); cv.width = 1280; cv.height = 720, stream = new MediaStream([...cv.captureStream(30).getTracks(), ...AUD.rec.stream.getTracks()]);
   const mime = ['video/webm;codecs=vp9,opus', 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m)), chunks = [];
   recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4e6 }); recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
@@ -1069,13 +1071,27 @@ function applyLang() {
   for (const id in S.agents) { const p = persona(S.agents[id]); Object.assign(S.agents[id], { name: p.name, role: S.agents[id].type === 'main' || id === 'user' ? p.role : S.agents[id].role }); const t = $('#t-' + id); if (t) { t.querySelector('.tag b').textContent = p.name; if (id === 'main' || id === 'user') t.querySelector('.tag span').textContent = p.role; } }
   document.querySelectorAll('#menu .mi[data-t]').forEach((b) => b.querySelector('.sw').classList.toggle('on', !!prefs[b.dataset.t])); renderCoffee(); updateHint(); renderLog(true); syncUI();
 }
-function applyMute() { $('#bMute').textContent = AUD.muted ? '🔇' : '🔊'; AUD.apply(); if (AUD.muted) { synth && synth.cancel(); AUD.stopAll(); } }
+const elsewhere = () => !!(S.owner && S.owner !== CID);
+function applyMute() {
+  const b = $('#bMute'); b.textContent = AUD.muted ? '🔇' : elsewhere() ? '🔈' : '🔊';
+  b.title = elsewhere() ? L('Le son est joué dans une autre fenêtre — cliquer pour le reprendre ici', 'Sound is playing in another window — click to take it over here') : L('Son (touche M)', 'Sound (M key)');
+  AUD.apply(); if (AUD.off()) { synth && synth.cancel(); AUD.stopAll(); }
+}
+async function audioSync(claim) {   // heartbeat + ownership: avoids two Agent Standup windows talking at the same time
+  try {
+    const d = await (await fetch(`/api/audio?cid=${CID}${claim ? '&claim=1' : ''}`)).json(), before = S.owner;
+    S.owner = d.owner; if (before !== S.owner) { applyMute(); updateHint(); }
+  } catch {}
+}
+const claimAudio = () => { S.owner = CID; applyMute(); audioSync(true); };
+setInterval(() => audioSync(false), 1500);
+function toggleMute() { if (elsewhere()) { AUD.muted = false; claimAudio(); return; } AUD.muted = !AUD.muted; applyMute(); }
 function setView(v) { prefs.view = v; savePrefs(); document.body.classList.toggle('tree', v === 'tree'); document.querySelectorAll('#viewSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); renderTree(); }
 
 $('#viewSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); };
 $('#langSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; prefs.lang = b.dataset.l; prefs.langChosen = true; savePrefs(); if (FR()) fetch('/api/warm').catch(() => {}); AUD.stopAll(); synth && synth.cancel(); applyLang(); if (FR()) prefetchTr(S.idx); };
 $('#modeSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m); };
-$('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
+$('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'sfx', 'music'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
   if (b.dataset.t === 'music') { $('#musicBox').style.display = prefs.music ? '' : 'none'; if (prefs.music) { AUD.init(); AUD.apply(); } } };
 $('#station').innerHTML = STATIONS.map((s) => `<option value="${s.id}">📻 ${s.name}</option>`).join('');
 $('#station').value = prefs.station; $('#musicVol').value = prefs.musicVol; $('#musicBox').style.display = prefs.music ? '' : 'none';
@@ -1084,20 +1100,20 @@ $('#musicVol').oninput = (e) => { prefs.musicVol = +e.target.value; savePrefs();
 $('#bMenu').onclick = (e) => { e.stopPropagation(); $('#menu').classList.toggle('on'); };
 document.addEventListener('click', (e) => { if (!e.target.closest('#menu') && !e.target.closest('#bMenu')) $('#menu').classList.remove('on'); });
 $('#bLog').onclick = () => { document.body.classList.toggle('log'); $('#bLog').classList.toggle('on'); };
-$('#bMute').onclick = () => { AUD.muted = !AUD.muted; applyMute(); };
+$('#bMute').onclick = toggleMute;
 $('#bPlay').onclick = togglePlay;
 $('#mRecap').onclick = () => { $('#menu').classList.remove('on'); openRecap(); };
 $('#mExport').onclick = () => { $('#menu').classList.remove('on'); exportVideo(); };
 $('#mBrowser').onclick = () => { $('#menu').classList.remove('on'); window.parent.postMessage({ agentStandup: 'openBrowser' }, '*'); };
 $('#seek').oninput = (e) => seekTo(+e.target.value);
 $('#gB').onclick = () => {
-  AUD.init(); AUD.apply(); S.locked = false; $('#gate').classList.remove('on'); syncUI();
+  claimAudio(); AUD.init(); AUD.apply(); S.locked = false; $('#gate').classList.remove('on'); syncUI();
   if (synth && !EMBED) { try { synth.speak(new SpeechSynthesisUtterance('')); } catch {} }   // unlock browser speech
   if (S.live && S.events.length) run(S.idx);
 };
 addEventListener('keydown', (e) => {
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
-  if (e.key === ' ') { e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') { AUD.muted = !AUD.muted; applyMute(); } else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
 });
 if (EMBED) $('#mBrowser').style.display = '';
 

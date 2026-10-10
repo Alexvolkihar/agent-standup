@@ -368,6 +368,7 @@ function tts(text, voice, rate) {
 }
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
+let audioOwner = { id: null, seen: 0 };
 function start(port = PORT) {
   return http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
@@ -386,6 +387,13 @@ function start(port = PORT) {
       return req.on('end', async () => { try { const b = JSON.parse(body); json(await quips(b.texts || [], b.lang)); } catch (e) { json({ error: String(e) }, 400); } });
     }
     if (url.pathname === '/api/sessions') return json(listSessions());
+    if (url.pathname === '/api/audio') {   // only one window at a time plays sound: the last one that claimed it (expires if that window stops answering)
+      const cid = url.searchParams.get('cid') || '', ok = /^[\w-]{4,40}$/.test(cid);
+      if (ok && url.searchParams.get('claim')) audioOwner = { id: cid, seen: Date.now() };
+      else if (ok && audioOwner.id === cid) audioOwner.seen = Date.now();
+      if (audioOwner.id && Date.now() - audioOwner.seen > 6000) audioOwner = { id: null, seen: 0 };
+      return json({ owner: audioOwner.id });
+    }
     if (url.pathname === '/api/health') return json({ claude: findClaude(), apiKey: !!process.env.ANTHROPIC_API_KEY, trError: lastTrError, platform: process.platform });
     if (url.pathname === '/api/warm') { trWorkers.forEach((w) => { if (!w.p) w.start(); }); return json({ ok: true }); }
     if (url.pathname === '/api/voices') return json(listVoices());

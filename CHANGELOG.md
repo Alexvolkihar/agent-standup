@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.1
+- Fix: two Agent Standup windows (sidebar + panel + browser) no longer talk at the same time; the last window where you pressed Join/Play/🔊 owns the sound, the others show 🔈.
+- Fix: a line that is not translated in time is spoken by an English voice instead of a French voice reading English.
+
 ## 1.8.0
 - Support: a "buy the dev a coffee" line in the ⚙ menu and at the end of the recap (never during a live call), a Sponsor button on the repository, and a note in the README. Friendlier "port already in use" message for `node server.js`.
 
