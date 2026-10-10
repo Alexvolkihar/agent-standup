@@ -5,6 +5,7 @@
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
 let puppeteer; try { puppeteer = require('puppeteer-core'); } catch { puppeteer = require(path.join(process.env.PUPPETEER_DIR || '/tmp/as/pp', 'node_modules/puppeteer-core')); }
 const root = path.join(__dirname, '..'), out = path.join(root, 'docs/media'), PORT = 4796;
+const LANG = process.env.CAPTURE_LANG === 'fr' ? 'fr' : 'en', SUF = LANG === 'fr' ? '-fr' : '';   // CAPTURE_LANG=fr node scripts/capture-demo.js video  → demo-fr.mp4
 const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 fs.mkdirSync(out, { recursive: true });
 const prefs = (lang) => JSON.stringify({ lang, voice: false, sfx: false, music: false, epi: false, vanish: true, view: 'call', langChosen: true });
@@ -21,7 +22,7 @@ const STILLS = [   // [file, query, viewport]
   const server = require('../server.js').start(PORT); await new Promise((r) => server.once('listening', r));
   const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio'] });
   const page = await browser.newPage();
-  await page.evaluateOnNewDocument((p) => { try { localStorage.setItem('cc.prefs', p); } catch {} }, prefs('en'));
+  await page.evaluateOnNewDocument((p) => { try { localStorage.setItem('cc.prefs', p); } catch {} }, prefs(LANG));
   if (mode === 'stills' || mode === 'all') {
     for (const [name, q, [w, h]] of STILLS) {
       await page.setViewport({ width: w, height: h, deviceScaleFactor: 1.5 });
@@ -33,14 +34,14 @@ const STILLS = [   // [file, query, viewport]
   }
   if (mode === 'video' || mode === 'all') {
     await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
-    await page.goto(`http://localhost:${PORT}/?demo=1&speed=1.8`, { waitUntil: 'networkidle0' });
-    const raw = path.join(out, 'raw.webm');
+    await page.goto(`http://localhost:${PORT}/?demo=1&speed=1.8&lang=${LANG}`, { waitUntil: 'networkidle0' });
+    const raw = path.join(out, 'raw' + SUF + '.webm');
     const rec = await page.screencast({ path: raw });
     await page.evaluate(() => run(0));
     await page.waitForFunction(() => !S.playing, { timeout: 240000, polling: 500 });
     await new Promise((r) => setTimeout(r, 1500)); await rec.stop();
-    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-movflags', '+faststart', '-an', path.join(out, 'demo.mp4')]);
-    fs.unlinkSync(raw); console.log('video demo.mp4');
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-movflags', '+faststart', '-an', path.join(out, 'demo' + SUF + '.mp4')]);
+    fs.unlinkSync(raw); console.log('video demo' + SUF + '.mp4');
   }
   await browser.close(); server.close(); process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -153,6 +153,8 @@ Requires Node 18+.
 
 Claude Code writes every session to `~/.claude/projects/<project>/<session>.jsonl`, and each sub-agent to `<session>/subagents/agent-*.jsonl` (with a `.meta.json` linking it to the tool call that created it). Agent Standup merges these into one timeline: orders (the prompt a lead sends to a sub-agent), spoken text, tool calls (with their inputs), the **results** of those calls (matched by tool-call id, with real durations) and final reports. The page polls the server every 0.7 s and plays new events.
 
+The website counts visits anonymously (a 1-pixel file hosted on GitHub per channel: no cookies, no third-party tracker); the app itself has no telemetry.
+
 ## Troubleshooting
 
 - **Nothing happens / "Waiting for a session"** — start Claude Code in the open folder; with `onlyThisWorkspace` the call follows that folder.

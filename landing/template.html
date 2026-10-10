@@ -118,6 +118,7 @@ footer a { color:inherit }
 
   <footer>
     <span data-en="MIT licensed. Unofficial: not affiliated with Anthropic." data-fr="Licence MIT. Non officiel : sans lien avec Anthropic.">MIT licensed. Unofficial: not affiliated with Anthropic.</span>
+    <span data-en="Visits are counted anonymously with a 1-pixel file on GitHub: no cookies, no tracker." data-fr="Les visites sont comptées anonymement avec un fichier d’un pixel sur GitHub : sans cookies, sans traceur.">Visits are counted anonymously with a 1-pixel file on GitHub: no cookies, no tracker.</span>
     <span><a href="https://github.com/Atoll92/agent-standup" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/Atoll92/agent-standup/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> · <a href="https://github.com/Atoll92/agent-standup/issues" target="_blank" rel="noopener">Say hi / report a bug</a></span>
   </footer>
 </div>
@@ -172,6 +173,16 @@ function showRelease() {
   document.getElementById('dl').href = a.browser_download_url;
   document.getElementById('dlS').textContent = r.tag_name + ' · ' + Math.max(1, Math.round(a.size / 1024)) + ' KB';
 }
+// ---- anonymous visit counter: loads one 1-pixel file from GitHub per visit (one file per channel, set with ?ref=). No cookies, no tracker.
+(function () {
+  try {
+    if (location.hostname !== 'atoll92.github.io' || navigator.doNotTrack === '1' || sessionStorage.getItem('as.counted')) return;   // not on previews, respects Do Not Track, once per session
+    sessionStorage.setItem('as.counted', '1');
+    const ref = (new URLSearchParams(location.search).get('ref') || '').toLowerCase().replace(/[^a-z-]/g, '');
+    const known = ['reddit', 'reddit-fr', 'claudeai', 'vibecoding', 'x', 'hn', 'linkedin'];
+    new Image().src = 'https://github.com/Atoll92/agent-standup/releases/download/stats/pixel-' + (!ref ? 'direct' : known.includes(ref) ? ref : 'other') + '.gif?' + Date.now();
+  } catch {}
+})();
 fetch('https://api.github.com/repos/Atoll92/agent-standup/releases/latest').then((r) => (r.ok ? r.json() : null)).then((r) => { if (r) { window.__rel = r; showRelease(); } }).catch(() => {});
 applyLang();
 </script>
