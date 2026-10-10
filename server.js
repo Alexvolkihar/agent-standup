@@ -202,6 +202,7 @@ function readNew(file, agent) {
 }
 function parseRecord(st, r) {
   const agent = st.agent, ts = Date.parse(r.timestamp) || 0;
+  if (r.type === 'system' && r.subtype === 'compact_boundary') { st.raw.push({ ts, agent, kind: 'compact' }); return; }   // Claude Code compacted the conversation
   if (r.type === 'queue-operation' && typeof r.content === 'string' && r.content.includes('<task-notification>')) {   // how Claude Code reports that a background sub-agent has stopped
     const id = (r.content.match(/<tool-use-id>([^<]+)<\/tool-use-id>/) || [])[1], status = (r.content.match(/<status>([^<]+)<\/status>/) || [])[1];
     if (id && status && status !== 'running') st.raw.push({ ts, agent, kind: 'agentdone', toolId: id });
@@ -278,11 +279,11 @@ function buildTimeline(proj, id) {
   const merged = []; let lastReal = -1;   // consecutive tool calls of one agent become one activity beat; usage events are transparent to that rule
   for (const e of events) {
     const p = lastReal >= 0 ? merged[lastReal] : null;
-    if (e.kind === 'usage' || e.kind === 'finish') { merged.push(e); continue; }
+    if (e.kind === 'usage' || e.kind === 'finish' || e.kind === 'compact') { merged.push(e); continue; }
     if (e.kind === 'tool' && p && p.kind === 'tools' && p.agent === e.agent) p.tools.push(e.tool);
     else { merged.push(e.kind === 'tool' ? { ts: e.ts, agent: e.agent, kind: 'tools', tools: [e.tool] } : e); lastReal = merged.length - 1; }
   }
-  const real = merged.find((e) => e.kind !== 'usage' && e.kind !== 'finish'), first = real ? real.ts : 0, last = merged.length ? merged[merged.length - 1].ts : 0;   // time zero = the first thing said or done
+  const real = merged.find((e) => e.kind !== 'usage' && e.kind !== 'finish' && e.kind !== 'compact'), first = real ? real.ts : 0, last = merged.length ? merged[merged.length - 1].ts : 0;   // time zero = the first thing said or done
   return { id, proj, agents: Object.values(agents), events: merged.map((e) => ({ ...e, t: Math.max(0, e.ts - first) })), durationMs: last - first, recentUntil };
 }
 
@@ -512,7 +513,7 @@ function start(port = PORT) {
   } catch (e) { json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', () => console.log(`Agent Standup → http://localhost:${port}`));
 }
-module.exports = { start, currentSession, shutdown, findClaude, bundledClaude };
+module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows };
 if (require.main === module) {
   start().on('error', (e) => {
     console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use (maybe Agent Standup is already running, e.g. inside VS Code). Try: PORT=4790 node server.js` : String(e));

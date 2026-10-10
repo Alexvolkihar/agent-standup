@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.20.0
+Three features and a round of polish (chosen from a research pass by sub-agents; each approved before building):
+- **VS Code status bar**: live counts for your workspace — "⚠ 1 needs you", "⟳ 3 working", "✓ your turn" — red when an agent may be waiting for you, with the sessions listed on hover. A click opens the call on the most urgent session (new setting `agentStandup.statusBar`, on by default). It reads the session files directly, so it works even before the panel is opened.
+- **Context gauge**: "ctx 62%" in the header for the lead and on each tile and list row from 50%, orange at 70%, red at 88%, plus one warning before auto-compaction and a toast when the conversation is compacted. The window (200k or 1M) is inferred from observed sizes since transcripts do not state it; hover shows tokens used / window.
+- **Highlights and loop watch**: in Replay, one-click jumps to the first error, the longest agent wait (waits for you and gaps over an hour are ignored), compactions, and a possible loop. A 🔁 badge appears on an agent that repeats the exact same call 3 times or fails 4 times in a row (polling and screenshot tools are ignored).
+- **Polish** (from a UX best-practices review): higher contrast for dim text and tile labels, bigger status chips, done tiles no longer fade their text, calmer idle cards, a coloured dot on the tab icon when something needs you, a friendly "standing by" instead of a lone dot, smoother hover and press feedback.
+
 ## 1.19.3
 Found by eight read-only sub-agents testing the app (each finding checked before applying):
 - API: an unknown session now answers 404 (was 500), over-long ids answer 400; `/api/sessions` is ~10x faster cold (titles from a cached tail read instead of reading whole files) and cached for 2 s. A title you typed (custom title) now wins over the generated one.
