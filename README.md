@@ -1,5 +1,7 @@
 # Agent Standup
 
+**See who is waiting on whom, and who is blocked — across all your Claude Code sessions — at zero token cost.** Agent Standup turns the session files Claude Code already writes into a live team call (and a board of every session): it only reads local files, it never calls Claude by default.
+
 **Your Claude Code session as a live team call.** The lead gives orders, sub-agents join the call, work at their desks, share their screen and report back — with voices, expressions and a view of the real work as it happens.
 
 **→ Website & download: https://atoll92.github.io/agent-standup/**
@@ -56,6 +58,9 @@ Outputs are trimmed (about 1–2 KB each) to keep the call fast. Results of inte
 |---|---|---|
 | ![todo](https://atoll92.github.io/agent-standup/media/todo.jpg) | ![recap](https://atoll92.github.io/agent-standup/media/recap.jpg) | ![fr](https://atoll92.github.io/agent-standup/media/hero-fr.jpg) |
 
+## All your sessions (Sessions view)
+The **Sessions** tab lists every session active in the last 12 hours, across all projects, with one state each: working, needs you?, waiting on sub-agents, your turn, or idle (and how many sub-agents are active). It refreshes every few seconds and reads only the end of each transcript, so thirty parallel sessions stay cheap. Click a card to follow that session in the call.
+
 ## At a glance
 Every tile carries one status: **working** (with what it is doing), **waiting on another agent** (who), **needs you?** (a file edit or write, or a question, has been pending for 15 s+), **stalled** (waiting on an agent that has been silent for 2 min+), or **done**. A summary sits in the header, and the tab title shows how many agents need you. The "needs you?" signal is a heuristic: Claude Code does not record permission prompts, so commands (Bash) are not flagged because they can legitimately run for minutes (they get a ⏳ badge after 1 min instead). Measured on real sessions, edits that stay pending for 15 s+ are rare, so the signal is mostly right.
 
@@ -84,7 +89,7 @@ In VS Code: Extensions view → search **Agent Standup** → Install. Or: https:
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.15.2/agent-standup-1.15.2.vsix  
+Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.16.0/agent-standup-1.16.0.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself

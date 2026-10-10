@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.16.0
+- **Sessions board** (new tab next to Call / Tree): every session active in the last 12 h, across all projects, with a single state (working · needs you? · waiting on sub-agents · your turn · idle) and active sub-agents. Reads only the tail of each transcript (a few ms for 40 sessions). Click a card to follow that session live.
+- **Call feels more like a call**: a raised hand ✋ on tiles that may need you, 😰 on stalled ones, ⌛ while waiting, 🎉 when someone finishes; participants count and a call timer in the header; hover cards with name, state and last command; a reactions bar (👍 👏 ☕ 🔥 🙌) that flies emojis to whoever has the floor and gets a reply.
+- Tree view rows use the same one-line status as the tiles.
+- Fix (introduced in 1.14.1): a pending file edit/write in Live could break the status update (a missing variable). 
+- README and site now open with the positioning: who is waiting on whom, who is blocked, zero token cost.
+
 ## 1.15.2
 - Fix: in Live, sub-agents were often silent. The "catching up" mode (which mutes voices) was triggered by the number of silent tool calls, and sub-agents produce thousands of them; it now only counts lines that are actually spoken. Skipping ahead also keeps the last 6 spoken lines instead of the last 14 events.
 

@@ -99,8 +99,57 @@ function timelineEntry(proj, id) {
   return entry;
 }
 const timeline = (proj, id) => timelineEntry(proj, id).tl;
+
+// ---- Board: one cheap row per recent session (state from the tail of its transcript), so many parallel sessions can be watched at once.
+const readTail = (file, bytes) => { const fd = fs.openSync(file, 'r'); try { const sz = fs.fstatSync(fd).size, n = Math.min(bytes, sz), buf = Buffer.alloc(n); fs.readSync(fd, buf, 0, n, sz - n); return { text: buf.toString('utf8'), cut: sz > bytes }; } finally { fs.closeSync(fd); } };
+const readHead = (file, bytes) => { const fd = fs.openSync(file, 'r'); try { const n = Math.min(bytes, fs.fstatSync(fd).size), buf = Buffer.alloc(n); fs.readSync(fd, buf, 0, n, 0); return buf.toString('utf8'); } finally { fs.closeSync(fd); } };
+const APPROVAL = /^(Edit|Write|MultiEdit|NotebookEdit)/, ASKS = /^(AskUserQuestion|ExitPlanMode)/, SUBTOOL = /^(Task|Agent)$/;
+const boardCache = new Map();   // file → { sig, parsed, title }
+function parseTail(file, st) {
+  const sig = st.mtimeMs + ':' + st.size, hit = boardCache.get(file); if (hit && hit.sig === sig) return hit;
+  const { text, cut } = readTail(file, 96 * 1024), lines = text.split('\n'); if (cut) lines.shift();
+  const pend = new Map(); let lastType = null, lastTool = false, lastTs = 0;
+  for (const l of lines) {
+    if (!l) continue; let r; try { r = JSON.parse(l); } catch { continue; }
+    const t = Date.parse(r.timestamp) || 0, bl = blocks(r);
+    if (r.type === 'assistant' || r.type === 'user') { lastType = r.type; lastTool = bl.some((b) => b.type === 'tool_use'); if (t) lastTs = t; }
+    for (const b of bl) { if (b.type === 'tool_use') pend.set(b.id, { name: b.name, ts: t }); else if (b.type === 'tool_result') pend.delete(b.tool_use_id); }
+  }
+  let title = hit && hit.title;
+  if (!title) {
+    const big = readTail(file, 256 * 1024).text, m = [...big.matchAll(/"type":"ai-title","aiTitle":"((?:[^"\\]|\\.)*)"/g)].pop();
+    if (m) { try { title = JSON.parse('"' + m[1] + '"'); } catch {} }
+    if (!title) { const hd = readHead(file, 64 * 1024), u2 = hd.match(/"type":"user"[\s\S]{0,3000}?"type":"text","text":"(?!<)((?:[^"\\]|\\.)*)"/); if (u2) { try { title = JSON.parse('"' + u2[1] + '"').replace(/\s+/g, ' ').slice(0, 90); } catch {} } }
+    if (!title) { const u = readHead(file, 64 * 1024).match(/"role":"user","content":"((?:[^"\\]|\\.)*)"/); if (u) { try { title = JSON.parse('"' + u[1] + '"').replace(/\s+/g, ' ').slice(0, 90); } catch {} } }
+  }
+  const out = { sig, title: title || null, lastType, lastTool, lastTs, pending: [...pend.values()] };
+  boardCache.set(file, out); if (boardCache.size > 200) boardCache.delete(boardCache.keys().next().value); return out;
+}
+function boardRows() {
+  const now = Date.now(), rows = [];
+  if (!fs.existsSync(ROOT)) return rows;
+  for (const proj of fs.readdirSync(ROOT)) {
+    const dir = path.join(ROOT, proj); let files; try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.jsonl')); } catch { continue; }
+    for (const f of files) { try { const st = fs.statSync(path.join(dir, f)); if (now - st.mtimeMs < 12 * 3600e3) rows.push({ proj, id: f.slice(0, -6), st }); } catch {} }
+  }
+  rows.sort((a, b) => b.st.mtimeMs - a.st.mtimeMs);
+  return rows.slice(0, 40).map(({ proj, id, st }) => {
+    const file = path.join(ROOT, proj, id + '.jsonl'); let p; try { p = parseTail(file, st); } catch { p = { pending: [] }; }
+    const age = now - st.mtimeMs, lp = (p.pending || [])[(p.pending || []).length - 1]; let state = 'idle', tool = '', ageMs = age;
+    if (age < 30 * 60e3) {
+      if (lp) { ageMs = now - (lp.ts || st.mtimeMs); tool = lp.name;
+        state = SUBTOOL.test(lp.name) ? 'waiting' : (ASKS.test(lp.name) && ageMs > 4000) || (APPROVAL.test(lp.name) && ageMs > 15000) ? 'blocked' : 'working'; }
+      else if (p.lastType === 'assistant' && !p.lastTool) state = 'turn';
+      else state = age < 10 * 60e3 ? 'working' : 'idle';
+    }
+    let subActive = 0, subTotal = 0; const sd = path.join(ROOT, proj, id, 'subagents');
+    try { for (const x of fs.readdirSync(sd)) if (x.endsWith('.jsonl')) { subTotal++; if (now - fs.statSync(path.join(sd, x)).mtimeMs < 90e3) subActive++; } } catch {}
+    return { proj, id, title: p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal };
+  });
+}
 // Most recently active session (optionally limited to one project dir) — drives the live feed.
-function currentSession(projFilter) {
+function currentSession(projFilter, idFilter) {
+  if (idFilter && projFilter && /^[\w.\-]+$/.test(idFilter) && /^[\w.\-]+$/.test(projFilter) && fs.existsSync(path.join(ROOT, projFilter, idFilter + '.jsonl'))) return { proj: projFilter, id: idFilter, mtime: Date.now() };   // pinned from the board
   let best = null;
   if (!fs.existsSync(ROOT)) return {};
   const consider = (proj, id, m) => { if (!best || m > best.mtime) best = { proj, id, mtime: m }; };
@@ -419,7 +468,8 @@ function start(port = PORT) {
         .then((f) => { res.writeHead(200, { 'content-type': 'audio/wav', 'cache-control': 'max-age=86400' }); fs.createReadStream(f).pipe(res); })
         .catch((e) => json({ error: String(e.message) }, 400));
     }
-    if (url.pathname === '/api/current') return json(currentSession(url.searchParams.get('proj') || ''));
+    if (url.pathname === '/api/current') return json(currentSession(url.searchParams.get('proj') || '', url.searchParams.get('id') || ''));
+    if (url.pathname === '/api/board') return json(boardRows());
     if (url.pathname === '/api/session') {
       const proj = url.searchParams.get('proj') || '', sid = url.searchParams.get('id') || '', SAFE = /^[\w.\-]+$/;
       if (!SAFE.test(proj) || !SAFE.test(sid) || proj === '..' || sid === '..') { res.writeHead(400); return res.end('bad request'); }

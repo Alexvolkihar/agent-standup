@@ -45,7 +45,24 @@
   #stage { flex:1; overflow:auto; padding:14px; display:grid; gap:12px; align-content:start; grid-auto-flow:dense;
            grid-template-columns:repeat(var(--cols,4),1fr); grid-auto-rows:var(--rh,160px) }
   #tree { flex:1; overflow:auto; padding:16px 18px; display:none }
-  body.tree #stage { display:none } body.tree #tree { display:block }
+  body.tree #stage, body.board #stage, body.board #tree { display:none } body.tree #tree { display:block } body.board #boardv { display:block } body.board #reactBar, body.tree #reactBar, body.board #present, body.board #gantt { display:none !important }
+  #boardv { flex:1; overflow:auto; padding:16px 18px; display:none }
+  .bsum { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; font-size:12.5px } .bsum span { padding:3px 10px; border-radius:99px; background:var(--panel2); border:1px solid var(--line) }
+  .bgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:10px }
+  .bcard { text-align:left; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:11px 13px; display:flex; flex-direction:column; gap:5px; cursor:pointer }
+  .bcard:hover { border-color:var(--accent) } .bcard.blocked { border-color:#ff5252; box-shadow:0 0 0 2px rgba(255,82,82,.25) } .bcard.working { border-color:rgba(240,160,32,.7) } .bcard.waiting { border-color:rgba(110,190,255,.8) } .bcard.idle { opacity:.62 }
+  .bcard .bt { font-weight:600; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical } .bcard .bp, .bcard .bm { color:var(--dim); font-size:11.5px }
+  .bcard .stc { align-self:flex-start }
+  .stc { font-size:11.5px; padding:2px 9px; border-radius:99px; background:rgba(14,15,24,.6); white-space:nowrap } .stc.working { color:var(--gold) } .stc.waiting { color:#8fd3ff } .stc.blocked { color:#fff; background:#c0392b; font-weight:700 } .stc.stalled { color:#1b1d27; background:#ffb347; font-weight:700 } .stc.done, .stc.turn { color:var(--ok) } .stc.idle { color:var(--dim) }
+  .meet { font-size:11.5px; color:var(--dim); white-space:nowrap; display:flex; gap:8px; align-items:center } .meet i { width:8px; height:8px; border-radius:50%; background:#ff4d4d; animation:pulse 1.6s infinite }
+  @media (max-width:760px) { .meet { display:none } }
+  #reactBar { position:absolute; right:12px; bottom:98px; z-index:5; display:flex; gap:4px; padding:4px 6px; border-radius:99px; background:rgba(20,22,32,.82); border:1px solid var(--line); backdrop-filter:blur(8px); opacity:.55; transition:opacity .2s }
+  #reactBar:hover { opacity:1 } #reactBar button { font-size:17px; padding:2px 6px; border-radius:99px; background:none; transition:transform .12s } #reactBar button:hover { transform:scale(1.25) } #reactBar button:active { transform:scale(.9) }
+  .prop { position:absolute; top:26px; left:8px; font-size:26px; z-index:3; pointer-events:none; filter:drop-shadow(0 2px 4px rgba(0,0,0,.5)) } .prop:empty { display:none }
+  .prop.blocked { animation:wave .7s ease-in-out infinite; transform-origin:70% 90% } @keyframes wave { 50% { transform:rotate(-24deg) translateY(-3px) } }
+  .prop.stalled { animation:shake .5s ease-in-out infinite } @keyframes shake { 25% { transform:translateX(-3px) } 75% { transform:translateX(3px) } }
+  .prop.waiting { animation:tick 2.4s ease-in-out infinite } @keyframes tick { 50% { transform:rotate(180deg) } }
+  .prop.cheer { animation:cheer 1.1s ease-out both } @keyframes cheer { 0% { transform:scale(.3) translateY(10px); opacity:0 } 40% { transform:scale(1.25); opacity:1 } 100% { transform:translateY(-14px); opacity:0 } }
   /* ---------- screen sharing (presentation mode) ---------- */
   #present { display:none; flex:none; position:relative; height:clamp(190px,46vh,430px); background:radial-gradient(ellipse at 50% 0,#1b2033,#0b0d14); border-bottom:1px solid var(--line); padding:12px 16px; justify-content:center }
   #present.on { display:flex; animation:fadein .3s }
@@ -181,9 +198,9 @@
 <body>
 <header>
   <div class="brand"><div class="logo">🎥</div><div><b>Agent Standup</b><small id="subtitle"></small></div></div>
-  <span id="pill">REPLAY</span><button id="tok" class="tok" style="display:none"></button><span id="board" class="board" aria-live="polite"></span>
+  <span id="pill">REPLAY</span><button id="tok" class="tok" style="display:none"></button><span id="board" class="board" aria-live="polite"></span><span id="meet" class="meet"></span>
   <div class="sp"></div>
-  <div class="seg" id="viewSeg"><button data-v="call" class="on" data-fr="Appel" data-en="Call">Appel</button><button data-v="tree" data-fr="Arbre" data-en="Tree">Arbre</button></div>
+  <div class="seg" id="viewSeg"><button data-v="call" class="on" data-fr="Appel" data-en="Call">Appel</button><button data-v="tree" data-fr="Arbre" data-en="Tree">Arbre</button><button data-v="board" data-fr="Sessions" data-en="Sessions">Sessions</button></div>
   <button class="ic" id="bPlay" title="Pause / Lecture (espace)">⏸</button>
   <button class="ic" id="bLog" title="Transcript">☰</button>
   <button class="ic" id="bMute" title="Son (M)">🔊</button>
@@ -220,7 +237,8 @@
 <main>
   <section id="center">
     <div id="present"><div class="pwin term"><div class="pbar"><i class="r"></i><i class="y"></i><i class="g"></i><span id="ptitle"></span><span id="pbadge"></span></div><div id="pbody"></div><div id="pstat"></div></div><div id="ptodo" style="display:none"></div><div id="pcap"></div><div id="pcam" class="tile working"></div></div>
-    <div id="stage"></div><div id="tree"></div>
+    <div id="stage"></div><div id="tree"></div><div id="boardv"></div>
+    <div id="reactBar" aria-label="Reactions"><button data-e="👍">👍</button><button data-e="👏">👏</button><button data-e="☕">☕</button><button data-e="🔥">🔥</button><button data-e="🙌">🙌</button></div>
     <canvas id="gantt" height="90"></canvas>
     <div id="toasts"></div>
     <div id="empty"><h2 id="eT"></h2><p id="eP"></p><button class="cta" id="eDemo"></button></div>
@@ -457,6 +475,7 @@ const AUD = {
   apply() { if (!this.ctx) return; this.sfx.gain.value = prefs.office && !this.off() ? 1 : 0; this.voice.gain.value = prefs.voice && !this.off() ? 1 : 0; this.applyMusic(); RADIO.sync(); },
   // Music fades down quickly when an agent starts talking and comes back slowly once the room is quiet.
   applyMusic() { if (!this.ctx) return; this.amb.gain.setTargetAtTime((this.ducked ? 0.35 : 1) * (prefs.officeVol ?? 0.8), this.ctx.currentTime, 0.25); const v = prefs.music && !this.off() ? (prefs.musicVol ?? 0.35) * (this.ducked ? 0.16 : 1) : 0; this.music.gain.setTargetAtTime(v, this.ctx.currentTime, this.ducked ? 0.12 : 0.7); },
+  blip(f) { if (!this.ctx || this.off()) return; const c = this.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.1); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22); o.connect(g).connect(c.destination); o.start(t); o.stop(t + 0.25); },
   alert() {   // a soft two-note chime for "your agents are done"; separate from the office sounds so it works with ambience off
     if (!this.ctx || this.off()) return; const c = this.ctx;
     [[784, 0], [1047, 0.16], [1319, 0.32]].forEach(([f, w]) => { const t = c.currentTime + w, o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9); o.connect(g).connect(c.destination); o.start(t); o.stop(t + 0.95); });
@@ -703,7 +722,7 @@ async function speakLine(text, p, primary, token, fr = FR()) {
 // =====================================================================
 function addTile(p) {
   const d = document.createElement('div'); d.className = 'tile' + (p.lead ? ' lead' : ''); d.id = 't-' + p.id; d.style.display = 'none'; d.onclick = () => openDetail(p.id);
-  d.innerHTML = `${avatarSVG(p, undefined, 't' + p.gid + '_')}<div class="bubble"></div><div class="status"></div><div class="ticker"></div><div class="tbadge"></div><div class="tag"><b>${esc(p.name)}</b><span>${esc(p.role)}</span><span class="tk"></span></div>`;
+  d.innerHTML = `${avatarSVG(p, undefined, 't' + p.gid + '_')}<div class="bubble"></div><div class="status"></div><div class="prop"></div><div class="ticker"></div><div class="tbadge"></div><div class="tag"><b>${esc(p.name)}</b><span>${esc(p.role)}</span><span class="tk"></span></div>`;
   $('#stage').appendChild(d);
 }
 function buildStage() { $('#stage').innerHTML = ''; Object.values(S.agents).forEach(addTile); }
@@ -749,7 +768,7 @@ function paintStatus() {
   paintStates();
   const prev = $('.row.now'); if (prev) prev.classList.remove('now');
   const now = $(`.row[data-i="${S.idx}"]`); if (now) { now.classList.add('now'); if (document.body.classList.contains('log')) now.scrollIntoView({ block: 'nearest' }); }
-  later('detail', renderDetail); later('tree', renderTree); drawGantt();
+  later('detail', renderDetail); later('tree', renderTree); later('meet', renderMeet, 400); drawGantt();
   $('#seek').value = S.idx; $('#pos').textContent = `${Math.min(S.idx + 1, S.events.length)} / ${S.events.length}`;
 }
 const applyStatus = (ev) => {
@@ -757,7 +776,7 @@ const applyStatus = (ev) => {
   if (ev.kind === 'report') { if (S.waitOn[ev.to]) S.waitOn[ev.to].delete(ev.agent); S.status[ev.agent] = 'done'; S.doneAt[ev.agent] = S.clock; delete S.run[ev.agent]; }
 };
 function recomputeStatus(upTo) {
-  S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; hidePresent();
+  S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; hidePresent();
   S.status = {}; S.tc = {}; S.doneAt = {}; S.gone.clear(); S.leaving.clear(); document.querySelectorAll('.tile.vanishing').forEach((t) => t.classList.remove('vanishing')); const doneIdx = {}; document.querySelectorAll('.ticker').forEach((x) => { x.classList.remove('on'); x.innerHTML = ''; });
   for (let i = 0; i < upTo; i++) {
     const e = S.events[i]; applyStatus(e); tally(e); if (e.kind === 'tools') S.tc[e.agent] = (S.tc[e.agent] || 0) + e.tools.length;
@@ -778,7 +797,7 @@ function syncUI() {
 
 // ---------- tool ticker, shared screen, flying messages ----------
 // ---------- what each agent is doing: tool calls with their real outputs ----------
-S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.present = null; S.camFor = null; let presentTimer = null;
+S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.present = null; S.camFor = null; let presentTimer = null;
 const later = (k, fn, ms = 160) => { later.p = later.p || {}; if (later.p[k]) return; later.p[k] = setTimeout(() => { later.p[k] = 0; fn(); }, ms); };   // coalesce bursts of repaints
 const fmtTok = (n) => (n < 1000 ? String(n) : n < 1e6 ? (n / 1000).toFixed(n < 1e4 ? 1 : 0) + 'k' : (n / 1e6).toFixed(n < 1e7 ? 2 : 1) + 'M');
 const tokTotal = (u) => (u ? u.i + u.o + u.w : 0);   // headline = input + output + cache writes; cache reads are cheap and shown separately
@@ -795,7 +814,8 @@ function renderTokens() {
   for (const id in S.agents) { const t = $('#t-' + id); if (!t) continue; const u = S.usage[id], el = t.querySelector('.tk'); el.textContent = u && tokTotal(u) ? `⚡${fmtTok(tokTotal(u))}` : ''; if (u) t.title = tokTip(u); }
 }
 // One boring signal per tile: working · waiting on another agent · may need you · stalled · done. Stalled hand-offs are what really cost time.
-const NEEDS_OK = /^(Edit|Write|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMode)/   // file edits are instant, so one that stays pending is almost surely an approval prompt; a Bash command may legitimately run long (⏳ badge instead), ASKS = /^(AskUserQuestion|ExitPlanMode)/;
+// file edits are instant, so one that stays pending is almost surely an approval prompt; a Bash command may legitimately run long (⏳ badge instead)
+const NEEDS_OK = /^(Edit|Write|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMode)/, ASKS = /^(AskUserQuestion|ExitPlanMode)/;
 function agentState(id, now) {
   let s = S.status[id]; const r = S.run[id], w = S.waitOn[id], la = S.lastAct[id];
   if (id === 'main' && !s) { if (r || (w && w.size) || (S.live && la && now - la < 25000)) s = 'working'; else if (S.live && la) return { k: 'done', txt: '✓ ' + L('à vous', 'your turn') }; }
@@ -816,6 +836,10 @@ function paintStates() {
     const st = agentState(p.id, now), shown = t.style.display !== 'none'; if (shown && n[st.k] !== undefined && !S.gone.has(p.id)) n[st.k]++;
     STATE_CLASSES.forEach((c) => t.classList.toggle(c, st.k === c));
     const el = t.querySelector('.status'); if (el.textContent !== st.txt) el.textContent = st.txt; el.className = 'status ' + st.k;
+    const pr = t.querySelector('.prop'), want = { blocked: '✋', stalled: '😰', waiting: '⌛' }[st.k] || '', was = S.prevState[p.id];   // a raised hand, a sweat drop, an hourglass: the call metaphor for "needs you / stuck / waiting"
+    if (st.k === 'done' && was && was !== 'done' && was !== 'idle') { pr.textContent = '🎉'; pr.className = 'prop cheer'; setTimeout(() => { if (pr.classList.contains('cheer')) { pr.textContent = ''; pr.className = 'prop'; } }, 1200); }
+    else if (!pr.classList.contains('cheer')) { if (pr.textContent !== want) pr.textContent = want; pr.className = 'prop ' + (want ? st.k : ''); }
+    S.prevState[p.id] = st.k; const tip = `${p.name} — ${p.role}${st.txt ? '\n' + st.txt : ''}${S.lastTool[p.id] ? '\n' + S.lastTool[p.id] : ''}`; if (t.title !== tip) t.title = tip;
   }
   const b = $('#board'), parts = [['working', '⚙', L('au travail', 'working')], ['waiting', '🔗', L('en attente', 'waiting')], ['blocked', '✋', L('vous attendent', 'need you')], ['stalled', '⚠', L('bloqués', 'stalled')], ['done', '✓', L('terminés', 'done')]]
     .filter(([k]) => n[k]).map(([k, i, l]) => `<span class="${k}">${i} ${n[k]} ${l}</span>`).join('');
@@ -851,7 +875,7 @@ function updateTitle() {
   watchDone(n);
   document.title = S.live && S.nBlocked ? `✋ ${S.nBlocked} ${L('à voir', 'need you')} · Agent Standup` : S.doneUntil > Date.now() && !n ? '✓ ' + L('Terminé', 'Done') + ' · Agent Standup' : S.live && S.playing && n ? `● ${n} ${L('au travail', 'working')} · Agent Standup` : 'Agent Standup';
 }
-setInterval(() => { if (!S.agents || !S.live) return; renderBadges(); updateTitle(); }, 2000);
+setInterval(() => { if (!S.agents || !S.live) return; renderBadges(); updateTitle(); if (document.body.classList.contains('tree')) renderTree(); }, 2000);
 const base = (f) => String(f || '').split('/').pop();
 const fmtDur = (ms) => (ms < 950 ? `${Math.max(1, Math.round(ms))} ms` : ms < 60000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.floor(ms / 60000)} min ${Math.round((ms % 60000) / 1000)} s`);
 const quiet = (e) => e.kind === 'tools' || e.kind === 'results' || e.kind === 'usage';
@@ -1033,7 +1057,7 @@ function renderTree() {
   const node = (id) => {
     const p = S.agents[id], st = S.status[id], k = kids[id] || [], open = !S.collapsed.has(id), lt = last[id]; if (!p) return '';
     return `<li><span class="caret" data-c="${id}">${k.length ? (open ? '▾' : '▸') : ''}</span><span class="node ${st || ''} ${S.speakers.has(id) ? 'speaking' : ''}" data-n="${id}">
-      <span class="dot" style="background:${p.shirt}"></span><b>${esc(p.name)}</b><span class="r">${esc(p.role)}</span>${st ? `<span>${st === 'done' ? '✓' : '⚙'}</span>` : ''}
+      <span class="dot" style="background:${p.shirt}"></span><b>${esc(p.name)}</b><span class="r">${esc(p.role)}</span>${(() => { const a = agentState(id, Date.now()); return a.k !== 'idle' ? `<span class="stc ${a.k}">${esc(a.txt)}</span>` : ''; })()}
       ${cnt[id] ? `<span class="r">🔧${cnt[id]}</span>` : ''}${k.length ? `<span class="r">👥${k.length}</span>` : ''}${lt && st === 'working' ? `<span class="tl">${esc(lt.name)} ${esc(lt.arg || '')}</span>` : ''}</span>
       ${k.length && open ? `<ul>${k.map(node).join('')}</ul>` : ''}</li>`;
   };
@@ -1235,7 +1259,7 @@ async function loadSession(proj, id) {
   const data = await (await fetch(`/api/session?proj=${encodeURIComponent(proj)}&id=${id}`)).json();
   if (mine !== S.loadN || data.error) return false;
   S.term = {}; S.camFor = null; S.focus = null; S.agents = {}; for (const k in nameBook) delete nameBook[k]; [{ id: 'user' }, ...data.agents].forEach((a) => (S.agents[a.id] = persona(a)));
-  S.events = data.events; S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on');
+  S.events = data.events; S.joinAt = Date.now(); S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on');
   const opt = $('#sessions').selectedOptions[0]; S.title = (S.live ? niceProj(proj) : opt && opt.dataset.title) || '';
   if (proj === '_demo') S.events.forEach((e) => { if (e.fr) trMem.set(baseText(e), e.fr); });   // the demo ships its own French
   $('#subtitle').textContent = S.title; buildStage(); setFocus('main'); renderLog(true); computeGantt(); layout(); paintStatus(); prefetchTr(0); return true;
@@ -1246,9 +1270,9 @@ async function fillProjects() {   // live view: follow the latest activity anywh
   sel.innerHTML = `<option value="">${L('Tous les projets (le plus récent)', 'All projects (most recent)')}</option>` + rows.map((r) => `<option value="${esc(r.proj)}">${esc(niceProj(r.proj))}</option>`).join('');
   sel.value = prefs.proj && rows.some((r) => r.proj === prefs.proj) ? prefs.proj : ''; sel.style.display = rows.length > 1 ? '' : 'none';
 }
-$('#liveProj').onchange = () => { prefs.proj = $('#liveProj').value; savePrefs(); S.cur = null; followCurrent(); };
+$('#liveProj').onchange = () => { prefs.proj = $('#liveProj').value; S.pin = ''; savePrefs(); S.cur = null; followCurrent(); };
 async function followCurrent() {
-  const cur = await (await fetch('/api/current?proj=' + encodeURIComponent(Q.get('proj') || prefs.proj || ''))).json();
+  const cur = await (await fetch('/api/current?proj=' + encodeURIComponent(Q.get('proj') || prefs.proj || '') + (S.pin ? '&id=' + encodeURIComponent(S.pin) : ''))).json();
   if (!cur.id) { $('#empty').classList.add('on'); return false; } $('#empty').classList.remove('on');
   if (S.cur && S.cur.id === cur.id && S.cur.proj === cur.proj) return false;
   if (!(await loadSession(cur.proj, cur.id))) return false;
@@ -1269,6 +1293,47 @@ setInterval(async () => {
   } catch { if (!S.offline) { S.offline = true; syncUI(); } } finally { polling = false; }
 }, 700);
 
+
+// ---------- meeting chrome: participants and a clock ----------
+function renderMeet() {
+  const m = $('#meet'); if (!m) return; const n = Object.keys(S.agents).filter((id) => id !== 'user' && !S.gone.has(id) && ((S.status[id] && S.status[id] !== 'done') || id === 'main')).length;
+  const e0 = S.events[0], cur = S.events[Math.min(S.idx, S.events.length - 1)]; let ms = 0;
+  if (S.live) ms = Date.now() - (S.joinAt || (S.joinAt = Date.now())); else if (cur) ms = cur.t || 0;
+  const s = Math.max(0, Math.floor(ms / 1000)), hh = Math.floor(s / 3600), mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0'), ss = String(s % 60).padStart(2, '0');
+  const html = `${S.live ? '<i title="live"></i>' : ''}<span>👥 ${n}</span><span>${hh ? hh + ':' : ''}${mm}:${ss}</span>`; if (m.innerHTML !== html) m.innerHTML = html;
+}
+setInterval(() => { if (S.live && S.events && S.events.length) renderMeet(); }, 1000);
+
+// ---------- reactions: send a little emoji to whoever has the floor ----------
+$('#reactBar').onclick = (e) => {
+  const b = e.target.closest('button'); if (!b) return; const em = b.dataset.e, ids = Object.keys(S.agents).filter((id) => id !== 'user' && $('#t-' + id) && $('#t-' + id).style.display !== 'none');
+  const to = [...S.speakers].find((id) => id !== 'user' && S.agents[id]) || ids.find((id) => S.status[id] === 'working') || ids[0]; if (!to) return;
+  fly('user', to, em); setTimeout(() => { popTile(to); AUD.blip(em === '☕' ? 520 : em === '🔥' ? 760 : 660); }, 380); if (em !== '🔥') setTimeout(() => fly(to, 'user', em === '🙌' ? '🙌' : '👍'), 900);
+};
+
+// ---------- board: every recent session at a glance ----------
+const BSTATE = { blocked: ['✋', 'needs you?', 'attend vous ?'], working: ['⚙', 'working', 'au travail'], waiting: ['🔗', 'waiting on sub-agents', 'attend ses sous-agents'], turn: ['✓', 'your turn', 'à vous'], idle: ['💤', 'idle', 'inactif'] };
+const BORDER = ['blocked', 'working', 'waiting', 'turn', 'idle'];
+const agoStr = (ms) => (ms < 90e3 ? Math.max(1, Math.round(ms / 1000)) + 's' : ms < 5400e3 ? Math.round(ms / 60e3) + ' min' : Math.round(ms / 3600e3) + ' h');
+let boardBusy = false;
+async function renderBoardView() {
+  if (!document.body.classList.contains('board') || boardBusy) return; boardBusy = true;
+  try {
+    const rows = (await (await fetch('/api/board')).json()).sort((a, b) => BORDER.indexOf(a.state) - BORDER.indexOf(b.state) || b.mtime - a.mtime), now = Date.now();
+    if (!document.body.classList.contains('board')) return;
+    const cnt = {}; rows.forEach((r) => (cnt[r.state] = (cnt[r.state] || 0) + 1));
+    const sum = BORDER.filter((k) => cnt[k]).map((k) => `<span class="stc ${k}">${BSTATE[k][0]} ${cnt[k]} ${L(BSTATE[k][2], BSTATE[k][1])}</span>`).join('');
+    $('#boardv').innerHTML = `<div class="bsum">${sum || `<span>${L('Aucune session récente', 'No recent session')}</span>`}</div><div class="bgrid">${rows.map((r) => {
+      const [ic, en, fr] = BSTATE[r.state], extra = r.state === 'blocked' ? ` · ${esc(r.tool)} ${agoStr(r.ageMs)}` : r.state === 'working' && r.tool ? ` · ${esc(r.tool)}` : r.state === 'idle' || r.state === 'turn' ? ` · ${agoStr(now - r.mtime)}` : '';
+      return `<div class="bcard ${r.state}" tabindex="0" role="button" data-p="${esc(r.proj)}" data-i="${esc(r.id)}"><div><span class="stc ${r.state}">${ic} ${L(fr, en)}${extra}</span></div><div class="bt">${esc(/^[0-9a-f]{8}-[0-9a-f-]{27}$/.test(r.title) ? L('Session sans titre', 'Untitled session') : r.title)}</div><div class="bp">${esc(niceProj(r.proj))}</div>${r.subTotal ? `<div class="bm">👥 ${r.subActive}/${r.subTotal} ${L('sous-agents actifs', 'sub-agents active')}</div>` : ''}</div>`; }).join('')}</div>`;
+  } catch {} finally { boardBusy = false; }
+}
+$('#boardv').onkeydown = (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('bcard')) { e.preventDefault(); e.target.click(); } };
+$('#boardv').onclick = async (e) => {
+  const c = e.target.closest('.bcard'); if (!c) return; prefs.proj = c.dataset.p; S.pin = c.dataset.i; savePrefs(); setView('call');
+  if (S.live || S.demo) { if (S.demo) await setMode('live'); S.cur = null; fillProjects(); await followCurrent(); } else await setMode('live');
+};
+setInterval(() => { if (!document.hidden) renderBoardView(); }, 2500);
 async function setMode(m) {
   if (m === 'demo') {   // a built-in fictional session: nothing to install, nothing private on screen
     pause(); S.live = false; S.demo = true; S.userPaused = false; S.cur = null; $('#empty').classList.remove('on');
@@ -1377,7 +1442,7 @@ async function audioSync(claim) {   // heartbeat + ownership: avoids two Agent S
 const claimAudio = () => { S.owner = CID; applyMute(); audioSync(true); };
 setInterval(() => audioSync(false), 1500);
 function toggleMute() { if (elsewhere()) { AUD.muted = false; claimAudio(); return; } AUD.muted = !AUD.muted; applyMute(); }
-function setView(v) { prefs.view = v; savePrefs(); document.body.classList.toggle('tree', v === 'tree'); document.querySelectorAll('#viewSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); renderTree(); }
+function setView(v) { prefs.view = v; savePrefs(); document.body.classList.toggle('tree', v === 'tree'); document.body.classList.toggle('board', v === 'board'); if (v === 'board') renderBoardView(); document.querySelectorAll('#viewSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); renderTree(); }
 
 $('#viewSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); };
 $('#langSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; prefs.lang = b.dataset.l; prefs.langChosen = true; savePrefs(); if (FR()) fetch('/api/warm').catch(() => {}); AUD.stopAll(); synth && synth.cancel(); applyLang(); if (FR()) prefetchTr(S.idx); };
