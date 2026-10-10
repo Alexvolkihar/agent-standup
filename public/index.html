@@ -1177,7 +1177,7 @@ const mouths = new Map();
 function startTalk(id, text, label) {
   const t = $('#t-' + id); if (!t) return;
   if (S.present && S.present !== id) hidePresent();
-  if (!S.speakers.size && !(S.focusLock > Date.now())) setFocus(id); S.gone.delete(id); if (S.doneAt[id] != null) S.doneAt[id] = S.clock; t.style.display = ''; t.classList.add('speaking'); S.speakers.add(id); S.say[id] = { text, label }; AUD.duck(true); if (id === 'user' && [...S.speakers].some((x) => x !== 'user'))
+  if (!S.speakers.size && !(S.focusLock > Date.now())) setFocus(id); S.gone.delete(id); if (S.doneAt[id] != null) S.doneAt[id] = S.clock; t.style.display = ''; t.classList.add('speaking'); S.speakers.add(id); S.say[id] = { text, label }; AUD.duck(true);
   const shown0 = pieces(text), first = shown0.length > 1 ? shown0[0] : text; const b = t.querySelector('.bubble'); b.innerHTML = (label ? `<small>${esc(label)}</small>` : '') + esc(first);
   if (S.present === id) { $('#pcap').textContent = first; $('#pcam').classList.add('speaking'); }
   const m = t.querySelector('.mouthE'); let open = false; clearInterval(mouths.get(id));
