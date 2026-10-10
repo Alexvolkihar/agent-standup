@@ -577,7 +577,7 @@ const TTS = {
       for (const l of ['fr', 'en']) this.pool[l] = rankVoices(d.voices.filter((v) => v.locale.startsWith(l + '_')).map((v) => v.name)); } catch {}
   },
   voiceFor(p, fr = FR()) { const pool = this.pool[fr ? 'fr' : 'en']; return pool.length ? (p.id === 'main' ? pool[0] : pool[(p.vi >>> 2) % pool.length]) : null; },
-  rate() { return Math.round(Math.max(120, Math.min(330, 178 * spd())) / 10) * 10; },
+  rate() { return Math.round(Math.max(120, Math.min(330, 178 * (S.live ? 1.12 : +$('#speed').value))) / 10) * 10; },
   buf(text, voice, rate) {
     const key = voice + '|' + rate + '|' + text;
     if (!this.cache.has(key)) {
@@ -691,7 +691,7 @@ function speakBrowser(text, p, token, fr = FR()) {   // fallback where no server
 }
 async function speakLine(text, p, primary, token, fr = FR()) {
   if (AUD.off() || !prefs.voice) { if (!AUD.off() && prefs.office) AUD.murmur(0.5 + (p.vi % 5) / 10, estMs(text) / 1000); return sleep(estMs(text)); }
-  if (S.boost > 1) return sleep(estMs(text));
+  if (S.hurry) return sleep(estMs(text));
   if ((prefs.vstyle === 'animal' || prefs.vstyle === 'sims') && AUD.ctx) { try { await speakBabble(text, p, primary ? 1 : 0.5, token); return; } catch {} }
   if (TTS.server && AUD.ctx) { try { await speakServer(text, p, primary ? 1 : 0.5, token, fr); return; } catch {} }
   if (primary && synth && !EMBED && (await speakBrowser(text, p, token, fr))) return;
@@ -1156,6 +1156,8 @@ async function card(text, sub, ms = 2500) {
 // =====================================================================
 //  playback loop
 // =====================================================================
+const SPK = new Set(['say', 'report', 'order', 'user']);
+function aheadSpeakable(i, limit) { let n = 0; for (let k = i, m = Math.min(S.events.length, i + 800); k < m; k++) if (SPK.has(S.events[k].kind) && ++n > limit) break; return n; }
 const isSub = (id) => id !== 'main' && id !== 'user';
 async function run(i) {
   const token = ++S.token; S.playing = true; S.idle = false; syncUI(); AUD.init();
@@ -1164,8 +1166,15 @@ async function run(i) {
     const lim = S.stopAt || S.events.length;
     if (i >= lim) { if (S.live && !S.stopAt) { if (!S.idle) { S.idle = true; syncUI(); } await sleep(350); continue; } break; }
     if (S.idle) { S.idle = false; syncUI(); }
-    if (S.live && S.events.length - i > 40) { i = S.events.length - 14; recomputeStatus(i); paintStatus(); }   // way behind: skip ahead to stay current
-    S.boost = S.live && S.events.length - i > 6 ? 3 : 1;   // live: hurry through any backlog
+    if (S.live) {   // way behind: skip ahead to stay current, but only count what is actually said: sub-agents produce thousands of silent tool events
+      const rem = S.events.length - i;
+      if (rem > 300 || aheadSpeakable(i, 10) > 10) {
+        let k = S.events.length, back = 0; while (k > i && back < 6) { k--; if (SPK.has(S.events[k].kind)) back++; }
+        const to = rem > 300 ? Math.max(k, S.events.length - 14) : k; if (to > i) { i = to; recomputeStatus(i); paintStatus(); }
+      }
+    }
+    S.hurry = S.live && aheadSpeakable(i, 3) > 3;   // voices are skipped only when several lines are really waiting, not because of silent tool calls
+    S.boost = S.hurry || (S.live && S.events.length - i > 60) ? 3 : 1;
     const ev = S.events[i]; S.idx = i; tally(ev);
     if (ev.kind === 'usage') { i++; continue; }
     if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.demo ? 900 : S.live ? 30 : 80) / spd()); i++; continue; }
@@ -1180,7 +1189,7 @@ async function run(i) {
         if (e2.kind !== 'order' && isSub(e2.agent) && !group.some((g) => g.agent === e2.agent)) { group.push(e2); j++; } else break;
       }
     }
-    if (FR() && S.boost === 1) { prefetchTr(i); await Promise.race([ensureTr(group.map((g) => baseText(g))), sleep(S.live ? 7000 : 14000)]); if (token !== S.token) return; }
+    if (FR() && !S.hurry) { prefetchTr(i); await Promise.race([ensureTr(group.map((g) => baseText(g))), sleep(S.live ? 7000 : 14000)]); if (token !== S.token) return; }
     prefetchQuips(i); warmTTS(i);
     const plays = group.map((g, k) => {
       applyStatus(g);

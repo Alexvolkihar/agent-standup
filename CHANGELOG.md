@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.15.2
+- Fix: in Live, sub-agents were often silent. The "catching up" mode (which mutes voices) was triggered by the number of silent tool calls, and sub-agents produce thousands of them; it now only counts lines that are actually spoken. Skipping ahead also keeps the last 6 spoken lines instead of the last 14 events.
+
 ## 1.15.1
 - Default voices are back to **Cartoon** (real words, understandable); Animal Crossing and Simlish babble are opt-in in ⚙.
 
