@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.17.2
+- Fix: the reactions bar was still visible in 1.17.1 (a leftover CSS rule overrode the hiding); it is now really hidden by default.
+
 ## 1.17.1
 - The reactions bar is now hidden by default (it took too much room); turn it on in ⚙ → Reactions bar.
 
