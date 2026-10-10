@@ -3,7 +3,7 @@
 //   agent-standup [serve] [--port 4747] [--open]   start the local server and (optionally) open the page
 //   agent-standup status [--here] [--json]          counts of working / needs you / your turn
 //   agent-standup statusline                        same, one short line; reads Claude Code's statusLine JSON on stdin
-// Everything reads the local session files Claude Code already writes. Nothing is sent anywhere.
+// Everything reads the local session files Claude Code already writes. Nothing is sent anywhere unless you turn on the optional French translation or jokes (they use your own Claude login or ANTHROPIC_API_KEY).
 const path = require('path'), { spawn } = require('child_process');
 const pkg = require('../package.json');
 const argv = process.argv.slice(2), flags = {}, rest = [];
@@ -26,7 +26,7 @@ Options
   --open            open the page in your browser
   --projects DIR    where the session files are (default ~/.claude/projects, or $CLAUDE_CONFIG_DIR/projects)
   --characters DIR  folder with your own pixel-art characters (default ~/.agent-standup/characters)
-  --here            status: only sessions of the current folder
+  --here            status: only sessions of the current folder (matched on its real path, as Claude Code names it)
   --json            status: machine-readable output (add --titles to include session titles)
 `;
 if (flags.help || cmd === 'help') { process.stdout.write(HELP); process.exit(0); }
@@ -34,7 +34,10 @@ if (flags.version || cmd === 'version') { console.log(pkg.version); process.exit
 if (flags.projects) process.env.AGENT_STANDUP_PROJECTS = path.resolve(flags.projects);
 if (flags.config) process.env.CLAUDE_CONFIG_DIR = path.resolve(flags.config);
 if (flags.characters) process.env.AGENT_STANDUP_CHARACTERS = path.resolve(flags.characters);
-if (flags.port) process.env.PORT = String(parseInt(flags.port, 10) || 4747);
+if (flags.port !== undefined) {   // a real port number or nothing: no silent fallback to another port
+  if (!/^\d+$/.test(String(flags.port)) || +flags.port < 1 || +flags.port > 65535) { console.error(`Invalid --port "${flags.port}": use a number between 1 and 65535.`); process.exit(2); }
+  process.env.PORT = String(+flags.port);
+}
 const server = require('../server.js');
 const projKey = (dir) => String(dir || '').replace(/[^a-zA-Z0-9]/g, '-');   // Claude Code's project folder naming
 

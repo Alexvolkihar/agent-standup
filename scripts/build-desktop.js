@@ -9,8 +9,10 @@ fs.rmSync(core, { recursive: true, force: true }); fs.mkdirSync(path.join(core, 
 for (const f of ['server.js', 'demo.js', 'LICENSE']) fs.copyFileSync(path.join(root, f), path.join(core, f));
 fs.cpSync(path.join(root, 'public'), path.join(core, 'public'), { recursive: true }); fs.copyFileSync(path.join(root, 'media/icon.png'), path.join(core, 'media/icon.png'));
 if (!fs.existsSync(path.join(d, 'node_modules/electron'))) execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['install', '--no-audit', '--no-fund'], { cwd: d, stdio: 'inherit', shell: process.platform === 'win32' });
-const args = ['--yes', '@electron/packager', d, 'Agent Standup', `--platform=${process.platform}`, `--arch=${arch}`, `--out=${out}`, '--overwrite', '--prune=true', '--app-bundle-id=com.doublegeste.agentstandup', '--ignore=^/node_modules/\\.cache'];
-if (process.platform === 'darwin' && fs.existsSync(path.join(d, 'icon.icns'))) args.push(`--icon=${path.join(d, 'icon')}`);
+const appName = process.platform === 'win32' ? '"Agent Standup"' : 'Agent Standup';   // quoted on Windows, where the command goes through a shell and would split the name
+const args = ['--yes', '@electron/packager', d, appName, `--platform=${process.platform}`, `--arch=${arch}`, `--out=${out}`, '--overwrite', '--prune=true', '--asar', '--app-bundle-id=com.doublegeste.agentstandup', '--ignore=^/node_modules/\\.cache'];
+if (process.platform !== 'darwin') args.push('--executable-name=agent-standup');   // no space in the executable name on Windows and Linux
+if (fs.existsSync(path.join(d, process.platform === 'darwin' ? 'icon.icns' : 'icon.ico'))) args.push(`--icon=${path.join(d, 'icon')}`);
 execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', args, { stdio: 'inherit', shell: process.platform === 'win32' });
 if (process.platform === 'darwin') { const app = path.join(out, `Agent Standup-darwin-${arch}`, 'Agent Standup.app'); spawnSync('codesign', ['--force', '--deep', '-s', '-', app], { stdio: 'inherit' }); console.log('built', app); }
 else console.log('built in', out);

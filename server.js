@@ -229,7 +229,7 @@ function parseRecord(st, r) {
       if (b.type === 'text' && typeof b.text === 'string' && b.text.trim()) st.raw.push({ ts, agent, kind: 'say', text: b.text.trim() });
       else if (b.type === 'tool_use') {
         st.toolName[b.id] = b.name; if (b.input && b.input.run_in_background) (st.bg = st.bg || {})[b.id] = true;
-        if (b.name === 'Agent' || b.name === 'Task') st.raw.push({ ts, agent, kind: 'agentcall', toolId: b.id, text: (b.input && b.input.prompt) || '', title: (b.input && b.input.description) || '' });
+        if (b.name === 'Agent' || b.name === 'Task') st.raw.push({ ts, agent, kind: 'agentcall', toolId: b.id, bg: !!(b.input && b.input.run_in_background), text: (b.input && b.input.prompt) || '', title: (b.input && b.input.description) || '' });
         else st.raw.push({ ts, agent, kind: 'tool', tool: toolLabel(b, ts) });
       }
     }
@@ -248,7 +248,7 @@ function buildTimeline(proj, id) {
   const subDir = path.join(base, id, 'subagents');
   if (fs.existsSync(subDir)) {
     for (const f of fs.readdirSync(subDir).filter((x) => x.endsWith('.jsonl'))) {
-      const aid = f.replace(/^agent-/, '').replace(/\.jsonl$/, ''), m = readMeta(path.join(subDir, f.replace(/\.jsonl$/, '.meta.json')));
+      const aid = f.replace(/^agent-/, '').replace(/\.jsonl$/, '').replace(/[^\w.-]/g, '_'), m = readMeta(path.join(subDir, f.replace(/\.jsonl$/, '.meta.json')));
       agents[aid] = { id: aid, role: m.description || m.agentType || 'Agent', type: m.agentType || 'agent', toolUseId: m.toolUseId };
       try { agents[aid].mtime = fs.statSync(path.join(subDir, f)).mtimeMs; } catch {}
       const st = readNew(path.join(subDir, f), aid); if (st) states.push(st);
@@ -267,7 +267,7 @@ function buildTimeline(proj, id) {
     if (st.agent !== 'main' && finished.has(st.agent)) for (let i = st.raw.length - 1; i >= 0; i--) if (st.raw[i].kind === 'say') { lastSay = i; break; }
     st.raw.forEach((e, i) => {
       if (e.kind === 'agentdone') { const to = childByTool[e.toolId]; if (to && !doneSeen.has(to)) { doneSeen.add(to); events.push({ ts: e.ts, agent: to, kind: 'finish', to: e.agent }); } }
-      else if (e.kind === 'agentcall') { const to = childByTool[e.toolId]; if (to) { parent[to] = e.agent; events.push({ ts: e.ts, agent: e.agent, to, kind: 'order', text: e.text, title: e.title }); } }
+      else if (e.kind === 'agentcall') { const to = childByTool[e.toolId]; if (to) { parent[to] = e.agent; events.push({ ts: e.ts, agent: e.agent, to, kind: 'order', toolId: e.toolId, bg: e.bg, text: e.text, title: e.title }); } }
       else if (i === lastSay) events.push({ ...e, kind: 'report', to: null });   // `to` filled below, once every order is known
       else events.push(e);
     });
@@ -336,7 +336,7 @@ function claudeMap(kind, instruction, texts) {
   if (!need.length) return Promise.resolve(done(true));
   const prompt = instruction + ' Output ONLY a JSON array of strings, same length and order, no markdown.\n' + JSON.stringify(need);
   return apiMap(prompt, need).then((arr) => { need.forEach((t, i) => cache.set(kind + '|' + t, String(arr[i]))); return done(true); }).catch(() => schedule(() => new Promise((resolve) => {
-    const p = spawnClaude(['-p', '--model', 'haiku', '--no-session-persistence'], { cwd: os.tmpdir() }); if (!p) return resolve(done(false));
+    const p = spawnClaude(['-p', '--model', 'haiku', '--no-session-persistence', '--tools', ''], { cwd: os.tmpdir() }); if (!p) return resolve(done(false));
     let out = ''; const timer = setTimeout(() => p.kill(), 60000);
     p.stdout.on('data', (d) => (out += d));
     p.on('error', () => resolve(done(false)));
@@ -360,7 +360,7 @@ const TR_SYS = 'You are a translation engine. Translate the user message into na
 class TrWorker {
   constructor() { this.q = []; this.busy = false; this.n = 0; this.p = null; this.cur = null; this.buf = ''; }
   start() {
-    const p = spawnClaude(['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--model', 'haiku', '--no-session-persistence', '--system-prompt', TR_SYS], { cwd: os.tmpdir() });
+    const p = spawnClaude(['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--model', 'haiku', '--no-session-persistence', '--tools', '', '--system-prompt', TR_SYS], { cwd: os.tmpdir() });
     if (!p) return;
     this.p = p; this.buf = ''; this.n = 0;
     p.stderr.on('data', (d) => { lastTrError = String(d).slice(-300); });
@@ -422,7 +422,8 @@ function listVoices() {
   } catch {}
   return (sayVoices = { available: voices.length > 0, voices, platform: process.platform });
 }
-const ttsDir = path.join(os.tmpdir(), 'agent-standup-tts');
+const ttsDir = path.join(os.tmpdir(), 'agent-standup-tts-' + (process.getuid ? process.getuid() : 'user'));
+try { fs.mkdirSync(ttsDir, { recursive: true, mode: 0o700 }); } catch {}
 const ttsJobs = new Map();
 try { for (const f of fs.readdirSync(ttsDir)) { const p = path.join(ttsDir, f); if (Date.now() - fs.statSync(p).mtimeMs > 864e5) fs.unlinkSync(p); } } catch {}   // drop cached audio older than a day
 function synthesize(voice, wpm, text, out) {
@@ -456,9 +457,10 @@ const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css
 //   lead.png / claude.png → the lead · you.png → the human · any other image → a pool for the sub-agents · name-talk.png → optional open-mouth frame of name.png
 const CHAR_NAME = /^[\w][\w .()\-]{0,78}\.(png|gif|webp|jpe?g)$/i, CHAR_MAX = 300 * 1024, CHAR_TYPES = { png: 'image/png', gif: 'image/gif', webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
 const charactersDir = () => process.env.AGENT_STANDUP_CHARACTERS || path.join(os.homedir(), '.agent-standup', 'characters');
+// lstat, not stat: a symlink is not a regular file, so it is skipped and never served
 function listCharacters() {
   const dir = charactersDir(); let names = []; try { names = fs.readdirSync(dir); } catch {}
-  const ok = names.filter((f) => CHAR_NAME.test(f)).filter((f) => { try { const st = fs.statSync(path.join(dir, f)); return st.isFile() && st.size <= CHAR_MAX; } catch { return false; } }).slice(0, 80);
+  const ok = names.filter((f) => CHAR_NAME.test(f)).filter((f) => { try { const st = fs.lstatSync(path.join(dir, f)); return st.isFile() && st.size <= CHAR_MAX; } catch { return false; } }).slice(0, 80);
   const stem = (f) => f.replace(/\.[^.]+$/, ''), by = new Map(ok.map((f) => [stem(f).toLowerCase(), f]));
   const chars = ok.filter((f) => !/-talk$/i.test(stem(f))).map((f) => { const st = stem(f), l = st.toLowerCase();
     return { stem: st, file: f, talk: by.get(l + '-talk') || null, role: /^(lead|claude)$/.test(l) ? 'lead' : /^(you|human|user)$/.test(l) ? 'you' : 'agent' }; }).sort((a, b) => a.stem.localeCompare(b.stem));
@@ -473,15 +475,18 @@ function start(port = PORT) {
   let originOk = true; try { originOk = !req.headers.origin || local(new URL(req.headers.origin).host); } catch { originOk = false; }
   if (!local(req.headers.host) || !originOk) { res.writeHead(403); return res.end('forbidden'); }
   const json = (o, code = 200) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(o)); };
+  // Endpoints with side effects (they spawn programs or claim the sound) refuse requests that a browser marks as coming from another site, e.g. an <img> on a web page.
+  const sfs = req.headers['sec-fetch-site'];
+  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts'].includes(url.pathname)) { res.writeHead(403); return res.end('forbidden'); }
+  const readBody = (cb) => {   // request bodies are small JSON: stop reading beyond 256 KB and give up after 10 s
+    let body = '', over = false; req.setTimeout(10000, () => req.destroy());
+    req.on('data', (d) => { if (over) return; body += d; if (body.length > 262144) { over = true; res.writeHead(413); res.end('too large'); req.destroy(); } });
+    req.on('end', () => { if (!over) cb(body); });
+  };
+  const textList = (x) => (Array.isArray(x) ? x : []).slice(0, 200).map((t) => String(t).slice(0, 2000));
   try {
-    if (url.pathname === '/api/translate' && req.method === 'POST') {
-      let body = ''; req.on('data', (d) => (body += d));
-      return req.on('end', async () => { try { json(await translate(JSON.parse(body).texts || [])); } catch (e) { json({ error: String(e) }, 400); } });
-    }
-    if (url.pathname === '/api/quips' && req.method === 'POST') {
-      let body = ''; req.on('data', (d) => (body += d));
-      return req.on('end', async () => { try { const b = JSON.parse(body); json(await quips(b.texts || [], b.lang)); } catch (e) { json({ error: String(e) }, 400); } });
-    }
+    if (url.pathname === '/api/translate' && req.method === 'POST') return readBody(async (body) => { try { json(await translate(textList(JSON.parse(body).texts))); } catch (e) { json({ error: String(e) }, 400); } });
+    if (url.pathname === '/api/quips' && req.method === 'POST') return readBody(async (body) => { try { const b = JSON.parse(body); json(await quips(textList(b.texts), b.lang === 'fr' ? 'fr' : 'en')); } catch (e) { json({ error: String(e) }, 400); } });
     if (url.pathname === '/api/sessions') return json(listSessions());
     if (url.pathname === '/api/projects') {   // projects (working folders) ordered by latest activity — lets the live view follow one of them
       const m = new Map(); for (const r of listSessions()) { const p = m.get(r.proj) || { proj: r.proj, mtime: 0, sessions: 0 }; p.mtime = Math.max(p.mtime, r.mtime); p.sessions++; m.set(r.proj, p); }
@@ -523,15 +528,16 @@ function start(port = PORT) {
     if (url.pathname.startsWith('/characters/')) {   // only plain image files of the characters folder, by exact name
       let f = ''; try { f = decodeURIComponent(url.pathname.slice('/characters/'.length)); } catch {}
       const dir = charactersDir(), fp = path.join(dir, f);
-      try { if (!CHAR_NAME.test(f) || !fp.startsWith(dir + path.sep) || fs.statSync(fp).size > CHAR_MAX) throw 0; } catch { res.writeHead(404); return res.end('not found'); }
+      try { const ls = fs.lstatSync(fp); if (!CHAR_NAME.test(f) || !fp.startsWith(dir + path.sep) || !ls.isFile() || ls.size > CHAR_MAX) throw 0; } catch { res.writeHead(404); return res.end('not found'); }
       res.writeHead(200, { 'content-type': CHAR_TYPES[f.split('.').pop().toLowerCase()] || 'application/octet-stream', 'cache-control': 'no-cache' }); return fs.createReadStream(fp).pipe(res);
     }
     const file = path.join(PUBLIC, url.pathname === '/' ? 'index.html' : url.pathname);
-    if (!file.startsWith(PUBLIC) || !fs.existsSync(file)) { res.writeHead(404); return res.end('not found'); }
+    let fst = null; try { fst = fs.statSync(file); } catch {}
+    if (!file.startsWith(PUBLIC + path.sep) || !fst || !fst.isFile()) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
     res.end(fs.readFileSync(file));
-  } catch (e) { json({ error: String(e.message || e) }, 500); }
-  }).listen(port, '127.0.0.1', () => console.log(`Agent Standup → http://localhost:${port}`));
+  } catch (e) { if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
+  }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });
 }
 module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, charactersDir, listCharacters };
 if (require.main === module) {

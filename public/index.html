@@ -339,7 +339,7 @@ async function loadChars() {
   } catch {}
   CHARS = next;
 }
-const customFor = (id) => (id === 'main' ? CHARS.lead : id === 'user' ? CHARS.you : CHARS.pool.length ? CHARS.pool[hash(id) % CHARS.pool.length] : null);
+const customFor = (id) => (id === 'main' ? CHARS.lead : id === 'user' ? CHARS.you : CHARS.pool.length ? CHARS.pool.reduce((b, c) => (hash(id + '|' + (c.idle || '')) > hash(id + '|' + (b.idle || '')) ? c : b)) : null);
 function renderCharInfo() {
   const el = $('#charInfo'); if (!el) return;
   el.innerHTML = CHARS.n ? `✓ ${CHARS.n} ${esc(L('personnage(s) personnalisé(s) chargé(s)', 'custom character(s) loaded'))}` : `${esc(L('Déposez vos images (PNG) dans ce dossier pour remplacer les personnages :', 'Drop your pixel art (PNG) in this folder to replace the characters:'))}<br><code style="word-break:break-all">${esc(CHARS.dir)}</code><br>${esc(L('lead.png = le chef · you.png = vous · les autres = les sous-agents · nom-talk.png = bouche ouverte', 'lead.png = the lead · you.png = you · others = the sub-agents · name-talk.png = open mouth'))}`;
@@ -439,7 +439,7 @@ function avatarSVG(p, o, uid = '') {   // uid keeps SVG ids unique per instance:
   const sparks = star(22, 28, 3) + star(78, 22, 2.6, '#ff9bb8') + star(70, 40, 1.9, '#9be7ff') + star(30, 46, 1.6, '#ffe58a');
   const custFig = (c, talking) => { const base = 'x="20" y="6" width="60" height="58" preserveAspectRatio="xMidYMax meet"', px = 'image-rendering:pixelated;';
     return `<image class="cimg" href="${c.idle}" ${base} style="${px}${talking && c.talk ? 'display:none' : ''}"/>` + (c.talk ? `<image class="cimg cimg-talk" href="${c.talk}" ${base} style="${px}${talking ? '' : 'display:none'}"/>` : ''); };
-  const fig = p.custom ? custFig(p.custom, st && o.m > 0) : `${arm('l')}${bodyShape(p.shape, `url(#${gid})`, c2)}${arm('r')}${face}${acc}`;
+  const fig = p.custom ? custFig(p.custom, st && o.m === 2) : `${arm('l')}${bodyShape(p.shape, `url(#${gid})`, c2)}${arm('r')}${face}${acc}`;
   return `<svg viewBox="0 0 100 75" preserveAspectRatio="xMidYMid slice"${st ? ' xmlns="http://www.w3.org/2000/svg" width="400" height="300"' : ''}>
     <defs><linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="0" y1="12" x2="0" y2="72"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c}"/></linearGradient>
       <linearGradient id="${uid}dk${p.scene}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sc.desk[0]}"/><stop offset="1" stop-color="${sc.desk[1]}"/></linearGradient>
@@ -834,7 +834,7 @@ function paintStatus() {
   $('#seek').value = S.idx; $('#pos').textContent = `${Math.min(S.idx + 1, S.events.length)} / ${S.events.length}`;
 }
 const applyStatus = (ev) => {
-  if (ev.kind === 'order') { (S.waitOn[ev.agent] = S.waitOn[ev.agent] || new Set()).add(ev.to); S.orderTs[ev.to] = ev.ts || 0; S.status[ev.to] = 'working'; delete S.doneAt[ev.to]; S.gone.delete(ev.to); S.leaving.delete(ev.to); const t = $('#t-' + ev.to); if (t) t.classList.remove('vanishing'); }
+  if (ev.kind === 'order') { (S.waitOn[ev.agent] = S.waitOn[ev.agent] || new Set()).add(ev.to); S.orderTs[ev.to] = ev.ts || 0; S.status[ev.to] = 'working'; delete S.doneAt[ev.to]; S.gone.delete(ev.to); S.leaving.delete(ev.to); if (!ev.bg && ev.toolId) S.run[ev.agent] = { id: ev.toolId, ts: ev.ts, start: performance.now(), name: 'Agent' }; const t = $('#t-' + ev.to); if (t) t.classList.remove('vanishing'); }
   if (ev.kind === 'finish') { if (S.waitOn[ev.to]) S.waitOn[ev.to].delete(ev.agent); if (S.status[ev.agent] !== 'done') { S.status[ev.agent] = 'done'; S.doneAt[ev.agent] = S.clock; } delete S.run[ev.agent]; const lr = S.run[ev.to]; if (lr && /^(Task|Agent)$/.test(lr.name) && !(S.waitOn[ev.to] && S.waitOn[ev.to].size)) delete S.run[ev.to]; }
   if (ev.kind === 'report') { if (S.waitOn[ev.to]) S.waitOn[ev.to].delete(ev.agent); S.status[ev.agent] = 'done'; S.doneAt[ev.agent] = S.clock; delete S.run[ev.agent]; }
 };
@@ -877,7 +877,7 @@ const WIN1M = /(opus-4-[78]|opus-5|sonnet-5|fable-5)/;
 function ctxWin(model, ctx) { const base = WIN1M.test(model || '') ? 1e6 : 2e5; return ctx > base ? 1e6 : base; }   // the transcript does not say which window is in use: infer it, a bigger observed context proves the 1M window
 function tally(ev) {   // numbers that pile up over a session: token usage, errors, last sign of life
   if (ev.kind === 'compact') { S.compacts[ev.agent] = (S.compacts[ev.agent] || 0) + 1; delete S.ctxWarned[ev.agent]; }
-  const det = loopStep(S.rep, ev); if (det) { S.loops[ev.agent] = det; later('badges', renderBadges, 300); } else if (S.loops[ev.agent] && (ev.kind === 'results' ? ev.items.every((it) => !it.err) : (ev.kind === 'tools' && S.rep[ev.agent].n < 2))) { delete S.loops[ev.agent]; later('badges', renderBadges, 300); }
+  const det = loopStep(S.rep, ev); if (det) { S.loops[ev.agent] = det; later('badges', renderBadges, 300); } else if (S.loops[ev.agent] && (ev.kind === 'results' ? (S.loops[ev.agent].kind === 'errors' && ev.items.every((it) => !it.err)) : (ev.kind === 'tools' && S.rep[ev.agent].n < 2))) { delete S.loops[ev.agent]; later('badges', renderBadges, 300); }
   if (ev.kind === 'usage') { const c = ev.u.i + ev.u.r + ev.u.w; if (c > 0 && ev.model !== '<synthetic>') { S.ctx[ev.agent] = c; S.model[ev.agent] = ev.model; later('tok', renderCtx, 300); } const u = (S.usage[ev.agent] = S.usage[ev.agent] || { i: 0, o: 0, r: 0, w: 0 }); u.i += ev.u.i; u.o += ev.u.o; u.r += ev.u.r; u.w += ev.u.w; later('tok', renderTokens, 300); }
   else if (ev.kind === 'results') ev.items.forEach((it) => { if (it.err) { S.errs[ev.agent] = (S.errs[ev.agent] || 0) + 1; later('badges', renderBadges, 300); oops(ev.agent); } });
   else if (ev.kind === 'tools' || ev.kind === 'say') S.lastAct[ev.agent] = ev.ts;
@@ -1147,7 +1147,7 @@ function startTalk(id, text, label) {
   if (S.present === id) { $('#pcap').textContent = text; $('#pcam').classList.add('speaking'); }
   const m = t.querySelector('.mouthE'); let open = false; clearInterval(mouths.get(id));
   mouths.set(id, setInterval(() => {
-    if (!m) { const ct = t.querySelector('.cimg-talk'); if (ct) { const lv0 = S.level[id], op = lv0 ? lv0() > 0.05 : (open = !open); ct.style.display = op ? '' : 'none'; t.querySelector('.cimg').style.display = op ? 'none' : ''; } return; }   // custom character: swap between its two frames
+    if (!m) { const ct = t.querySelector('.cimg-talk'); if (ct) { const lv0 = S.level[id], op = lv0 ? lv0() > 0.05 : (open = !open); ct.style.display = op ? '' : 'none'; t.querySelector('.cimg').style.display = op ? 'none' : ''; if (S.present === id) { const pc = $('#pcam .cimg-talk'), pi = $('#pcam .cimg'); if (pc && pi) { pc.style.display = op ? '' : 'none'; pi.style.display = op ? 'none' : ''; } } } return; }   // custom character: swap between its two frames
     const pm = S.present === id ? $('#pcam .mouthE') : null, lv = S.level[id]; if (lv) { const v = lv(); const ry = (.9 + Math.min(4.2, v * 28)).toFixed(1), rx = (4.8 - Math.min(1.1, v * 6)).toFixed(1); m.setAttribute('ry', ry); m.setAttribute('rx', rx); if (pm) { pm.setAttribute('ry', ry); pm.setAttribute('rx', rx); } }
     else { open = !open; m.setAttribute('ry', open ? 4.2 : 1.1); m.setAttribute('rx', open ? 4 : 4.7); if (pm) { pm.setAttribute('ry', open ? 4.2 : 1.1); pm.setAttribute('rx', open ? 4 : 4.7); } }
   }, 70));
@@ -1170,6 +1170,7 @@ function stopTalk(id) {
   const t = $('#t-' + id); if (!t) return;
   t.classList.remove('speaking'); const m = t.querySelector('.mouthE'); if (m) { m.setAttribute('ry', .9); m.setAttribute('rx', 4.6); }
   const ct = t.querySelector('.cimg-talk'); if (ct) { ct.style.display = 'none'; t.querySelector('.cimg').style.display = ''; }
+  const pc = $('#pcam .cimg-talk'), pi = $('#pcam .cimg'); if (pc && pi && S.present === id) { pc.style.display = 'none'; pi.style.display = ''; }
 }
 const clearSpeaking = () => [...S.speakers].forEach(stopTalk);
 
@@ -1447,7 +1448,7 @@ async function fillProjects() {   // live view: follow the latest activity anywh
   sel.innerHTML = `<option value="">${L('Tous les projets (le plus récent)', 'All projects (most recent)')}</option>` + rows.map((r) => `<option value="${esc(r.proj)}">${esc(niceProj(r.proj))}</option>`).join('');
   sel.value = prefs.proj && rows.some((r) => r.proj === prefs.proj) ? prefs.proj : ''; sel.style.display = rows.length > 1 ? '' : 'none';
 }
-$('#liveProj').onchange = () => { prefs.proj = $('#liveProj').value; S.pin = ''; savePrefs(); S.cur = null; followCurrent(); };
+$('#liveProj').onchange = () => { Q.delete('proj'); prefs.proj = $('#liveProj').value; S.pin = ''; savePrefs(); S.cur = null; followCurrent(); };
 async function followCurrent() {
   const cur = await (await fetch('/api/current?proj=' + encodeURIComponent(Q.get('proj') || prefs.proj || '') + (S.pin ? '&id=' + encodeURIComponent(S.pin) : ''))).json();
   if (!cur.id) { $('#empty').classList.add('on'); return false; } $('#empty').classList.remove('on');
@@ -1629,7 +1630,7 @@ function setView(v) { prefs.view = v; savePrefs(); document.body.classList.toggl
 
 $('#viewSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); };
 $('#langSel').onchange = () => setLang($('#langSel').value, true);
-$('#charReload').onclick = async () => { await loadChars(); for (const id in S.agents) S.agents[id].custom = customFor(id); buildStage(); paintStatus(); renderCharInfo(); };
+$('#charReload').onclick = async () => { await loadChars(); for (const k in imgCache) delete imgCache[k]; for (const id in S.agents) S.agents[id].custom = customFor(id); buildStage(); paintStatus(); renderCharInfo(); };
 $('#charOpen').onclick = () => window.parent.postMessage({ agentStandup: 'openCharacters' }, '*');
 $('#modeSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m); };
 $('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }

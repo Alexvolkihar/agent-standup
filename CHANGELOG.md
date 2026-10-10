@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.22.1
+- Security and robustness (found by a pre-release audit): custom-character folders no longer follow symlinks, side-effect endpoints refuse cross-site requests, a request error can no longer crash the server, translation helpers run with no tools, the TTS cache is private to the user, `--port` is validated.
+- A lead waiting on a synchronous sub-agent now shows "stalled?" after a long silence; the repeated-command loop badge stays visible; the project picker works when the page was opened with a pinned project.
+- Custom characters: stable assignment when you add or remove files, reload refreshes video exports, the mouth alternates in exports, the presenter camera uses the talking frame.
+
 ## 1.22.0
 - **`agent-standup` command line** (npm package `@double_geste/agent-standup`, also attached to the release as a `.tgz`): `agent-standup --open` starts the local server and opens the call without any editor; `agent-standup status [--here] [--json]` prints what is going on; `agent-standup statusline` is a one-line indicator for the Claude Code status line, tmux and Neovim.
 - **Desktop app for macOS** (Apple Silicon and Intel, unsigned): its own window plus a menu bar indicator (`⚙2 ✋1`) and a notification when an agent may need you. Built with Electron from the same server; Windows/Linux builds are set up in CI (experimental).

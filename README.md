@@ -4,6 +4,8 @@
 
 **Your Claude Code session as a live team call.** The lead gives orders, sub-agents join the call, work at their desks, share their screen and report back — with voices, expressions and a view of the real work as it happens.
 
+**Runs as a VS Code extension, a terminal command, or a desktop app.** Try it in 30 seconds, no install and no editor (Node 18+): `npx @double_geste/agent-standup --open`, then ⚙ → Source → Demo.
+
 **→ Website & download: https://atoll92.github.io/agent-standup/**
 
 ![Agent Standup: a team of AI agents in a call](https://atoll92.github.io/agent-standup/media/hero.gif)
@@ -73,7 +75,7 @@ The header shows how full the lead's context is (`ctx 62%`, orange then red, wit
 | **VS Code** | Install **Agent Standup** from the Extensions view (Marketplace). |
 | **Cursor, Windsurf, VSCodium…** | Download `agent-standup-<version>.vsix` from the [latest release](https://github.com/Atoll92/agent-standup/releases/latest) and use *Extensions → … → Install from VSIX*. |
 | **Any terminal, no editor** | `npx @double_geste/agent-standup --open` (Node 18+; the package is on [npm](https://www.npmjs.com/package/@double_geste/agent-standup)). Offline alternative: `npx https://github.com/Atoll92/agent-standup/releases/latest/download/agent-standup-cli.tgz --open`. |
-| **A small desktop app (macOS)** | Download `Agent-Standup-<version>-mac-apple-silicon.zip` (or `-mac-intel.zip`) from the release, unzip, move *Agent Standup* to Applications. The app is **not signed with an Apple developer ID**, so the first time: right-click the app → *Open* → *Open* (or run `xattr -dr com.apple.quarantine "/Applications/Agent Standup.app"`). It has a window and an indicator in the menu bar, and notifies you when an agent may need you. |
+| **A small desktop app (macOS)** | Download `Agent-Standup-<version>-mac-apple-silicon.zip` (or `-mac-intel.zip`) from the release, unzip, move *Agent Standup* to Applications. The app is **not signed with an Apple developer ID**, so the first time: right-click the app → *Open* → *Open* (or run `xattr -dr com.apple.quarantine "/Applications/Agent Standup.app"`). It has a window and an indicator in the menu bar, and notifies you when an agent may need you. Windows and Linux builds (`-windows-x64.zip`, `-linux-x64.zip`) are on the same release page but **experimental and not tested by hand**. |
 | **Claude Code status line** | `npm i -g @double_geste/agent-standup`, then in `~/.claude/settings.json`: `{ "statusLine": { "type": "command", "command": "agent-standup statusline" } }` → shows `⚙2 ✋1` under your prompt. |
 | **tmux** *(not tested here)* | `set -g status-right '#(agent-standup status --here)'` |
 | **Neovim** *(not tested here)* | call `vim.fn.system('agent-standup status --here')` from a timer and show the result in your statusline plugin; `agent-standup status --json` gives machine-readable output. |
@@ -114,7 +116,10 @@ The two gibberish styles need no system voice and no translation, so they sound 
 - **Notify me when agents finish** (⚙): a soft chime, the tab title and, in VS Code, a notification once the team has worked for a while and gone quiet.
 - **Search** the transcript, **ambience volume**, and a compact layout when the panel is narrow (side bar).
 
-## Install (VS Code)
+## Install
+Three ways in — pick one (details in [Works with your tools](#works-with-your-tools)): the **VS Code extension** (below), the **`agent-standup` command** (`npx @double_geste/agent-standup --open`), or the **desktop app** (macOS, from the release page). Cursor, Windsurf and VSCodium install the same `.vsix`.
+
+### VS Code
 
 ### Option 0 — from the Marketplace (easiest)
 In VS Code: Extensions view → search **Agent Standup** → Install. Or: https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup
@@ -125,7 +130,7 @@ In VS Code: Extensions view → search **Agent Standup** → Install. Or: https:
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
 3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
-Direct download of the current version: https://github.com/Atoll92/agent-standup/releases/download/v1.22.0/agent-standup-1.22.0.vsix  
+Direct download of the latest version: https://github.com/Atoll92/agent-standup/releases/latest/download/agent-standup.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
 
 ### Option B — build it yourself
@@ -138,7 +143,7 @@ code --install-extension agent-standup-*.vsix
 To hack on it instead: open the folder in VS Code and press **F5** (launches an Extension Development Host).
 
 ### Option C — no extension
-`node server.js` and open http://localhost:4747 (see *Standalone* below).
+After cloning the repository (Option B): `node server.js` and open http://localhost:4747 (see *Standalone* below). Without cloning: `npx @double_geste/agent-standup --open`.
 
 The first click on **Join** is required by browsers to allow sound.
 
@@ -148,6 +153,7 @@ The first click on **Join** is required by browsers to allow sound.
 |---|---|
 | **Agent Standup: Open live call** | Opens the call in a panel beside the editor |
 | **Agent Standup: Show sidebar** | Opens the call in the Activity Bar view |
+| **Agent Standup: Open characters folder (your own pixel art)** | Creates and opens the folder for your own characters |
 | **Agent Standup: Open in browser (voice + sound)** | Opens the same call in your default browser |
 
 ### Settings
@@ -157,6 +163,7 @@ The first click on **Join** is required by browsers to allow sound.
 | `agentStandup.port` | `0` | Local port of the server. `0` = a free port is picked automatically for each VS Code window (recommended) |
 | `agentStandup.statusBar` | `true` | Live counts in the VS Code status bar (needs you / working / your turn) for this workspace |
 | `agentStandup.shareUsage` | `false` | Opt-in, anonymous: at most one empty request per day to a 1-pixel file on GitHub, to count active installs (ignored when VS Code telemetry is off) |
+| `agentStandup.charactersPath` | _(empty)_ | Folder with your own character images (default `~/.agent-standup/characters`) |
 | `agentStandup.claudePath` | _(auto)_ | Full path to the Claude Code executable if it isn't found automatically (needed only for French translation) |
 | `agentStandup.autoOpen` | `false` | Open the call when VS Code starts |
 | `agentStandup.onlyThisWorkspace` | `true` | Follow only sessions started in the open folder (falls back to the newest session if there is none) |
@@ -165,7 +172,7 @@ The first click on **Join** is required by browsers to allow sound.
 
 | | |
 |---|---|
-| **Appel / Call · Arbre / Tree · Sessions** | tiles, hierarchy, or one card per recent session |
+| **Call · Tree · Sessions** (Appel · Arbre · Sessions in French) | tiles, hierarchy, or one card per recent session |
 | **⏸ / ▶** (Space) | pause / resume |
 | **☰** | transcript |
 | **🔊 / 🔇** (M) | mute everything |

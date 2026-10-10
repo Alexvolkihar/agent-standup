@@ -39,7 +39,7 @@ async function openPanel(pin) {   // pin: { id, proj } of the session to follow 
   if (panel) { try { panel.reveal(); if (pin && pin.id) panel.webview.postMessage({ agentStandup: 'pin', id: pin.id, proj: pin.proj }); return; } catch { panel = null; } }   // a disposed panel falls through and is recreated
   let u;
   try { u = await url(); } catch (e) { return vscode.window.showErrorMessage(e.message); }
-  if (pin && pin.id) u += `&pin=${encodeURIComponent(pin.id)}&proj=${encodeURIComponent(pin.proj || '')}`;
+  if (pin && pin.id) u = u.replace(/([?&])proj=[^&]*&?/, '$1').replace(/[?&]$/, '') + `&pin=${encodeURIComponent(pin.id)}&proj=${encodeURIComponent(pin.proj || '')}`;   // one proj parameter only: the pinned session's project
   const ext = await vscode.env.asExternalUri(vscode.Uri.parse(u + '&embed=1'));
   panel = vscode.window.createWebviewPanel('agentStandup', 'Agent Standup', vscode.ViewColumn.Beside, { enableScripts: true, retainContextWhenHidden: true });
   relay(panel.webview); panel.webview.html = frameHtml(ext.toString(true));
@@ -111,7 +111,8 @@ function activate(ctx) {
   let target = null;
   const poll = () => {
     try {
-      if (!cfg().get('statusBar') || !vscode.window.state.focused) return;
+      if (!cfg().get('statusBar')) { if (status.text !== '$(device-camera-video) Agent Standup') { status.text = '$(device-camera-video) Agent Standup'; status.backgroundColor = undefined; status.tooltip = tt('Open the live Agent Standup call'); } return; }   // counts off: the plain button stays
+      if (!vscode.window.state.focused) return;
       const key = projKey(), rows = require('./server.js').boardRows().filter((r) => !key || r.proj === key), now = Date.now();
       const act = rows.filter((r) => r.state !== 'idle' || now - r.mtime < 15 * 60e3), cnt = (st) => act.filter((r) => r.state === st).length;
       const blocked = cnt('blocked'), working = cnt('working') + cnt('waiting'), turn = cnt('turn');
@@ -127,7 +128,7 @@ function activate(ctx) {
   try { ctx.subscriptions.push(vscode.window.onDidChangeWindowState((s) => { if (s.focused) poll(); })); } catch {}   // refresh the moment the window regains focus
   const pollT = setInterval(poll, 4000); poll(); ctx.subscriptions.push({ dispose: () => clearInterval(pollT) });
   // If another VS Code window was serving the port and closes, take over so this window keeps working.
-  const watch = setInterval(async () => { if (!started) return; const s = await started; if (!s.error && !(await ping(s.port))) { started = null; ensureServer(); } }, 5000);
+  const watch = setInterval(async () => { try { if (!started) return; const s = await started; if (!s.error && !(await ping(s.port))) { started = null; ensureServer(); } } catch { started = null; } }, 5000);
   ctx.subscriptions.push({ dispose: () => clearInterval(watch) });
   if (cfg().get('autoOpen')) openPanel();
 }

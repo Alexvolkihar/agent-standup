@@ -4,9 +4,10 @@ const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification } = req
 const path = require('path'), fs = require('fs');
 const core = require('./core/server.js');
 const SELFTEST = process.argv.includes('--selftest') ? process.argv[process.argv.indexOf('--selftest') + 1] : null;   // renders the window to a PNG and quits: used to check a build
-let win = null, tray = null, port = 0, quitting = false, lastNeeds = 0;
+let win = null, tray = null, port = 0, quitting = false, lastNeeds = 0, trayTimer = null;
 
-if (!app.requestSingleInstanceLock()) app.quit();
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) app.quit();   // a second copy only brings the first one to the front
 else app.on('second-instance', () => showWindow());
 
 function showWindow() { if (!win) createWindow(); if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
@@ -16,7 +17,7 @@ function createWindow() {
   win.loadURL(`http://localhost:${port}/`);
   win.webContents.setWindowOpenHandler(({ url }) => { try { if (new URL(url).protocol === 'https:') shell.openExternal(url); } catch {} return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith(`http://localhost:${port}/`)) { e.preventDefault(); try { if (new URL(url).protocol === 'https:') shell.openExternal(url); } catch {} } });
-  win.on('close', (e) => { if (!quitting && !SELFTEST) { e.preventDefault(); win.hide(); } });   // closing the window keeps the indicator running
+  win.on('close', (e) => { if (!quitting && !SELFTEST && process.platform !== 'linux') { e.preventDefault(); win.hide(); } });   // closing the window keeps the indicator running (not on Linux: many desktops have no tray to come back from)
   win.on('closed', () => { win = null; });
 }
 
@@ -40,10 +41,11 @@ function createTray() {
     { label: 'Open characters folder', click: () => { const d = core.charactersDir(); try { fs.mkdirSync(d, { recursive: true }); } catch {} shell.openPath(d); } },
     { type: 'separator' }, { label: 'Quit', click: () => { quitting = true; app.quit(); } },
   ]));
-  tray.on('click', showWindow); refreshTray(); setInterval(refreshTray, 4000);
+  tray.on('click', showWindow); refreshTray(); trayTimer = setInterval(refreshTray, 4000);
 }
 
 app.whenReady().then(async () => {
+  if (!gotLock) return;
   const srv = core.start(0); await new Promise((r) => srv.once('listening', r)); port = srv.address().port;
   if (process.platform === 'darwin' && app.dock) app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, 'core/media/icon.png')));
   createWindow(); createTray();
@@ -55,5 +57,5 @@ app.whenReady().then(async () => {
   }
 });
 app.on('activate', showWindow);
-app.on('before-quit', () => { quitting = true; try { core.shutdown(); } catch {} });
+app.on('before-quit', () => { quitting = true; clearInterval(trayTimer); try { core.shutdown(); } catch {} });
 app.on('window-all-closed', () => { /* stay in the tray */ });
