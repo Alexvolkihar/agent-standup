@@ -251,6 +251,12 @@ function parseRecord(st, r) {
     if (id && status && status !== 'running') st.raw.push({ ts, agent, kind: 'agentdone', toolId: id });
     return;
   }
+  if (r.type === 'attachment' && r.attachment && r.attachment.type === 'queued_command') {   // an order typed while the lead was working: Claude Code hands it over in the middle of the turn, as an attachment and not as a user message
+    const q = r.attachment, human = q.origin ? q.origin.kind === 'human' : q.commandMode === 'prompt'; if (agent !== 'main' || !human) return;   // the same record also carries task notifications
+    const txt = (Array.isArray(q.prompt) ? q.prompt.filter((b) => b && b.type === 'text').map((b) => b.text).join('\n') : typeof q.prompt === 'string' ? q.prompt : '').replace(HARNESS, '').trim();
+    if (txt && !/^<(system-reminder|command-|local-command|task-notification)/.test(txt)) st.raw.push({ ts, agent: 'user', kind: 'user', text: txt });
+    return;
+  }
   if (r.type === 'user') {
     const items = [];   // tool results: the real output that appeared on the agent's screen
     for (const b of blocks(r)) if (b.type === 'tool_result' && (st.toolName[b.tool_use_id] === 'Agent' || st.toolName[b.tool_use_id] === 'Task') && !(st.bg && st.bg[b.tool_use_id]) && !/^\s*Async agent launched/i.test(resultText(b.content))) st.raw.push({ ts, agent, kind: 'agentdone', toolId: b.tool_use_id });   // a synchronous call: the lead got the sub-agent's answer back, so it has finished (async launches answer immediately and are not a completion)

@@ -519,6 +519,7 @@ const lagMs = (i = S.idx) => {   // how much newer the newest event of the sessi
 };
 const lagFactor = () => { const l = lagMs() / 1000; return l < 6 ? 1 : l < 15 ? 1.15 : l < 30 ? 1.3 : 1.5; };   // steps, so the cached audio of a line is reused
 const caughtUp = () => !S.live || lagMs() < 6000;
+const nearLive = () => !S.live || lagMs() < 30000;   // an answer to what was just said (a word after an order, a thank-you after a report) still fits here: reading the line took longer than 6 s and the session went on meanwhile
 const spd = () => (S.live ? 1.12 * lagFactor() : +$('#speed').value) * (S.boost || 1);
 const nameOf = (id) => (S.agents[id] || {}).name || id;
 
@@ -1543,11 +1544,11 @@ function talkLine(g) {
   return t;
 }
 async function react(ev, token) {
-  if ((!prefs.epi && !prefs.banter) || S.boost > 1 || S.hurry || !caughtUp()) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[FR() ? 'fr' : 'en']; let who, line, thanks = false;
+  if ((!prefs.epi && !prefs.banter) || S.boost > 1 || S.hurry || !nearLive()) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[FR() ? 'fr' : 'en']; let who, line, thanks = false;
   if (ev.kind === 'order') { if (!prefs.banter && seed % 100 > 55) return; who = ev.to; line = prefs.banter ? ackLine(ev) : R.ack[seed % R.ack.length]; }
   else if (ev.kind === 'report') {
     const r = seed % 100, joke = prefs.epi ? 60 : prefs.chat === 'quiet' ? -1 : 35;   // a remark from someone else, or (a little less often) a word of thanks from whoever receives the report
-    if (r <= joke) { const others = Object.keys(S.status).concat(['main']).filter((x) => x !== ev.agent && S.agents[x] && !S.gone.has(x)); who = others[(seed >>> 3) % others.length]; line = quipMem.get(baseText(ev, 160)) || R.done[seed % R.done.length]; }
+    if (r <= joke) { if (!caughtUp()) return; const others = Object.keys(S.status).concat(['main']).filter((x) => x !== ev.agent && S.agents[x] && !S.gone.has(x)); who = others[(seed >>> 3) % others.length]; line = quipMem.get(baseText(ev, 160)) || R.done[seed % R.done.length]; }
     else if (prefs.banter && r <= joke + 25 && ev.to !== 'user' && S.agents[ev.to] && !S.gone.has(ev.to)) { who = ev.to; line = varied('thanks', seed >>> 3); thanks = true; }
     else return;
   }
@@ -1577,6 +1578,18 @@ const before = (i) => { let k = i - 1; while (k >= 0 && (S.events[k].kind === 'u
 async function ponder(i, token) {   // replay: an agent that really took a long time (40 s or more) before this line or call says so first, about every other time
   const ev = S.events[i], p = before(i); if (!prefs.banter || prefs.chat === 'quiet' || S.boost > 1 || S.hurry || !p || !S.agents[ev.agent] || thinkerOf(p) !== ev.agent || ev.ts - p.ts < 40000 || hash('t' + ev.ts) % 100 > 55) return;
   const line = varied('think', hash(String(ev.ts))); startTalk(ev.agent, line, '💭'); await speakLine(line, S.agents[ev.agent], true, token); stopTalk(ev.agent);
+}
+// Live: you gave an order and the lead starts on its tools without a word (about one time in three): it says what it is starting with, from the tool call itself, so you know it heard you and what it is on
+const LEAD = {
+  en: { in: ['Got it.', 'Okay.', 'On it.', 'Sure.', 'Right.'], read: 'Let me look at ', edit: 'I’m editing ', write: 'I’m writing ', cmd: 'I’m running ', note: 'I’m running a command: ', grep: 'Let me search the code.', glob: 'Let me see which files we have.', todo: 'Let me lay out a plan.', web: 'Let me check the web.', question: 'I have a question for you.', any: 'Let me get started.', and: ' and ' },
+  fr: { in: ['D’accord.', 'Compris.', 'Très bien.', 'Entendu.', 'Ça marche.'], read: 'Je regarde ', edit: 'Je modifie ', write: 'J’écris ', cmd: 'Je lance ', note: 'Je lance une commande : ', grep: 'Je cherche dans le code.', glob: 'Je regarde quels fichiers on a.', todo: 'Je fais mon plan.', web: 'Je vais voir sur le web.', question: 'J’ai une question pour vous.', any: 'Je m’y mets.', and: ' et ' },
+};
+async function leadAck(ev, token) {
+  S.owed = false; if (!prefs.banter || S.hurry || S.boost > 1 || !caughtUp() || S.speakers.size || !S.agents.main) return;
+  const W = LEAD[FR() ? 'fr' : 'en'], d = ev.tools[0].d || {}, k = d.kind === 'text' ? d.what : d.kind; let what = W[k] || W.any;
+  if (k === 'read' || k === 'edit' || k === 'write') { const files = [...new Set(ev.tools.filter((t) => (t.d || {}).kind === k).map((t) => base(t.d.file)).filter(Boolean))].slice(0, 2); what = files.length ? what + files.join(W.and) + '.' : W.any; }
+  else if (k === 'cmd') { const note = (d.note || '').trim().replace(/[.\s]+$/, ''), cmd = String(d.text || '').trim().split(/\s+/).slice(0, 2).join(' ').slice(0, 26); what = note ? W.note + note + '.' : cmd ? what + cmd + '.' : W.any; }
+  const line = `${W.in[hash('k' + ev.ts) % W.in.length]} ${what}`; startTalk('main', line, '💬'); await speakLine(line, S.agents.main, true, token); stopTalk('main');
 }
 async function wrapUp(token) {   // live, once the lead is done: the part of its last message that the clipped reading left out, so you know what was done
   if (!S.wrap || S.speakers.size || !prefs.voice && !prefs.banter) return false; S.wrap = false;
@@ -1609,7 +1622,7 @@ const SPK = new Set(['say', 'report', 'order', 'user']);
 function aheadSpeakable(i, limit) { let n = 0; for (let k = i, m = Math.min(S.events.length, i + 800); k < m; k++) if (SPK.has(S.events[k].kind) && ++n > limit) break; return n; }
 const isSub = (id) => id !== 'main' && id !== 'user';
 async function run(i) {
-  const token = ++S.token; S.playing = true; S.idle = false; S.hurry = false; S.boost = 1; S.spokeAt = performance.now(); S.fill = 0; S.exQ = []; S.errRun = {}; S.wrap = false; S.mainSaid = null; S.syncTs = (S.events[i] && S.events[i].ts) || Date.now(); syncUI(); AUD.init();
+  const token = ++S.token; S.playing = true; S.idle = false; S.hurry = false; S.boost = 1; S.spokeAt = performance.now(); S.fill = 0; S.exQ = []; S.errRun = {}; S.wrap = false; S.mainSaid = null; S.owed = false; S.syncTs = (S.events[i] && S.events[i].ts) || Date.now(); syncUI(); AUD.init();
   if (i === 0 && prefs.epi && !S.live) { await card(L('ÉPISODE 1', 'EPISODE 1'), S.title); if (token !== S.token) return; }
   while (token === S.token) {
     const lim = S.stopAt || S.events.length;
@@ -1625,13 +1638,13 @@ async function run(i) {
     const q = S.live ? aheadSpeakable(i, 14) : 0;   // lines waiting to be said: the more of them, the shorter each one is read, but it is always read
     const lg = lagMs(i) / 1000; S.pace = !S.live ? 0 : Math.min(q > 7 ? 70 : q > 3 ? 130 : 260, lg > 30 ? 70 : lg > 15 ? 130 : lg > 6 ? 200 : 260); S.hurry = q > 12 || lg > 45;   // voices are only skipped when more than a dozen lines are queued
     S.boost = S.hurry || (S.live && S.events.length - i > 60) ? 3 : 1;
-    const ev = S.events[i]; S.idx = i; tally(ev);
+    const ev = S.events[i]; S.idx = i; tally(ev); if (S.live && ev.ts > S.since) S.since = ev.ts;   // said once: a reload or a return to this session does not read it again
     if (!S.live && (ev.kind === 'say' || ev.kind === 'report' || ev.kind === 'order' || ev.kind === 'tools')) { await ponder(i, token); if (token !== S.token) return; }
     if (ev.kind === 'usage' || ev.kind === 'compact') { if (ev.kind === 'compact' && S.live && prefs.banter) toast(`${nameOf(ev.agent)}: ${L('contexte compacté 🗜', 'context compacted 🗜')}`); i++; continue; }
     if (ev.kind === 'finish') { applyStatus(ev); paintStatus(); i++; continue; }
     const backlog = S.live ? S.events.length - i : 0, quick = S.live ? Math.min(1, 40 / Math.max(1, backlog)) : 1;   // live: hundreds of tool events from parallel sub-agents must not take minutes to scroll past
     if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.boost === 1 && S.present === ev.agent && ev.items.some((it) => it.img) ? (S.live ? 900 : 1800) : S.demo ? 900 : S.live ? 30 * quick : 80) / spd()); i++; continue; }   // a picture gets a moment on screen
-    if (ev.kind === 'tools') { applyStatus(ev); tickTools(ev); AUD.click(); OFFICE.kick(ev.tools[ev.tools.length - 1].name); paintStatus(); if (quick === 1) await smallTalk(token); await sleep((S.demo ? 1100 : S.live ? 110 * quick : 250) / spd()); i++; continue; }
+    if (ev.kind === 'tools') { applyStatus(ev); tickTools(ev); AUD.click(); OFFICE.kick(ev.tools[ev.tools.length - 1].name); paintStatus(); if (S.live && S.owed && ev.agent === 'main') { await leadAck(ev, token); if (token !== S.token) return; } if (quick === 1) await smallTalk(token); await sleep((S.demo ? 1100 : S.live ? 110 * quick : 250) / spd()); i++; continue; }
     const group = [ev]; let j = i + 1;   // sub-agents talking back-to-back were running in parallel: they talk over each other
     if (ev.kind === 'order') {   // several orders in a row (a parallel launch): the new agents all appear now, the first order is read, the others are named in one line
       while (j < Math.min(S.events.length, i + 40) && group.length < 8) { const e2 = S.events[j]; if (e2.kind === 'usage' || e2.kind === 'compact') { tally(e2); j++; continue; } if (e2.kind === 'order' && e2.agent === ev.agent) { group.push(e2); j++; } else break; }
@@ -1650,7 +1663,7 @@ async function run(i) {
     if (FR() && !S.hurry) { prefetchTr(i); await Promise.race([ensureTr(group.map((g) => baseText(g))), sleep(S.live ? 7000 : 14000)]); if (token !== S.token) return; }
     prefetchQuips(i); warmTTS(i);
     const playOne = (g) => {
-      applyStatus(g);
+      applyStatus(g); if (g.agent === 'user') S.owed = true; else if (g.agent === 'main') S.owed = false;   // your order waits for a word from the lead
       const label = g.kind === 'order' ? `${L('pour', 'to')} ${nameOf(g.to)}` : g.kind === 'report' ? `${L('rapport à', 'report to')} ${nameOf(g.to)}` : '', line = talkLine(g);
       startTalk(g.agent, line, label);
       if (g.kind === 'order') { S.status[g.to] = 'working'; AUD.join(); setTimeout(() => { paintStatus(); fly(g.agent, g.to, '📨'); popTile(g.to); }, 30); }
@@ -1666,7 +1679,7 @@ async function run(i) {
     }
     else if (S.live) { plays = []; let chain = Promise.resolve(); for (const g of group) { chain = chain.then(() => (token === S.token ? playOne(g) : null)); plays.push(chain); } } else plays = group.map(playOne);   // live: one voice at a time so each can be heard; replay keeps the overlapping chatter
     S.idx = j - 1; paintStatus(); await Promise.all(plays); if (token !== S.token) return;
-    for (const g of (ev.kind === 'order' && group.length > 1 ? [ev] : group)) { await converse(g, token); if (token !== S.token) return; }
+    for (const g of (ev.kind === 'order' ? group.slice(0, 3) : group)) { await converse(g, token); if (token !== S.token) return; }   // a parallel launch: the first three answer, as long as the call keeps up
     i = j;
   }
   if (token === S.token) {
@@ -1724,8 +1737,18 @@ async function followCurrent() {
   if (S.pin && cur.id !== S.pin) S.pin = '';   // the pinned session is gone: follow the latest one instead of staying silently pinned
   if (S.cur && S.cur.id === cur.id && S.cur.proj === cur.proj) return false;
   if (!(await loadSession(cur.proj, cur.id))) return false;
-  const start = Math.max(0, S.events.length - 16); recomputeStatus(start); S.idx = start; trNew(start); paintStatus();
-  if (!S.locked && !S.userPaused) run(start); return true;
+  const start = liveStart(); if (!S.locked && !S.userPaused) run(start); return true;
+}
+// Live: a call starts when you join it. Only what happened since then, and was not said yet, is said (the last 16 events at most, when a session is picked up on the way);
+// the end of a session that was already over is on screen (states, transcript) but is not read again. Joining while the agents are at work, the last few seconds are said too, to know what they are on
+const JOIN_BACK_MS = 10000;
+function midWork() {   // someone is in the middle of something: the session does not end on a message of the lead (its turn is over then, or about to be)
+  let k = S.events.length - 1; while (k >= 0 && (S.events[k].kind === 'usage' || S.events[k].kind === 'compact')) k--; const e = S.events[k]; return !!e && !(e.agent === 'main' && e.kind === 'say');
+}
+function liveStart() {
+  const n = S.events.length; if (!S.locked && !S.since) S.since = Date.now() - (midWork() ? JOIN_BACK_MS : 0);   // S.since 0: joining now
+  const since = S.locked ? Date.now() : S.since; let i = n; while (i > Math.max(0, n - 16) && S.events[i - 1].ts > since) i--;
+  recomputeStatus(i); S.idx = i; trNew(Math.max(0, n - 16)); paintStatus(); return i;
 }
 let polling = false;
 setInterval(async () => {
@@ -1818,7 +1841,7 @@ async function setMode(m) {
   const live = m === 'live'; if (live === S.live && S.cur) return; pause(); S.live = live; S.userPaused = false;
   document.querySelectorAll('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.m === m)); $('#sessions').style.display = live ? 'none' : '';
   S.cur = null; syncUI();
-  if (live) { fillProjects(); await followCurrent(); return; }
+  if (live) { S.since = 0; fillProjects(); await followCurrent(); return; }
   $('#liveProj').style.display = 'none';
   const rows = await (await fetch('/api/sessions')).json();
   $('#sessions').innerHTML = rows.map((r) => { const d = new Date(r.mtime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -2004,7 +2027,7 @@ $('#eDemo').onclick = () => setMode('demo');
 $('#gB').onclick = () => {
   claimAudio(); AUD.init(); AUD.apply(); S.locked = false; $('#gate').classList.remove('on'); syncUI();
   if (synth && !EMBED) { try { synth.speak(new SpeechSynthesisUtterance('')); } catch {} }   // unlock browser speech
-  if (S.live && S.events.length) run(S.idx);
+  S.since = 0; if (S.live && S.events.length) run(liveStart());   // what arrived while the door was closed is past too
 };
 // J / K (or a click on the “need you” chip) jump to the agents that need you or are stalled, one after the other
 function jumpAttn(dir = 1) {

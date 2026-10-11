@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.25.6
+- **The lead answers your order.** About one time in three, Claude starts on its tools without writing a word, and the call stayed silent after your order (half a minute on average, sometimes minutes). In a live call the lead now says what it is starting with, taken from the tool call itself (“Got it. Let me look at server.js.”, “Okay. I’m running a command: run the tests.”). Only when it has not spoken by itself; local like the other little lines, absent from the transcript, off with ⚙ → Little lines & animations.
+- Fix: in a live call, sub-agents no longer answered the lead’s orders, and the lead hardly ever thanked them for a report. Since 1.25.0 these little answers were only said when the call was less than 6 seconds behind the session, and reading the order itself takes longer than that while the new agent is already at work. An answer to what was just said is now allowed up to 30 seconds behind (remarks from bystanders still wait for a quiet moment). After a parallel launch, the first three agents answer (only the first one did since 1.25.2).
+- An order you type while the lead is working is now part of the call. Claude Code hands such a message over in the middle of the turn, in a record of its own, and the call ignored it: your line was neither shown nor read, and the lead’s answer came out of nowhere.
+- Fix: joining a live call read the end of the previous one again. The call picked the session up 16 events before its end, whatever its age, so the last lines of a session that was long over were said as if they had just happened (and said once more each time the session was loaded again: a rewritten transcript, a return from another session). A live call now starts when you join it: what happened before is on screen (states, transcript) and only what comes after is said, once. If the agents are at work when you join, the last 10 seconds are said too, so you know what they are on.
+
 ## 1.25.5
 - Fix: the lead could read the same wrap-up several times in a row (its state flipped to done more than once without a new message). Once per message now.
 - While a screen is shared, a member who speaks still gets the spotlight (the presenter’s own tile stays small: its camera is already in the corner of the share).
