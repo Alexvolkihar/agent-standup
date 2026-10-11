@@ -196,5 +196,9 @@
  "What the states mean": "Hvad tilstandene betyder",
  "Find a session": "Find en session",
  "Find a session…": "Find en session…",
- "Go to a session": "Gå til en session"
+ "Go to a session": "Gå til en session",
+ "No highlight in this session": "Ingen højdepunkter i denne session",
+ "Replay: next / previous highlight": "Afspilning: næste / forrige højdepunkt",
+ "Replay: previous / next event": "Afspilning: forrige / næste hændelse",
+ "Resumed where you left off": "Fortsat hvor du slap"
 }

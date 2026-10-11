@@ -197,5 +197,9 @@
  "What the states mean": "各狀態的意義",
  "Find a session": "尋找工作階段",
  "Find a session…": "尋找工作階段…",
- "Go to a session": "跳到工作階段"
+ "Go to a session": "跳到工作階段",
+ "No highlight in this session": "此工作階段沒有重點時刻",
+ "Replay: next / previous highlight": "重播：下一個 / 上一個重點時刻",
+ "Replay: previous / next event": "重播：上一個 / 下一個事件",
+ "Resumed where you left off": "已從上次停下的位置繼續"
 }

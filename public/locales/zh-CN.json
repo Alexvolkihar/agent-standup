@@ -197,5 +197,9 @@
  "What the states mean": "各状态的含义",
  "Find a session": "查找会话",
  "Find a session…": "查找会话…",
- "Go to a session": "跳转到会话"
+ "Go to a session": "跳转到会话",
+ "No highlight in this session": "此会话没有精彩片段",
+ "Replay: next / previous highlight": "回放：下一个 / 上一个精彩片段",
+ "Replay: previous / next event": "回放：上一个 / 下一个事件",
+ "Resumed where you left off": "已从上次停下的位置继续"
 }

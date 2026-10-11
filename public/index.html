@@ -193,6 +193,7 @@
   #menuQ { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:6px 9px; font:inherit; font-size:12.5px; outline:none } #menuQ:focus { border-color:var(--accent) }
   #switcher { position:fixed; inset:0; z-index:20; background:rgba(5,6,12,.7); display:flex; align-items:flex-start; justify-content:center; padding-top:12vh } #switcher .sbox { width:min(560px,92vw); background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.6); overflow:hidden }
   #swq { width:100%; border:0; border-bottom:1px solid var(--line); background:transparent; color:var(--text); font:inherit; font-size:15px; padding:14px 16px; outline:none } #swl { max-height:50vh; overflow:auto } .swr { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; padding:9px 14px; cursor:pointer; align-items:center } .swr.on, .swr:hover { background:var(--panel2) } .swr b { font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap } .swr i { grid-column:2; font-style:normal; font-size:11px; color:var(--dim) }
+  #sps { display:none; gap:2px } body.replay #sps { display:inline-flex } #sps button { background:var(--panel2); color:var(--dim); border:1px solid var(--line); border-radius:6px; padding:1px 6px; font:inherit; font-size:11px; cursor:pointer } #sps button.on { color:var(--text); border-color:var(--accent) } body.compact #sps { display:none !important }
   #menu .mfold, #menu .mhide { display:none !important } #menu h4.fold { cursor:pointer; user-select:none } #menu h4.fold::before { content:'▾ ' } #menu h4.fold.closed::before { content:'▸ ' }
   /* compact: a very narrow panel (the VS Code side bar) shows one row per agent instead of tiles */
   body.compact #stage { display:flex; flex-direction:column; gap:6px; padding:8px; overflow:auto }
@@ -306,7 +307,8 @@
 </main>
 <footer>
   <input id="seek" type="range" min="0" max="0" value="0"><span class="dim" id="pos">0 / 0</span>
-  <label class="dim"><span data-fr="Vitesse" data-en="Speed">Vitesse</span> <input id="speed" type="range" min="0.5" max="3" step="0.25" value="1.25" style="width:80px;vertical-align:middle"></label>
+  <label class="dim"><span data-fr="Vitesse" data-en="Speed">Vitesse</span> <input id="speed" type="range" min="0.5" max="8" step="0.25" value="1.25" style="width:80px;vertical-align:middle"></label>
+  <span id="sps" class="dim" role="group" aria-label="Speed presets"><button data-s="1">1×</button><button data-s="2">2×</button><button data-s="4">4×</button><button data-s="8">8×</button></span>
 </footer>
 <div id="card"></div><div id="recap"><div class="box"></div></div>
 
@@ -1674,7 +1676,7 @@ async function setMode(m) {
   $('#empty').classList.remove('on'); const pick = rows.find((r) => r.agents) || rows[0]; if (!pick) { $('#empty').classList.add('on'); return; }
   $('#sessions').value = `${pick.proj}|${pick.id}`; await openSelected();
 }
-async function openSelected() { const [p, i] = $('#sessions').value.split('|'); if (await loadSession(p, i)) { S.locked = false; $('#gate').classList.remove('on'); } }
+async function openSelected() { const [p, i] = $('#sessions').value.split('|'); if (await loadSession(p, i)) { S.locked = false; $('#gate').classList.remove('on'); const at = (prefs.pos || {})[p + '/' + i]; if (!S.live && at > 3 && at < S.events.length - 3) { seekTo(at); toast(L('Reprise là où vous vous étiez arrêté', 'Resumed where you left off')); } } }
 $('#sessions').onchange = openSelected;
 
 // =====================================================================
@@ -1862,17 +1864,36 @@ function jumpAttn(dir = 1) {
   toast(`${nameOf(id)} — ${agentState(id, Date.now()).txt.replace(/^\S+\s/, '')}`);
 }
 $('#board').onclick = (e) => { if (e.target.closest('.blocked, .stalled')) jumpAttn(1); };
+// Replay: arrow keys step through the call, N jumps between highlights, speed presets, and the position of each session is remembered
+const stepKind = (e) => !['usage', 'results', 'finish', 'compact'].includes(e.kind);
+function stepEvent(dir) {
+  if (S.live || !S.events.length) return; let i = S.idx + dir; while (i > 0 && i < S.events.length - 1 && !stepKind(S.events[i])) i += dir;
+  seekTo(Math.max(0, Math.min(S.events.length - 1, i)));
+}
+function stepHighlight(dir) {
+  if (S.live) return; const hs = computeHighlights().map((h) => h.i).sort((a, b) => a - b); if (!hs.length) { toast(L('Aucun moment clé dans cette session', 'No highlight in this session')); return; }
+  const next = dir > 0 ? hs.find((i) => i > S.idx + 1) : [...hs].reverse().find((i) => i < S.idx - 1); seekTo(next != null ? next : dir > 0 ? hs[0] : hs[hs.length - 1]);
+}
+function setSpeed(v) { $('#speed').value = v; document.querySelectorAll('#sps button').forEach((b) => b.classList.toggle('on', +b.dataset.s === +v)); }
+$('#sps').onclick = (e) => { const b = e.target.closest('button'); if (b) setSpeed(+b.dataset.s); };
+$('#speed').addEventListener('input', () => document.querySelectorAll('#sps button').forEach((b) => b.classList.toggle('on', +b.dataset.s === +$('#speed').value)));
+const posKey = () => (S.cur ? S.cur.proj + '/' + S.cur.id : '');
+setInterval(() => {
+  if (S.live || S.demo || !S.cur || !S.events.length || S.idx < 3) return; const k = posKey(), pos = prefs.pos || (prefs.pos = {});
+  const done = S.idx >= S.events.length - 3; if (done) { if (k in pos) { delete pos[k]; savePrefs(); } return; }
+  if (pos[k] !== S.idx) { delete pos[k]; pos[k] = S.idx; const ks = Object.keys(pos); while (ks.length > 40) delete pos[ks.shift()]; savePrefs(); }
+}, 3000);
 function openKeys() {
-  const rows = [['Space', L('Pause / lecture', 'Pause / play')], ['M', L('Son coupé / activé', 'Mute / unmute')], ['T', L('Vue arbre ↔ appel', 'Tree view ↔ call')], ['R', L('Récapitulatif', 'Recap')], ['L', L('Transcription', 'Transcript')], ['J / K', L('Agent suivant / précédent qui a besoin de vous', 'Next / previous agent that needs you')], ['Cmd / Ctrl + K', L('Aller à une session', 'Go to a session')], ['?', L('Cette aide', 'This help')], ['Esc', L('Fermer', 'Close')]];
+  const rows = [['Space', L('Pause / lecture', 'Pause / play')], ['← / →', L('Replay : événement précédent / suivant', 'Replay: previous / next event')], ['N / Shift+N', L('Replay : moment clé suivant / précédent', 'Replay: next / previous highlight')], ['M', L('Son coupé / activé', 'Mute / unmute')], ['T', L('Vue arbre ↔ appel', 'Tree view ↔ call')], ['R', L('Récapitulatif', 'Recap')], ['L', L('Transcription', 'Transcript')], ['J / K', L('Agent suivant / précédent qui a besoin de vous', 'Next / previous agent that needs you')], ['Cmd / Ctrl + K', L('Aller à une session', 'Go to a session')], ['?', L('Cette aide', 'This help')], ['Esc', L('Fermer', 'Close')]];
   $('#recap .box').innerHTML = `<h1>${L('Raccourcis clavier', 'Keyboard shortcuts')}</h1><table>${rows.map(([k, d]) => `<tr><td class="f"><b>${esc(k)}</b></td><td>${esc(d)}</td></tr>`).join('')}</table><h3>${L('Les états', 'What the states mean')}</h3><table>${[['⚙', L('au travail', 'working')], ['🔗', L('attend un autre agent', 'waiting on another agent')], ['✋', L('attend peut-être votre feu vert', 'may be waiting for your approval')], ['⚠', L('bloqué : un sous-agent est silencieux depuis longtemps', 'stalled: a sub-agent has been silent for a long time')], ['✓', L('terminé', 'done')]].map(([k, d]) => `<tr><td class="f">${k}</td><td>${esc(d)}</td></tr>`).join('')}</table><p class="dim" style="margin:14px 0 0;font-size:12px">${L('Les vues Appel, Arbre et Sessions se changent aussi en haut de la fenêtre.', 'You can also switch between Call, Tree and Sessions at the top of the window.')}</p><div style="margin-top:14px"><button class="btn" id="recapx">${L('Fermer', 'Close')}</button></div>`;
   $('#recapx').onclick = () => $('#recap').classList.remove('on'); $('#recap').classList.add('on');
 }
 $('#mKeys').onclick = () => { $('#menu').classList.remove('on'); openKeys(); };
 addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openSwitcher(); return; }
-  if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;   // browser shortcuts (Cmd+R, Ctrl+N…) stay the browser's
   if (e.key === '?') { openKeys(); return; }
-  if (e.key === ' ') { e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key.toLowerCase() === 't') { const toTree = !document.body.classList.contains('tree'); setView(toTree ? 'tree' : 'call'); if (toTree) toast(L('Vue arbre : T pour revenir, ? pour l’aide', 'Tree view: T to go back, ? for help')); } else if (e.key.toLowerCase() === 'r') openRecap(); else if (e.key.toLowerCase() === 'l') $('#bLog').click(); else if (e.key.toLowerCase() === 'j') jumpAttn(1); else if (e.key.toLowerCase() === 'k') jumpAttn(-1); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key.toLowerCase() === 't') { const toTree = !document.body.classList.contains('tree'); setView(toTree ? 'tree' : 'call'); if (toTree) toast(L('Vue arbre : T pour revenir, ? pour l’aide', 'Tree view: T to go back, ? for help')); } else if (e.key.toLowerCase() === 'r') openRecap(); else if (e.key.toLowerCase() === 'l') $('#bLog').click(); else if (e.key === 'ArrowRight' && !S.live) { e.preventDefault(); stepEvent(1); } else if (e.key === 'ArrowLeft' && !S.live) { e.preventDefault(); stepEvent(-1); } else if (e.key.toLowerCase() === 'n') stepHighlight(e.shiftKey ? -1 : 1); else if (e.key.toLowerCase() === 'j') jumpAttn(1); else if (e.key.toLowerCase() === 'k') jumpAttn(-1); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
 });
 if (EMBED) $('#mBrowser').style.display = '';
 

@@ -197,5 +197,9 @@
  "What the states mean": "状態の意味",
  "Find a session": "セッションを検索",
  "Find a session…": "セッションを検索…",
- "Go to a session": "セッションへ移動"
+ "Go to a session": "セッションへ移動",
+ "No highlight in this session": "このセッションにはハイライトがありません",
+ "Replay: next / previous highlight": "リプレイ：次 / 前のハイライト",
+ "Replay: previous / next event": "リプレイ：前 / 次のイベント",
+ "Resumed where you left off": "前回の続きから再開しました"
 }

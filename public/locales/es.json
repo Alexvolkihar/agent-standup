@@ -197,5 +197,9 @@
  "What the states mean": "Qué significan los estados",
  "Find a session": "Buscar una sesión",
  "Find a session…": "Buscar una sesión…",
- "Go to a session": "Ir a una sesión"
+ "Go to a session": "Ir a una sesión",
+ "No highlight in this session": "No hay momentos clave en esta sesión",
+ "Replay: next / previous highlight": "Repetición: siguiente / anterior momento clave",
+ "Replay: previous / next event": "Repetición: evento anterior / siguiente",
+ "Resumed where you left off": "Reanudado donde lo dejaste"
 }
