@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.25.1
+- Fix: your own sub-agent characters were picked per agent without looking at the others, so two sub-agents often got the same picture while others went unused. A new sub-agent now gets a picture no other agent on the call holds; pictures repeat only once every one is taken. Contributed by [rqwj](https://github.com/rqwj) (#1).
+- A cat pack in `examples/cats` (11 cats, CC0), contributed by [KajetanCiunelis](https://github.com/KajetanCiunelis) (#2).
+
 ## 1.25.0
 Five UX improvements and agents that talk to each other more.
 - **Jump to who needs you**: press **J** / **K** (or click the “need you” / “stalled” chip) to move to the next agent that needs you or is stalled. The help (**?**) now explains each state.
