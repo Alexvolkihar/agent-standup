@@ -194,6 +194,19 @@
   #switcher { position:fixed; inset:0; z-index:20; background:rgba(5,6,12,.7); display:flex; align-items:flex-start; justify-content:center; padding-top:12vh } #switcher .sbox { width:min(560px,92vw); background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.6); overflow:hidden }
   #swq { width:100%; border:0; border-bottom:1px solid var(--line); background:transparent; color:var(--text); font:inherit; font-size:15px; padding:14px 16px; outline:none } #swl { max-height:50vh; overflow:auto } .swr { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; padding:9px 14px; cursor:pointer; align-items:center } .swr.on, .swr:hover { background:var(--panel2) } .swr b { font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap } .swr i { grid-column:2; font-style:normal; font-size:11px; color:var(--dim) }
   #menu .mfold, #menu .mhide { display:none !important } #menu h4.fold { cursor:pointer; user-select:none } #menu h4.fold::before { content:'▾ ' } #menu h4.fold.closed::before { content:'▸ ' }
+  /* compact: a very narrow panel (the VS Code side bar) shows one row per agent instead of tiles */
+  body.compact #stage { display:flex; flex-direction:column; gap:6px; padding:8px; overflow:auto }
+  body.compact .tile, body.compact .tile.focus { height:54px !important; flex:none; border-radius:10px; display:flex; align-items:center; overflow:visible; animation:none; order:0 } body.compact .tile.lead { order:-2 }
+  body.compact .tile > svg:first-child { width:54px; height:54px; flex:none; border-radius:9px 0 0 9px }
+  body.compact .tile .bubble, body.compact .tile .thought, body.compact .tile .ticker, body.compact .tile .tbadge { display:none !important }
+  body.compact .tile .tag { position:static; flex:1; min-width:0; padding:0 8px; flex-direction:column; gap:2px; align-items:flex-start } body.compact .tile .tag b, body.compact .tile .tag span { background:none; backdrop-filter:none; padding:0; max-width:100%; overflow:hidden; text-overflow:ellipsis }
+  body.compact .tile .tag span:not(.tk):not(.cx) { display:none }
+  body.compact .tile .status { position:static; max-width:none; margin-right:6px; font-size:10.5px; padding:2px 7px; flex:none; max-width:46% }
+  body.compact .tile .prop { top:2px; left:34px; font-size:16px }
+  body.compact .tile .status:empty { display:none }
+  body.compact .tile .tag { order:1 } body.compact .tile .status { order:2 } body.compact .tile .prop { order:3 }
+  body.compact footer { gap:6px; padding-left:8px; padding-right:8px } body.compact footer label.dim { display:none } body.compact #speed { width:70px; min-width:0 }
+  body.compact #present { display:none !important } body.compact #hl { display:none } body.compact #gantt { display:none } body.compact #roster { display:none }
   #menu.on { display:block } #menu h4 { margin:8px 10px 4px; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); font-weight:600 }
   .mi { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:8px 10px; border-radius:8px } .mi:hover { background:var(--panel2) }
   .sw { width:30px; height:17px; border-radius:99px; background:#3a3e50; position:relative; flex:none; transition:background .15s } .sw::after { content:''; position:absolute; top:2px; left:2px; width:13px; height:13px; border-radius:50%; background:#fff; transition:transform .15s }
@@ -851,7 +864,7 @@ const layout = () => {
   if (nar) { k = cols; fr = cols > 1 ? 2 : 1; }   // side panel: small tiles, a banner-sized spotlight
   else if (best < 0) { k = Math.min(2, cols); fr = Math.min(2, maxRows); }
   st.style.setProperty('--fcols', k); st.style.setProperty('--fr', fr); st.classList.toggle('one', cols === 1);
-  document.body.classList.toggle('narrow', $('#center').clientWidth < 480); drawGantt();
+  document.body.classList.toggle('narrow', $('#center').clientWidth < 480); document.body.classList.toggle('compact', $('#center').clientWidth < 300); drawGantt();
 };
 new ResizeObserver(layout).observe($('#center'));
 
