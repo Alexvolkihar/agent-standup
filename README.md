@@ -87,7 +87,7 @@ The header shows how full the lead's context is (`ctx 62%`, orange then red, wit
 Other agent tools than Claude Code (Codex CLI, Gemini CLI, OpenCode…) are researched in [ROADMAP.md](ROADMAP.md): their log formats are mostly undocumented, so no adapter is shipped yet.
 
 ## Languages
-Pick one in ⚙ → Language: **English, Français, 繁體中文, 简体中文, Español, Deutsch, Português (Brasil), 日本語**. The interface (menus, chips, tooltips, recap) is translated; VS Code's command titles, setting descriptions and status bar follow VS Code's own display language. English and French are written by hand; the other languages are **AI-drafted and not yet reviewed by native speakers**, so corrections are very welcome: each language is one small JSON file (`public/locales/<code>.json`), see [public/locales/README.md](public/locales/README.md) to fix or add one (`npm run i18n` checks the files). The words the agents say stay in the language of your session (French translation of their lines is optional); the little banter lines and the demo exist in English and French.
+Pick one in ⚙ → Language: **English, Français, 繁體中文, 简体中文, Español, Deutsch, Dansk, Português (Brasil), 日本語**. The interface (menus, chips, tooltips, recap) is translated; VS Code's command titles, setting descriptions and status bar follow VS Code's own display language. English and French are written by hand; the other languages are **AI-drafted and not yet reviewed by native speakers**, so corrections are very welcome: each language is one small JSON file (`public/locales/<code>.json`), see [public/locales/README.md](public/locales/README.md) to fix or add one (`npm run i18n` checks the files). The words the agents say stay in the language of your session (French translation of their lines is optional); the little banter lines and the demo exist in English and French.
 
 ## Your own characters
 Replace the drawn characters with your own pixel art. Drop PNG (or GIF/WebP) files, 300 KB at most each, into `~/.agent-standup/characters` (⚙ → Characters shows the folder, and in VS Code *Open folder* opens it; the `agentStandup.charactersPath` setting changes it):
@@ -264,6 +264,14 @@ MIT
 This dev was replaced by his own agents. If Agent Standup made your sessions more fun, you can [buy him a coffee](https://www.buymeacoffee.com/bored_dev_and_his_robots) ☕ — there is also a ☕ line in the ⚙ menu and at the end of each recap.
 
 Agent Standup is free and MIT licensed. I'm also available for work around AI agents and developer tooling: reach me through my GitHub profile, [Atoll92](https://github.com/Atoll92).
+
+## Security and what it reads
+- **It reads local files and sends nothing by default.** Agent Standup reads the session files Claude Code already writes (`~/.claude/projects`, or `CLAUDE_CONFIG_DIR`) and draws them in a page. It never writes to your sessions; the only time it starts Claude Code is the optional translation helper described below.
+- **Local only.** The server listens on `127.0.0.1` (never on the network), refuses requests whose Host or Origin is not local, and refuses cross-site requests on every endpoint that does something (translation, jokes, sound, settings).
+- **The only things that call out** are optional and off by default: French translation and jokes (your own Claude login, the small Haiku model, with all tools disabled), the FIP radio stream, and the usage counter (one empty request a day to a 1-pixel file, only if you turn it on).
+- **No dependencies**: the code is plain Node.js and one HTML file, so there is nothing hidden in `node_modules`. The optional Kokoro voices install a third-party package only when you click Install.
+- **Many sessions at once?** The **Sessions** view shows every session across your projects on one board (working, waiting, needs you, done); click one to open its call. **Live** follows one session at a time, the most recent or the project you pick.
+- Found a problem? Please open an issue.
 
 ## Privacy and usage counting
 Agent Standup reads local session files and sends nothing anywhere by default. The only optional network uses are: French translation / jokes (your own Claude login, off unless you turn them on), the FIP radio stream (if you turn it on), and the **optional usage counter**: if you set `agentStandup.shareUsage` to `true` (off by default, and ignored when VS Code telemetry is off), the extension makes at most one empty request per day to a 1-pixel file in this repository's releases. There is no identifier and no content; GitHub sees your IP like for any download. It lets the maintainer count active installs (`npm run stats`).

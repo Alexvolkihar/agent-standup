@@ -261,6 +261,7 @@
   <div class="box"><div id="charInfo" class="dim" style="font-size:11.5px;line-height:1.5"></div><div style="display:flex;gap:6px;margin-top:6px"><button class="btn" id="charReload" data-fr="Recharger" data-en="Reload">Recharger</button><button class="btn" id="charOpen" style="display:none" data-fr="Ouvrir le dossier" data-en="Open folder">Ouvrir le dossier</button></div></div>
   <h4 data-fr="Outils" data-en="Tools">Outils</h4>
   <button class="mi" id="mCoffee" style="display:none"><span id="mCoffeeT"></span></button>
+  <button class="mi" id="mKeys"><span data-fr="⌨ Raccourcis clavier (?)" data-en="⌨ Keyboard shortcuts (?)">⌨ Raccourcis clavier (?)</span></button>
   <button class="mi" id="mRecap"><span data-fr="📋 Récapitulatif" data-en="📋 Recap">📋 Récapitulatif</span></button>
   <button class="mi" id="mExport"><span data-fr="🎞 Exporter la vidéo" data-en="🎞 Export video">🎞 Exporter la vidéo</span></button>
   <button class="mi" id="mClip"><span data-fr="🎬 Clip à partager (25 s)" data-en="🎬 Clip to share (25 s)">🎬 Clip à partager (25 s)</span></button>
@@ -314,7 +315,7 @@ let prefsTimer = null;
 const savePrefs = () => { prefs._t = Date.now(); try { localStorage.setItem('cc.prefs', JSON.stringify(prefs)); } catch {} clearTimeout(prefsTimer); prefsTimer = setTimeout(() => { fetch('/api/prefs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(prefs) }).catch(() => {}); }, 400); };
 // Languages: French and English live in the code as pairs L(french, english); every other language is a catalogue public/locales/<code>.json mapping the English text to its translation.
 // A missing string falls back to English, so a half-translated language still works. See public/locales/README.md to add one.
-const LANGS = [['en', 'English', 'en'], ['fr', 'Français', 'fr'], ['zh-TW', '繁體中文', 'zh-Hant-TW'], ['zh-CN', '简体中文', 'zh-Hans-CN'], ['es', 'Español', 'es'], ['de', 'Deutsch', 'de'], ['pt-BR', 'Português (Brasil)', 'pt-BR'], ['ja', '日本語', 'ja']];
+const LANGS = [['en', 'English', 'en'], ['fr', 'Français', 'fr'], ['zh-TW', '繁體中文', 'zh-Hant-TW'], ['zh-CN', '简体中文', 'zh-Hans-CN'], ['es', 'Español', 'es'], ['de', 'Deutsch', 'de'], ['da', 'Dansk', 'da'], ['pt-BR', 'Português (Brasil)', 'pt-BR'], ['ja', '日本語', 'ja']];
 let LOC = {};
 const FR = () => prefs.lang === 'fr';
 const tr = (en) => (prefs.lang === 'en' || prefs.lang === 'fr' ? en : LOC[en] || en);
@@ -1798,9 +1799,16 @@ $('#gB').onclick = () => {
   if (synth && !EMBED) { try { synth.speak(new SpeechSynthesisUtterance('')); } catch {} }   // unlock browser speech
   if (S.live && S.events.length) run(S.idx);
 };
+function openKeys() {
+  const rows = [['Space', L('Pause / lecture', 'Pause / play')], ['M', L('Son coupé / activé', 'Mute / unmute')], ['T', L('Vue arbre ↔ appel', 'Tree view ↔ call')], ['R', L('Récapitulatif', 'Recap')], ['L', L('Transcription', 'Transcript')], ['?', L('Cette aide', 'This help')], ['Esc', L('Fermer', 'Close')]];
+  $('#recap .box').innerHTML = `<h1>${L('Raccourcis clavier', 'Keyboard shortcuts')}</h1><table>${rows.map(([k, d]) => `<tr><td class="f"><b>${esc(k)}</b></td><td>${esc(d)}</td></tr>`).join('')}</table><p class="dim" style="margin:14px 0 0;font-size:12px">${L('Les vues Appel, Arbre et Sessions se changent aussi en haut de la fenêtre.', 'You can also switch between Call, Tree and Sessions at the top of the window.')}</p><div style="margin-top:14px"><button class="btn" id="recapx">${L('Fermer', 'Close')}</button></div>`;
+  $('#recapx').onclick = () => $('#recap').classList.remove('on'); $('#recap').classList.add('on');
+}
+$('#mKeys').onclick = () => { $('#menu').classList.remove('on'); openKeys(); };
 addEventListener('keydown', (e) => {
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
-  if (e.key === ' ') { e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key.toLowerCase() === 't') setView(document.body.classList.contains('tree') ? 'call' : 'tree'); else if (e.key.toLowerCase() === 'r') openRecap(); else if (e.key.toLowerCase() === 'l') $('#bLog').click(); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
+  if (e.key === '?') { openKeys(); return; }
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key.toLowerCase() === 't') { const toTree = !document.body.classList.contains('tree'); setView(toTree ? 'tree' : 'call'); if (toTree) toast(L('Vue arbre : T pour revenir, ? pour l’aide', 'Tree view: T to go back, ? for help')); } else if (e.key.toLowerCase() === 'r') openRecap(); else if (e.key.toLowerCase() === 'l') $('#bLog').click(); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
 });
 if (EMBED) $('#mBrowser').style.display = '';
 

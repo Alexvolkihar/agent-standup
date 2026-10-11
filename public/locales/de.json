@@ -176,5 +176,15 @@
  "npm not found: install Node.js to enable this option.": "npm nicht gefunden: Installiere Node.js, um diese Option zu nutzen.",
  "The engine stopped: system voices are used instead.": "Die Engine wurde beendet: stattdessen kommen die Systemstimmen zum Einsatz.",
  "Very natural voices (installs on demand)": "Sehr natürliche Stimmen (werden bei Bedarf installiert)",
- "Voices ready.": "Stimmen bereit."
+ "Voices ready.": "Stimmen bereit.",
+ "⌨ Keyboard shortcuts (?)": "⌨ Tastenkürzel (?)",
+ "Keyboard shortcuts": "Tastenkürzel",
+ "Mute / unmute": "Ton aus / an",
+ "Pause / play": "Pause / Wiedergabe",
+ "Recap": "Zusammenfassung",
+ "This help": "Diese Hilfe",
+ "Transcript": "Transkript",
+ "Tree view ↔ call": "Baumansicht ↔ Anruf",
+ "Tree view: T to go back, ? for help": "Baumansicht: T zum Zurückkehren, ? für Hilfe",
+ "You can also switch between Call, Tree and Sessions at the top of the window.": "Du kannst oben im Fenster auch zwischen Anruf, Baum und Sitzungen wechseln."
 }

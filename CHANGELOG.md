@@ -21,6 +21,11 @@ Narrow and short windows (the VS Code side bar, a small panel), found by going t
 - **Small talk during long silences**: when nobody has said anything for a while, an agent fills the gap with a typical video-call line ("Can you hear me?", "You guys still here?", "Sorry, I was on mute."). Whoever shares their screen says the screen ones ("Can everyone see my screen?"). After 45 seconds in a live call and about 10 seconds in a replay, at most three per silence and further and further apart; nothing is said in a hidden tab or once the session has been untouched for ten minutes. English and French, part of ⚙ → Little lines & animations.
 - Fix: in 1.23.1 the "Reactions & jokes" option only prepared its jokes when three agents talked at the same time (a leftover from the removal of meme mode); they are prepared for every line again.
 
+## 1.24.0
+- **Dansk** (Danish) interface, suggested by a Reddit reader. AI-drafted: corrections welcome in `public/locales/da.json`.
+- **Keyboard shortcuts** are listed under ⚙ → Keyboard shortcuts, or press **?**. Switching to the tree view with **T** now says how to get back.
+- README: a security section (what it reads, what it can send, local only) and how several sessions at once are handled.
+
 ## 1.23.1
 - Meme mode removed: it disturbed the layout.
 - Natural voices (Kokoro): the default model is now q4 (about 305 MB). The smaller q4f16 returned silence on some lines. A line the model cannot make is now handed to a system voice instead of being dropped; Nicole (Kokoro's whisper voice, hard to hear) is replaced by Sarah. Found by [neondragon](https://github.com/neondragon/agent-standup) in their fork, thank you.

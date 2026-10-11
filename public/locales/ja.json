@@ -176,5 +176,15 @@
  "npm not found: install Node.js to enable this option.": "npm が見つかりません。このオプションを使うには Node.js をインストールしてください。",
  "The engine stopped: system voices are used instead.": "エンジンが停止しました。代わりにシステム音声を使います。",
  "Very natural voices (installs on demand)": "とても自然な音声（必要時にインストール）",
- "Voices ready.": "音声の準備ができました。"
+ "Voices ready.": "音声の準備ができました。",
+ "⌨ Keyboard shortcuts (?)": "⌨ キーボードショートカット (?)",
+ "Keyboard shortcuts": "キーボードショートカット",
+ "Mute / unmute": "ミュート / 解除",
+ "Pause / play": "一時停止 / 再生",
+ "Recap": "要約",
+ "This help": "このヘルプ",
+ "Transcript": "文字起こし",
+ "Tree view ↔ call": "ツリー表示 ↔ 通話",
+ "Tree view: T to go back, ? for help": "ツリー表示：Tで戻る、?でヘルプ",
+ "You can also switch between Call, Tree and Sessions at the top of the window.": "ウィンドウ上部で「通話」「ツリー」「セッション」を切り替えることもできます。"
 }

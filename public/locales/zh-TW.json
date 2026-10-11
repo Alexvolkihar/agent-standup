@@ -176,5 +176,15 @@
  "npm not found: install Node.js to enable this option.": "找不到 npm：請安裝 Node.js 才能啟用此選項。",
  "The engine stopped: system voices are used instead.": "引擎已停止：改用系統語音。",
  "Very natural voices (installs on demand)": "超自然語音（需要時才安裝）",
- "Voices ready.": "語音已就緒。"
+ "Voices ready.": "語音已就緒。",
+ "⌨ Keyboard shortcuts (?)": "⌨ 鍵盤快速鍵 (?)",
+ "Keyboard shortcuts": "鍵盤快速鍵",
+ "Mute / unmute": "靜音 / 取消靜音",
+ "Pause / play": "暫停 / 播放",
+ "Recap": "回顧",
+ "This help": "此說明",
+ "Transcript": "逐字稿",
+ "Tree view ↔ call": "樹狀檢視 ↔ 通話",
+ "Tree view: T to go back, ? for help": "樹狀檢視：按 T 返回，按 ? 查看說明",
+ "You can also switch between Call, Tree and Sessions at the top of the window.": "你也可以在視窗上方切換通話、樹狀和工作階段檢視。"
 }
