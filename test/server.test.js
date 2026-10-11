@@ -151,6 +151,6 @@ test('the reasoning before a line or a call rides on it when the transcript keep
   const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;
   try {
     const ev = JSON.parse((await get(port, '/api/session?proj=-th&id=s3')).body).events.filter((e) => e.kind === 'tools' || e.kind === 'say');
-    assert.deepEqual(ev.map((e) => [e.kind, e.th || null]), [['tools', 'The query scans the whole table. I should check the index.'], ['say', null]]);
+    assert.deepEqual(ev.map((e) => [e.kind, e.th || null]), [['tools', 'The query scans the whole table.\nI should check the index.'], ['say', null]]);
   } finally { srv.close(); require('../server.js').shutdown(); }
 });

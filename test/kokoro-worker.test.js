@@ -10,7 +10,8 @@ class KokoroTTS {   // from_pretrained behaves like transformers.js: a file that
     if (fs.existsSync(f) && fs.statSync(f).size < 100) throw new Error('Load model from ' + f + ' failed: Protobuf parsing failed.');
     fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, Buffer.alloc(200)); return new KokoroTTS();
   }
-  async generate() { return { audio: new Float32Array(2400).fill(0.1), sampling_rate: 24000 }; }
+  constructor() { this.tokenizer = Object.assign((t, o) => ({ input_ids: { dims: [1, (o && o.truncation ? Math.min(t.length, 510) : t.length) + 2] } }), { model_max_length: 512 }); }   // one token per character and, like the real one, a silent cut at the model's limit when asked to truncate
+  async generate(text) { text = text.trim(); const kept = this.tokenizer(text, { truncation: true }).input_ids.dims[1] - 2; fs.appendFileSync(process.env.STUB_LOG + '.spoken', JSON.stringify(text.slice(0, kept)) + '\\n'); return { audio: new Float32Array(2400).fill(0.1), sampling_rate: 24000 }; }   // what was really "spoken" goes to a log
 }
 module.exports = { KokoroTTS };`;
 function install() {   // a fake install folder: the two packages the worker requires, nothing else
@@ -48,5 +49,17 @@ test('a load that fails with no model file to drop is fatal, not a loop', async 
   try {
     await w.until(() => w.p.exitCode !== null);
     assert.equal(w.p.exitCode, 1); assert.deepEqual(w.log(), ['load absent']); assert.match(w.err(), /no network/);
+  } finally { w.p.kill(); }
+});
+
+test('a line longer than the model takes is made in parts and joined: nothing is dropped', async () => {
+  const dir = install(), w = run(dir), log = path.join(dir, 'stub.log.spoken'), spoken = () => fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l)), squash = (s) => s.replace(/\s+/g, '');
+  try {
+    await w.until(() => w.lines().some((l) => l.ready));
+    const fits = 'A line that fits is made in one call, as before.', long = Array.from({ length: 40 }, (_, i) => `Sentence number ${i} says something about the build, then stops.`).join(' ');   // about 2,500 characters
+    let r = await w.ask({ id: 1, text: fits, voice: 'af_heart', speed: 1, out: path.join(dir, 'a.wav') }); assert.equal(r.ok, true); assert.deepEqual(spoken(), [fits]);
+    fs.writeFileSync(log, ''); r = await w.ask({ id: 2, text: long, voice: 'af_heart', speed: 1, out: path.join(dir, 'b.wav') }); assert.equal(r.ok, true, r.error);
+    const parts = spoken(); assert.ok(parts.length > 1 && parts.every((p) => p.trim() && p.length <= 510), 'several parts, each within the limit');
+    assert.equal(squash(parts.join(' ')), squash(long), 'every character was spoken, in order'); assert.ok(r.seconds > 0.1 * parts.length - 0.01, 'the parts are all in the audio');
   } finally { w.p.kill(); }
 });

@@ -130,8 +130,8 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
   await t.test('an agent at work for a while thinks to itself: its own reasoning when the session has it, else what it is doing; shown, not said, gone when it speaks', async () => {
     const s = session(); s.user('hello', Date.now() - 600000); s.say('Ready.', { at: Date.now() - 590000, end: true }); const c = await open(s);
     s.user('Why is the login slow?'); await c.heard('Why is the login slow'); await wait(1500);
-    s.think('The login is slow because the query scans the whole table. I should look at the index before anything else.', { id: 'mTh' }); const id = s.tool('Bash', { command: 'psql -f explain.sql', description: 'Explain the login query' }, { id: 'mTh' });
-    await c.until(() => { const b = document.querySelector('#t-main.musing .bubble'); return b && b.textContent.includes('scans the whole table'); }, null, 45000);   // its own words come first
+    s.think('The query in db/schema.sql scans the whole table, so the login is slow. I should look at the index before anything else.', { id: 'mTh' }); const id = s.tool('Bash', { command: 'psql -f explain.sql', description: 'Explain the login query' }, { id: 'mTh' });   // (a dot inside a file name does not end the sentence)
+    await c.until(() => { const b = document.querySelector('#t-main.musing .bubble'); return b && b.textContent.includes('db/schema.sql scans the whole table, so the login is slow.'); }, null, 45000);   // its own words come first, in whole sentences
     assert.equal(await c.page.evaluate(() => S.speakers.size), 0); assert.equal(count(await c.lines(), 'scans the whole table'), 0, 'a thought is not a spoken line');
     s.result(id, 'Seq Scan on users'); s.say('It was the missing index.', { end: true }); await c.heard('It was the missing index'); assert.equal(await c.page.evaluate(() => !!document.querySelector('#t-main.musing')), false);
     await c.quiet(500); s.user('Then fix it'); await wait(1500); s.say('I will hand the migration over.'); await wait(1000); s.launch(1, 'Check the migration', 'Write the migration that adds the index and check it on a copy of the database.');
