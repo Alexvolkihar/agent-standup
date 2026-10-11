@@ -572,8 +572,8 @@ const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css
 const CHAR_NAME = /^[\w][\w .()\-]{0,78}\.(png|gif|webp|jpe?g)$/i, CHAR_MAX = 300 * 1024, CHAR_TYPES = { png: 'image/png', gif: 'image/gif', webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
 const charactersDir = () => process.env.AGENT_STANDUP_CHARACTERS || path.join(os.homedir(), '.agent-standup', 'characters');
 // lstat, not stat: a symlink is not a regular file, so it is skipped and never served
-// Built-in character packs, shipped with the app (examples/<folder>): picked in ⚙ → Characters, or copied into the person's own folder as a start
-const PACKS = { starter: 'characters', cats: 'cats' }, packDir = (name) => (PACKS[name] ? path.join(__dirname, 'examples', PACKS[name]) : null);
+// Built-in character packs, shipped with the app (examples/<folder>): picked in ⚙ → Characters. examples/characters stays in the repository as a model for one's own folder; it is not shipped
+const PACKS = { cats: 'cats' }, packDir = (name) => (PACKS[name] ? path.join(__dirname, 'examples', PACKS[name]) : null);
 function listCharacters(pack) {
   const dir = pack ? packDir(pack) : charactersDir(); let names = []; if (!dir) return { dir: '', max: CHAR_MAX, chars: [] }; try { names = fs.readdirSync(dir); } catch {}
   const ok = names.filter((f) => CHAR_NAME.test(f)).filter((f) => { try { const st = fs.lstatSync(path.join(dir, f)); return st.isFile() && st.size <= CHAR_MAX; } catch { return false; } }).slice(0, 80);

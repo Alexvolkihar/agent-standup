@@ -6,7 +6,6 @@ scripts/**
 .github/**
 
 examples/**
-!examples/characters/**
 !examples/cats/**
 
 bin/**

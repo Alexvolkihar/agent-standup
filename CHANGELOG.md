@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.25.9
+- Very natural voices (Kokoro): a model download cut short (the window reloaded or the app quit while the model was being fetched) left a file that failed to load every time after, and the natural voices were gone until someone deleted the models folder by hand. The file is now dropped and fetched once more. Contributed by [neondragon](https://github.com/neondragon) (#3).
+- The starter pack is no longer shipped: ⚙ → Characters offers the drawn characters (default), the cat pack and your own folder. Its three example images stay in the repository (`examples/characters`) as a model for your own. If you had chosen it, the call goes back to the drawn characters (or to your folder if it has images).
+
 ## 1.25.8
 - **Inner thoughts.** In a live call, an agent that has been at work for a while thinks to itself: a lighter, italic bubble that is not said out loud. What it thinks is real. When the session keeps the agent’s own reasoning, the bubble shows it, sentence by sentence, before anything else; Claude Code only keeps that text for some of the lead’s steps and almost never for sub-agents, so the rest of the time the thought is about what the agent is on: the command it is waiting for, the files it goes between, its current to-do item, a failure, its task. About one thought in five escapes as a mumble: the character’s own voice, low and muffled, lips closed, cut as soon as anyone speaks. Never while the agent talks, two at most on screen, off in Quiet or with ⚙ → Little lines & animations.
 - **Your own lines are always voiced.** An order typed during a long command is handed over when the command returns, stamped with the time you typed it: two minutes “late”, so the call showed it without a voice, as it does when it is far behind. It now takes its place when the lead gets it. And whatever the backlog, a line of yours is never skipped nor muted: it is said, shortened if need be.
