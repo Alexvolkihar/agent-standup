@@ -302,7 +302,7 @@ function parseRecord(st, r) {
   if (r.type === 'attachment' && r.attachment && r.attachment.type === 'queued_command') {   // an order typed while the lead was working: Claude Code hands it over in the middle of the turn, as an attachment and not as a user message
     const q = r.attachment, human = q.origin ? q.origin.kind === 'human' : q.commandMode === 'prompt'; if (agent !== 'main' || !human) return;   // the same record also carries task notifications
     const txt = (Array.isArray(q.prompt) ? q.prompt.filter((b) => b && b.type === 'text').map((b) => b.text).join('\n') : typeof q.prompt === 'string' ? q.prompt : '').replace(HARNESS, '').trim();
-    if (txt && !/^<(system-reminder|command-|local-command|task-notification)/.test(txt)) push({ ts, agent: 'user', kind: 'user', text: txt });
+    if (txt && !/^<(system-reminder|command-|local-command|task-notification)/.test(txt)) push({ ts: Math.max(ts, st.lastTs || 0), agent: 'user', kind: 'user', text: txt });   // its place in the call is when the lead got it, not when it was typed (minutes earlier, during a long command): the call hears of it only now, and a line dated in the past looks "far behind" and was shown without a voice
     return;
   }
   if (r.type === 'user') {
@@ -325,12 +325,14 @@ function parseRecord(st, r) {
       const u = m.usage, prev = st.msgUsage.get(m.id);
       st.msgUsage.set(m.id, { ts: prev ? prev.ts : ts, u: { i: u.input_tokens || 0, o: u.output_tokens || 0, r: u.cache_read_input_tokens || 0, w: u.cache_creation_input_tokens || 0 }, model: m.model });
     }
+    const th = () => { const t = st.th; st.th = ''; return t ? { th: t } : {}; };   // what the agent was thinking before this line or call, when Claude Code kept it (most of the time it only keeps a signature): the call shows it as an inner thought
     for (const b of blocks(r)) {
-      if (b.type === 'text' && typeof b.text === 'string' && b.text.trim()) { said = push({ ts, agent, kind: 'say', text: b.text.trim() }); st.act = st.raw.length - 1; st.sayOf = m.id; st.sayAt = st.act; }
+      if (b.type === 'thinking' && typeof b.thinking === 'string' && b.thinking.trim()) st.th = clip(b.thinking.replace(/\s+/g, ' ').trim(), 900);
+      else if (b.type === 'text' && typeof b.text === 'string' && b.text.trim()) { said = push({ ts, agent, kind: 'say', text: b.text.trim(), ...th() }); st.act = st.raw.length - 1; st.sayOf = m.id; st.sayAt = st.act; }
       else if (b.type === 'tool_use') {
         st.toolName[b.id] = b.name; if (b.input && b.input.run_in_background) (st.bg = st.bg || {})[b.id] = true;
         if (b.name === 'Agent' || b.name === 'Task') push({ ts, agent, kind: 'agentcall', toolId: b.id, bg: !!(b.input && b.input.run_in_background), text: (b.input && b.input.prompt) || '', title: (b.input && b.input.description) || '' });
-        else { push({ ts, agent, kind: 'tool', tool: toolLabel(b, ts) }); st.act = st.raw.length - 1; }
+        else { push({ ts, agent, kind: 'tool', tool: toolLabel(b, ts), ...th() }); st.act = st.raw.length - 1; }
       }
     }
     if (agent === 'main' && m.stop_reason === 'end_turn') {   // the lead's turn is over: Claude Code writes one record per content block, each with the message's stop reason, so the mark goes on the line this record carries (a thinking block carries none)
@@ -391,7 +393,7 @@ function buildTimeline(proj, id, files = []) {
     const p = lastReal >= 0 ? merged[lastReal] : null;
     if (e.kind === 'usage' || e.kind === 'finish' || e.kind === 'compact') { merged.push(e); continue; }
     if (e.kind === 'tool' && p && p.kind === 'tools' && p.agent === e.agent && !p.end) { p.tools.push(e.tool); if (e.end) p.end = 1; }   // a beat keeps the key of its first call; one that closed a turn takes no more calls
-    else { merged.push(e.kind === 'tool' ? { ts: e.ts, agent: e.agent, kind: 'tools', tools: [e.tool], ...(e.end ? { end: 1 } : {}), k: e.k } : e); lastReal = merged.length - 1; }
+    else { merged.push(e.kind === 'tool' ? { ts: e.ts, agent: e.agent, kind: 'tools', tools: [e.tool], ...(e.end ? { end: 1 } : {}), ...(e.th ? { th: e.th } : {}), k: e.k } : e); lastReal = merged.length - 1; }
   }
   const real = merged.find((e) => e.kind !== 'usage' && e.kind !== 'finish' && e.kind !== 'compact'), first = real ? real.ts : 0, last = merged.length ? merged[merged.length - 1].ts : 0;   // time zero = the first thing said or done
   return { id, proj, agents: Object.values(agents), events: merged.map((e) => ({ ...e, t: Math.max(0, e.ts - first) })), durationMs: last - first, recentUntil };

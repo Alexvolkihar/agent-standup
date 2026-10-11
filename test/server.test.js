@@ -143,3 +143,14 @@ test('no request stops the server; another site cannot read the settings', async
     assert.equal((await get(port, '/')).status, 200);   // still there
   } finally { stop(); }
 });
+test('the reasoning before a line or a call rides on it when the transcript keeps its text', async () => {
+  const at = (n) => `2026-01-01T00:00:0${n}Z`, asst = (n, id, content) => ({ type: 'assistant', timestamp: at(n), message: { id, content } });
+  const recs = [{ type: 'user', timestamp: at(0), message: { role: 'user', content: 'why is it slow' } }, asst(1, 'm1', [{ type: 'thinking', thinking: 'The query scans the whole table.\nI should check the index.', signature: 's' }]), asst(2, 'm1', [{ type: 'tool_use', id: 'toolu_t1', name: 'Bash', input: { command: 'ls' } }]),
+    asst(3, 'm2', [{ type: 'thinking', thinking: '', signature: 's' }]), asst(4, 'm2', [{ type: 'text', text: 'Found it.' }])];   // most of the time only the signature is kept: nothing to show
+  const dir = path.join(tmp, 'projects', '-th'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 's3.jsonl'), recs.map((r) => JSON.stringify(r)).join('\n') + '\n');
+  const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;
+  try {
+    const ev = JSON.parse((await get(port, '/api/session?proj=-th&id=s3')).body).events.filter((e) => e.kind === 'tools' || e.kind === 'say');
+    assert.deepEqual(ev.map((e) => [e.kind, e.th || null]), [['tools', 'The query scans the whole table. I should check the index.'], ['say', null]]);
+  } finally { srv.close(); require('../server.js').shutdown(); }
+});

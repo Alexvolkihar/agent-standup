@@ -22,6 +22,7 @@ function session() {
     say: (text, o = {}) => put(o.sub ? sub(o.sub) : main, { type: 'assistant', message: { id: o.id || 'm' + ++nId, role: 'assistant', stop_reason: o.end ? 'end_turn' : null, content: [{ type: 'text', text }] } }, o.at),
     tool: (name, input, o = {}) => { const id = 'toolu_' + ++nId; put(o.sub ? sub(o.sub) : main, { type: 'assistant', message: { id: o.id || 'm' + ++nId, role: 'assistant', stop_reason: null, content: [{ type: 'tool_use', id, name, input }] } }, o.at); return id; },
     result: (id, text, o = {}) => put(o.sub ? sub(o.sub) : main, { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: text }] } }, o.at),
+    think: (text, o = {}) => put(o.sub ? sub(o.sub) : main, { type: 'assistant', message: { id: o.id || 'm' + ++nId, role: 'assistant', stop_reason: null, content: [{ type: 'thinking', thinking: text, signature: 'x' }] } }, o.at),   // the reasoning before a line or a call, when Claude Code keeps its text
     queued: (text, at) => put(main, { type: 'attachment', attachment: { type: 'queued_command', prompt: [{ type: 'text', text }], origin: { kind: 'human' }, commandMode: 'prompt' } }, at),   // an order typed while the lead works: written when delivered, stamped when typed
     launch: (k, title, prompt) => { const id = s.tool('Agent', { description: title, prompt, subagent_type: 'general-purpose' }); fs.writeFileSync(path.join(subDir, `agent-a${k}.meta.json`), JSON.stringify({ agentType: 'general-purpose', description: title, toolUseId: id })); put(sub(k), { type: 'user', message: { role: 'user', content: prompt } }); return id; },
   };
@@ -32,6 +33,7 @@ async function open(s, join = true) {
   const page = await browser.newPage(), errors = []; page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`http://localhost:${port}/?proj=${s.proj}`); await page.waitForFunction('typeof S !== "undefined" && S.cur', { timeout: 15000 });
   await page.evaluate(() => { window.__said = []; const o = window.startTalk; window.startTalk = function (id, line, label) { window.__said.push({ id, line: String(line), label: label || '' }); return o.apply(this, arguments); }; });
+  await page.evaluate(() => { window.__voice = []; const o = window.speakLine; window.speakLine = function (text, p, primary, token, fr, always) { window.__voice.push({ id: p && p.id, text: String(text), silent: !!(S.hurry && !always) }); return o.apply(this, arguments); }; });   // silent: shown without a voice because the call is behind
   if (join) await page.click('#gB');
   const call = {
     page, errors,
@@ -111,6 +113,31 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     s.say('Starting the long job now, this is going to take a while because the whole suite runs twice.'); await wait(500); const id = s.tool('Bash', { command: 'sleep 30' }); await wait(28000);   // longer than the old 25 s rule
     assert.equal(await c.lead(), 'working'); s.result(id, 'ok'); await wait(4000); assert.equal(await c.lead(), 'working'); assert.equal(count(await c.lines(), 'To sum up'), 0);
     s.say('The long job is finished.', { end: true }); await c.heard('long job is finished'); await c.until(() => agentState('main', Date.now()).k === 'done', null, 8000); await c.close();
+  });
+
+  await t.test('your own line is always voiced: typed long before it was delivered, or in the middle of a backlog', async () => {
+    const s = session(); s.user('hello', Date.now() - 600000); s.say('Ready.', { at: Date.now() - 590000, end: true }); const c = await open(s);
+    s.user('Start', Date.now() - 170000); await wait(1200); s.say('Working on it.', { at: Date.now() - 165000 }); await c.heard('Working on it'); await c.quiet(500);   // dated as if the command below had really run for two minutes
+    const id = s.tool('Bash', { command: 'sleep 140' }, { at: Date.now() - 150000 }); await wait(1500); s.result(id, 'ok'); s.queued('ORDER TYPED TWO MINUTES AGO', Date.now() - 130000); await wait(300); s.say('Noted.', { end: true });   // a long command, an order typed 20 s into it: Claude Code hands the order over when the command returns, stamped with the time it was typed
+    await c.heard('ORDER TYPED TWO MINUTES AGO'); await c.heard('Noted'); await c.quiet(500);
+    for (let k = 0; k < 30; k++) { if (k === 12) s.user('ORDER IN THE BACKLOG'); s.say(`Backlog line ${k} of the lead, long enough to take a moment to read out loud.`); }   // written at once: the call is far behind and skips ahead
+    s.say('End of the backlog.', { end: true }); await c.heard('End of the backlog', 120000); await c.quiet(500);
+    const mine = await c.page.evaluate(() => window.__voice.filter((x) => x.id === 'user'));
+    for (const x of ['ORDER TYPED TWO MINUTES AGO', 'ORDER IN THE BACKLOG']) { const hit = mine.filter((y) => y.text.includes(x)); assert.equal(hit.length, 1, x + ' said ' + hit.length + ' times'); assert.equal(hit[0].silent, false, x + ' was shown without a voice'); }
+    await c.close();
+  });
+
+  await t.test('an agent at work for a while thinks to itself: its own reasoning when the session has it, else what it is doing; shown, not said, gone when it speaks', async () => {
+    const s = session(); s.user('hello', Date.now() - 600000); s.say('Ready.', { at: Date.now() - 590000, end: true }); const c = await open(s);
+    s.user('Why is the login slow?'); await c.heard('Why is the login slow'); await wait(1500);
+    s.think('The login is slow because the query scans the whole table. I should look at the index before anything else.', { id: 'mTh' }); const id = s.tool('Bash', { command: 'psql -f explain.sql', description: 'Explain the login query' }, { id: 'mTh' });
+    await c.until(() => { const b = document.querySelector('#t-main.musing .bubble'); return b && b.textContent.includes('scans the whole table'); }, null, 45000);   // its own words come first
+    assert.equal(await c.page.evaluate(() => S.speakers.size), 0); assert.equal(count(await c.lines(), 'scans the whole table'), 0, 'a thought is not a spoken line');
+    s.result(id, 'Seq Scan on users'); s.say('It was the missing index.', { end: true }); await c.heard('It was the missing index'); assert.equal(await c.page.evaluate(() => !!document.querySelector('#t-main.musing')), false);
+    await c.quiet(500); s.user('Then fix it'); await wait(1500); s.say('I will hand the migration over.'); await wait(1000); s.launch(1, 'Check the migration', 'Write the migration that adds the index and check it on a copy of the database.');
+    const run = s.tool('Bash', { command: 'npm run migrate:check', description: 'Check the migration' }, { sub: 1 });   // no reasoning kept for this one: the thought is about what it is on
+    await c.until(() => { const b = document.querySelector('#t-a1.musing .bubble'); return b && b.textContent.includes('Check the migration'); }, null, 60000);
+    assert.equal((await c.said()).filter((x) => x.id === 'a1' && x.line.includes('Check the migration')).length, 0); s.result(run, 'ok', { sub: 1 }); await c.close();
   });
 
   await t.test('pausing and resuming at the end of a live call does not repeat the last line', async () => {
