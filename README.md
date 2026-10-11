@@ -94,7 +94,7 @@ Replace the drawn characters with your own pixel art. Drop PNG (or GIF/WebP) fil
 - `lead.png` (or `claude.png`) is the lead, `you.png` is you, any other image becomes a sub-agent (one per agent, repeated if you have fewer images than agents);
 - `name-talk.png` next to `name.png` is an optional open-mouth frame that shows while the character speaks;
 - 32×32 or 64×64 px, transparent background, facing front, feet at the bottom looks best. The art is shown crisp (no smoothing) on top of the usual scene and desk, and every status, hand and badge still works.
-Press **Reload** in the menu to see changes. A starter pack is in [examples/characters](examples/characters).
+Press **Reload** in the menu to see changes. A starter pack is in [examples/characters](examples/characters), and a cat pack in [examples/cats](examples/cats).
 
 ## Agents list
 On wide windows (900 px+), a fixed list sits left of the call: every agent with its role and one status line, **most urgent first** (needs you, stalled, working, waiting, done) and the lead pinned on top. It stays readable with dozens of agents, which a grid of tiles does not. Click a name to put that agent in the spotlight (kept for 25 s even when someone else speaks), double-click for details. Toggle it in ⚙ → Agents list.
