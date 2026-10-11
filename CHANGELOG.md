@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.25.2
+- **Sub-agents show up at once in a live call.** When the lead launches several agents in parallel, their tiles appear the moment the orders are written (before, each tile waited for its order to be read out, one after the other, and a burst of hundreds of tool events could hide them until the call caught up). The first order is read in full; the others are named in one line (“Also Remy on X, Iris on Y”). Hundreds of tool events from parallel agents now scroll past in a couple of seconds instead of minutes.
+- **The lead says what it did.** When the lead finishes (confetti), the part of its last message that the live reading had cut short is read as a wrap-up (“To sum up: …”), so you know what was done without opening the transcript.
+- **Quiet chatter really is quiet**: no lines to fill the silences, no thinking out loud, no remarks from bystanders; only the real exchanges (orders, reports, a word of thanks or acknowledgement).
+- A little faster voice while catching up on a backlog.
+
 ## 1.25.1
 - Fix: in a live call, the first line after a silence (typically your own order) was skipped or rushed. The call measured how far behind it was against the previous event, which after a few idle minutes looked like a huge backlog. The lag is now the gap between the line being played and the newest line of the session, so an idle session is never “behind”.
 - Fix: your own sub-agent characters were picked per agent without looking at the others, so two sub-agents often got the same picture while others went unused. A new sub-agent now gets a picture no other agent on the call holds; pictures repeat only once every one is taken. Contributed by [rqwj](https://github.com/rqwj) (#1).

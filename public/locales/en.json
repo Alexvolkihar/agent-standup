@@ -1,5 +1,6 @@
 {
  " full — compaction soon": " full — compaction soon",
+ " on ": " on ",
  "”": "”",
  "↗ Open in browser": "↗ Open in browser",
  "⌨ Keyboard shortcuts (?)": "⌨ Keyboard shortcuts (?)",
@@ -14,6 +15,7 @@
  "Agents": "Agents",
  "Agents list (left)": "Agents list (left)",
  "All projects (most recent)": "All projects (most recent)",
+ "Also ": "Also ",
  "Ambience volume": "Ambience volume",
  "An agent may be waiting for you ✋": "An agent may be waiting for you ✋",
  "Animal Crossing (babble)": "Animal Crossing (babble)",
@@ -170,6 +172,7 @@
  "This help": "This help",
  "Time": "Time",
  "to": "to",
+ "To sum up: ": "To sum up: ",
  "tokens": "tokens",
  "Tokens": "Tokens",
  "Tokens recorded by Claude Code (counted once per message, not a bill)": "Tokens recorded by Claude Code (counted once per message, not a bill)",
