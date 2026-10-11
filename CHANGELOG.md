@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.25.3
-- **Character packs built in**: ⚙ → Characters → Starter pack or Cat pack switches the whole call to those characters in one click, in the extension, the command and the desktop app alike; Drawn characters goes back to the default, My folder (automatic) keeps using your own images. Until now the packs only lived in the repository, to copy by hand.
+- **Character packs built in**: ⚙ → Characters → Starter pack or Cat pack switches the whole call to those characters in one click, in the extension, the command and the desktop app alike; Drawn characters is the default; My folder uses your own images (picked by itself if your folder already had some). Until now the packs only lived in the repository, to copy by hand.
 - **The voice follows the language of the line, not of the interface.** A session written in French with the interface in English was read by an English voice (French with an English accent); the other way round, an English line was read by a French voice. Each line now gets a voice of its own language when it clearly reads as French or English (the short lines of banter keep the interface language). A line already in French is no longer sent to Claude for translation.
 
 ## 1.25.2

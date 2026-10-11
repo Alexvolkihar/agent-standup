@@ -169,10 +169,13 @@ const mix = (a, b, t) => { const A = hexRGB(a), B = hexRGB(b); return '#' + A.ma
 let CHARS = { lead: null, you: null, pool: [], dir: '', n: 0 };
 const toData = (url) => fetch(url).then((r) => r.blob()).then((b) => new Promise((res) => { const f = new FileReader(); f.onload = () => res(f.result); f.readAsDataURL(b); }));
 async function loadChars() {
-  const pack = prefs.charPack || '', next = { lead: null, you: null, pool: [], dir: '', n: 0, pack };
-  if (pack === 'none') { CHARS = next; return; }   // the drawn characters, whatever is in the folder
+  if (!['none', 'folder', 'starter', 'cats'].includes(prefs.charPack)) {   // drawn characters by default; someone who already had images in their folder keeps them
+    let n = 0; try { n = ((await (await fetch('/api/characters')).json()).chars || []).length; } catch {} prefs.charPack = n ? 'folder' : 'none'; savePrefs(); const sel = $('#charPack'); if (sel) sel.value = prefs.charPack;
+  }
+  const pack = prefs.charPack, next = { lead: null, you: null, pool: [], dir: '', n: 0, pack };
+  if (pack === 'none') { try { next.dir = (await (await fetch('/api/characters')).json()).dir || ''; } catch {} CHARS = next; return; }   // the drawn characters, whatever is in the folder
   try {
-    const base = pack ? '/packs/' + pack + '/' : '/characters/', d = await (await fetch('/api/characters?pack=' + pack)).json(); next.dir = d.dir || '';
+    const base = pack === 'folder' ? '/characters/' : '/packs/' + pack + '/', d = await (await fetch('/api/characters?pack=' + (pack === 'folder' ? '' : pack))).json(); next.dir = d.dir || '';
     for (const c of d.chars || []) { try { const e = { name: c.stem, idle: await toData(base + encodeURIComponent(c.file)), talk: c.talk ? await toData(base + encodeURIComponent(c.talk)) : null };
       if (c.role === 'lead') next.lead = e; else if (c.role === 'you') next.you = e; else next.pool.push(e); next.n++; } catch {} }
   } catch {}
@@ -186,7 +189,7 @@ const customFor = (id) => {   // sub-agents: the best-hashed image no other agen
 };
 function renderCharInfo() {
   const el = $('#charInfo'); if (!el) return;
-  el.innerHTML = CHARS.pack === 'none' ? esc(L('Les personnages dessinés par l’application.', 'The characters drawn by the app.')) : CHARS.pack ? `✓ ${CHARS.n} ${esc(L('personnages du pack', 'characters from the pack'))} · ${esc(L('Pour les modifier, copiez-les dans votre dossier et choisissez « Mon dossier ».', 'To tweak them, copy them into your folder and pick “My folder”.'))}` : CHARS.n ? `✓ ${CHARS.n} ${esc(L('personnage(s) personnalisé(s) chargé(s)', 'custom character(s) loaded'))}` : `${esc(L('Déposez vos images (PNG) dans ce dossier pour remplacer les personnages :', 'Drop your pixel art (PNG) in this folder to replace the characters:'))}<br><code style="word-break:break-all">${esc(CHARS.dir)}</code><br>${esc(L('lead.png = le chef · you.png = vous · les autres = les sous-agents · nom-talk.png = bouche ouverte', 'lead.png = the lead · you.png = you · others = the sub-agents · name-talk.png = open mouth'))}`;
+  el.innerHTML = CHARS.pack === 'none' ? esc(L('Les personnages dessinés par l’application. Choisissez « Mon dossier » pour vos propres images, ou un pack.', 'The characters drawn by the app. Pick “My folder” for your own images, or a pack.')) : CHARS.pack !== 'folder' ? `✓ ${CHARS.n} ${esc(L('personnages du pack', 'characters from the pack'))} · ${esc(L('Pour les modifier, copiez-les dans votre dossier et choisissez « Mon dossier ».', 'To tweak them, copy them into your folder and pick “My folder”.'))}` : CHARS.n ? `✓ ${CHARS.n} ${esc(L('personnage(s) personnalisé(s) chargé(s)', 'custom character(s) loaded'))}` : `${esc(L('Déposez vos images (PNG) dans ce dossier pour remplacer les personnages :', 'Drop your pixel art (PNG) in this folder to replace the characters:'))}<br><code style="word-break:break-all">${esc(CHARS.dir)}</code><br>${esc(L('lead.png = le chef · you.png = vous · les autres = les sous-agents · nom-talk.png = bouche ouverte', 'lead.png = the lead · you.png = you · others = the sub-agents · name-talk.png = open mouth'))}`;
   $('#charOpen').style.display = EMBED ? '' : 'none';
 }
 function persona(a) { const p = persona0(a); p.custom = customFor(a.id); return p; }
