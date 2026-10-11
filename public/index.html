@@ -503,7 +503,10 @@ const S = { owner: null, errRun: {}, exQ: [], agents: {}, events: [], idx: 0, pl
             clock: 0, doneAt: {}, gone: new Set(), leaving: new Set(), demo: false, hold: false };
 const VANISH_MS = 120000;   // a finished agent leaves the call after 2 minutes (playback time)
 // Live: how far the call is behind the real session, and what to do about it (speak faster, say less, skip decoration) so it keeps the rhythm of the real conversation
-const lagMs = () => { if (!S.live) return 0; const e = S.events[Math.min(S.idx, S.events.length - 1)]; return e && e.ts ? Math.max(0, Date.now() - e.ts) : 0; };
+const lagMs = (i = S.idx) => {   // how much newer the newest event of the session is than the one being played: 0 when the call is up to date, however long the session has been idle
+  if (!S.live || !S.events.length) return 0; const e = S.events[Math.max(0, Math.min(i, S.events.length - 1))]; let last = S.events.length - 1; while (last > 0 && !S.events[last].ts) last--;
+  return e && e.ts && S.events[last].ts ? Math.max(0, S.events[last].ts - e.ts) : 0;
+};
 const lagFactor = () => { const l = lagMs() / 1000; return l < 6 ? 1 : l < 15 ? 1.15 : l < 30 ? 1.3 : 1.5; };   // steps, so the cached audio of a line is reused
 const caughtUp = () => !S.live || lagMs() < 6000;
 const spd = () => (S.live ? 1.12 * lagFactor() : +$('#speed').value) * (S.boost || 1);
@@ -1590,13 +1593,13 @@ async function run(i) {
     if (S.idle) { S.idle = false; syncUI(); }
     if (S.live) {   // way behind: skip ahead to stay current, but only count what is actually said: sub-agents produce thousands of silent tool events
       const rem = S.events.length - i;
-      if (rem > 300 || aheadSpeakable(i, 16) > 16 || lagMs() > 60000) {   // only a really big backlog is skipped; before that, lines are shortened instead
+      if (rem > 300 || aheadSpeakable(i, 16) > 16 || lagMs(i) > 60000) {   // only a really big backlog is skipped; before that, lines are shortened instead
         let k = S.events.length, back = 0; while (k > i && back < 8) { k--; if (SPK.has(S.events[k].kind)) back++; }
         const to = rem > 300 ? Math.max(k, S.events.length - 14) : k; if (to > i) { i = to; recomputeStatus(i); paintStatus(); }
       }
     }
     const q = S.live ? aheadSpeakable(i, 14) : 0;   // lines waiting to be said: the more of them, the shorter each one is read, but it is always read
-    const lg = lagMs() / 1000; S.pace = !S.live ? 0 : Math.min(q > 7 ? 70 : q > 3 ? 130 : 260, lg > 30 ? 70 : lg > 15 ? 130 : lg > 6 ? 200 : 260); S.hurry = q > 12 || lg > 45;   // voices are only skipped when more than a dozen lines are queued
+    const lg = lagMs(i) / 1000; S.pace = !S.live ? 0 : Math.min(q > 7 ? 70 : q > 3 ? 130 : 260, lg > 30 ? 70 : lg > 15 ? 130 : lg > 6 ? 200 : 260); S.hurry = q > 12 || lg > 45;   // voices are only skipped when more than a dozen lines are queued
     S.boost = S.hurry || (S.live && S.events.length - i > 60) ? 3 : 1;
     const ev = S.events[i]; S.idx = i; tally(ev);
     if (!S.live && (ev.kind === 'say' || ev.kind === 'report' || ev.kind === 'order' || ev.kind === 'tools')) { await ponder(i, token); if (token !== S.token) return; }

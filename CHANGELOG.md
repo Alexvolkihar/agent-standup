@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.25.1
+- Fix: in a live call, the first line after a silence (typically your own order) was skipped or rushed. The call measured how far behind it was against the previous event, which after a few idle minutes looked like a huge backlog. The lag is now the gap between the line being played and the newest line of the session, so an idle session is never “behind”.
 - Fix: your own sub-agent characters were picked per agent without looking at the others, so two sub-agents often got the same picture while others went unused. A new sub-agent now gets a picture no other agent on the call holds; pictures repeat only once every one is taken. Contributed by [rqwj](https://github.com/rqwj) (#1).
 - A cat pack in `examples/cats` (11 cats, CC0), contributed by [KajetanCiunelis](https://github.com/KajetanCiunelis) (#2). Their suggestion too: ⚙ → Characters → **Laptop in front of your own characters** (off by default) shows a darker laptop while a custom character works, dark enough to stay visible under a white or cream sprite.
 
