@@ -182,7 +182,7 @@
   #gate h2, #empty h2 { margin:0; font:800 22px "Comic Sans MS","Chalkboard SE",system-ui,sans-serif } #gate p, #empty p { margin:0; color:var(--dim); max-width:380px }
   .cta { background:var(--accent); color:#0b1020; font-weight:700; padding:10px 22px; border-radius:99px; font-size:14px } .cta:hover { filter:brightness(1.1) }
   .btn { background:var(--panel2); border:1px solid var(--line); padding:6px 12px; border-radius:8px } .btn:hover { border-color:var(--accent) }
-  #menu { position:absolute; top:52px; right:10px; z-index:12; width:280px; background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 14px 40px rgba(0,0,0,.55); padding:6px; display:none }
+  #menu { position:absolute; top:52px; right:10px; z-index:12; width:280px; background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 14px 40px rgba(0,0,0,.55); padding:6px; display:none; max-height:calc(100vh - 62px); max-height:calc(100dvh - 62px); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin }   /* never taller than the window: it scrolls instead of being cut off */
   .coffee-btn { color:#ffd24a !important; background:rgba(255,210,74,.12); box-shadow:inset 0 0 0 1px rgba(255,210,74,.35) } .coffee-btn:hover { background:rgba(255,210,74,.22) !important }
   .glink { color:var(--dim); font-size:12.5px; text-decoration:underline; text-underline-offset:3px } .glink:hover { color:#ffd24a }
   #mCoffee { background:rgba(255,210,74,.10); box-shadow:inset 0 0 0 1px rgba(255,210,74,.3); margin-top:4px } #mCoffee:hover { background:rgba(255,210,74,.2) }
@@ -1184,7 +1184,7 @@ const mouths = new Map();
 function startTalk(id, text, label) {
   const t = $('#t-' + id); if (!t) return;
   if (S.present && S.present !== id) hidePresent();
-  S.spokeAt = performance.now(); S.fill = 0;
+  S.spokeAt = performance.now(); S.fill = 0; S.mused = false;
   if (!S.speakers.size && !(S.focusLock > Date.now())) setFocus(id); S.gone.delete(id); if (S.doneAt[id] != null) S.doneAt[id] = S.clock; t.style.display = ''; t.classList.add('speaking'); S.speakers.add(id); S.say[id] = { text, label }; AUD.duck(true);
   const shown0 = pieces(text), first = shown0.length > 1 ? shown0[0] : text; const b = t.querySelector('.bubble'); b.innerHTML = (label ? `<small>${esc(label)}</small>` : '') + esc(first);
   if (S.present === id) { $('#pcap').textContent = first; $('#pcam').classList.add('speaking'); }
@@ -1385,11 +1385,16 @@ function ackLine(ev) {
   if (line === S.lastAck) line = pool[(seed + 1) % pool.length]; S.lastAck = line; return line;
 }
 async function react(ev, token) {
-  if ((!prefs.epi && !prefs.banter) || S.boost > 1 || S.hurry) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[FR() ? 'fr' : 'en']; let who, line;
+  if ((!prefs.epi && !prefs.banter) || S.boost > 1 || S.hurry) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[FR() ? 'fr' : 'en']; let who, line, thanks = false;
   if (ev.kind === 'order') { if (!prefs.banter && seed % 100 > 55) return; who = ev.to; line = prefs.banter ? ackLine(ev) : R.ack[seed % R.ack.length]; }
-  else if (ev.kind === 'report') { if (!prefs.epi && seed % 100 > 35) return; if (seed % 100 > 60) return; const others = Object.keys(S.status).concat(['main']).filter((x) => x !== ev.agent && S.agents[x] && !S.gone.has(x)); who = others[(seed >>> 3) % others.length]; line = quipMem.get(baseText(ev, 160)) || R.done[seed % R.done.length]; }
+  else if (ev.kind === 'report') {
+    const r = seed % 100, joke = prefs.epi ? 60 : 35;   // a remark from someone else, or (a little less often) a word of thanks from whoever receives the report
+    if (r <= joke) { const others = Object.keys(S.status).concat(['main']).filter((x) => x !== ev.agent && S.agents[x] && !S.gone.has(x)); who = others[(seed >>> 3) % others.length]; line = quipMem.get(baseText(ev, 160)) || R.done[seed % R.done.length]; }
+    else if (prefs.banter && r <= joke + 25 && ev.to !== 'user' && S.agents[ev.to] && !S.gone.has(ev.to)) { who = ev.to; line = varied('thanks', seed >>> 3); thanks = true; }
+    else return;
+  }
   else return;
-  if (!S.agents[who]) return; startTalk(who, line, ev.kind === 'order' && prefs.banter ? '💬' : '🎬'); await speakLine(line, S.agents[who], true, token); stopTalk(who);
+  if (!S.agents[who]) return; startTalk(who, line, thanks || (ev.kind === 'order' && prefs.banter) ? '💬' : '🎬'); await speakLine(line, S.agents[who], true, token); stopTalk(who);
 }
 // Small talk: when nobody has said anything for a while, someone fills the silence the way people do in video calls. At most three per silence, further and further apart; any other line starts the count again.
 const FILL = {
@@ -1400,13 +1405,29 @@ const FILL = {
     busy: ['Toujours là, je suis dessus.', 'Pardon, j’étais en muet.', 'Petit point : j’avance.', 'Pas de point bloquant de mon côté.', 'Vous m’entendez ?', 'C’est moi, ou c’est calme ?', 'Je vous fais un retour dans une minute.'],
     wait: ['Vous m’entendez ?', 'Vous êtes toujours là ?', 'Allô ? Je crois que ton micro est coupé.', 'On a perdu quelqu’un ?', 'C’est ma connexion ?', 'On en reparle en off ?', 'On refait un point quand tu veux.', 'Je vous rends une minute.', 'D’autres sujets ?', 'Pardon, vas-y. Non, toi d’abord.'] },
 };
+// A little more talk between agents: a word of thanks when a report comes in, a word from whoever has been thinking for a long time.
+const TALK = {
+  en: { thanks: ['Thanks, that helps.', 'Got it, thanks.', 'Noted. I’ll take it from here.', 'Perfect, that’s what I needed.', 'Thanks, good work.', 'Good to know, thanks.', 'Understood, thank you.', 'Great, one less thing to worry about.'],
+    think: ['Hmm, let me think.', 'Give me a second, I’m thinking.', 'Interesting… let me think this through.', 'One moment, I’m working it out.', 'Hang on, I want to get this right.', 'Let me double-check something.', 'Still thinking… almost there.', 'That one needs a bit of thought.'] },
+  fr: { thanks: ['Merci, ça m’aide.', 'Bien reçu, merci.', 'C’est noté. Je prends la suite.', 'Parfait, c’est ce qu’il me fallait.', 'Merci, bon boulot.', 'Bon à savoir, merci.', 'Compris, merci.', 'Super, un souci de moins.'],
+    think: ['Hmm, laissez-moi réfléchir.', 'Une seconde, je réfléchis.', 'Intéressant… je creuse ça.', 'Un instant, je fais le point.', 'Attendez, je veux être sûr.', 'Je vérifie un truc.', 'Je réfléchis encore… j’y suis presque.', 'Ça demande un peu de réflexion.'] },
+};
+function varied(kind, seed) { const P = TALK[FR() ? 'fr' : 'en'][kind]; let line = P[seed % P.length]; if (line === S.lastTalk) line = P[(seed + 1) % P.length]; return (S.lastTalk = line); }   // never the same line twice in a row
+// Who is thinking once this event has happened: the agent whose tool just answered, the lead after your message or a report, a sub-agent that just got its order. After a line or a tool call, nobody is.
+const thinkerOf = (e) => (e.kind === 'results' ? e.agent : e.kind === 'user' ? 'main' : e.kind === 'report' || e.kind === 'finish' || e.kind === 'order' ? e.to : null);
+const before = (i) => { let k = i - 1; while (k >= 0 && (S.events[k].kind === 'usage' || S.events[k].kind === 'compact')) k--; return S.events[k]; };
+async function ponder(i, token) {   // replay: an agent that really took a long time (40 s or more) before this line or call says so first, about every other time
+  const ev = S.events[i], p = before(i); if (!prefs.banter || S.boost > 1 || S.hurry || !p || !S.agents[ev.agent] || thinkerOf(p) !== ev.agent || ev.ts - p.ts < 40000 || hash('t' + ev.ts) % 100 > 55) return;
+  const line = varied('think', hash(String(ev.ts))); startTalk(ev.agent, line, '💭'); await speakLine(line, S.agents[ev.agent], true, token); stopTalk(ev.agent);
+}
 async function smallTalk(token) {
   const n = S.fill || 0, last = S.events[S.events.length - 1]; if (!prefs.banter || n > 2 || !last || S.speakers.size || S.hurry || S.boost > 1 || (document.hidden && !S.exporting)) return;
-  if (performance.now() - S.spokeAt < (S.live ? 45000 : 12000 / spd()) * [1, 2.5, 6][n] || (S.live && Date.now() - last.ts > 6e5)) return;   // live: a session untouched for ten minutes is a call that is over
-  const here = Object.keys(S.agents).filter((id) => id !== 'user' && $('#t-' + id) && $('#t-' + id).style.display !== 'none'), busy = here.filter((id) => agentState(id, Date.now()).k === 'working'), pick = (a) => a[Math.floor(Math.random() * a.length)];
-  const who = S.present && here.includes(S.present) ? S.present : pick(busy.length ? busy : here), P = FILL[FR() ? 'fr' : 'en'][who === S.present ? 'share' : busy.length ? 'busy' : 'wait']; if (!who) return;   // whoever shares their screen speaks, so the screen stays up
-  let line = pick(P); if (line === S.lastFill) line = P[(P.indexOf(line) + 1) % P.length]; S.lastFill = line;
-  startTalk(who, line, '💬'); S.fill = n + 1; await speakLine(line, S.agents[who], true, token); stopTalk(who);
+  const quiet = performance.now() - S.spokeAt, here = Object.keys(S.agents).filter((id) => id !== 'user' && $('#t-' + id) && $('#t-' + id).style.display !== 'none'), pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const p = before(S.events.length), muser = S.live && !n && !S.mused && p ? thinkerOf(p) : null, think = !!muser && here.includes(muser) && quiet > 6000 && Date.now() - p.ts > 20000 && Date.now() - p.ts < 180000;   // live: 20 s without a word from whoever is thinking, once per silence
+  if (!think && (quiet < (S.live ? 45000 : 12000 / spd()) * [1, 2.5, 6][n] || (S.live && Date.now() - last.ts > 6e5))) return;   // live: a session untouched for ten minutes is a call that is over
+  const busy = here.filter((id) => agentState(id, Date.now()).k === 'working'), who = think ? muser : S.present && here.includes(S.present) ? S.present : pick(busy.length ? busy : here); if (!who) return;   // whoever shares their screen speaks, so the screen stays up
+  const P = FILL[FR() ? 'fr' : 'en'][who === S.present ? 'share' : busy.length ? 'busy' : 'wait']; let line = think ? varied('think', Math.floor(Math.random() * 97)) : pick(P); if (!think && line === S.lastFill) line = P[(P.indexOf(line) + 1) % P.length]; if (!think) S.lastFill = line;
+  startTalk(who, line, think ? '💭' : '💬'); if (think) S.mused = true; else S.fill = n + 1; await speakLine(line, S.agents[who], true, token); stopTalk(who);
 }
 async function card(text, sub, ms = 2500) {
  
@@ -1438,6 +1459,7 @@ async function run(i) {
     S.pace = !S.live ? 0 : q > 7 ? 70 : q > 3 ? 130 : 260; S.hurry = q > 12;   // voices are only skipped when more than a dozen lines are queued
     S.boost = S.hurry || (S.live && S.events.length - i > 60) ? 3 : 1;
     const ev = S.events[i]; S.idx = i; tally(ev);
+    if (!S.live && (ev.kind === 'say' || ev.kind === 'report' || ev.kind === 'order' || ev.kind === 'tools')) { await ponder(i, token); if (token !== S.token) return; }
     if (ev.kind === 'usage' || ev.kind === 'compact') { if (ev.kind === 'compact' && S.live && prefs.banter) toast(`${nameOf(ev.agent)}: ${L('contexte compacté 🗜', 'context compacted 🗜')}`); i++; continue; }
     if (ev.kind === 'finish') { applyStatus(ev); paintStatus(); i++; continue; }
     if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.boost === 1 && S.present === ev.agent && ev.items.some((it) => it.img) ? (S.live ? 900 : 1800) : S.demo ? 900 : S.live ? 30 : 80) / spd()); i++; continue; }   // a picture gets a moment on screen

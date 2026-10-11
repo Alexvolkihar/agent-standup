@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.24.1
+- Fix: the settings menu (⚙) was taller than a small window since 1.24.0 and its last entries could not be reached. It now stops at the bottom of the window and scrolls.
+- **A little more talk between agents**: whoever receives a report sometimes says thanks ("Got it, thanks.", "Noted. I'll take it from here.", about one report in four), and an agent that has been thinking for a long time says so ("Hmm, let me think.", "Hang on, I want to get this right."): after 20 seconds without a word in a live call, once per silence, and in a replay before a line that really took 40 seconds or more to come, about every other time. Eight variations of each, never the same twice in a row, in English and French. Part of ⚙ → Little lines & animations.
+
 ## 1.24.0
 - **Video export records an MP4** (H.264 video + AAC audio, 1280×720) when the browser can record it, and falls back to `.webm` as before when it cannot (⚙ → Tools → 🎞 Export video). X, phones and most chat apps refuse `.webm`. Checked in Chrome; not tested inside VS Code's own panel, which may still produce a `.webm` there.
 - **Clip to share** (⚙ → Tools → 🎬 Clip to share (25 s)): a short clip of about 25 seconds, saved as `agent-standup-clip.mp4` (`.webm` when the browser cannot record MP4). In the middle of a replay it starts at the current position; otherwise one spoken line before the first error or loop of the session when there is one, and failing that at the moment the lead first hands out work. The line being said when time is up is finished rather than cut, so the length varies by a few seconds. The clip carries the site address (atoll92.github.io/agent-standup) in the top right corner and ends with a short end card (product name, the tagline "Your Claude Code agents as a live team call", the site address). The full export has neither.
