@@ -503,8 +503,10 @@ const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css
 const CHAR_NAME = /^[\w][\w .()\-]{0,78}\.(png|gif|webp|jpe?g)$/i, CHAR_MAX = 300 * 1024, CHAR_TYPES = { png: 'image/png', gif: 'image/gif', webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
 const charactersDir = () => process.env.AGENT_STANDUP_CHARACTERS || path.join(os.homedir(), '.agent-standup', 'characters');
 // lstat, not stat: a symlink is not a regular file, so it is skipped and never served
-function listCharacters() {
-  const dir = charactersDir(); let names = []; try { names = fs.readdirSync(dir); } catch {}
+// Built-in character packs, shipped with the app (examples/<folder>): picked in ⚙ → Characters, or copied into the person's own folder as a start
+const PACKS = { starter: 'characters', cats: 'cats' }, packDir = (name) => (PACKS[name] ? path.join(__dirname, 'examples', PACKS[name]) : null);
+function listCharacters(pack) {
+  const dir = pack ? packDir(pack) : charactersDir(); let names = []; if (!dir) return { dir: '', max: CHAR_MAX, chars: [] }; try { names = fs.readdirSync(dir); } catch {}
   const ok = names.filter((f) => CHAR_NAME.test(f)).filter((f) => { try { const st = fs.lstatSync(path.join(dir, f)); return st.isFile() && st.size <= CHAR_MAX; } catch { return false; } }).slice(0, 80);
   const stem = (f) => f.replace(/\.[^.]+$/, ''), by = new Map(ok.map((f) => [stem(f).toLowerCase(), f]));
   const chars = ok.filter((f) => !/-talk$/i.test(stem(f))).map((f) => { const st = stem(f), l = st.toLowerCase();
@@ -563,7 +565,8 @@ function start(port = PORT) {
     if (url.pathname === '/api/prefs') return json(readPrefs() || {});
     if (url.pathname === '/api/current') return json(currentSession(url.searchParams.get('proj') || '', url.searchParams.get('id') || '', { proj: url.searchParams.get('sproj') || '', id: url.searchParams.get('sid') || '' }));
     if (url.pathname === '/api/board') return json(boardRows());
-    if (url.pathname === '/api/characters') return json(listCharacters());
+    if (url.pathname === '/api/characters') return json(listCharacters(url.searchParams.get('pack') || ''));
+    if (url.pathname === '/api/packs') return json(Object.keys(PACKS).map((name) => ({ name, n: listCharacters(name).chars.length })));
     if (url.pathname === '/api/media') {
       const q = (k) => url.searchParams.get(k) || '', SAFE = /^[\w.\-]+$/, n = +q('n') || 0, bad = [q('proj'), q('id'), q('agent'), q('tool')].some((v) => !SAFE.test(v) || v === '..' || v.length > 200);
       const file = bad || !Number.isInteger(n) || n < 0 || n > 9 ? null : mediaFile(q('proj'), q('id'), q('agent')), im = file && toolImage(file, q('tool'), n);
@@ -585,9 +588,10 @@ function start(port = PORT) {
       }
       return json({ id: tl.id, agents: tl.agents, total: tl.events.length, events: tl.events.slice(+after) });
     }
-    if (url.pathname.startsWith('/characters/')) {   // only plain image files of the characters folder, by exact name
-      let f = ''; try { f = decodeURIComponent(url.pathname.slice('/characters/'.length)); } catch {}
-      const dir = charactersDir(), fp = path.join(dir, f);
+    const pk = url.pathname.match(/^\/packs\/([a-z]+)\/(.*)$/);
+    if (url.pathname.startsWith('/characters/') || (pk && packDir(pk[1]))) {   // only plain image files of the characters folder (or of a built-in pack), by exact name
+      let f = ''; try { f = decodeURIComponent(pk ? pk[2] : url.pathname.slice('/characters/'.length)); } catch {}
+      const dir = pk ? packDir(pk[1]) : charactersDir(), fp = path.join(dir, f);
       try { const ls = fs.lstatSync(fp); if (!CHAR_NAME.test(f) || !fp.startsWith(dir + path.sep) || !ls.isFile() || ls.size > CHAR_MAX) throw 0; } catch { res.writeHead(404); return res.end('not found'); }
       res.writeHead(200, { 'content-type': CHAR_TYPES[f.split('.').pop().toLowerCase()] || 'application/octet-stream', 'cache-control': 'no-cache' }); return fs.createReadStream(fp).pipe(res);
     }
