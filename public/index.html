@@ -1774,7 +1774,7 @@ async function setMode(m) {
   const rows = await (await fetch('/api/sessions')).json();
   $('#sessions').innerHTML = rows.map((r) => { const d = new Date(r.mtime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     return `<option value="${esc(r.proj)}|${r.id}" data-title="${esc(r.title)}">${r.agents ? '👥' + r.agents + ' · ' : ''}${esc(r.title.slice(0, 40))} (${d})</option>`; }).join('');
-  $('#empty').classList.remove('on'); const pick = rows.find((r) => r.agents) || rows[0]; if (!pick) { $('#empty').classList.add('on'); return; }
+  $('#empty').classList.remove('on'); const pick = rows.find((r) => r.id === Q.get('pin')) || rows.find((r) => r.agents) || rows[0]; if (!pick) { $('#empty').classList.add('on'); return; }
   $('#sessions').value = `${pick.proj}|${pick.id}`; await openSelected();
 }
 async function openSelected() { const [p, i] = $('#sessions').value.split('|'); if (await loadSession(p, i)) { S.locked = false; $('#gate').classList.remove('on'); const at = (prefs.pos || {})[p + '/' + i]; if (!S.live && at > 3 && at < S.events.length - 3) { seekTo(at); toast(L('Reprise là où vous vous étiez arrêté', 'Resumed where you left off')); } } }
@@ -1995,7 +1995,7 @@ addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openSwitcher(); return; }
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;   // browser shortcuts (Cmd+R, Ctrl+N…) stay the browser's
   if (e.key === '?') { openKeys(); return; }
-  if (e.key === ' ') { e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key.toLowerCase() === 't') { const toTree = !document.body.classList.contains('tree'); setView(toTree ? 'tree' : 'call'); if (toTree) toast(L('Vue arbre : T pour revenir, ? pour l’aide', 'Tree view: T to go back, ? for help')); } else if (e.key.toLowerCase() === 'r') openRecap(); else if (e.key.toLowerCase() === 'l') $('#bLog').click(); else if (e.key === 'ArrowRight' && !S.live) { e.preventDefault(); stepEvent(1); } else if (e.key === 'ArrowLeft' && !S.live) { e.preventDefault(); stepEvent(-1); } else if (e.key.toLowerCase() === 'n') stepHighlight(e.shiftKey ? -1 : 1); else if (e.key.toLowerCase() === 'j') jumpAttn(1); else if (e.key.toLowerCase() === 'k') jumpAttn(-1); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
+  if (e.key === ' ') { if (e.target.closest && e.target.closest('button, .tile, .rr, .bcard, a, [role=button]')) return; e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key.toLowerCase() === 't') { const toTree = !document.body.classList.contains('tree'); setView(toTree ? 'tree' : 'call'); if (toTree) toast(L('Vue arbre : T pour revenir, ? pour l’aide', 'Tree view: T to go back, ? for help')); } else if (e.key.toLowerCase() === 'r') openRecap(); else if (e.key.toLowerCase() === 'l') $('#bLog').click(); else if (e.key === 'ArrowRight' && !S.live) { e.preventDefault(); stepEvent(1); } else if (e.key === 'ArrowLeft' && !S.live) { e.preventDefault(); stepEvent(-1); } else if (e.key.toLowerCase() === 'n') stepHighlight(e.shiftKey ? -1 : 1); else if (e.key.toLowerCase() === 'j') jumpAttn(1); else if (e.key.toLowerCase() === 'k') jumpAttn(-1); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
 });
 if (EMBED) $('#mBrowser').style.display = '';
 
@@ -2015,7 +2015,7 @@ if (EMBED) $('#mBrowser').style.display = '';
     return;
   }
   S.live = Q.get('live') !== '0'; document.querySelectorAll('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.m === (S.live ? 'live' : 'replay')));
-  if (S.live) { S.locked = true; $('#gate').classList.add('on'); S.cur = null; syncUI(); fillProjects(); await followCurrent(); } else { S.live = true; await setMode('replay'); }
+  if (S.live) { S.locked = true; $('#gate').classList.add('on'); S.cur = null; syncUI(); fillProjects(); await followCurrent(); } else { S.live = true; await setMode('replay'); if (Q.get('at') != null && S.events.length) seekTo(Math.max(0, Math.min(S.events.length - 1, +Q.get('at') || 0))); }
   syncUI();
 })();
 </script>

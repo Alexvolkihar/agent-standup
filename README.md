@@ -66,6 +66,8 @@ Outputs are trimmed (about 1–2 KB each) to keep the call fast. Results of inte
 ## Personality, without noise
 Sub-agents answer when they get an order ("Running the tests, as usual.", "Grepping like there's no tomorrow."), say goodbye when they leave, and now and then have a little thought; a failing tool call makes the tile shake; confetti when the lead finishes a long job. Whoever receives a report sometimes says thanks ("Got it, thanks."), and an agent that has been thinking for a long time says so ("Hmm, let me think."). When the call has been silent for a while, someone fills the gap the way people do in video calls ("Can you hear me?", "You guys still here?", "Can everyone see my screen?"): after 45 seconds in a live call, about 10 seconds in a replay, at most three times per silence and further and further apart. It is all local (no API), absent from the transcript, and can be turned off in ⚙ → Little lines & animations.
 
+Sub-agents also talk to each other, from what really happened: a new agent asks a question and the lead answers, a report gets a reaction that fits (all good, errors along the way, it took long) and sometimes a word from a third agent, an agent that fails three times in a row gets a “you okay?”, and every few minutes the lead calls a quick round. ⚙ → Display → **Chatter between agents**: Quiet / Normal / Lively.
+
 ## Glance without the panel (VS Code)
 The status bar shows live counts for your workspace (needs you, working, your turn) and turns red when an agent may be waiting for you; hover for the sessions, click to open the call on the most urgent one (`agentStandup.statusBar`).
 
@@ -118,7 +120,7 @@ Long lines are subtitled one sentence at a time, in step with the voice.
 ## Handy extras
 - **Copy as Markdown** in the recap: a ready-to-paste standup report (who did what, files, tokens, final report of each agent).
 - **Notify me when agents finish** (⚙): a soft chime, the tab title and, in VS Code, a notification once the team has worked for a while and gone quiet.
-- **Search** the transcript, **ambience volume**, and a compact layout when the panel is narrow (side bar).
+- **Search** the transcript, **ambience volume**, and a compact layout when the panel is narrow (side bar): under about 300 px wide, one row per agent instead of tiles. In replay, speed presets (1×, 2×, 4×, 8×) and each session remembers where you stopped.
 
 ## Install
 Three ways in — pick one (details in [Works with your tools](#works-with-your-tools)): the **VS Code extension** (below), the **`agent-standup` command** (`npx @double_geste/agent-standup --open`), or the **desktop app** (macOS, from the release page). Cursor, Windsurf and VSCodium install the same `.vsix`.
@@ -265,7 +267,9 @@ This dev was replaced by his own agents. If Agent Standup made your sessions mor
 
 Agent Standup is free and MIT licensed. I'm also available for work around AI agents and developer tooling: reach me through my GitHub profile, [Atoll92](https://github.com/Atoll92).
 
-## Shortcuts
+## Settings menu and shortcuts
+⚙ has sections that fold (and remember it), a search box, and a Display section. “Notify me when the agents finish” is on by default (change it in ⚙ → Sound). The **?** help also explains what each status means.
+
 Press **?** in the app for the full list. Highlights: **Space** pause, **M** mute, **T** tree view, **J / K** next agent that needs you, **Cmd/Ctrl+K** go to a session, and in replay **← / →** step, **N** next highlight.
 
 ## Security and what it reads
