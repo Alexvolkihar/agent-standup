@@ -495,7 +495,11 @@ const S = { owner: null, errRun: {}, exQ: [], agents: {}, events: [], idx: 0, pl
             speakers: new Set(), say: {}, lastTool: {}, level: {}, detail: null, collapsed: new Set(), title: '', idle: false, locked: true, logTo: 0, trOk: true,
             clock: 0, doneAt: {}, gone: new Set(), leaving: new Set(), demo: false, hold: false };
 const VANISH_MS = 120000;   // a finished agent leaves the call after 2 minutes (playback time)
-const spd = () => (S.live ? 1.12 : +$('#speed').value) * (S.boost || 1);
+// Live: how far the call is behind the real session, and what to do about it (speak faster, say less, skip decoration) so it keeps the rhythm of the real conversation
+const lagMs = () => { if (!S.live) return 0; const e = S.events[Math.min(S.idx, S.events.length - 1)]; return e && e.ts ? Math.max(0, Date.now() - e.ts) : 0; };
+const lagFactor = () => { const l = lagMs() / 1000; return l < 6 ? 1 : l < 15 ? 1.15 : l < 30 ? 1.3 : 1.5; };   // steps, so the cached audio of a line is reused
+const caughtUp = () => !S.live || lagMs() < 6000;
+const spd = () => (S.live ? 1.12 * lagFactor() : +$('#speed').value) * (S.boost || 1);
 const nameOf = (id) => (S.agents[id] || {}).name || id;
 
 // ---------- text prep ----------
@@ -511,7 +515,7 @@ const speakable = (t) => t.replace(/(?:[\w.-]+\/)+([\w.-]+)/g, (m, f) => f.repla
 
 // ---------- translation (local claude CLI) ----------
 const trMem = new Map(), trPending = new Map();
-const baseText = (ev, max) => short(ev.text, max || (S.live ? (ev.kind === 'order' ? 150 : 180) : (ev.kind === 'order' ? 200 : 230)));
+const baseText = (ev, max) => short(ev.text, max || (S.live ? (ev.kind === 'order' ? 220 : 180) : (ev.kind === 'order' ? 200 : 230)));
 function ensureTr(texts) {
   texts = [...new Set(texts)].filter((t) => t && !trMem.has(t));
   const waits = texts.filter((t) => trPending.has(t)).map((t) => trPending.get(t)), fresh = texts.filter((t) => !trPending.has(t));
@@ -699,7 +703,7 @@ const TTS = {
       for (const l of ['fr', 'en']) this.pool[l] = rankVoices(d.voices.filter((v) => v.locale.startsWith(l + '_')).map((v) => v.name)); } catch {}
   },
   voiceFor(p, fr = FR()) { const pool = this.pool[fr ? 'fr' : 'en']; return pool.length ? (p.id === 'main' ? pool[0] : pool[(p.vi >>> 2) % pool.length]) : null; },
-  rate() { return Math.round(Math.max(120, Math.min(330, 178 * (S.live ? 1.12 : +$('#speed').value))) / 10) * 10; },
+  rate() { return Math.round(Math.max(120, Math.min(330, 178 * (S.live ? 1.12 * lagFactor() : +$('#speed').value))) / 10) * 10; },
   buf(text, voice, rate) {
     const key = this.engine + '|' + voice + '|' + rate + '|' + text;
     if (!this.cache.has(key)) {
@@ -1423,8 +1427,7 @@ const CHAT = { quiet: 0.45, normal: 1, lively: 1.8 }, chatMul = () => CHAT[prefs
 const EXW = { en: { edit: ['edit', 'edits'], call: ['tool call', 'tool calls'], error: ['error', 'errors'] }, fr: { edit: ['modification', 'modifications'], call: ['appel d’outil', 'appels d’outils'], error: ['erreur', 'erreurs'] } };
 const P = (k, n) => { const w = EXW[FR() ? 'fr' : 'en'][k]; return `${n} ${n === 1 ? w[0] : w[1]}`; };
 const EXCH = {
-  en: { intro: ['can you take this one?', 'this one’s yours:', 'here’s what I need:', 'I need you on this:', 'could you look into this?'],
-    done: ['All done.', 'Finished.', 'Okay, that’s done.', 'Done on my side.', 'That’s wrapped up.'],
+  en: { done: ['All done.', 'Finished.', 'Okay, that’s done.', 'Done on my side.', 'That’s wrapped up.'],
     ask: ['Quick question: is that the whole scope?', 'Anything else I should touch?', 'Any constraints I should know about?', 'Should I check with you before big changes?'],
     askBack: ['Just that, thanks.', 'No, keep it focused.', 'Use your judgment.', 'Nothing special, go ahead.', 'That’s all, thanks.'],
     ok: [(f) => `Nice, ${f.what} and no errors.`, (f) => (f.file ? `Good, ${f.file} looks fine.` : 'Good, that looks fine.'), (f, b) => `Perfect${f.dur ? ', that took ' + f.dur : ''}. Thanks ${b}.`, (f) => `Great, ${f.what}. Clean.`],
@@ -1434,8 +1437,7 @@ const EXCH = {
     chime: [(b) => `Good job, ${b}.`, () => 'Nice one.', (b) => `Great, ${b}.`],
     trouble: [(b) => `${b}, you okay? That’s a lot of errors.`, (b) => `${b}, need a hand with those errors?`], troubleBack: ['Working on it.', 'Yes, almost got it.', 'Give me a minute.', 'I’m on it, thanks.'],
     sync: ['Quick sync: where are we?', 'Status check, everyone?', 'Let’s do a quick round.'], syncAns: [(a) => `Still on it: ${a}.`, (a) => `${a}, going well.`, (a) => `Currently ${a}.`] },
-  fr: { intro: ['tu peux prendre celle-ci ?', 'celle-ci est pour toi :', 'voilà ce qu’il me faut :', 'j’ai besoin de toi là-dessus :', 'tu peux regarder ça ?'],
-    done: ['Terminé.', 'C’est fini.', 'Voilà, c’est fait.', 'Fini de mon côté.', 'C’est bouclé.'],
+  fr: { done: ['Terminé.', 'C’est fini.', 'Voilà, c’est fait.', 'Fini de mon côté.', 'C’est bouclé.'],
     ask: ['Petite question : c’est tout ce qu’il y a à faire ?', 'Il y a autre chose à toucher ?', 'Des contraintes que je dois connaître ?', 'Je te préviens avant les gros changements ?'],
     askBack: ['Juste ça, merci.', 'Non, reste concentré.', 'Fais au mieux.', 'Rien de spécial, vas-y.', 'C’est tout, merci.'],
     ok: [(f) => `Bien, ${f.what} et aucune erreur.`, (f) => (f.file ? `Bien, ${f.file} a l’air bon.` : 'Bien, ça a l’air bon.'), (f, b) => `Parfait${f.dur ? ', ça a pris ' + f.dur : ''}. Merci ${b}.`, (f) => `Super, ${f.what}. Propre.`],
@@ -1464,7 +1466,7 @@ async function exSay(id, line, token) {   // one line of an exchange, then a sho
   if (!exVisible(id) || token !== S.token) return false; startTalk(id, line, '💬'); await speakLine(line, S.agents[id], true, token); stopTalk(id);
   if (token !== S.token) return false; await sleep((150 + Math.random() * 250) / spd()); return token === S.token;
 }
-const exReady = () => prefs.banter && !S.hurry && S.boost <= 1 && !S.recomputing && !S.speakers.size && performance.now() - (S.exAt || 0) > (S.live ? 22000 : 9000 / spd()) / chatMul();
+const exReady = () => prefs.banter && !S.hurry && S.boost <= 1 && !S.recomputing && !S.speakers.size && caughtUp() && performance.now() - (S.exAt || 0) > (S.live ? 22000 : 9000 / spd()) / chatMul();
 const exLog = (kind) => { (S.exLog = S.exLog || []).push(kind); };
 function noteTrouble(agent, ok) {   // three errors in a row: someone asks if everything is alright
   if (ok) { S.errRun[agent] = 0; return; } if (!prefs.banter || S.recomputing) return;
@@ -1512,12 +1514,11 @@ async function converse(g, token) {   // after a line has been said: an exchange
 // What is said out loud for an order or a report: a natural lead-in, then the text
 function talkLine(g) {
   const E = EXCH[FR() ? 'fr' : 'en'], seed = hash('l' + g.ts + g.agent), t = spoken(g);
-  if (g.kind === 'order') return t.replace(/^[^,]+,\s*/, nameOf(g.to) + ', ' + E.intro[seed % E.intro.length] + ' ');
   if (g.kind === 'report') return t.replace(/^(Terminé\.|Done\.)\s*/, E.done[seed % E.done.length] + ' ');
   return t;
 }
 async function react(ev, token) {
-  if ((!prefs.epi && !prefs.banter) || S.boost > 1 || S.hurry) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[FR() ? 'fr' : 'en']; let who, line, thanks = false;
+  if ((!prefs.epi && !prefs.banter) || S.boost > 1 || S.hurry || !caughtUp()) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[FR() ? 'fr' : 'en']; let who, line, thanks = false;
   if (ev.kind === 'order') { if (!prefs.banter && seed % 100 > 55) return; who = ev.to; line = prefs.banter ? ackLine(ev) : R.ack[seed % R.ack.length]; }
   else if (ev.kind === 'report') {
     const r = seed % 100, joke = prefs.epi ? 60 : 35;   // a remark from someone else, or (a little less often) a word of thanks from whoever receives the report
@@ -1582,13 +1583,13 @@ async function run(i) {
     if (S.idle) { S.idle = false; syncUI(); }
     if (S.live) {   // way behind: skip ahead to stay current, but only count what is actually said: sub-agents produce thousands of silent tool events
       const rem = S.events.length - i;
-      if (rem > 300 || aheadSpeakable(i, 16) > 16) {   // only a really big backlog is skipped; before that, lines are shortened instead
+      if (rem > 300 || aheadSpeakable(i, 16) > 16 || lagMs() > 60000) {   // only a really big backlog is skipped; before that, lines are shortened instead
         let k = S.events.length, back = 0; while (k > i && back < 8) { k--; if (SPK.has(S.events[k].kind)) back++; }
         const to = rem > 300 ? Math.max(k, S.events.length - 14) : k; if (to > i) { i = to; recomputeStatus(i); paintStatus(); }
       }
     }
     const q = S.live ? aheadSpeakable(i, 14) : 0;   // lines waiting to be said: the more of them, the shorter each one is read, but it is always read
-    S.pace = !S.live ? 0 : q > 7 ? 70 : q > 3 ? 130 : 260; S.hurry = q > 12;   // voices are only skipped when more than a dozen lines are queued
+    const lg = lagMs() / 1000; S.pace = !S.live ? 0 : Math.min(q > 7 ? 70 : q > 3 ? 130 : 260, lg > 30 ? 70 : lg > 15 ? 130 : lg > 6 ? 200 : 260); S.hurry = q > 12 || lg > 45;   // voices are only skipped when more than a dozen lines are queued
     S.boost = S.hurry || (S.live && S.events.length - i > 60) ? 3 : 1;
     const ev = S.events[i]; S.idx = i; tally(ev);
     if (!S.live && (ev.kind === 'say' || ev.kind === 'report' || ev.kind === 'order' || ev.kind === 'tools')) { await ponder(i, token); if (token !== S.token) return; }
@@ -1690,9 +1691,9 @@ setInterval(async () => {
     if (d.error) return; if (d.total < S.events.length) { S.cur = null; return; }   // transcript was rewritten: reload next tick
     if (!d.events || !d.events.length) return;
     for (const a of d.agents) if (!S.agents[a.id]) { S.agents[a.id] = persona(a); addTile(S.agents[a.id]); }
-    const from = S.events.length; S.events = S.events.concat(d.events); $('#seek').max = S.events.length - 1; trNew(from); renderLog(false); paintStatus();
+    const from = S.events.length; S.events = S.events.concat(d.events); $('#seek').max = S.events.length - 1; trNew(from); warmTTS(from); renderLog(false); paintStatus();
   } catch { if (!S.offline) { S.offline = true; syncUI(); } } finally { polling = false; }
-}, 700);
+}, 400);
 
 
 window.addEventListener('message', (e) => {   // the VS Code status bar asks to follow a given session

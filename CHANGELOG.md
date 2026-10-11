@@ -8,7 +8,8 @@ Five UX improvements and agents that talk to each other more.
 - **Very narrow panel** (under 300 px, like the VS Code side bar): one row per agent instead of tiles. Wider windows keep the tiles.
 - **Replay**: **←** / **→** step through the call, **N** / **Shift+N** jump between highlights, speed presets 1× 2× 4× 8×, and each session remembers where you stopped. Browser shortcuts (Cmd+R, Ctrl+N…) are no longer taken over by the page.
 - **Agents talk to each other**, using what really happened in the session (edits, tool calls, errors, files, time taken): a new agent asks a question and the lead answers; a report gets a reaction that fits (all good, errors along the way, that took long) and sometimes a word from a third agent; an agent that fails three times in a row gets a “you okay?”; every few minutes the lead calls a quick round and the busy agents answer. ⚙ → Display → **Chatter between agents**: Quiet / Normal / Lively.
-- Orders and reports are introduced more naturally (“Ada, can you take this one? …”, “All done. …”). The transcript text is unchanged.
+- Reports are introduced more naturally (“All done. …”); orders keep the lead’s exact instructions, read a little longer in a live call.
+- **Live calls keep the rhythm of the real session**: the page measures how far behind the real conversation it is and, past 6 s, speaks a little faster and reads shorter lines; the small talk and the exchanges between agents only happen when the call has caught up; past a minute it skips ahead. New events are polled every 0.4 s (was 0.7) and their audio is prepared as soon as they arrive. On a simulated live session the median delay between a line being written and it being spoken went from about 3 s to 1 s.
 
 ## 1.24.3
 - **Dansk** (Danish) interface, suggested by a Reddit reader. AI-drafted: corrections welcome in `public/locales/da.json`.
