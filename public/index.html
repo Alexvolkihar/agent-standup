@@ -1423,7 +1423,7 @@ function ackLine(ev) {
 // =====================================================================
 //  conversation: short exchanges between agents at the right moments, built from what really happened in the session
 // =====================================================================
-const CHAT = { quiet: 0.45, normal: 1, lively: 1.8 }, chatMul = () => CHAT[prefs.chat] || 1;
+const CHAT = { quiet: 0.45, normal: 1, lively: 1.8 }, chatMul = () => CHAT[prefs.chat] || CHAT.quiet;   // quiet unless chosen otherwise, so the call does not tire anyone
 const EXW = { en: { edit: ['edit', 'edits'], call: ['tool call', 'tool calls'], error: ['error', 'errors'] }, fr: { edit: ['modification', 'modifications'], call: ['appel d’outil', 'appels d’outils'], error: ['erreur', 'erreurs'] } };
 const P = (k, n) => { const w = EXW[FR() ? 'fr' : 'en'][k]; return `${n} ${n === 1 ? w[0] : w[1]}`; };
 const EXCH = {
@@ -1919,7 +1919,7 @@ $('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b)
 $('#station').innerHTML = STATIONS.map((s) => `<option value="${s.id}">📻 ${s.name}</option>`).join('');
 $('#station').value = prefs.station; $('#musicVol').value = prefs.musicVol; $('#musicBox').style.display = prefs.music ? '' : 'none';
 $('#station').onchange = (e) => { prefs.station = e.target.value; savePrefs(); AUD.init(); RADIO.sync(); };
-$('#chatSel').value = ['quiet', 'normal', 'lively'].includes(prefs.chat) ? prefs.chat : 'normal'; $('#chatSel').onchange = () => { prefs.chat = $('#chatSel').value; savePrefs(); };
+$('#chatSel').value = ['quiet', 'normal', 'lively'].includes(prefs.chat) ? prefs.chat : 'quiet'; $('#chatSel').onchange = () => { prefs.chat = $('#chatSel').value; savePrefs(); };
 $('#vstyle').innerHTML = [['animal', 'Animal Crossing (babillage)', 'Animal Crossing (babble)'], ['sims', 'Simlish (babillage)', 'Simlish (babble)'], ['cartoon', 'Voix cartoon (voix réelle)', 'Cartoon voices (real voice)'], ['natural', 'Voix naturelles', 'Natural voices'], ['kokoro', 'Voix très naturelles (à installer)', 'Very natural voices (installs on demand)']].map(([v, fr, en]) => `<option value="${v}" data-fr="${fr}" data-en="${en}">${L(fr, en)}</option>`).join(''); $('#vstyle').value = prefs.vstyle; $('#vstyle').onchange = () => { prefs.vstyle = $('#vstyle').value; prefs.vstyleChosen = true; savePrefs(); TTS.init().then(kokoroUI); kokoroUI(); };
 // ---- ⚙ → very natural voices (Kokoro): install box and status, polled while installing
 let kokoroTimer = null;
