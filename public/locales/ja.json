@@ -186,5 +186,7 @@
  "Transcript": "文字起こし",
  "Tree view ↔ call": "ツリー表示 ↔ 通話",
  "Tree view: T to go back, ? for help": "ツリー表示：Tで戻る、?でヘルプ",
- "You can also switch between Call, Tree and Sessions at the top of the window.": "ウィンドウ上部で「通話」「ツリー」「セッション」を切り替えることもできます。"
+ "You can also switch between Call, Tree and Sessions at the top of the window.": "ウィンドウ上部で「通話」「ツリー」「セッション」を切り替えることもできます。",
+ "Display": "表示",
+ "Search settings…": "設定を検索…"
 }

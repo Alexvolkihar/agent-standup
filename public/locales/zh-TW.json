@@ -186,5 +186,7 @@
  "Transcript": "逐字稿",
  "Tree view ↔ call": "樹狀檢視 ↔ 通話",
  "Tree view: T to go back, ? for help": "樹狀檢視：按 T 返回，按 ? 查看說明",
- "You can also switch between Call, Tree and Sessions at the top of the window.": "你也可以在視窗上方切換通話、樹狀和工作階段檢視。"
+ "You can also switch between Call, Tree and Sessions at the top of the window.": "你也可以在視窗上方切換通話、樹狀和工作階段檢視。",
+ "Display": "顯示",
+ "Search settings…": "搜尋設定…"
 }
