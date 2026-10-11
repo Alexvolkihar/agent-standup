@@ -201,5 +201,10 @@
  "No highlight in this session": "このセッションにはハイライトがありません",
  "Replay: next / previous highlight": "リプレイ：次 / 前のハイライト",
  "Replay: previous / next event": "リプレイ：前 / 次のイベント",
- "Resumed where you left off": "前回の続きから再開しました"
+ "Resumed where you left off": "前回の続きから再開しました",
+ "Chatter between agents": "エージェント同士の会話",
+ "Lively": "にぎやか",
+ "Normal": "ふつう",
+ "nothing to report": "報告事項なし",
+ "Quiet": "静か"
 }

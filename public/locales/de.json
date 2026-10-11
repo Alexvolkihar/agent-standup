@@ -201,5 +201,10 @@
  "No highlight in this session": "Keine Höhepunkte in dieser Sitzung",
  "Replay: next / previous highlight": "Wiedergabe: nächster / vorheriger Höhepunkt",
  "Replay: previous / next event": "Wiedergabe: vorheriges / nächstes Ereignis",
- "Resumed where you left off": "Dort fortgesetzt, wo du aufgehört hast"
+ "Resumed where you left off": "Dort fortgesetzt, wo du aufgehört hast",
+ "Chatter between agents": "Gespräche zwischen Agenten",
+ "Lively": "Lebhaft",
+ "Normal": "Normal",
+ "nothing to report": "nichts zu melden",
+ "Quiet": "Ruhig"
 }

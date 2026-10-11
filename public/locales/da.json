@@ -200,5 +200,10 @@
  "No highlight in this session": "Ingen højdepunkter i denne session",
  "Replay: next / previous highlight": "Afspilning: næste / forrige højdepunkt",
  "Replay: previous / next event": "Afspilning: forrige / næste hændelse",
- "Resumed where you left off": "Fortsat hvor du slap"
+ "Resumed where you left off": "Fortsat hvor du slap",
+ "Chatter between agents": "Snak mellem agenter",
+ "Lively": "Livlig",
+ "Normal": "Normal",
+ "nothing to report": "intet at rapportere",
+ "Quiet": "Stille"
 }
