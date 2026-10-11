@@ -28,7 +28,9 @@ _A fictional team fixing a slow login page — the built-in demo (⚙ → Source
 - **Sub-agent tree** — the full hierarchy (you → Claude → sub-agents → their sub-agents) with status, tool counts and the current action.
 - **Click any agent** — its prompt, tool usage and reports.
 - **Replay** — pick any past session, scrub through it, see a timeline of who worked when, and get a **recap** (agents, tool calls, commands, files changed, busiest agents).
-- **Video export** — records the call as a 1280×720 `.webm` with voices and subtitles.
+- **Video export** — ⚙ → Tools → 🎞 Export video records the call at 1280×720 with voices and subtitles, as an MP4 (H.264 + AAC) when the browser can record it, and as a `.webm` when it cannot. X, phones and most chat apps refuse `.webm`.
+- **Clip to share** — ⚙ → Tools → 🎬 Clip to share (25 s) records about 25 seconds, saved as `agent-standup-clip.mp4` (`.webm` when the browser cannot record MP4). In the middle of a replay it starts at the current position; otherwise one spoken line before the first error or loop of the session, and failing that at the moment the lead first hands out work. The line being said when time is up is finished rather than cut, so the length varies by a few seconds. The clip carries the site address (atoll92.github.io/agent-standup) in the top right corner and ends with a short end card; the full export has neither.
+- **Hide code & file names in videos** — ⚙ → Tools, off by default, for the full export and the clip. Commands, their output, file contents, diffs and search results on the shared screen are drawn as grey bars of the same length; file names are removed from the window title and from the activity tags on tiles (the tool's name, e.g. `Bash` or `Read`, stays); the session title is replaced by "Agent Standup"; pictures (screenshots, images) become an empty frame. **What the agents say is not masked**: speech bubbles, subtitles and voices are kept as they are, so check the clip before posting if agents quote code or names aloud.
 - **French or English** — agent text is translated on the fly (see below).
 - **Office music** — optional live web radio (FIP and its themed stations) that fades down smoothly while an agent talks and fades back up when the room goes quiet.
 - Office ambience, optional (off by default) and fully synthesised: keyboards that type when agents run commands, clicks when they read, a coffee machine, a phone buzzing, a far-away door… (⚙ → Office ambience). Plus small reactions and jokes between agents ("episode mode").
@@ -43,6 +45,7 @@ _A fictional team fixing a slow login page — the built-in demo (⚙ → Source
 **On the shared screen** (appears when an agent uses a tool, stays while a command is still running, then ~4 s after the last action)
 - **Terminal** — `❯ command` (with its description), then its **real output** (first lines, errors in red, “… +N lines”), `● Grep(…)` / `● Glob(…)` with matches, a spinner for what is still running. Footer: `✓ Bash · 1.2 s` or `⠋ Bash · running 3.4 s`.
 - **Editor** — for `Read`: the file with its real content and line numbers (read-only); for `Edit`: the removed/added lines; for `Write`: the new content, with the tool's result line.
+- **Pictures** — when a tool gives the agent a picture (a screenshot it takes, an image file it reads: PNG, JPEG, GIF, WebP), the picture is shown on the shared screen, in a taller window, and stays up for several seconds (8 in a live call) whatever the agent does next. It is also in the agent's **Recent activity** and in exported videos. Pictures are read from the session file itself, never from your disk.
 - **Task list** — if the agent keeps a todo list, a side panel shows it live (☐ pending, ◐ in progress, ☑ done).
 - The presenter's camera lip-syncs when they speak; the subtitle bar shows what they say.
 
@@ -61,7 +64,7 @@ Outputs are trimmed (about 1–2 KB each) to keep the call fast. Results of inte
 | ![todo](https://atoll92.github.io/agent-standup/media/todo.jpg) | ![recap](https://atoll92.github.io/agent-standup/media/recap.jpg) | ![fr](https://atoll92.github.io/agent-standup/media/hero-fr.jpg) |
 
 ## Personality, without noise
-Sub-agents answer when they get an order ("Running the tests, as usual.", "Grepping like there's no tomorrow."), say goodbye when they leave, and now and then have a little thought; a failing tool call makes the tile shake; confetti when the lead finishes a long job. It is all local (no API), absent from the transcript, and can be turned off in ⚙ → Little lines & animations.
+Sub-agents answer when they get an order ("Running the tests, as usual.", "Grepping like there's no tomorrow."), say goodbye when they leave, and now and then have a little thought; a failing tool call makes the tile shake; confetti when the lead finishes a long job. When the call has been silent for a while, someone fills the gap the way people do in video calls ("Can you hear me?", "You guys still here?", "Can everyone see my screen?"): after 45 seconds in a live call, about 10 seconds in a replay, at most three times per silence and further and further apart. It is all local (no API), absent from the transcript, and can be turned off in ⚙ → Little lines & animations.
 
 ## Glance without the panel (VS Code)
 The status bar shows live counts for your workspace (needs you, working, your turn) and turns red when an agent may be waiting for you; hover for the sessions, click to open the call on the most urgent one (`agentStandup.statusBar`).
@@ -177,7 +180,7 @@ The first click on **Join** is required by browsers to allow sound.
 | **⏸ / ▶** (Space) | pause / resume |
 | **☰** | transcript |
 | **🔊 / 🔇** (M) | mute everything |
-| **⚙** | language · voices · ambience · **office music (station + volume)** · agents list · little lines & animations · reactions bar · remove finished agents · **Live / Replay / Demo** (and project / session picker) · recap · export video |
+| **⚙** | language · voices · ambience · **office music (station + volume)** · agents list · little lines & animations · reactions bar · remove finished agents · **Live / Replay / Demo** (and project / session picker) · recap · export video · clip to share (25 s) · hide code & file names in videos |
 | **T** · **R** · **L** | tree/call · recap · transcript |
 | Esc | close recap / menu |
 
@@ -247,7 +250,8 @@ The website counts visits anonymously (a 1-pixel file hosted on GitHub per chann
 - Output only exists once a tool call has finished: a running command shows a spinner and its live timer, not partial output.
 - Voices on macOS/Windows/Linux differ in quality; Windows needs a French voice installed for French.
 - Very large sessions (10 MB+ of transcript) take a second or two to load the first time (about 1.9 s for a 12 MB, 168-sub-agent session on a recent Mac); after that updates take milliseconds.
-- Video export records in real time and needs a Chromium-based browser/VS Code.
+- Video export and the clip record in real time and need a Chromium-based browser/VS Code. MP4 recording was checked in Chrome; it has not been tested inside VS Code's own panel, which may still produce a `.webm`.
+- "Hide code & file names in videos" does not mask what the agents say (speech bubbles, subtitles, voices).
 
 ## Credits
 Several ideas in 1.23 (settings kept in a file, session stickiness, subtitles that follow the voice, Kokoro voices) started in [neondragon's fork](https://github.com/neondragon/agent-standup) of this project. Thank you!  Their code was read and rewritten for this codebase. The Traditional Chinese wording was polished with suggestions from a Taiwanese reader on Reddit. Unofficial: not affiliated with Anthropic.

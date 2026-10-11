@@ -46,6 +46,36 @@ const toolLabel = (b, ts) => {
   return out;
 };
 const resultText = (c) => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => x.text || '').join('\n') : '');
+// Pictures a tool returned (a screenshot, an image file that was read). They are served from the transcript itself, so nothing outside the session files is ever read, and only bitmap types are sent.
+const IMG_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']), mediaMemo = new Map();
+const isImg = (x) => !!x && x.type === 'image' && !!x.source && x.source.type === 'base64' && typeof x.source.data === 'string' && IMG_TYPES.has(x.source.media_type);
+const resultImages = (c) => (Array.isArray(c) ? c.filter(isImg) : []);
+function mediaFile(proj, sid, agent) {
+  if (agent === 'main') return path.join(ROOT, proj, sid + '.jsonl');
+  const dir = path.join(ROOT, proj, sid, 'subagents'); let hit = null;
+  try { hit = fs.readdirSync(dir).find((x) => x.endsWith('.jsonl') && x.replace(/^agent-/, '').replace(/\.jsonl$/, '').replace(/[^\w.-]/g, '_') === agent); } catch {}
+  return hit ? path.join(dir, hit) : null;
+}
+function toolImage(file, toolId, n) {   // looks for the tool's result line in the transcript, 8 MB at a time; the few pictures asked last are kept in memory
+  const key = file + '|' + toolId + '|' + n; if (mediaMemo.has(key)) return mediaMemo.get(key);
+  const needle = Buffer.from(toolId), mark = Buffer.from('"image"'); let fd, found = null, carry = Buffer.alloc(0), pos = 0;
+  try {
+    fd = fs.openSync(file, 'r'); const size = fs.fstatSync(fd).size;
+    while (pos < size && !found) {
+      const buf = Buffer.alloc(Math.min(8 * 1024 * 1024, size - pos)); fs.readSync(fd, buf, 0, buf.length, pos); pos += buf.length;
+      const all = carry.length ? Buffer.concat([carry, buf]) : buf; let from = 0;
+      for (let hit; !found && (hit = all.indexOf(needle, from)) >= 0;) {
+        const a = all.lastIndexOf(10, hit) + 1, b = all.indexOf(10, hit); if (b < 0) break;   // the line goes on in the next chunk
+        from = b + 1; const m = all.indexOf(mark, a); if (m < 0 || m > b) continue;
+        let r; try { r = JSON.parse(all.subarray(a, b).toString('utf8')); } catch { continue; }
+        for (const blk of blocks(r)) if (blk.type === 'tool_result' && blk.tool_use_id === toolId) { const im = resultImages(blk.content)[n]; if (im) found = { type: im.source.media_type, buf: Buffer.from(im.source.data, 'base64') }; }
+      }
+      carry = all.subarray(all.lastIndexOf(10) + 1);
+    }
+  } catch {} finally { if (fd != null) fs.closeSync(fd); }
+  if (found) { mediaMemo.set(key, found); if (mediaMemo.size > 12) mediaMemo.delete(mediaMemo.keys().next().value); }
+  return found;
+}
 const RESULT_MAX = { AskUserQuestion: 900, Skill: 300, ToolSearch: 500, Read: 1900, Bash: 1300, Grep: 900, Glob: 800, WebFetch: 800, WebSearch: 800, Edit: 200, MultiEdit: 200, Write: 200 };
 const NO_RESULT = new Set(['Agent', 'Task', 'SendMessage', 'TodoWrite']);   // internal bookkeeping, nothing to show
 const HARNESS = /<(system-reminder|browser_instruction|ide_selection|ide_opened_file|task-notification|command-name|command-message|command-args|local-command-stdout|local-command-caveat)>[\s\S]*?<\/\1>\s*/g;   // blocks the harness wraps around what the human typed
@@ -225,8 +255,8 @@ function parseRecord(st, r) {
     const items = [];   // tool results: the real output that appeared on the agent's screen
     for (const b of blocks(r)) if (b.type === 'tool_result' && (st.toolName[b.tool_use_id] === 'Agent' || st.toolName[b.tool_use_id] === 'Task') && !(st.bg && st.bg[b.tool_use_id]) && !/^\s*Async agent launched/i.test(resultText(b.content))) st.raw.push({ ts, agent, kind: 'agentdone', toolId: b.tool_use_id });   // a synchronous call: the lead got the sub-agent's answer back, so it has finished (async launches answer immediately and are not a completion)
     for (const b of blocks(r)) if (b.type === 'tool_result' && st.toolName[b.tool_use_id] && !NO_RESULT.has(st.toolName[b.tool_use_id])) {
-      const n = st.toolName[b.tool_use_id];
-      items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || (/^mcp__/.test(n) ? 900 : 600)) });
+      const n = st.toolName[b.tool_use_id], img = resultImages(b.content).length;
+      items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || (/^mcp__/.test(n) ? 900 : 600)), ...(img ? { img } : {}) });   // img: how many pictures came back; the page fetches them from /api/media
     }
     if (items.length) st.raw.push({ ts, agent, kind: 'results', items });
     if (agent !== 'main') return;   // a sub-agent's first user message is the order, emitted from the parent's side
@@ -490,9 +520,9 @@ function start(port = PORT) {
   let originOk = true; try { originOk = !req.headers.origin || local(new URL(req.headers.origin).host); } catch { originOk = false; }
   if (!local(req.headers.host) || !originOk) { res.writeHead(403); return res.end('forbidden'); }
   const json = (o, code = 200) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(o)); };
-  // Endpoints with side effects (they spawn programs or claim the sound) refuse requests that a browser marks as coming from another site, e.g. an <img> on a web page.
+  // Endpoints with side effects (they spawn programs or claim the sound), and the one that serves pictures from a session, refuse requests that a browser marks as coming from another site, e.g. an <img> on a web page.
   const sfs = req.headers['sec-fetch-site'];
-  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts', '/api/prefs', '/api/voices', '/api/kokoro', '/api/kokoro/install'].includes(url.pathname)) { res.writeHead(403); return res.end('forbidden'); }
+  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts', '/api/prefs', '/api/voices', '/api/kokoro', '/api/kokoro/install', '/api/media'].includes(url.pathname)) { res.writeHead(403); return res.end('forbidden'); }
   const readBody = (cb) => {   // request bodies are small JSON: stop reading beyond 256 KB and give up after 10 s
     let body = '', over = false; req.setTimeout(10000, () => req.destroy());
     req.on('data', (d) => { if (over) return; body += d; if (body.length > 262144) { over = true; res.writeHead(413); res.end('too large'); req.destroy(); } });
@@ -533,6 +563,12 @@ function start(port = PORT) {
     if (url.pathname === '/api/current') return json(currentSession(url.searchParams.get('proj') || '', url.searchParams.get('id') || '', { proj: url.searchParams.get('sproj') || '', id: url.searchParams.get('sid') || '' }));
     if (url.pathname === '/api/board') return json(boardRows());
     if (url.pathname === '/api/characters') return json(listCharacters());
+    if (url.pathname === '/api/media') {
+      const q = (k) => url.searchParams.get(k) || '', SAFE = /^[\w.\-]+$/, n = +q('n') || 0, bad = [q('proj'), q('id'), q('agent'), q('tool')].some((v) => !SAFE.test(v) || v === '..' || v.length > 200);
+      const file = bad || !Number.isInteger(n) || n < 0 || n > 9 ? null : mediaFile(q('proj'), q('id'), q('agent')), im = file && toolImage(file, q('tool'), n);
+      if (!im) { res.writeHead(bad ? 400 : 404); return res.end(bad ? 'bad request' : 'not found'); }
+      res.writeHead(200, { 'content-type': im.type, 'content-length': im.buf.length, 'cache-control': 'private, max-age=3600', 'x-content-type-options': 'nosniff' }); return res.end(im.buf);
+    }
     if (url.pathname === '/api/session') {
       const proj = url.searchParams.get('proj') || '', sid = url.searchParams.get('id') || '', SAFE = /^[\w.\-]+$/;
       if (!SAFE.test(proj) || !SAFE.test(sid) || proj === '..' || sid === '..' || proj.length > 200 || sid.length > 200) { res.writeHead(400); return res.end('bad request'); }

@@ -85,11 +85,12 @@
   .prop.cheer { animation:cheer 1.1s ease-out both } @keyframes cheer { 0% { transform:scale(.3) translateY(10px); opacity:0 } 40% { transform:scale(1.25); opacity:1 } 100% { transform:translateY(-14px); opacity:0 } }
   /* ---------- screen sharing (presentation mode) ---------- */
   #present { display:none; flex:none; position:relative; height:clamp(190px,46vh,430px); background:radial-gradient(ellipse at 50% 0,#1b2033,#0b0d14); border-bottom:1px solid var(--line); padding:12px 16px; justify-content:center }
-  #present.on { display:flex; animation:fadein .3s }
+  #present.on { display:flex; animation:fadein .3s } #present.pic { height:clamp(220px,60vh,640px) }
   .pwin { flex:0 1 900px; display:flex; flex-direction:column; border-radius:10px; overflow:hidden; background:#0d1117; box-shadow:0 18px 50px rgba(0,0,0,.6), 0 0 0 2px rgba(240,160,32,.55) }
   .pbar { display:flex; align-items:center; gap:6px; padding:7px 10px; background:#1c1f2b; font-size:11.5px; color:#9aa0b4 } .pbar i { width:10px; height:10px; border-radius:50%; display:inline-block }
   .pbar .r { background:#ff5f57 } .pbar .y { background:#febc2e } .pbar .g { background:#28c840 } #ptitle { margin:0 0 0 14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0 }
   #pbody { flex:1; overflow:hidden; padding:10px 14px; font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:#d6dae6 } .pwin.editor #pbody { background:#1a1b26; padding:0 }
+  .pwin.image #pbody { display:flex; gap:8px; align-items:center; justify-content:center; background:#0b0c11; padding:8px } .pwin.image #pbody img { flex:0 1 auto; min-width:0; max-width:100%; max-height:100%; object-fit:contain; border-radius:4px } .pmore { color:#9aa0b4; font-size:12px } .dimg { display:block; max-width:100%; border-radius:6px; margin:4px 0 }
   .ptab { display:flex; align-items:center; gap:10px; background:#16161e; padding:5px 12px; border-bottom:1px solid #2a2b3d; font:11.5px -apple-system,system-ui,sans-serif } .ptab span { background:#1a1b26; padding:3px 10px; border-radius:6px 6px 0 0; color:#e9eaf0 } .ptab em { color:#6b7089; font-style:normal }
   .ln { display:flex; gap:10px; padding:0 12px; white-space:pre-wrap; word-break:break-all } .ln b { width:12px; flex:none; color:#7a7f98; font-weight:400 } .ln.add { background:rgba(63,185,80,.16); color:#9be9a8 } .ln.del { background:rgba(248,81,73,.16); color:#ffa198 }
   .tl { white-space:pre-wrap; word-break:break-word } .tl .ps { color:#7ee787 } .tl.cmd { color:#e6edf3 } .tl.tool { color:#8b95b0 } .dotg { color:#58a6ff }
@@ -258,6 +259,8 @@
   <button class="mi" id="mCoffee" style="display:none"><span id="mCoffeeT"></span></button>
   <button class="mi" id="mRecap"><span data-fr="📋 Récapitulatif" data-en="📋 Recap">📋 Récapitulatif</span></button>
   <button class="mi" id="mExport"><span data-fr="🎞 Exporter la vidéo" data-en="🎞 Export video">🎞 Exporter la vidéo</span></button>
+  <button class="mi" id="mClip"><span data-fr="🎬 Clip à partager (25 s)" data-en="🎬 Clip to share (25 s)">🎬 Clip à partager (25 s)</span></button>
+  <button class="mi" data-t="hideCode"><span data-fr="Masquer code et fichiers dans les vidéos" data-en="Hide code & file names in videos">Masquer code et fichiers dans les vidéos</span><i class="sw"></i></button>
   <div class="keys">Space ⏯ · M 🔇 · T tree · R recap · L log · Esc ✕</div>
   <button class="mi" id="mBrowser" style="display:none"><span data-fr="↗ Ouvrir dans le navigateur" data-en="↗ Open in browser">↗ Ouvrir dans le navigateur</span></button>
 </div>
@@ -298,7 +301,7 @@ const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
 if (Q.get('pin')) S.pin = Q.get('pin');
 
-let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'cartoon', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call' };
+let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'cartoon', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call', hideCode: false };
 { let loc = {}; try { loc = JSON.parse(localStorage.getItem('cc.prefs') || '{}') || {}; } catch {}   // the settings file (shared by every window) and this origin's copy: the more recent one wins
   const sv = window.SAVED_PREFS && typeof window.SAVED_PREFS === 'object' ? window.SAVED_PREFS : {}; Object.assign(prefs, (sv._t || 0) > (loc._t || 0) ? sv : loc); }
 if (prefs.vstyle === 'babble') prefs.vstyle = 'animal', prefs.vstyleChosen = true;
@@ -1048,7 +1051,7 @@ function pushTerm(id, tool) {
 }
 function applyResults(ev, silent) {   // the output of a tool call arrives
   const buf = S.term[ev.agent] || []; let last = null;
-  for (const it of ev.items) for (let i = buf.length - 1; i >= 0; i--) if (buf[i].id === it.id) { Object.assign(buf[i], { out: it.out, err: it.err, end: ev.ts }); last = buf[i]; break; }
+  for (const it of ev.items) for (let i = buf.length - 1; i >= 0; i--) if (buf[i].id === it.id) { Object.assign(buf[i], { out: it.out, err: it.err, end: ev.ts, img: it.img || 0, picAt: it.img && !silent ? performance.now() : 0 }); last = buf[i]; break; }
   if (S.run[ev.agent] && ev.items.some((it) => it.id === S.run[ev.agent].id)) delete S.run[ev.agent];
   if (silent || !last) return;
   setTicker(ev.agent, last); if (S.present === ev.agent) { renderPresent(); armPresent(); }
@@ -1077,8 +1080,11 @@ function statOf(e, id) {
   if (e.end == null) { const r = S.run[id], el = r ? performance.now() - r.start : 0; return `⠋ ${e.tool.name} · ${L('en cours', 'running')}${el > 1500 ? ' ' + fmtDur(el) : ''}`; }
   return `${e.err ? '✗' : '✓'} ${e.tool.name} · ${fmtDur(e.end - e.ts)}`;
 }
+const mediaUrl = (agent, tool, n) => `/api/media?proj=${encodeURIComponent(S.cur.proj)}&id=${encodeURIComponent(S.cur.id)}&agent=${encodeURIComponent(agent)}&tool=${encodeURIComponent(tool)}&n=${n}`;
 function termModel(id) {
   const buf = S.term[id] || [], last = buf[buf.length - 1], lines = [], more = (n) => ({ c: 'dim', t: `… +${n} ${L('lignes', 'lines')}` });
+  const pic = S.cur && buf.slice(-12).reverse().find((e) => e.img), fresh = pic && performance.now() - pic.picAt < (S.live ? 8000 : 2500 / spd());   // a picture a tool returned (screenshot, image file) stays up for a few seconds whatever comes next, then for the next few calls: a screenshot is usually followed by a click or two
+  if (pic && (fresh || (buf.length - buf.indexOf(pic) <= 4 && (pic === last || !/^(edit|write|read)$/.test(last.k))))) return { view: 'image', title: pic.k === 'read' ? base(pic.tool.d.file) : pic.tool.name.split('__').pop(), imgs: Array.from({ length: Math.min(pic.img, 3) }, (_, n) => mediaUrl(id, pic.id, n)), more: pic.img - 3, lines, stat: statOf(last, id) };
   if (last && (last.k === 'edit' || last.k === 'write' || last.k === 'read')) {
     const d = last.tool.d, rows = (txt, c) => String(txt || '').split('\n').slice(0, 14).map((t) => ({ c, t }));
     if (last.k === 'read') {
@@ -1104,20 +1110,21 @@ const lineHtml = (l, view) => view === 'editor'
 // ---------- screen sharing: a real video-call presentation (window + presenter camera) ----------
 function renderPresent() {
   const id = S.present, p = S.agents[id]; if (!p) return; const m = termModel(id);
-  $('#present .pwin').className = 'pwin ' + (m.view === 'editor' ? 'editor' : 'term');
-  $('#ptitle').textContent = m.view === 'editor' ? m.title : `${p.name} — zsh — 96×24`;
-  const pb = $('#pbody');
-  pb.innerHTML = (m.view === 'editor' ? `<div class="ptab"><span>${esc(m.tab.file)}</span><em>${esc(m.tab.path)}</em></div>` : '') + m.lines.map((l) => lineHtml(l, m.view)).join('') + (m.view === 'term' ? '<div class="tl"><span class="ps">❯</span> <span class="cursor"></span></div>' : '');
-  pb.scrollTop = m.view === 'term' ? pb.scrollHeight : 0; $('#pstat').textContent = m.stat;
+  $('#present .pwin').className = 'pwin ' + (m.view === 'term' ? 'term' : m.view); if ($('#present').classList.toggle('pic', m.view === 'image') !== S.picUp) { S.picUp = m.view === 'image'; layout(); }   // a picture gets a taller window
+  $('#ptitle').textContent = m.view === 'term' ? `${p.name} — zsh — 96×24` : m.title;
+  const pb = $('#pbody'), shown = m.view === 'image' ? m.imgs.join(' ') : '';
+  if (shown) { if (pb.dataset.img !== shown) pb.innerHTML = m.imgs.map((u) => `<img src="${esc(u)}" alt="">`).join('') + (m.more > 0 ? `<span class="pmore">+${m.more}</span>` : ''); }   // the same pictures are left in place: redrawing them would make them blink
+  else pb.innerHTML = (m.view === 'editor' ? `<div class="ptab"><span>${esc(m.tab.file)}</span><em>${esc(m.tab.path)}</em></div>` : '') + m.lines.map((l) => lineHtml(l, m.view)).join('') + (m.view === 'term' ? '<div class="tl"><span class="ps">❯</span> <span class="cursor"></span></div>' : '');
+  pb.dataset.img = shown; pb.scrollTop = m.view === 'term' ? pb.scrollHeight : 0; $('#pstat').textContent = m.stat;
   const td = S.todos[id], el = $('#ptodo'); el.style.display = td && td.length ? '' : 'none'; $('#present').classList.toggle('has-todo', !!(td && td.length));
   if (td) el.innerHTML = `<h5>${L('Tâches', 'Tasks')} · ${td.filter((x) => x.s === 'completed').length}/${td.length}</h5>` + td.map((x) => `<div class="td ${x.s}"><i>${x.s === 'completed' ? '☑' : x.s === 'in_progress' ? '◐' : '☐'}</i>${esc(x.c)}</div>`).join('');
   $('#pbadge').textContent = `🖥 ${p.name} ${L('partage son écran', 'is sharing their screen')}`;
   if (S.camFor !== id) { $('#pcam').innerHTML = avatarSVG(p, undefined, 'c' + p.gid + '_') + `<div class="tag"><b>${esc(p.name)}</b></div>`; S.camFor = id; }
   $('#pcam').classList.toggle('speaking', S.speakers.has(id));
 }
-function armPresent() {   // stays up while a command is still running, then ~4 s after the last action
+function armPresent() {   // stays up while a command is still running, then ~4 s after the last action (~9 s when it shows a picture)
   clearTimeout(presentTimer); if (S.hold) return;
-  presentTimer = setTimeout(() => { if (S.present && S.run[S.present] && S.playing) armPresent(); else hidePresent(); }, 4200 / Math.max(1, spd() / 1.2));
+  presentTimer = setTimeout(() => { if (S.present && S.run[S.present] && S.playing) armPresent(); else hidePresent(); }, ($('#present').classList.contains('pic') ? 9000 : 4200) / Math.max(1, spd() / 1.2));
 }
 function showPresent(id) {
   if (S.boost > 1 || (S.speakers.size && !S.speakers.has(id))) return;   // catching up, or someone else has the floor
@@ -1177,6 +1184,7 @@ const mouths = new Map();
 function startTalk(id, text, label) {
   const t = $('#t-' + id); if (!t) return;
   if (S.present && S.present !== id) hidePresent();
+  S.spokeAt = performance.now(); S.fill = 0;
   if (!S.speakers.size && !(S.focusLock > Date.now())) setFocus(id); S.gone.delete(id); if (S.doneAt[id] != null) S.doneAt[id] = S.clock; t.style.display = ''; t.classList.add('speaking'); S.speakers.add(id); S.say[id] = { text, label }; AUD.duck(true);
   const shown0 = pieces(text), first = shown0.length > 1 ? shown0[0] : text; const b = t.querySelector('.bubble'); b.innerHTML = (label ? `<small>${esc(label)}</small>` : '') + esc(first);
   if (S.present === id) { $('#pcap').textContent = first; $('#pcam').classList.add('speaking'); }
@@ -1200,7 +1208,7 @@ function confetti() {
   for (let i = 0; i < 26; i++) { const c = document.createElement('i'); c.className = 'confetti'; c.style.left = Math.random() * 100 + '%'; c.style.background = cols[i % cols.length]; c.style.animationDelay = Math.random() * 0.6 + 's'; c.style.animationDuration = 1.8 + Math.random() * 1.4 + 's'; box.appendChild(c); setTimeout(() => c.remove(), 4200); }
 }
 function stopTalk(id) {
-  captionClear(id);
+  captionClear(id); S.spokeAt = performance.now();
   clearInterval(mouths.get(id)); mouths.delete(id); S.speakers.delete(id); if (!S.speakers.size) AUD.duck(false); if (S.focus === id && S.speakers.size) setFocus([...S.speakers][0]);
   if (S.present === id) { $('#pcap').textContent = ''; $('#pcam').classList.remove('speaking'); const pm = $('#pcam .mouthE'); if (pm) { pm.setAttribute('ry', .9); pm.setAttribute('rx', 4.6); } }
   const t = $('#t-' + id); if (!t) return;
@@ -1242,7 +1250,7 @@ function renderDetail() {
   const u = S.usage[id], tokHtml = u && tokTotal(u) ? `<h3>${L('Jetons', 'Tokens')} · ⚡ ${fmtTok(tokTotal(u))}</h3><div class="dim">${L('entrée', 'input')} ${fmtTok(u.i)} · ${L('sortie', 'output')} ${fmtTok(u.o)} · ${L('écriture cache', 'cache write')} ${fmtTok(u.w)} · ${L('lecture cache', 'cache read')} ${fmtTok(u.r)}</div>` : '';
   $('#dbody').innerHTML = tokHtml + (order ? `<h3>${L('Consigne de', 'Prompt from')} ${esc(nameOf(order.agent))}</h3><pre>${esc(order.text)}</pre>` : '') +
     `<h3>${L('Outils', 'Tools')} (${tools.length})</h3><div>${Object.entries(counts).map(([n, c]) => `${esc(n)} ×${c}`).join(' · ') || '—'}</div>` +
-    `<h3>${L('Activité récente', 'Recent activity')}</h3>` + (S.term[id] || []).slice(-30).reverse().map((e) => `<details><summary>${e.end == null ? '⠋' : e.err ? '✗' : '✓'} ${esc(e.tool.name)} <span class="dim">${e.end != null ? fmtDur(e.end - e.ts) : L('en cours', 'running')}</span> — ${esc((e.tool.arg || '').slice(-60))}</summary><pre>${esc((e.tool.d && e.tool.d.kind === 'cmd' ? '$ ' + e.tool.d.text + '\n' : '') + (e.out || ''))}</pre></details>`).join('') +
+    `<h3>${L('Activité récente', 'Recent activity')}</h3>` + (S.term[id] || []).slice(-30).reverse().map((e) => `<details><summary>${e.end == null ? '⠋' : e.err ? '✗' : '✓'} ${esc(e.tool.name)} <span class="dim">${e.end != null ? fmtDur(e.end - e.ts) : L('en cours', 'running')}</span> — ${esc((e.tool.arg || '').slice(-60))}</summary><pre>${esc((e.tool.d && e.tool.d.kind === 'cmd' ? '$ ' + e.tool.d.text + '\n' : '') + (e.out || ''))}</pre>${e.img && S.cur ? `<img class="dimg" src="${esc(mediaUrl(id, e.id, 0))}" alt="" loading="lazy">` : ''}</details>`).join('') +
     evs.filter((e) => e.agent === id && (e.kind === 'say' || e.kind === 'report')).map((e) => `<h3>${e.kind === 'report' ? L('Rapport final', 'Final report') : L('A dit', 'Said')}</h3><pre>${esc(e.text)}</pre>`).join('');
 }
 $('#dclose').onclick = () => { S.detail = null; $('#detail').classList.remove('on'); };
@@ -1302,11 +1310,17 @@ function computeHighlights() {
     if (e.kind !== 'compact') prevT = e.t;
     const d = loopStep(R, e); if (d && loops.length < 3 && !loops.some((l) => l.agent === e.agent)) loops.push({ i, agent: e.agent, d });
   });
-  if (firstErr >= 0) out.push({ i: firstErr, t: '✗ ' + L('première erreur', 'first error') });
-  if (gap.ms >= 30000) out.push({ i: gap.i, t: '⏱ ' + L('plus longue attente ', 'longest wait ') + fmtDur(gap.ms) });
-  if (comp.length) out.push({ i: comp[0], t: `🗜 ${L('compactage', 'compaction')}${comp.length > 1 ? ' ×' + comp.length : ''}` });
-  loops.forEach((l) => out.push({ i: l.i, t: `🔁 ${nameOf(l.agent)} ${l.d.kind === 'errors' ? L('échoue en boucle ?', 'failing in a loop?') : L('boucle ?', 'looping?')}` }));
+  if (firstErr >= 0) out.push({ i: firstErr, k: 'err', t: '✗ ' + L('première erreur', 'first error') });
+  if (gap.ms >= 30000) out.push({ i: gap.i, k: 'wait', t: '⏱ ' + L('plus longue attente ', 'longest wait ') + fmtDur(gap.ms) });
+  if (comp.length) out.push({ i: comp[0], k: 'compact', t: `🗜 ${L('compactage', 'compaction')}${comp.length > 1 ? ' ×' + comp.length : ''}` });
+  loops.forEach((l) => out.push({ i: l.i, k: 'loop', t: `🔁 ${nameOf(l.agent)} ${l.d.kind === 'errors' ? L('échoue en boucle ?', 'failing in a loop?') : L('boucle ?', 'looping?')}` }));
   out.sort((a, b) => a.i - b.i); return out;
+}
+// Where a short clip starts: one spoken line before the first error or loop when there is one (so it is seen coming), otherwise before the lead first hands out work.
+function clipStart() {
+  const ev = S.events, h = computeHighlights().find((x) => x.k === 'err' || x.k === 'loop'), at = h ? h.i : ev.findIndex((e) => e.kind === 'order'); if (at < 0) return 0;
+  let i = at; while (i > 0 && at - i < 12 && !SPK.has(ev[--i].kind));
+  return i;
 }
 function renderHighlights() {
   const box = $('#hl'); if (!box) return; const hs = S.live ? [] : computeHighlights();
@@ -1377,6 +1391,23 @@ async function react(ev, token) {
   else return;
   if (!S.agents[who]) return; startTalk(who, line, ev.kind === 'order' && prefs.banter ? '💬' : '🎬'); await speakLine(line, S.agents[who], true, token); stopTalk(who);
 }
+// Small talk: when nobody has said anything for a while, someone fills the silence the way people do in video calls. At most three per silence, further and further apart; any other line starts the count again.
+const FILL = {
+  en: { share: ['Can everyone see my screen?', 'Bear with me, it’s loading.', 'Sorry, my machine is slow today.', 'Is this big enough for everyone?', 'One second… almost there.', 'Tell me if I’m going too fast.'],
+    busy: ['Still here, just heads-down.', 'Sorry, I was on mute.', 'Quick update: still on it.', 'No blockers on my side.', 'Can you hear me?', 'Is it just me, or is it quiet?', 'I’ll have an update in a minute.'],
+    wait: ['Can you hear me?', 'You guys still here?', 'Hello? I think you’re on mute.', 'Did we lose someone?', 'Is it my connection?', 'Shall we take this offline?', 'Let’s circle back when you’re ready.', 'I’ll give everyone a minute back.', 'Any other business?', 'Sorry, go ahead. No, you go.'] },
+  fr: { share: ['Vous voyez bien mon écran ?', 'Deux secondes, ça charge.', 'Désolé, ma machine rame aujourd’hui.', 'C’est assez gros pour tout le monde ?', 'Une seconde… j’y suis presque.', 'Dites-moi si je vais trop vite.'],
+    busy: ['Toujours là, je suis dessus.', 'Pardon, j’étais en muet.', 'Petit point : j’avance.', 'Pas de point bloquant de mon côté.', 'Vous m’entendez ?', 'C’est moi, ou c’est calme ?', 'Je vous fais un retour dans une minute.'],
+    wait: ['Vous m’entendez ?', 'Vous êtes toujours là ?', 'Allô ? Je crois que ton micro est coupé.', 'On a perdu quelqu’un ?', 'C’est ma connexion ?', 'On en reparle en off ?', 'On refait un point quand tu veux.', 'Je vous rends une minute.', 'D’autres sujets ?', 'Pardon, vas-y. Non, toi d’abord.'] },
+};
+async function smallTalk(token) {
+  const n = S.fill || 0, last = S.events[S.events.length - 1]; if (!prefs.banter || n > 2 || !last || S.speakers.size || S.hurry || S.boost > 1 || (document.hidden && !S.exporting)) return;
+  if (performance.now() - S.spokeAt < (S.live ? 45000 : 12000 / spd()) * [1, 2.5, 6][n] || (S.live && Date.now() - last.ts > 6e5)) return;   // live: a session untouched for ten minutes is a call that is over
+  const here = Object.keys(S.agents).filter((id) => id !== 'user' && $('#t-' + id) && $('#t-' + id).style.display !== 'none'), busy = here.filter((id) => agentState(id, Date.now()).k === 'working'), pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const who = S.present && here.includes(S.present) ? S.present : pick(busy.length ? busy : here), P = FILL[FR() ? 'fr' : 'en'][who === S.present ? 'share' : busy.length ? 'busy' : 'wait']; if (!who) return;   // whoever shares their screen speaks, so the screen stays up
+  let line = pick(P); if (line === S.lastFill) line = P[(P.indexOf(line) + 1) % P.length]; S.lastFill = line;
+  startTalk(who, line, '💬'); S.fill = n + 1; await speakLine(line, S.agents[who], true, token); stopTalk(who);
+}
 async function card(text, sub, ms = 2500) {
  
   const c = $('#card'); c.innerHTML = `<div><h1>${esc(text)}</h1><p>${esc(sub || '')}</p></div>`; c.classList.add('on'); AUD.tone(392, .5, 'triangle', .12); AUD.tone(523, .6, 'triangle', .12, .25);
@@ -1390,11 +1421,11 @@ const SPK = new Set(['say', 'report', 'order', 'user']);
 function aheadSpeakable(i, limit) { let n = 0; for (let k = i, m = Math.min(S.events.length, i + 800); k < m; k++) if (SPK.has(S.events[k].kind) && ++n > limit) break; return n; }
 const isSub = (id) => id !== 'main' && id !== 'user';
 async function run(i) {
-  const token = ++S.token; S.playing = true; S.idle = false; S.hurry = false; S.boost = 1; syncUI(); AUD.init();
+  const token = ++S.token; S.playing = true; S.idle = false; S.hurry = false; S.boost = 1; S.spokeAt = performance.now(); S.fill = 0; syncUI(); AUD.init();
   if (i === 0 && prefs.epi && !S.live) { await card(L('ÉPISODE 1', 'EPISODE 1'), S.title); if (token !== S.token) return; }
   while (token === S.token) {
     const lim = S.stopAt || S.events.length;
-    if (i >= lim) { if (S.live && !S.stopAt) { if (!S.idle) { S.idle = true; syncUI(); } await sleep(350); continue; } break; }
+    if (i >= lim) { if (S.live && !S.stopAt) { if (!S.idle) { S.idle = true; syncUI(); } await smallTalk(token); await sleep(350); continue; } break; }
     if (S.idle) { S.idle = false; syncUI(); }
     if (S.live) {   // way behind: skip ahead to stay current, but only count what is actually said: sub-agents produce thousands of silent tool events
       const rem = S.events.length - i;
@@ -1409,8 +1440,8 @@ async function run(i) {
     const ev = S.events[i]; S.idx = i; tally(ev);
     if (ev.kind === 'usage' || ev.kind === 'compact') { if (ev.kind === 'compact' && S.live && prefs.banter) toast(`${nameOf(ev.agent)}: ${L('contexte compacté 🗜', 'context compacted 🗜')}`); i++; continue; }
     if (ev.kind === 'finish') { applyStatus(ev); paintStatus(); i++; continue; }
-    if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.demo ? 900 : S.live ? 30 : 80) / spd()); i++; continue; }
-    if (ev.kind === 'tools') { applyStatus(ev); tickTools(ev); AUD.click(); OFFICE.kick(ev.tools[ev.tools.length - 1].name); paintStatus(); await sleep((S.demo ? 1100 : S.live ? 110 : 250) / spd()); i++; continue; }
+    if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.boost === 1 && S.present === ev.agent && ev.items.some((it) => it.img) ? (S.live ? 900 : 1800) : S.demo ? 900 : S.live ? 30 : 80) / spd()); i++; continue; }   // a picture gets a moment on screen
+    if (ev.kind === 'tools') { applyStatus(ev); tickTools(ev); AUD.click(); OFFICE.kick(ev.tools[ev.tools.length - 1].name); paintStatus(); await smallTalk(token); await sleep((S.demo ? 1100 : S.live ? 110 : 250) / spd()); i++; continue; }
     const group = [ev]; let j = i + 1;   // sub-agents talking back-to-back were running in parallel: they talk over each other
     if (isSub(ev.agent) && ev.kind !== 'order') {
       while (j < Math.min(S.events.length, i + 28) && group.length < 3) {
@@ -1423,7 +1454,6 @@ async function run(i) {
       }
     }
     if (FR() && !S.hurry) { prefetchTr(i); await Promise.race([ensureTr(group.map((g) => baseText(g))), sleep(S.live ? 7000 : 14000)]); if (token !== S.token) return; }
-    if (group.length >= 3)
     prefetchQuips(i); warmTTS(i);
     const playOne = (g) => {
       applyStatus(g);
@@ -1585,6 +1615,8 @@ function avatarImg(p, m, st) {   // m: 0 silent, 1 speaking (closed), 2 speaking
   const k = p.id + m + (st || ''); if (imgCache[k]) return imgCache[k];
   const im = new Image(); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(avatarSVG(p, { m, working: st === 'working', done: st === 'done' })); return (imgCache[k] = im);
 }
+const mediaMem = new Map();
+function mediaImg(url) { let im = mediaMem.get(url); if (!im) { im = new Image(); im.src = url; mediaMem.set(url, im); if (mediaMem.size > 24) mediaMem.delete(mediaMem.keys().next().value); } return im; }
 function wrap(c, text, maxW, maxLines) {
   const words = String(text).split(/\s+/), lines = []; let cur = '';
   for (const w of words) { const t = cur ? cur + ' ' + w : w; if (c.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; if (lines.length === maxLines) break; } else cur = t; }
@@ -1596,21 +1628,35 @@ function tileOnCanvas(c, id, x, y, w, h, big) {
   if (im.complete && im.naturalWidth) c.drawImage(im, x, y, w, h);
   c.lineWidth = sp ? 4 : 2; c.strokeStyle = sp ? (p.lead ? '#f5c04a' : '#7c9cff') : st === 'working' ? '#f0a020' : 'rgba(255,255,255,.14)'; c.strokeRect(x, y, w, h);
   c.font = `bold ${big ? 16 : 12}px sans-serif`; const nm = p.name + (st === 'done' ? ' ✓' : ''); c.fillStyle = 'rgba(0,0,0,.7)'; c.fillRect(x + 6, y + h - (big ? 30 : 22), c.measureText(nm).width + 12, big ? 24 : 18); c.fillStyle = '#fff'; c.fillText(nm, x + 12, y + h - (big ? 12 : 8));
-  if (!big && S.lastTool[id] && st === 'working') { c.font = '10px monospace'; c.fillStyle = 'rgba(15,20,35,.85)'; c.fillRect(x, y, w, 15); c.fillStyle = '#ffd24a'; c.fillText(S.lastTool[id].slice(0, Math.floor(w / 6)), x + 4, y + 11); }
+  if (!big && S.lastTool[id] && st === 'working') { c.font = '10px monospace'; c.fillStyle = 'rgba(15,20,35,.85)'; c.fillRect(x, y, w, 15); c.fillStyle = '#ffd24a'; c.fillText((prefs.hideCode ? S.lastTool[id].split(' ')[0] : S.lastTool[id]).slice(0, Math.floor(w / 6)), x + 4, y + 11); }
   if (big && sp && S.say[id]) { c.font = '15px sans-serif'; const Ls = wrap(c, S.say[id].text, w - 40, 4), bh = Ls.length * 19 + 14; c.fillStyle = '#fff'; c.beginPath(); c.roundRect(x + 10, y + 10, w - 20, bh, 10); c.fill(); c.fillStyle = '#1b1d27'; Ls.forEach((l, i) => c.fillText(l, x + 20, y + 30 + i * 19)); }
 }
-function drawFrame(cv) {
-  const c = cv.getContext('2d'), W = cv.width, H = cv.height; c.fillStyle = '#12131a'; c.fillRect(0, 0, W, H);
-  c.font = 'bold 20px "Comic Sans MS",sans-serif'; c.fillStyle = '#e9eaf0'; c.fillText('🎥 ' + (S.title || 'Agent Standup'), 20, 32);
+const SITE = 'atoll92.github.io/agent-standup';
+function drawFrame(cv, mark = 0) {   // mark: 1 = a clip to share (site address in the corner), 2 = its end card
+  const c = cv.getContext('2d'), W = cv.width, H = cv.height, hide = prefs.hideCode; c.fillStyle = '#12131a'; c.fillRect(0, 0, W, H);   // hide: code, outputs, file names and the session title are masked; what agents say is kept
+  if (mark === 2) { c.textAlign = 'center'; c.font = '900 76px "Comic Sans MS",sans-serif'; c.fillStyle = '#e9eaf0'; c.fillText('Agent Standup', W / 2, H / 2 - 24); c.font = '28px sans-serif'; c.fillStyle = '#cdd6f4'; c.fillText(L('Vos agents Claude Code en appel d’équipe', 'Your Claude Code agents as a live team call'), W / 2, H / 2 + 36); c.font = 'bold 26px sans-serif'; c.fillStyle = '#f5c04a'; c.fillText(SITE, W / 2, H / 2 + 96); c.textAlign = 'start'; return; }
+  c.font = 'bold 20px "Comic Sans MS",sans-serif'; c.fillStyle = '#e9eaf0'; c.fillText('🎥 ' + ((!hide && S.title) || 'Agent Standup'), 20, 32);
+  if (mark) { c.font = '13px sans-serif'; c.textAlign = 'right'; const w = c.measureText(SITE).width; c.fillStyle = '#12131a'; c.fillRect(W - 32 - w, 8, w + 32, 34); c.fillStyle = '#8b90a8'; c.fillText(SITE, W - 20, 30); c.textAlign = 'start'; }
   const ids = Object.keys(S.agents).filter((id) => id === 'main' || id === 'user' || (S.status[id] && !S.gone.has(id))), sp = [...S.speakers].filter((id) => S.agents[id]).slice(0, 3), big = sp.length ? sp : ['main', 'user'];
-  const pres = S.present && S.agents[S.present], bw = Math.min(480, (W - 40) / big.length - 12), bh = pres ? 330 : bw * 0.75;
+  const pres = S.present && S.agents[S.present], m = pres && termModel(S.present), bw = Math.min(480, (W - 40) / big.length - 12), bh = pres ? (m.view === 'image' ? 420 : 330) : bw * 0.75;   // a picture gets a taller window
   if (pres) {
-    const m = S.present && termModel(S.present), x = 20, y = 50, w = W - 40, ed = m.view === 'editor', col = { cmd: '#e6edf3', out: '#aab2c5', err: '#ff7b72', tool: '#8b95b0', dim: '#6b7089', run: '#ffd24a', add: '#9be9a8', del: '#ffa198', ctx: '#d6dae6' };
+    const x = 20, y = 50, w = W - 40, ed = m.view === 'editor', col = { cmd: '#e6edf3', out: '#aab2c5', err: '#ff7b72', tool: '#8b95b0', dim: '#6b7089', run: '#ffd24a', add: '#9be9a8', del: '#ffa198', ctx: '#d6dae6' };
     c.fillStyle = ed ? '#1a1b26' : '#0d1117'; c.beginPath(); c.roundRect(x, y, w, bh, 12); c.fill(); c.fillStyle = '#1c1f2b'; c.fillRect(x, y, w, 28);
     ['#ff5f57', '#febc2e', '#28c840'].forEach((cl, i) => { c.fillStyle = cl; c.beginPath(); c.arc(x + 16 + i * 18, y + 14, 5, 0, 7); c.fill(); });
-    c.font = '13px sans-serif'; c.fillStyle = '#9aa0b4'; c.fillText(ed ? m.title : S.agents[S.present].name + ' — zsh', x + 90, y + 19); c.font = '14px monospace';
-    const rows = ed ? m.lines.slice(0, 13) : m.lines.slice(-13);
-    rows.forEach((l, i) => { const yy = y + 52 + i * 21; if (l.c === 'add' || l.c === 'del') { c.fillStyle = l.c === 'add' ? 'rgba(63,185,80,.16)' : 'rgba(248,81,73,.16)'; c.fillRect(x, yy - 15, w, 21); } c.fillStyle = col[l.c] || '#d6dae6'; c.fillText(((l.c === 'cmd' ? '❯ ' : l.c === 'tool' ? '● ' : ed && l.n ? String(l.n).padStart(4) + '  ' : l.c === 'add' ? '+ ' : l.c === 'del' ? '− ' : '') + String(l.t).split('\n')[0]).slice(0, 112), x + 14, yy); });
+    c.font = '13px sans-serif'; c.fillStyle = '#9aa0b4'; c.fillText(ed ? (hide ? m.title.split(' — ').pop() : m.title) : m.view === 'image' ? (hide ? '' : m.title) : S.agents[S.present].name + ' — zsh', x + 90, y + 19); c.font = '14px monospace';
+    if (m.view === 'image') {   // masked like the code: a picture from the session is replaced by an empty frame
+      const im = hide ? null : mediaImg(m.imgs[0]), ax = x + 14, ay = y + 38, aw = w - 238, ah = bh - 82, k = im && im.complete && im.naturalWidth ? Math.min(aw / im.naturalWidth, ah / im.naturalHeight, 1.5) : 0;
+      if (k) c.drawImage(im, ax + (aw - im.naturalWidth * k) / 2, ay + (ah - im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k);
+      else { c.fillStyle = 'rgba(255,255,255,.07)'; c.beginPath(); c.roundRect(ax + aw / 2 - 170, ay + 10, 340, ah - 20, 10); c.fill(); c.font = '64px sans-serif'; c.textAlign = 'center'; c.fillStyle = '#6b7089'; c.fillText('🖼', ax + aw / 2, ay + ah / 2 + 22); c.textAlign = 'start'; }
+      c.font = '14px monospace';
+    }
+    const rows = ed ? m.lines.slice(0, 13) : m.lines.slice(-13), cw = c.measureText('M').width;
+    rows.forEach((l, i) => {
+      const yy = y + 52 + i * 21, pre = l.c === 'cmd' ? '❯ ' : l.c === 'tool' ? '● ' : ed && l.n ? String(l.n).padStart(4) + '  ' : l.c === 'add' ? '+ ' : l.c === 'del' ? '− ' : '', txt = String(l.t).split('\n')[0].slice(0, 112 - pre.length);
+      const keep = !hide || l.c === 'run' ? txt.length : l.c === 'tool' ? txt.indexOf('(') + 1 : 0;   // masked: only our own words stay ("running…", the tool's name), the rest becomes bars of the same length
+      if (l.c === 'add' || l.c === 'del') { c.fillStyle = l.c === 'add' ? 'rgba(63,185,80,.16)' : 'rgba(248,81,73,.16)'; c.fillRect(x, yy - 15, w, 21); } c.fillStyle = col[l.c] || '#d6dae6'; c.fillText(pre + txt.slice(0, keep), x + 14, yy);
+      if (keep < txt.length) { c.globalAlpha = 0.4; for (const b of txt.slice(keep).matchAll(/\S+/g)) c.fillRect(x + 14 + (pre.length + keep + b.index) * cw, yy - 10, b[0].length * cw - 3, 10); c.globalAlpha = 1; }
+    });
     c.font = '12px monospace'; c.fillStyle = '#8b95b0'; c.fillText(m.stat, x + 14, y + bh - 8);
     c.fillStyle = 'rgba(240,160,32,.94)'; c.beginPath(); c.roundRect(x + 12, y + bh - 34, 300, 24, 12); c.fill(); c.fillStyle = '#201400'; c.font = 'bold 13px sans-serif'; c.fillText('🖥 ' + S.agents[S.present].name + ' ' + L('partage son écran', 'is sharing their screen'), x + 24, y + bh - 17);
     tileOnCanvas(c, S.present, x + w - 210, y + bh - 160, 196, 147, false);
@@ -1619,20 +1665,29 @@ function drawFrame(cv) {
   others.forEach((id, i) => tileOnCanvas(c, id, 20 + (i % cols) * (tw + 8), ty + Math.floor(i / cols) * (th + 8), tw, th, false));
   const lead = sp[0] && S.say[sp[0]];
   if (lead) { c.font = '22px sans-serif'; const Ls = wrap(c, `${nameOf(sp[0])} : ${lead.text}`, W - 80, 2); c.fillStyle = 'rgba(0,0,0,.75)'; c.fillRect(0, H - 22 - Ls.length * 28, W, Ls.length * 28 + 22); c.fillStyle = '#fff'; Ls.forEach((l, i) => c.fillText(l, 40, H - 12 - (Ls.length - 1 - i) * 28 - 6)); }
-  const cd = $('#card'); if (cd.classList.contains('on')) { c.fillStyle = '#05060c'; c.fillRect(0, 0, W, H); c.textAlign = 'center'; c.font = '900 90px "Comic Sans MS",sans-serif'; c.fillStyle = '#d8372b'; c.fillText(cd.querySelector('h1').textContent, W / 2 + 5, H / 2 + 5); c.fillStyle = '#fff'; c.fillText(cd.querySelector('h1').textContent, W / 2, H / 2); c.font = '26px sans-serif'; c.fillStyle = '#cdd6f4'; c.fillText(cd.querySelector('p').textContent.slice(0, 80), W / 2, H / 2 + 60); c.textAlign = 'start'; }
+  const cd = $('#card'); if (cd.classList.contains('on')) { c.fillStyle = '#05060c'; c.fillRect(0, 0, W, H); c.textAlign = 'center'; c.font = '900 90px "Comic Sans MS",sans-serif'; c.fillStyle = '#d8372b'; c.fillText(cd.querySelector('h1').textContent, W / 2 + 5, H / 2 + 5); c.fillStyle = '#fff'; c.fillText(cd.querySelector('h1').textContent, W / 2, H / 2); c.font = '26px sans-serif'; c.fillStyle = '#cdd6f4'; if (!hide) c.fillText(cd.querySelector('p').textContent.slice(0, 80), W / 2, H / 2 + 60); c.textAlign = 'start'; }
 }
 let recorder = null;
-async function exportVideo(from = 0, to = 0) {
+const REC_TYPES = ['video/mp4;codecs=avc1.42E01F,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm'];   // MP4 (H.264 + AAC) where the browser can record it: X, phones and most chat apps refuse .webm
+async function exportVideo(from = 0, to = 0, clip = 0) {   // clip: length in ms of a short cut to share; it starts where the replay is, or at clipStart() when the replay is at rest or nearly over
   if (recorder) { recorder.stop(); return; }
-  const wasLive = S.live; if (wasLive) await setMode('replay'); pause(); claimAudio(); AUD.init(); await AUD.ctx.resume(); AUD.muted = false; AUD.apply();
+  const wasLive = S.live, here = !wasLive && S.idx > 0 && aheadSpeakable(S.idx, 3) >= 3 ? S.idx : -1; if (wasLive) await setMode('replay'); pause(); claimAudio(); AUD.init(); await AUD.ctx.resume(); AUD.muted = false; AUD.apply();
+  const back = S.idx; if (clip) from = here >= 0 ? here : clipStart();
   const cv = document.createElement('canvas'); cv.width = 1280; cv.height = 720, stream = new MediaStream([...cv.captureStream(30).getTracks(), ...AUD.rec.stream.getTracks()]);
-  const mime = ['video/webm;codecs=vp9,opus', 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m)), chunks = [];
+  const mime = REC_TYPES.find((m) => MediaRecorder.isTypeSupported(m)) || '', ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm', chunks = [], t0 = performance.now(); let outro = false;
   recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4e6 }); recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-  const timer = setInterval(() => { drawFrame(cv); $('#pill').textContent = `⏹ ${Math.max(0, Math.round(((S.idx - from) / ((to || S.events.length) - from)) * 100))}%`; }, 33), done = new Promise((res) => (recorder.onstop = res));
+  const timer = setInterval(() => {
+    const el = performance.now() - t0; drawFrame(cv, clip ? (outro ? 2 : 1) : 0);
+    if (clip && S.playing && !S.stopAt && el > clip - 4000) S.stopAt = S.idx + 1;   // the line being said is finished rather than cut…
+    if (clip && S.playing && el > clip + 8000) pause();                              // …unless it is a very long one
+    $('#pill').textContent = `⏹ ${Math.max(0, Math.min(100, Math.round((clip ? el / clip : (S.idx - from) / ((to || S.events.length) - from)) * 100)))}%`;
+  }, 33), done = new Promise((res) => (recorder.onstop = res));
   S.exporting = true; S.stopAt = to || 0; S.idx = from; recomputeStatus(from); recorder.start(500); run(from);
-  const poll = setInterval(() => { if (!S.playing && recorder) { setTimeout(() => recorder && recorder.stop(), 900); clearInterval(poll); } }, 300);
-  await done; clearInterval(timer); clearInterval(poll); S.exporting = false; S.stopAt = 0; recorder = null; syncUI();
-  const blob = new Blob(chunks, { type: 'video/webm' }); window.__lastExport = blob.size; const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'agent-standup.webm'; a.click();
+  const poll = setInterval(() => { if (!S.playing && recorder) { const rec = recorder; outro = !!clip; setTimeout(() => recorder === rec && rec.stop(), clip ? 2600 : 900); clearInterval(poll); } }, 300);
+  await done; clearInterval(timer); clearInterval(poll); S.exporting = false; S.stopAt = 0; recorder = null;
+  if (clip) { pause(); S.idx = back; recomputeStatus(back); paintStatus(); }   // back where the replay was, so the same clip can be taken again
+  syncUI();
+  const blob = new Blob(chunks, { type: mime.split(';')[0] || 'video/webm' }); window.__lastExport = blob.size; const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `agent-standup${clip ? '-clip' : ''}.${ext}`; a.click();
 }
 
 // =====================================================================
@@ -1704,6 +1759,7 @@ $('#bMute').onclick = toggleMute;
 $('#bPlay').onclick = togglePlay;
 $('#mRecap').onclick = () => { $('#menu').classList.remove('on'); openRecap(); };
 $('#mExport').onclick = () => { $('#menu').classList.remove('on'); exportVideo(); };
+$('#mClip').onclick = () => { $('#menu').classList.remove('on'); exportVideo(0, 0, 25000); };
 $('#mBrowser').onclick = () => { $('#menu').classList.remove('on'); window.parent.postMessage({ agentStandup: 'openBrowser' }, '*'); };
 $('#seek').oninput = (e) => seekTo(+e.target.value);
 $('#eDemo').onclick = () => setMode('demo');

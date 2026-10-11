@@ -7,6 +7,7 @@
  "☕ Buy the (replaced) dev a coffee": "☕ Buy the (replaced) dev a coffee",
  "☕ This dev was replaced by his agents — buy him a coffee": "☕ This dev was replaced by his agents — buy him a coffee",
  "🎞 Export video": "🎞 Export video",
+ "🎬 Clip to share (25 s)": "🎬 Clip to share (25 s)",
  "📋 Recap": "📋 Recap",
  "Agent voices": "Agent voices",
  "Agents": "Agents",
@@ -58,6 +59,7 @@
  "Final report": "Final report",
  "first error": "first error",
  "Good-quality local voices, mostly English (one French voice). Free, nothing leaves your machine.": "Good-quality local voices, mostly English (one French voice). Free, nothing leaves your machine.",
+ "Hide code & file names in videos": "Hide code & file names in videos",
  "Highlights": "Highlights",
  "Human": "Human",
  "idle": "idle",
@@ -168,5 +170,6 @@
  "Writing ": "Writing ",
  "You": "You",
  "Your agents are done 🎉": "Your agents are done 🎉",
+ "Your Claude Code agents as a live team call": "Your Claude Code agents as a live team call",
  "your turn": "your turn"
 }
