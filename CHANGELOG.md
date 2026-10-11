@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.25.0
+Five UX improvements and agents that talk to each other more.
+- **Jump to who needs you**: press **J** / **K** (or click the “need you” / “stalled” chip) to move to the next agent that needs you or is stalled. The help (**?**) now explains each state.
+- **Settings menu**: sections that fold (and remember it), a search box, a new Display section. “Notify me when the agents finish” is now on by default (until you choose otherwise; the browser asks permission on your first click).
+- **Cmd/Ctrl+K**: jump to any session from any view, with search.
+- **Very narrow panel** (under 300 px, like the VS Code side bar): one row per agent instead of tiles. Wider windows keep the tiles.
+- **Replay**: **←** / **→** step through the call, **N** / **Shift+N** jump between highlights, speed presets 1× 2× 4× 8×, and each session remembers where you stopped. Browser shortcuts (Cmd+R, Ctrl+N…) are no longer taken over by the page.
+- **Agents talk to each other**, using what really happened in the session (edits, tool calls, errors, files, time taken): a new agent asks a question and the lead answers; a report gets a reaction that fits (all good, errors along the way, that took long) and sometimes a word from a third agent; an agent that fails three times in a row gets a “you okay?”; every few minutes the lead calls a quick round and the busy agents answer. ⚙ → Display → **Chatter between agents**: Quiet / Normal / Lively.
+- Orders and reports are introduced more naturally (“Ada, can you take this one? …”, “All done. …”). The transcript text is unchanged.
+
 ## 1.24.3
 - **Dansk** (Danish) interface, suggested by a Reddit reader. AI-drafted: corrections welcome in `public/locales/da.json`.
 - **Keyboard shortcuts** are listed under ⚙ → Keyboard shortcuts, or press **?**. Switching to the tree view with **T** now says how to get back.
