@@ -188,5 +188,11 @@
  "Tree view: T to go back, ? for help": "Visão em árvore: T para voltar, ? para ajuda",
  "You can also switch between Call, Tree and Sessions at the top of the window.": "Você também pode alternar entre Chamada, Árvore e Sessões no topo da janela.",
  "Display": "Exibição",
- "Search settings…": "Buscar configuração…"
+ "Search settings…": "Buscar configuração…",
+ "may be waiting for your approval": "pode estar esperando sua aprovação",
+ "Next / previous agent that needs you": "Próximo / anterior agente que precisa de você",
+ "Nobody needs you right now": "Ninguém precisa de você agora",
+ "stalled: a sub-agent has been silent for a long time": "travado: um subagente está em silêncio há muito tempo",
+ "waiting on another agent": "esperando outro agente",
+ "What the states mean": "O que significam os estados"
 }

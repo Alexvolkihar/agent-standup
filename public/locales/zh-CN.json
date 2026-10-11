@@ -188,5 +188,11 @@
  "Tree view: T to go back, ? for help": "树状视图：按 T 返回，按 ? 查看帮助",
  "You can also switch between Call, Tree and Sessions at the top of the window.": "你也可以在窗口顶部切换通话、树状和会话视图。",
  "Display": "显示",
- "Search settings…": "搜索设置…"
+ "Search settings…": "搜索设置…",
+ "may be waiting for your approval": "可能在等你批准",
+ "Next / previous agent that needs you": "下一个 / 上一个需要你的代理",
+ "Nobody needs you right now": "目前没有人需要你",
+ "stalled: a sub-agent has been silent for a long time": "卡住：某个子代理已长时间没有动静",
+ "waiting on another agent": "正在等待另一个代理",
+ "What the states mean": "各状态的含义"
 }

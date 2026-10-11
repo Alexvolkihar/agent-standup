@@ -188,5 +188,11 @@
  "Tree view: T to go back, ? for help": "ツリー表示：Tで戻る、?でヘルプ",
  "You can also switch between Call, Tree and Sessions at the top of the window.": "ウィンドウ上部で「通話」「ツリー」「セッション」を切り替えることもできます。",
  "Display": "表示",
- "Search settings…": "設定を検索…"
+ "Search settings…": "設定を検索…",
+ "may be waiting for your approval": "あなたの承認を待っている可能性があります",
+ "Next / previous agent that needs you": "対応が必要な次 / 前のエージェント",
+ "Nobody needs you right now": "今はだれも対応を求めていません",
+ "stalled: a sub-agent has been silent for a long time": "停滞：サブエージェントが長時間沈黙しています",
+ "waiting on another agent": "別のエージェントを待っています",
+ "What the states mean": "状態の意味"
 }

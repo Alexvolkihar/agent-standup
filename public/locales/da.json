@@ -187,5 +187,11 @@
  "Your Claude Code agents as a live team call": "Dine Claude Code-agenter som et levende teammøde",
  "your turn": "din tur",
  "Display": "Visning",
- "Search settings…": "Søg i indstillinger…"
+ "Search settings…": "Søg i indstillinger…",
+ "may be waiting for your approval": "venter måske på din godkendelse",
+ "Next / previous agent that needs you": "Næste / forrige agent, der har brug for dig",
+ "Nobody needs you right now": "Ingen har brug for dig lige nu",
+ "stalled: a sub-agent has been silent for a long time": "gået i stå: en underagent har været tavs længe",
+ "waiting on another agent": "venter på en anden agent",
+ "What the states mean": "Hvad tilstandene betyder"
 }

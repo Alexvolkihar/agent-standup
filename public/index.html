@@ -967,10 +967,10 @@ function agentState(id, now) {
 }
 const STATE_CLASSES = ['working', 'waiting', 'blocked', 'stalled', 'done'];
 function paintStates() {
-  const now = Date.now(), n = { working: 0, waiting: 0, blocked: 0, stalled: 0, done: 0 }, ros = [];
+  const now = Date.now(), n = { working: 0, waiting: 0, blocked: 0, stalled: 0, done: 0 }, ros = [], attn = [];
   for (const p of Object.values(S.agents)) {
     if (p.id === 'user') continue; const t = $('#t-' + p.id); if (!t) continue;
-    const st = agentState(p.id, now), shown = t.style.display !== 'none'; if (shown && n[st.k] !== undefined && !S.gone.has(p.id)) n[st.k]++;
+    const st = agentState(p.id, now), shown = t.style.display !== 'none'; if (shown && n[st.k] !== undefined && !S.gone.has(p.id)) { n[st.k]++; if (st.k === 'blocked' || st.k === 'stalled') attn.push(p.id); }
     STATE_CLASSES.forEach((c) => t.classList.toggle(c, st.k === c));
     const el = t.querySelector('.status'); if (el.textContent !== st.txt) el.textContent = st.txt; el.className = 'status ' + st.k;
     const pr = t.querySelector('.prop'), want = { blocked: '✋', stalled: '😰', waiting: '⌛' }[st.k] || '', was = S.prevState[p.id];   // a raised hand, a sweat drop, an hourglass: the call metaphor for "needs you / stuck / waiting"
@@ -983,7 +983,7 @@ function paintStates() {
   }
   const b = $('#board'), parts = [['working', '⚙', L('au travail', 'working')], ['waiting', '🔗', L('en attente', 'waiting')], ['blocked', '✋', L('vous attendent', 'need you')], ['stalled', '⚠', L('bloqués', 'stalled')], ['done', '✓', L('terminés', 'done')]]
     .filter(([k]) => n[k]).map(([k, i, l]) => `<span class="${k}" title="${n[k]} ${l}">${i} ${n[k]}<em> ${l}</em></span>`).join('');
-  if (b.innerHTML !== parts) b.innerHTML = parts; S.nBlocked = n.blocked + n.stalled; paintRoster(ros); return n;
+  if (b.innerHTML !== parts) b.innerHTML = parts; S.nBlocked = n.blocked + n.stalled; S.attn = attn; paintRoster(ros); return n;
 }
 const RORDER = { blocked: 0, stalled: 1, working: 2, waiting: 3, idle: 4, done: 5 };
 function paintRoster(ros) {   // a fixed list beside the call: who is doing what, urgent first, readable even with dozens of agents
@@ -1818,16 +1818,26 @@ $('#gB').onclick = () => {
   if (synth && !EMBED) { try { synth.speak(new SpeechSynthesisUtterance('')); } catch {} }   // unlock browser speech
   if (S.live && S.events.length) run(S.idx);
 };
+// J / K (or a click on the “need you” chip) jump to the agents that need you or are stalled, one after the other
+function jumpAttn(dir = 1) {
+  const a = (S.attn || []).filter((id) => $('#t-' + id));
+  if (!a.length) { toast(L('Personne n’a besoin de vous pour le moment', 'Nobody needs you right now')); return; }
+  S.attnAt = ((S.attnAt == null ? (dir > 0 ? -1 : 0) : S.attnAt) + dir + a.length) % a.length; const id = a[S.attnAt];
+  if (document.body.classList.contains('tree') || document.body.classList.contains('board')) setView('call');
+  S.focusLock = Date.now() + 25000; setFocus(id); const t = $('#t-' + id); if (t) { t.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); popTile(id); }
+  toast(`${nameOf(id)} — ${agentState(id, Date.now()).txt.replace(/^\S+\s/, '')}`);
+}
+$('#board').onclick = (e) => { if (e.target.closest('.blocked, .stalled')) jumpAttn(1); };
 function openKeys() {
-  const rows = [['Space', L('Pause / lecture', 'Pause / play')], ['M', L('Son coupé / activé', 'Mute / unmute')], ['T', L('Vue arbre ↔ appel', 'Tree view ↔ call')], ['R', L('Récapitulatif', 'Recap')], ['L', L('Transcription', 'Transcript')], ['?', L('Cette aide', 'This help')], ['Esc', L('Fermer', 'Close')]];
-  $('#recap .box').innerHTML = `<h1>${L('Raccourcis clavier', 'Keyboard shortcuts')}</h1><table>${rows.map(([k, d]) => `<tr><td class="f"><b>${esc(k)}</b></td><td>${esc(d)}</td></tr>`).join('')}</table><p class="dim" style="margin:14px 0 0;font-size:12px">${L('Les vues Appel, Arbre et Sessions se changent aussi en haut de la fenêtre.', 'You can also switch between Call, Tree and Sessions at the top of the window.')}</p><div style="margin-top:14px"><button class="btn" id="recapx">${L('Fermer', 'Close')}</button></div>`;
+  const rows = [['Space', L('Pause / lecture', 'Pause / play')], ['M', L('Son coupé / activé', 'Mute / unmute')], ['T', L('Vue arbre ↔ appel', 'Tree view ↔ call')], ['R', L('Récapitulatif', 'Recap')], ['L', L('Transcription', 'Transcript')], ['J / K', L('Agent suivant / précédent qui a besoin de vous', 'Next / previous agent that needs you')], ['?', L('Cette aide', 'This help')], ['Esc', L('Fermer', 'Close')]];
+  $('#recap .box').innerHTML = `<h1>${L('Raccourcis clavier', 'Keyboard shortcuts')}</h1><table>${rows.map(([k, d]) => `<tr><td class="f"><b>${esc(k)}</b></td><td>${esc(d)}</td></tr>`).join('')}</table><h3>${L('Les états', 'What the states mean')}</h3><table>${[['⚙', L('au travail', 'working')], ['🔗', L('attend un autre agent', 'waiting on another agent')], ['✋', L('attend peut-être votre feu vert', 'may be waiting for your approval')], ['⚠', L('bloqué : un sous-agent est silencieux depuis longtemps', 'stalled: a sub-agent has been silent for a long time')], ['✓', L('terminé', 'done')]].map(([k, d]) => `<tr><td class="f">${k}</td><td>${esc(d)}</td></tr>`).join('')}</table><p class="dim" style="margin:14px 0 0;font-size:12px">${L('Les vues Appel, Arbre et Sessions se changent aussi en haut de la fenêtre.', 'You can also switch between Call, Tree and Sessions at the top of the window.')}</p><div style="margin-top:14px"><button class="btn" id="recapx">${L('Fermer', 'Close')}</button></div>`;
   $('#recapx').onclick = () => $('#recap').classList.remove('on'); $('#recap').classList.add('on');
 }
 $('#mKeys').onclick = () => { $('#menu').classList.remove('on'); openKeys(); };
 addEventListener('keydown', (e) => {
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
   if (e.key === '?') { openKeys(); return; }
-  if (e.key === ' ') { e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key.toLowerCase() === 't') { const toTree = !document.body.classList.contains('tree'); setView(toTree ? 'tree' : 'call'); if (toTree) toast(L('Vue arbre : T pour revenir, ? pour l’aide', 'Tree view: T to go back, ? for help')); } else if (e.key.toLowerCase() === 'r') openRecap(); else if (e.key.toLowerCase() === 'l') $('#bLog').click(); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key.toLowerCase() === 't') { const toTree = !document.body.classList.contains('tree'); setView(toTree ? 'tree' : 'call'); if (toTree) toast(L('Vue arbre : T pour revenir, ? pour l’aide', 'Tree view: T to go back, ? for help')); } else if (e.key.toLowerCase() === 'r') openRecap(); else if (e.key.toLowerCase() === 'l') $('#bLog').click(); else if (e.key.toLowerCase() === 'j') jumpAttn(1); else if (e.key.toLowerCase() === 'k') jumpAttn(-1); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
 });
 if (EMBED) $('#mBrowser').style.display = '';
 
