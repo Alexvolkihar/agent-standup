@@ -194,5 +194,8 @@
  "Nobody needs you right now": "今はだれも対応を求めていません",
  "stalled: a sub-agent has been silent for a long time": "停滞：サブエージェントが長時間沈黙しています",
  "waiting on another agent": "別のエージェントを待っています",
- "What the states mean": "状態の意味"
+ "What the states mean": "状態の意味",
+ "Find a session": "セッションを検索",
+ "Find a session…": "セッションを検索…",
+ "Go to a session": "セッションへ移動"
 }

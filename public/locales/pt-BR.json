@@ -194,5 +194,8 @@
  "Nobody needs you right now": "Ninguém precisa de você agora",
  "stalled: a sub-agent has been silent for a long time": "travado: um subagente está em silêncio há muito tempo",
  "waiting on another agent": "esperando outro agente",
- "What the states mean": "O que significam os estados"
+ "What the states mean": "O que significam os estados",
+ "Find a session": "Buscar uma sessão",
+ "Find a session…": "Buscar uma sessão…",
+ "Go to a session": "Ir para uma sessão"
 }
