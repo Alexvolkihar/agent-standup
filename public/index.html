@@ -135,7 +135,7 @@
   .tile svg { width:100%; height:100%; display:block }
   .tile.lead { order:-2 } .tile.focus { order:-3; grid-column:span var(--fcols,2); grid-row:span var(--fr,2) } .tile.speaking { border-color:var(--accent); box-shadow:0 0 0 3px rgba(124,156,255,.4), 0 10px 30px rgba(0,0,0,.55) }
   .tile.lead.speaking { border-color:var(--gold); box-shadow:0 0 0 3px rgba(245,192,74,.4), 0 10px 30px rgba(0,0,0,.55) }
-  body.presenting .tile.focus { order:0; grid-column:auto; grid-row:auto } .tile.focus .bubble { font-size:16px; max-width:72% }
+  body.presenting .tile.focus.presenter, body.presenting .tile.focus:not(.speaking) { order:0; grid-column:auto; grid-row:auto } .tile.focus .bubble { font-size:16px; max-width:72% }
   .tile.working { border-color:rgba(240,160,32,.8) } .tile.done svg { filter:saturate(.75) brightness(.93) }
   .tile.pop { animation:pop .6s } @keyframes pop { 35% { transform:scale(1.07); box-shadow:0 0 0 6px rgba(88,214,141,.5) } }
   .tag { position:absolute; left:6px; bottom:6px; right:6px; display:flex; gap:5px; pointer-events:none }
@@ -1188,11 +1188,11 @@ function armPresent() {   // stays up while a command is still running, then ~4 
 }
 function showPresent(id) {
   if (S.boost > 1 || (S.speakers.size && !S.speakers.has(id))) return;   // catching up, or someone else has the floor
-  const first = S.present !== id; S.present = id; $('#present').classList.add('on'); document.body.classList.add('presenting'); renderPresent(); if (first) { layout(); AUD.tone(880, .12, 'sine', .05); }
+  const first = S.present !== id; S.present = id; $('#present').classList.add('on'); document.body.classList.add('presenting'); document.querySelectorAll('.tile.presenter').forEach((t) => t.classList.remove('presenter')); const pt = $('#t-' + id); if (pt) pt.classList.add('presenter'); renderPresent(); if (first) { layout(); AUD.tone(880, .12, 'sine', .05); }
   armPresent();
 }
 function hidePresent() {
-  clearTimeout(presentTimer); if (!S.present) return; S.present = null; $('#present').classList.remove('on'); document.body.classList.remove('presenting'); $('#pcap').textContent = ''; layout();
+  clearTimeout(presentTimer); if (!S.present) return; S.present = null; $('#present').classList.remove('on'); document.body.classList.remove('presenting'); document.querySelectorAll('.tile.presenter').forEach((t) => t.classList.remove('presenter')); $('#pcap').textContent = ''; layout();
 }
 // the speaker always gets the spotlight (and keeps it until someone else talks)
 function setFocus(id) {
@@ -1581,6 +1581,7 @@ async function ponder(i, token) {   // replay: an agent that really took a long 
 async function wrapUp(token) {   // live, once the lead is done: the part of its last message that the clipped reading left out, so you know what was done
   if (!S.wrap || S.speakers.size || !prefs.voice && !prefs.banter) return false; S.wrap = false;
   let k = S.events.length - 1; while (k >= 0 && !(S.events[k].agent === 'main' && S.events[k].kind === 'say')) k--; if (k < 0) return false; const e = S.events[k], m = S.mainSaid;
+  if (S.wrapped === e) return false; S.wrapped = e;   // once per message: the lead's state can flip to done several times (a short command, a silence) without a new message
   const full = plain(e.text); let rest = m && m.ev === e ? full.slice(m.said).trim() : full; if (m && m.ev === e && m.full) return false; if (!m || m.ev !== e) rest = full;
   rest = rest.replace(/^[^\w\p{L}]+/u, ''); if (rest.length < 25) return false; const line = (m && m.ev === e ? L('Pour résumer : ', 'To sum up: ') : '') + short(rest, 520);
   startTalk('main', line, '🎉'); await speakLine(line, S.agents.main, true, token); stopTalk('main'); return true;

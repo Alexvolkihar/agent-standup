@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.25.5
+- Fix: the lead could read the same wrap-up several times in a row (its state flipped to done more than once without a new message). Once per message now.
+- While a screen is shared, a member who speaks still gets the spotlight (the presenter’s own tile stays small: its camera is already in the corner of the share).
+
 ## 1.25.4
 - Fix: after a change of characters (a pack, Reload, your folder), the small camera in the corner of a shared screen kept the previous look while the tile had the new one, so the lead could appear as two different characters at once.
 
