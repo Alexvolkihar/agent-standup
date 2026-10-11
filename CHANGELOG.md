@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.24.2
+Narrow and short windows (the VS Code side bar, a small panel), found by going through every panel at five window sizes.
+- Fix: the Sessions view showed a blank page when the window was 640 px wide or less, and stayed blank on the next load. A style meant for the status chips of the header was also applied to the whole page.
+- Fix: the settings gear (⚙) slid off the right edge under about 400 px. The buttons now keep their size; the name, the context gauge and the token counter give way instead (the gauge is hidden under 480 px, the counter under 420 px).
+- Fix: in a window less than about 350 px tall, the Highlights bar covered the seek and speed sliders while an agent shared their screen. The shared screen now shrinks, and the bar keeps to two rows and scrolls.
+- Fix: the task list of the shared screen was cut off with no way to scroll (no task visible at 1280×450, a list of 8 cut at 1280×720). It now uses the full height, scrolls, and brings the task in progress into view.
+- Fix: in a window narrower than about 480 px, the task list squeezed the shared terminal to a strip. The task list is now hidden there and the terminal keeps the room.
+- Sessions view: cards of sessions that need you or are stalled keep their coloured border and status chip, but are no longer filled with red or orange, and titles are no longer tinted. That fill came from the same misapplied style.
+
 ## 1.24.1
 - Fix: the settings menu (⚙) was taller than a small window since 1.24.0 and its last entries could not be reached. It now stops at the bottom of the window and scrolls.
 - **A little more talk between agents**: whoever receives a report sometimes says thanks ("Got it, thanks.", "Noted. I'll take it from here.", about one report in four), and an agent that has been thinking for a long time says so ("Hmm, let me think.", "Hang on, I want to get this right."): after 20 seconds without a word in a live call, once per silence, and in a replay before a line that really took 40 seconds or more to come, about every other time. Eight variations of each, never the same twice in a row, in English and French. Part of ⚙ → Little lines & animations.

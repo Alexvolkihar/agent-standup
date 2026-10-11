@@ -17,7 +17,9 @@
 
   /* ---------- header ---------- */
   header { height:48px; flex:none; display:flex; align-items:center; gap:10px; padding:0 12px; border-bottom:1px solid var(--line); background:var(--bg) }
-  .brand { display:flex; align-items:center; gap:9px; min-width:0 }
+  .brand { display:flex; align-items:center; gap:9px; min-width:0; overflow:hidden } .brand .logo { flex:none } .brand > div { min-width:0 } .brand b { overflow:hidden; text-overflow:ellipsis }
+  header > * { flex-shrink:0 } header .brand { flex-shrink:100 } header #board { flex-shrink:50 } .tok, .ctxp { flex-shrink:2; min-width:0; overflow:hidden; text-overflow:ellipsis } #pill { flex-shrink:.05; min-width:0; overflow:hidden; text-overflow:ellipsis }   /* in a narrow window the buttons (the gear above all) stay whole: the name gives way first, then the counters */
+  @media (max-width:480px) { header { gap:6px; padding:0 8px } .ctxp { display:none !important } } @media (max-width:420px) { .tok { display:none !important } }
   .logo { width:26px; height:26px; border-radius:8px; background:#d97757; display:grid; place-items:center; font-size:15px; flex:none }
   .brand b { font:700 14px "Comic Sans MS","Chalkboard SE",system-ui,sans-serif; white-space:nowrap }
   .brand small { display:block; color:var(--dim); font-size:11px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
@@ -41,7 +43,7 @@
 
   /* ---------- layout ---------- */
   main { flex:1; display:flex; min-height:0; position:relative }
-  #center { flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; position:relative }
+  #center { flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; position:relative; overflow:hidden }
   #stage { flex:1; overflow:auto; padding:14px; display:grid; gap:12px; align-content:start; grid-auto-flow:dense;
            grid-template-columns:repeat(var(--cols,4),1fr); grid-auto-rows:var(--rh,160px) }
   #tree { flex:1; overflow:auto; padding:16px 18px; display:none }
@@ -66,7 +68,7 @@
   .stc { font-size:11.5px; padding:2px 9px; border-radius:99px; background:rgba(14,15,24,.6); white-space:nowrap } .stc.working { color:var(--gold) } .stc.waiting { color:#8fd3ff } .stc.blocked { color:#fff; background:#c0392b; font-weight:700 } .stc.stalled { color:#1b1d27; background:#ffb347; font-weight:700 } .stc.done, .stc.turn { color:var(--ok) } .stc.idle { color:var(--dim) }
   .ctxp { font-size:11px; font-weight:600; padding:3px 9px; border-radius:99px; background:var(--panel2); white-space:nowrap; cursor:default } .ctxp.lo, .cx.lo { color:#7ee2a8 } .ctxp.mid, .cx.mid { color:#ffc857 } .ctxp.hi, .cx.hi { color:#fff; background:#c0392b }
   .cx:empty { display:none } .tag .cx { font-size:10px }
-  #hl { display:none; flex-wrap:wrap; gap:6px; padding:5px 12px; border-top:1px solid var(--line); background:var(--panel) } body.replay #hl.has { display:flex } body.board #hl, body.tree #hl { display:none !important }
+  #hl { display:none; flex:0 0.01 auto; min-height:30px; max-height:66px; overflow-y:auto; scrollbar-width:thin; flex-wrap:wrap; gap:6px; padding:5px 12px; border-top:1px solid var(--line); background:var(--panel) } body.replay #hl.has { display:flex } body.board #hl, body.tree #hl { display:none !important }
   .hlc { font-size:11.5px; padding:3px 10px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); color:var(--text) } .hlc:hover { border-color:var(--accent) }
   .tbadge .l { color:#ff9f1c } .tbadge span { font-size:11px } .tbadge .q { color:#b4bcd4 }
   .ic:active, .btn:active { transform:scale(.96) } .rr, .ic, .bcard { transition:background .15s var(--ease), border-color .15s var(--ease), transform .15s var(--ease) }
@@ -84,7 +86,7 @@
   .prop.waiting { animation:tick 2.4s ease-in-out infinite } @keyframes tick { 50% { transform:rotate(180deg) } }
   .prop.cheer { animation:cheer 1.1s ease-out both } @keyframes cheer { 0% { transform:scale(.3) translateY(10px); opacity:0 } 40% { transform:scale(1.25); opacity:1 } 100% { transform:translateY(-14px); opacity:0 } }
   /* ---------- screen sharing (presentation mode) ---------- */
-  #present { display:none; flex:none; position:relative; height:clamp(190px,46vh,430px); background:radial-gradient(ellipse at 50% 0,#1b2033,#0b0d14); border-bottom:1px solid var(--line); padding:12px 16px; justify-content:center }
+  #present { display:none; flex:0 1 auto; min-height:96px; overflow:hidden; position:relative; height:clamp(190px,46vh,430px); background:radial-gradient(ellipse at 50% 0,#1b2033,#0b0d14); border-bottom:1px solid var(--line); padding:12px 16px; justify-content:center }
   #present.on { display:flex; animation:fadein .3s } #present.pic { height:clamp(220px,60vh,640px) }
   .pwin { flex:0 1 900px; display:flex; flex-direction:column; border-radius:10px; overflow:hidden; background:#0d1117; box-shadow:0 18px 50px rgba(0,0,0,.6), 0 0 0 2px rgba(240,160,32,.55) }
   .pbar { display:flex; align-items:center; gap:6px; padding:7px 10px; background:#1c1f2b; font-size:11.5px; color:#9aa0b4 } .pbar i { width:10px; height:10px; border-radius:50%; display:inline-block }
@@ -97,7 +99,7 @@
   .tl.new { animation:lineIn .28s ease-out } @keyframes lineIn { from { opacity:0; transform:translateY(5px) } }
   .cursor { display:inline-block; width:7px; height:14px; background:#c9d1d9; vertical-align:-2px; animation:blinkc 1s steps(1) infinite } @keyframes blinkc { 50% { opacity:0 } }
   #pstat { flex:none; padding:4px 12px; background:#161925; color:#8b95b0; font:11.5px ui-monospace,Menlo,monospace; border-top:1px solid #232637; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-  #ptodo { flex:0 0 230px; margin-left:12px; align-self:flex-start; max-height:calc(100% - 140px); overflow:hidden; background:rgba(20,22,32,.92); border:1px solid #2a2d3d; border-radius:10px; padding:8px 10px; font-size:12px }
+  #ptodo { flex:0 0 230px; margin-left:12px; align-self:flex-start; position:relative; max-height:100%; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; background:rgba(20,22,32,.92); border:1px solid #2a2d3d; border-radius:10px; padding:8px 10px; font-size:12px }
   #ptodo h5 { margin:0 0 6px; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim) } .td { display:flex; gap:7px; padding:2px 0; color:#c3c6d4 } .td i { font-style:normal; flex:none } .td.completed { color:#6b7089; text-decoration:line-through } .td.completed i { color:var(--ok) } .td.in_progress { color:#fff } .td.in_progress i { color:var(--gold) }
   .tl.out { color:#aab2c5 } .tl.err { color:#ff7b72 } .tl.dim { color:#6b7089 } .tl.run { color:#ffd24a } .tl.cmd { margin-top:5px }
   .ln.ctx b { width:34px; text-align:right; color:#4b5069 } .ln.ctx { color:#d3d7e6 } .ln.err { color:#ff7b72 } .ln.dim { color:#6b7089 } .ln.run { color:#ffd24a }
@@ -108,6 +110,7 @@
   #present.has-todo #pcam { right:270px } #pcam { position:absolute; right:28px; bottom:22px; width:158px; height:118px; z-index:2; cursor:default; box-shadow:0 8px 24px rgba(0,0,0,.6) }
   #pcap { display:none; position:absolute; left:24px; right:200px; bottom:20px; z-index:2; background:rgba(10,11,16,.84); backdrop-filter:blur(6px); border-radius:10px; padding:6px 12px; font-size:13px } #pcap:not(:empty) { display:block }
   body.narrow #present { height:clamp(150px,36vh,260px) } body.narrow #pcam { width:110px; height:82px } body.narrow #pcap { right:150px }
+  body.narrow #ptodo { display:none } body.narrow #present.has-todo #pcam { right:28px }   /* too narrow for a terminal and a task list side by side: the terminal keeps the room */
   #gantt { display:none; flex:none; width:100%; background:#0f1118; border-top:1px solid var(--line); cursor:pointer }
   body.replay #gantt { display:block }
   aside { display:none; width:320px; flex:none; border-left:1px solid var(--line); background:var(--panel); flex-direction:column; min-height:0 }
@@ -122,7 +125,7 @@
   body.replay footer { display:flex }
   input[type=range] { accent-color:var(--accent) } #seek { flex:1 }
   @media (max-width:760px) { aside { position:absolute; right:0; top:0; bottom:0; z-index:6; box-shadow:-10px 0 30px rgba(0,0,0,.5) } .brand small, #viewSeg { display:none } }
-  @media (max-width:420px) { .brand b { display:none } }
+  @media (max-width:540px) { .brand b { display:none } }
   @media (max-width:360px) { .logo { display:none } }
   @media (max-height:640px) { #gantt { display:none !important } }
 
@@ -142,10 +145,11 @@
   .status.working { color:var(--gold) } .status.done { color:var(--ok) }
   .status.waiting { color:#8fd3ff } .status.blocked { color:#fff; background:#c0392b; font-weight:700 } .status.stalled { color:#1b1d27; background:#ffb347; font-weight:700 }
   .tile.waiting { border-color:rgba(110,190,255,.85) } .tile.blocked { border-color:#ff5252 !important; animation:slowp 1.2s ease-in-out infinite } .tile.stalled { border-color:#ffb347 !important }
-  .board { display:flex; gap:6px; font-size:11.5px; flex-wrap:nowrap; min-width:0; overflow:hidden } .board em { font-style:normal } .board span { flex:none; padding:2px 8px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); white-space:nowrap }
-  .board .working { color:var(--gold) } .board .waiting { color:#8fd3ff } .board .blocked { color:#fff; background:#c0392b; border-color:#c0392b } .board .stalled { color:#1b1d27; background:#ffb347; border-color:#ffb347 } .board .done { color:var(--ok) }
-  @media (max-width:1180px) { .board em { display:none } .meet { display:none } }
-  @media (max-width:640px) { .board { display:none } }
+  /* the header's status chips are styled by id: "board" is also the class the Sessions view puts on <body>, and a rule on .board used to hide the whole page in a narrow window */
+  #board { display:flex; gap:6px; font-size:11.5px; flex-wrap:nowrap; min-width:0; overflow:hidden } #board em { font-style:normal } #board span { flex:none; padding:2px 8px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); white-space:nowrap }
+  #board .working { color:var(--gold) } #board .waiting { color:#8fd3ff } #board .blocked { color:#fff; background:#c0392b; border-color:#c0392b } #board .stalled { color:#1b1d27; background:#ffb347; border-color:#ffb347 } #board .done { color:var(--ok) }
+  @media (max-width:1180px) { #board em { display:none } .meet { display:none } }
+  @media (max-width:640px) { #board { display:none } }
   .bubble { display:none; position:absolute; top:6px; left:6px; right:62px; background:#fff; color:#1b1d27; border-radius:11px; padding:6px 10px; font-size:12.5px; line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,.35); max-height:58%; overflow:hidden }
   .tile.bye .bubble { display:block; font-size:13.5px; animation:fadein .25s } .tile.speaking .bubble { display:block; font-size:14.5px; max-height:50% } .bubble small { display:block; color:#6a6f85; font-size:10.5px }
   .ticker { display:none; position:absolute; left:6px; right:6px; bottom:30px; font:10.5px/1.3 ui-monospace,Menlo,monospace; color:#fff; background:rgba(15,20,35,.8); border-radius:5px; padding:2px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
@@ -221,7 +225,7 @@
 <body>
 <header>
   <div class="brand"><div class="logo">🎥</div><div><b>Agent Standup</b><small id="subtitle"></small></div></div>
-  <span id="pill">REPLAY</span><button id="tok" class="tok" style="display:none"></button><button id="ctxp" class="ctxp" style="display:none"></button><span id="board" class="board" aria-live="polite"></span><span id="meet" class="meet"></span>
+  <span id="pill">REPLAY</span><button id="tok" class="tok" style="display:none"></button><button id="ctxp" class="ctxp" style="display:none"></button><span id="board" aria-live="polite"></span><span id="meet" class="meet"></span>
   <div class="sp"></div>
   <div class="seg" id="viewSeg"><button data-v="call" class="on" data-fr="Appel" data-en="Call">Appel</button><button data-v="tree" data-fr="Arbre" data-en="Tree">Arbre</button><button data-v="board" data-fr="Sessions" data-en="Sessions">Sessions</button></div>
   <button class="ic" id="bPlay" title="Pause / Lecture (espace)">⏸</button>
@@ -1116,8 +1120,12 @@ function renderPresent() {
   if (shown) { if (pb.dataset.img !== shown) pb.innerHTML = m.imgs.map((u) => `<img src="${esc(u)}" alt="">`).join('') + (m.more > 0 ? `<span class="pmore">+${m.more}</span>` : ''); }   // the same pictures are left in place: redrawing them would make them blink
   else pb.innerHTML = (m.view === 'editor' ? `<div class="ptab"><span>${esc(m.tab.file)}</span><em>${esc(m.tab.path)}</em></div>` : '') + m.lines.map((l) => lineHtml(l, m.view)).join('') + (m.view === 'term' ? '<div class="tl"><span class="ps">❯</span> <span class="cursor"></span></div>' : '');
   pb.dataset.img = shown; pb.scrollTop = m.view === 'term' ? pb.scrollHeight : 0; $('#pstat').textContent = m.stat;
-  const td = S.todos[id], el = $('#ptodo'); el.style.display = td && td.length ? '' : 'none'; $('#present').classList.toggle('has-todo', !!(td && td.length));
-  if (td) el.innerHTML = `<h5>${L('Tâches', 'Tasks')} · ${td.filter((x) => x.s === 'completed').length}/${td.length}</h5>` + td.map((x) => `<div class="td ${x.s}"><i>${x.s === 'completed' ? '☑' : x.s === 'in_progress' ? '◐' : '☐'}</i>${esc(x.c)}</div>`).join('');
+  const td = S.todos[id], el = $('#ptodo'), tk = td && td.length ? prefs.lang + '\n' + td.map((x) => x.s + ' ' + x.c).join('\n') : ''; el.style.display = tk ? '' : 'none'; $('#present').classList.toggle('has-todo', !!tk);
+  if (tk && el.dataset.k !== tk) {   // redrawn only when it changes, so it stays where you scrolled it; the task in progress is brought into view
+    el.innerHTML = `<h5>${L('Tâches', 'Tasks')} · ${td.filter((x) => x.s === 'completed').length}/${td.length}</h5>` + td.map((x) => `<div class="td ${x.s}"><i>${x.s === 'completed' ? '☑' : x.s === 'in_progress' ? '◐' : '☐'}</i>${esc(x.c)}</div>`).join('');
+    const cur = el.querySelector('.in_progress'); el.scrollTop = cur ? Math.max(0, cur.offsetTop - el.clientHeight / 2) : 0;
+  }
+  el.dataset.k = tk;
   $('#pbadge').textContent = `🖥 ${p.name} ${L('partage son écran', 'is sharing their screen')}`;
   if (S.camFor !== id) { $('#pcam').innerHTML = avatarSVG(p, undefined, 'c' + p.gid + '_') + `<div class="tag"><b>${esc(p.name)}</b></div>`; S.camFor = id; }
   $('#pcam').classList.toggle('speaking', S.speakers.has(id));
