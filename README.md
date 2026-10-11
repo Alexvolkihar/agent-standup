@@ -108,6 +108,8 @@ The **Sessions** tab lists every session active in the last 12 hours, across all
 Every tile carries one status: **working** (with what it is doing), **waiting on another agent** (who), **needs you?** (a file edit or write, or a question, has been pending for 15 s+), **stalled** (waiting on an agent that has been silent for 2 min+), or **done**. A summary sits in the header, and the tab title shows how many agents need you. The "needs you?" signal is a heuristic: Claude Code does not record permission prompts, so commands (Bash) are not flagged because they can legitimately run for minutes (they get a ⏳ badge after 1 min instead). Measured on real sessions, edits that stay pending for 15 s+ are rare, so the signal is mostly right.
 
 ## Voices
+Each line is read with a voice of its own language (French or English), whatever language the interface is in.
+
 Four styles in ⚙ (default: **Cartoon voices**, so everything stays understandable):
 - **Animal Crossing** — every agent "talks" in gibberish, one blip per letter, with a sentence melody (up for questions, down for statements) and a register of its own.
 - **Simlish** — the same idea with flowing syllables, vowels and little consonant noises.

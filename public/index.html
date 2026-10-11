@@ -342,6 +342,11 @@ const savePrefs = () => { prefs._t = Date.now(); try { localStorage.setItem('cc.
 const LANGS = [['en', 'English', 'en'], ['fr', 'Français', 'fr'], ['zh-TW', '繁體中文', 'zh-Hant-TW'], ['zh-CN', '简体中文', 'zh-Hans-CN'], ['es', 'Español', 'es'], ['de', 'Deutsch', 'de'], ['da', 'Dansk', 'da'], ['pt-BR', 'Português (Brasil)', 'pt-BR'], ['ja', '日本語', 'ja']];
 let LOC = {};
 const FR = () => prefs.lang === 'fr';
+const FR_W = /\b(le|la|les|des|une|un|et|est|pour|dans|que|qui|pas|sur|avec|je|tu|nous|vous|ce|cette|ça|du|au|aux|mais|sont|été|fait|plus|ne|ont|il|elle|ils|elles|très|aussi|donc|bien|tout|voici|voilà|merci|oui|non|comme|où|déjà|encore)\b/gi, EN_W = /\b(the|and|is|are|to|of|in|that|with|for|this|it|on|you|we|not|have|has|was|be|will|can|from|your|at|as|but|all|now|also|done|here|there|which|what|then|just|so)\b/gi;
+const langOf = (t) => {   // 'fr' or 'en' when a line clearly reads as one of them, else null: the voice then follows the interface language
+  t = String(t || ''); const fr = (t.match(FR_W) || []).length + (t.match(/[éèêàçùâîôûœ]/g) || []).length, en = (t.match(EN_W) || []).length;
+  return fr >= 2 && fr > en * 1.5 ? 'fr' : en >= 2 && en > fr * 1.5 ? 'en' : null;
+};
 const tr = (en) => (prefs.lang === 'en' || prefs.lang === 'fr' ? en : LOC[en] || en);
 const L = (fr, en) => (FR() ? fr : tr(en));
 async function loadLocale(code) { LOC = {}; if (code === 'en' || code === 'fr') return; try { const r = await fetch('/locales/' + encodeURIComponent(code) + '.json'); if (r.ok) LOC = await r.json(); } catch {} }
@@ -527,7 +532,7 @@ const speakable = (t) => t.replace(/(?:[\w.-]+\/)+([\w.-]+)/g, (m, f) => f.repla
 const trMem = new Map(), trPending = new Map();
 const baseText = (ev, max) => short(ev.text, max || (S.live ? (ev.kind === 'order' ? 220 : 180) : (ev.kind === 'order' ? 200 : 230)));
 function ensureTr(texts) {
-  texts = [...new Set(texts)].filter((t) => t && !trMem.has(t));
+  texts = [...new Set(texts)].filter((t) => t && !trMem.has(t)).filter((t) => langOf(t) !== 'fr');   // already French: nothing to translate
   const waits = texts.filter((t) => trPending.has(t)).map((t) => trPending.get(t)), fresh = texts.filter((t) => !trPending.has(t));
   if (fresh.length) {
     const pr = fetch('/api/translate', { method: 'POST', body: JSON.stringify({ texts: fresh }) }).then((r) => r.json()).then((d) => {
@@ -728,7 +733,7 @@ function warmTTS(i) {   // synthesize the next few lines ahead of time
   if (!TTS.server || !AUD.ctx || !prefs.voice || prefs.vstyle === 'animal' || prefs.vstyle === 'sims') return;
   let n = 0; for (let k = i; k < S.events.length && n < 4; k++) {
     const e = S.events[k]; if (quiet(e)) continue; n++;
-    const p = S.agents[e.agent], v = p && TTS.voiceFor(p, FR() && trMem.has(baseText(e))); if (v) TTS.buf(speakable(spoken(e)), v, TTS.rate()).catch(() => {});
+    const p = S.agents[e.agent], txt = speakable(spoken(e)), v = p && TTS.voiceFor(p, frVoice(txt)); if (v) TTS.buf(txt, v, TTS.rate()).catch(() => {});
   }
 }
 
@@ -849,7 +854,8 @@ function captionRun(id, text, totalMs) {
   for (let i = 1; i < ps.length; i++) { const x = ps[i], when = at; timers.push(setTimeout(() => setCaption(id, x), when)); at += totalMs * x.length / n; }
   capTimers.set(id, timers);
 }
-async function speakLine(text, p, primary, token, fr = FR()) {
+const frVoice = (t) => (langOf(t) ?? (FR() ? 'fr' : 'en')) === 'fr';   // a French line gets a French voice whatever the interface language, and the other way round
+async function speakLine(text, p, primary, token, fr = frVoice(text)) {
   captionRun(p.id, text, estMs(text));
   if (AUD.off() || !prefs.voice) { if (!AUD.off() && prefs.office) AUD.murmur(0.5 + (p.vi % 5) / 10, estMs(text) / 1000); return sleep(estMs(text)); }
   if (S.hurry) return sleep(estMs(text));
@@ -1641,7 +1647,7 @@ async function run(i) {
       if (g.kind === 'order') { S.status[g.to] = 'working'; AUD.join(); setTimeout(() => { paintStatus(); fly(g.agent, g.to, '📨'); popTile(g.to); }, 30); }
       if (g.kind === 'report') { AUD.ding(); setTimeout(() => { fly(g.agent, g.to, '✅'); popTile(g.agent); }, 30); }
       const said = clipSpeech(line, S.pace); if (g.agent === 'main' && g.kind === 'say') { const full = plain(g.text), key = said.replace(/…$/, '').trim().slice(-30), pos = key ? full.indexOf(key) : -1, n = pos >= 0 ? pos + key.length : said.length; S.mainSaid = { ev: g, said: n, full: n >= full.length - 5 }; }
-      return speakLine(said, S.agents[g.agent], true, token, FR() && trMem.has(baseText(g))).then(() => stopTalk(g.agent));
+      return speakLine(said, S.agents[g.agent], true, token, frVoice(said)).then(() => stopTalk(g.agent));
     };
     let plays;
     if (ev.kind === 'order' && group.length > 1) {   // the first order in full, then "Also Remy on X, Iris on Y"

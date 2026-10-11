@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.25.3
+- **The voice follows the language of the line, not of the interface.** A session written in French with the interface in English was read by an English voice (French with an English accent); the other way round, an English line was read by a French voice. Each line now gets a voice of its own language when it clearly reads as French or English (the short lines of banter keep the interface language). A line already in French is no longer sent to Claude for translation.
+
 ## 1.25.2
 - **Sub-agents show up at once in a live call.** When the lead launches several agents in parallel, their tiles appear the moment the orders are written (before, each tile waited for its order to be read out, one after the other, and a burst of hundreds of tool events could hide them until the call caught up). The first order is read in full; the others are named in one line (“Also Remy on X, Iris on Y”). Hundreds of tool events from parallel agents now scroll past in a couple of seconds instead of minutes.
 - **The lead says what it did.** When the lead finishes (confetti), the part of its last message that the live reading had cut short is read as a wrap-up (“To sum up: …”), so you know what was done without opening the transcript.
