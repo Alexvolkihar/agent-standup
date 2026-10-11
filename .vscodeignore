@@ -2,6 +2,8 @@
 *.vsix
 docs/**
 landing/**
+brand/**
+media/tray*.png
 scripts/**
 .github/**
 

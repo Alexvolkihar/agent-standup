@@ -1,3 +1,5 @@
+![Agent Standup: your AI agents, in a stand-up call](https://atoll92.github.io/agent-standup/media/banner.png)
+
 # Agent Standup
 
 **See who is waiting on whom, and who is blocked — across all your Claude Code sessions — at zero token cost.** Agent Standup turns the session files Claude Code already writes into a live team call (and a board of every session): it only reads local files and never calls Claude unless you turn on French translation or the jokes.

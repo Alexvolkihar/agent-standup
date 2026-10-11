@@ -34,8 +34,8 @@ function refreshTray() {
   lastNeeds = c.needs;
 }
 function createTray() {
-  const base = nativeImage.createFromPath(path.join(__dirname, 'core/media/icon.png')), img = base.resize({ width: 18, height: 18 });
-  tray = new Tray(img);
+  const small = nativeImage.createFromPath(path.join(__dirname, 'core/media/tray.png'));   // 18 px drawing (and tray@2x.png beside it); the store icon shrunk as a fallback
+  tray = new Tray(small.isEmpty() ? nativeImage.createFromPath(path.join(__dirname, 'core/media/icon.png')).resize({ width: 18, height: 18 }) : small);
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open Agent Standup', click: showWindow }, { label: 'Open in browser', click: () => shell.openExternal(`http://localhost:${port}/`) },
     { label: 'Open characters folder', click: () => { const d = core.charactersDir(); try { fs.mkdirSync(d, { recursive: true }); } catch {} shell.openPath(d); } },

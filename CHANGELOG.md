@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.26.0
+- **A new icon: the lead itself.** The app icon is now the lead as you see it in the call (the peach character with the gold headset, its focused smile, its desk and its coffee), in front of a window at night. It replaces the old icon in the extension list, the desktop app (macOS and Windows) and the website, and the camera emoji in the header and the browser tab. The red dot on the tab when an agent may be waiting for you is still there.
+- **The lead’s room has a window.** The three screens with rising curves behind the lead looked like a trading desk. They are replaced by a window on the city at night, with a few lit windows that twinkle slowly.
+- **VS Code side bar:** the one-colour symbol is now the lead’s head with its headset (it was a camera).
+- **Desktop app:** the indicator in the menu bar or tray has its own small drawing, sharp on high-density screens, where it used to be the large icon shrunk to 18 pixels.
+- **For contributors:** the drawings are in `brand/` with a short guide (files, colours, how to use the logo), and `npm run brand` renders every icon, the link preview and the README header from them. The link preview and the README header now show the team at the office.
+
 ## 1.25.10
 - **Inner thoughts, tidied.** The “54 calls in. What do I know so far?” thought is gone: it came back with a new number every time. An agent’s own reasoning is shown in whole sentences (it was cut at every dot: “The migration in db/schema.” then “sql locks the whole table.”) and each line of its notes is a thought of its own. A thought sits above the activity line and takes three lines at most; in the narrow list it is one line inside the row, so the rows no longer jump. No more doubled punctuation (“Why is the login slow?.”), long file names are shortened, a command is named without the folder it starts from, a search pattern that is a regular expression is not read out, and the kind of agent (“Explore”) is not a task. A thought no longer flashes just before the agent’s own line, ends when the agent is done, and the mumble of the babble styles is cut by a spoken line too.
 - **The wrap-up is made for the ear.** “To sum up” read up to 520 characters of Markdown as one run: a heading straight into the next sentence, list dashes, table rows, half a minute long. It now says the first sentence of each paragraph and list item, a short heading as a sentence of its own, no tables, code, emoji or clock seconds, in about 280 characters (18 seconds).
