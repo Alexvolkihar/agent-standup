@@ -34,7 +34,13 @@ Both skills run one command, pinned to an exact version of the app's npm package
 
 The app reads the session files Claude Code writes in `~/.claude/projects` and the ones Codex writes in `~/.codex/sessions`. It never writes to them. By default it sends nothing anywhere: the page is served from your machine to your browser.
 
+On your machine it keeps your settings in one small file and, when voices are on, the spoken lines as sound files in a private temporary folder, deleted after a day.
+
 Three things in the app's settings call out, all off by default: French translation and jokes (short lines go through your own Claude login), a web radio stream, and a usage counter (one empty request a day). The plugin turns none of them on.
+
+## Privacy
+
+[Privacy policy](https://github.com/Atoll92/agent-standup/blob/main/PRIVACY.md): what the app reads, what it keeps on your computer, and the few optional features that contact another service.
 
 ## More
 

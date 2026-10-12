@@ -18,6 +18,7 @@ dist-cli/**
 dist-desktop/**
 dist-release/**
 ROADMAP.md
+PRIVACY.md
 dist-release-*/**
 test/**
 node_modules/**

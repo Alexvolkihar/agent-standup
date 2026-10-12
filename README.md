@@ -299,6 +299,8 @@ Agent Standup is free and MIT licensed. I'm also available for work around AI ag
 Press **?** in the app for the full list. Highlights: **Space** pause, **M** mute, **T** tree view, **J / K** next agent that needs you, **Cmd/Ctrl+K** go to a session, and in replay **← / →** step, **N** next highlight.
 
 ## Security and what it reads
+The full [privacy policy](PRIVACY.md) says what is read, what is kept on your computer and what can leave it.
+
 - **It reads local files and sends nothing by default.** Agent Standup reads the session files Claude Code already writes (`~/.claude/projects`, or `CLAUDE_CONFIG_DIR`) and the ones Codex writes (`~/.codex/sessions`, or `CODEX_HOME`; this can be turned off) and draws them in a page. It never writes to your sessions; the only time it starts Claude Code is the optional translation helper described below.
 - **Local only.** The server listens on `127.0.0.1` (never on the network), refuses requests whose Host or Origin is not local, and refuses cross-site requests on every endpoint that does something (translation, jokes, sound, settings).
 - **The only things that call out** are optional and off by default: French translation and jokes (your own Claude login, the small Haiku model, with all tools disabled; when one of them is on, the lines of a Codex session are sent the same way, to Anthropic), the FIP radio stream, and the usage counter (one empty request a day to a 1-pixel file, only if you turn it on).
