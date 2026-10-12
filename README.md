@@ -24,7 +24,7 @@ _A fictional team fixing a slow login page — the built-in demo (⚙ → Source
 - **Stuck or quiet agents** — in the live call, a tile pulses amber with ⏳ when a command has been running for over a minute, shows 💤 when a working agent has gone quiet for 3 minutes, and a red ✗ counter for failed tool calls. The browser tab title shows how many agents are working.
 - **Built-in demo** — no session yet? ⚙ → Source → **Demo** plays a fictional team (no data of yours).
 - **Live call** — follows your newest Claude Code session in real time. Each agent is a small character at its desk; the one who speaks gets the spotlight and keeps it until someone else talks. Agents that talk back-to-back talk over each other, like a real meeting.
-- **Real voices, lip-sync** — lines are spoken aloud; mouths follow the actual volume of the voice.
+- **Real voices, lip-sync** — lines are spoken aloud; mouths follow the actual volume of the voice. For the best experience, switch to the very natural voices (see [Voices](#voices)).
 - **Live screen sharing with the real output** — when an agent works, its screen fills the stage (presenter's camera in the corner, "sharing" badge): a **terminal** with the command history and the actual output of each command, search results and tool calls; or an **editor** with the file it reads (real content and line numbers) or the exact diff it applies. See *What you see for each agent* below.
 - **Agents come and go** — a sub-agent joins when it is given a task and leaves the call 2 minutes (playback time) after its report, with a dissolve animation. It comes back if it gets a new task.
 - **Sub-agent tree** — the full hierarchy (you → Claude → sub-agents → their sub-agents) with status, tool counts and the current action.
@@ -123,12 +123,14 @@ Every tile carries one status: **working** (with what it is doing), **waiting on
 ## Voices
 Each line is read with a voice of its own language (French or English), whatever language the interface is in.
 
-Four styles in ⚙ (default: **Cartoon voices**, so everything stays understandable):
+Five styles in ⚙ (default: **Cartoon voices**, so everything stays understandable):
 - **Animal Crossing** — every agent "talks" in gibberish, one blip per letter, with a sentence melody (up for questions, down for statements) and a register of its own.
 - **Simlish** — the same idea with flowing syllables, vowels and little consonant noises.
 - **Cartoon voices** — the real words read by your system voice, with a character per agent (chipmunk, deep, robot, wobbly, radio, monster, squeaky).
 - **Natural voices** — plain system voices.
 - **Very natural voices** — [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M), a small open speech model that runs on your machine. Optional: pick it in ⚙ and click Install (about 730 MB, one folder in your user cache, installed with npm; the model is fetched on first use). Until it is ready the system voices keep talking. Mostly English voices, one French voice.
+
+**Our tip:** once you are set up, switch to *Very natural voices*. It is a one-time install and the agents then sound like real people, which is the nicest way to follow a call.
 
 Long lines are subtitled one sentence at a time, in step with the voice.
 
