@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.29.0
+- **Your own agent names.** A sub-agent you defined yourself (a file in `.claude/agents/`, for example `code-reviewer.md`) or named when it was launched now keeps that name on its tile, in the transcript and in the voices: “Code Reviewer” rather than a first name drawn from the list. Two of the same type become “Code Reviewer” and “Code Reviewer 2”. The agent types Claude Code ships (general-purpose, Explore, Plan…) still get a first name. ⚙ → Characters → **Keep my agents’ own names** turns it off. Asked for by [Eshinio](https://github.com/Eshinio) (#6).
+- **The slider works in Replay and in the demo.** It sat at the left and did nothing when clicked or dragged; only a live call set its range. This had been there since the first version.
+- **French lines get proper French voices.** With the very natural voices, every French line was read by one and the same system voice, the first in the list (a Canadian one on a Mac): the speech model has no French voice, whatever earlier versions said. French lines are now read by your system voices, one per character, French from France first unless your computer is set to another French. For a clear improvement on a Mac, download an *Enhanced* or *Premium* French voice (System Settings → Accessibility → Spoken Content → System Voice → Manage Voices).
+- **Natural voices: no more robotic ones on a Mac.** Apple’s synthetic voices (Eddy, Flo, Reed, Sandy, Shelley) were picked among the five voices of a call, in English as in French. They are now used only when fewer than two other voices are installed.
+- **Faster first load.** The first page after the app starts waited a second or more for the list of system voices. The call now appears at once and the voices follow.
+- **Header:** the status pill is no longer shortened to “REPL…”, and when the window is too narrow for the counters they lose their words (the icon and the number stay) instead of being cut mid-word. This showed in Spanish, Portuguese and German.
+- Live, Replay and Demo are translated in the eight languages that have a catalogue.
+- The website shows the install commands whole (they were cut with “…” on narrow screens).
+
 ## 1.28.0
 - **Korean (한국어).** The interface is available in a tenth language: menus, chips, tooltips, the recap, and in VS Code the command titles, the setting descriptions and the status bar. Pick it in ⚙ → Language. Contributed by [jainefer](https://github.com/jainefer) (#5). Like the other languages apart from English and French it is an AI draft not yet reviewed by a native speaker: corrections are welcome.
 - The website and the README suggest the very natural voices for the best experience (⚙ → Voice style, a one-time install).
