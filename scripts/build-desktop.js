@@ -1,6 +1,6 @@
 // Builds the unsigned desktop app for the current platform into dist-desktop/ (needs ~150 MB for Electron the first time).
 //   node scripts/build-desktop.js [--arch arm64|x64]      then zip dist-desktop/<app folder>
-// macOS: the app is ad-hoc signed so it runs locally; downloaded copies need right-click → Open once (no Apple Developer ID here).
+// macOS: the app is ad-hoc signed so it runs locally; downloaded copies need System Settings → Privacy & Security → Open Anyway once (no Apple Developer ID here).
 const fs = require('fs'), path = require('path'), { execFileSync, spawnSync } = require('child_process');
 const root = path.join(__dirname, '..'), d = path.join(root, 'desktop'), core = path.join(d, 'core'), out = path.join(root, 'dist-desktop');
 const arch = process.argv.includes('--arch') ? process.argv[process.argv.indexOf('--arch') + 1] : process.arch;

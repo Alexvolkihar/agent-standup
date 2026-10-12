@@ -66,6 +66,8 @@ section { padding: 84px 0 }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 40px }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px }
 .card p { color: var(--soft); font-size: 16px; margin-top: 8px }
+.card p.fine { font-size: 14.5px; color: var(--dim); margin-top: 14px }
+.card p.fine code { display: block; font-size: 12.5px; margin-top: 6px }
 .card .btn { margin-top: 16px }
 .card code, .mono { font: 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #0a1a1f; border: 1px solid var(--line); border-radius: 8px; padding: 2px 7px; color: var(--soft); overflow-wrap: anywhere }
 .card .cmd { margin-top: 14px; width: 100% }

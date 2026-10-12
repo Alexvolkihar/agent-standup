@@ -10,6 +10,8 @@
 
 **Works with:** Claude Code · Codex · Mistral Vibe — in VS Code, Cursor, Windsurf, any terminal, or as a desktop app.
 
+**Just installed the extension?** Click the Agent Standup icon in the Activity Bar (or run **Agent Standup: Open live call**), then press **Join**. No session yet: press **▶ Watch the demo**.
+
 **→ Website & download: https://agent-standup.com**
 
 ![Agent Standup: a team of AI agents in a call](https://atoll92.github.io/agent-standup/media/hero.gif)
@@ -111,9 +113,9 @@ The header shows how full the lead's context is (`ctx 62%`, orange then red, wit
 | Where | How |
 |---|---|
 | **VS Code** | Install **Agent Standup** from the Extensions view (Marketplace). |
-| **Cursor, Windsurf, VSCodium…** | Download `agent-standup-<version>.vsix` from the [latest release](https://github.com/Atoll92/agent-standup/releases/latest) and use *Extensions → … → Install from VSIX*. |
+| **Cursor, Windsurf, VSCodium…** | Search **Agent Standup** in the Extensions panel of your editor: the same extension is on [Open VSX](https://open-vsx.org/extension/DoubleGeste/agent-standup). If the search finds nothing, download `agent-standup-<version>.vsix` from the [latest release](https://github.com/Atoll92/agent-standup/releases/latest) and use *Extensions → … → Install from VSIX*. |
 | **Any terminal, no editor** | `npx @double_geste/agent-standup --open` (Node 18+; the package is on [npm](https://www.npmjs.com/package/@double_geste/agent-standup)). Offline alternative: `npx https://github.com/Atoll92/agent-standup/releases/latest/download/agent-standup-cli.tgz --open`. |
-| **A small desktop app (macOS)** | Download `Agent-Standup-<version>-mac-apple-silicon.zip` (or `-mac-intel.zip`) from the release, unzip, move *Agent Standup* to Applications. The app is **not signed with an Apple developer ID**, so the first time: right-click the app → *Open* → *Open* (or run `xattr -dr com.apple.quarantine "/Applications/Agent Standup.app"`). It has a window and an indicator in the menu bar, and notifies you when an agent may need you. Windows and Linux builds (`-windows-x64.zip`, `-linux-x64.zip`) are on the same release page but **experimental and not tested by hand**. |
+| **A small desktop app (macOS)** | Download `Agent-Standup-<version>-mac-apple-silicon.zip` (or `-mac-intel.zip`) from the release, unzip, move *Agent Standup* to Applications. The app is **not signed with an Apple developer ID**, so the first time: open it, close the warning, then *System Settings → Privacy & Security → Open Anyway* (on macOS 14 and earlier: right-click the app → *Open* → *Open*). Or run `xattr -dr com.apple.quarantine "/Applications/Agent Standup.app"`. It has a window and an indicator in the menu bar, and notifies you when an agent may need you. Windows and Linux builds (`-windows-x64.zip`, `-linux-x64.zip`) are on the same release page but **experimental and not tested by hand**. |
 | **Claude Code status line** | `npm i -g @double_geste/agent-standup`, then in `~/.claude/settings.json`: `{ "statusLine": { "type": "command", "command": "agent-standup statusline" } }` → shows `⚙2 ✋1` under your prompt. |
 | **tmux** *(not tested here)* | `set -g status-right '#(agent-standup status --here)'` |
 | **Neovim** *(not tested here)* | call `vim.fn.system('agent-standup status --here')` from a timer and show the result in your statusline plugin; `agent-standup status --json` gives machine-readable output. |
@@ -164,18 +166,20 @@ Long lines are subtitled one sentence at a time, in step with the voice.
 - **Search** the transcript, **ambience volume**, and a compact layout when the panel is narrow (side bar): under about 300 px wide, one row per agent instead of tiles. In replay, speed presets (1×, 2×, 4×, 8×) and each session remembers where you stopped.
 
 ## Install
-Four ways in — pick one (details in [Works with your tools](#works-with-your-tools)): the **VS Code extension** (below), the **`agent-standup` command** (`npx @double_geste/agent-standup --open`), the **desktop app** (macOS, from the release page), or the **[Claude Code plugin](#claude-code-plugin)**. Cursor, Windsurf and VSCodium install the same `.vsix`.
+Four ways in — pick one (details in [Works with your tools](#works-with-your-tools)): the **VS Code extension** (below), the **`agent-standup` command** (`npx @double_geste/agent-standup --open`), the **desktop app** (macOS, from the release page), or the **[Claude Code plugin](#claude-code-plugin)**. Cursor, Windsurf and VSCodium get the same extension from Open VSX: search **Agent Standup** in their Extensions panel.
 
 ### VS Code
 
 ### Option 0 — from the Marketplace (easiest)
 In VS Code: Extensions view → search **Agent Standup** → Install. Or: https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup
 
+Then click the Agent Standup icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
+
 ### Option A — from a GitHub Release
 1. Open the repository's **Releases** page and download `agent-standup-<version>.vsix` (don't send it by email: Gmail and others block `.vsix` files).
 2. In VS Code: Extensions view → `…` menu (top right) → **Install from VSIX…** → pick the file.
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
-3. **Developer: Reload Window**, then click the camera icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
+3. **Developer: Reload Window**, then click the Agent Standup icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
 
 Direct download of the latest version: https://github.com/Atoll92/agent-standup/releases/latest/download/agent-standup.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
