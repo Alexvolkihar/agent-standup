@@ -1,0 +1,20 @@
+{
+  "name": "agent-standup",
+  "version": "1.28.0",
+  "description": "Watch the Claude Code and Codex sessions on your computer as a live team call: who is working, who waits on whom, who needs you. Opens a local page and reads only local session files.",
+  "author": {
+    "name": "Double Geste",
+    "url": "https://github.com/Atoll92"
+  },
+  "homepage": "https://atoll92.github.io/agent-standup/",
+  "repository": "https://github.com/Atoll92/agent-standup",
+  "license": "MIT",
+  "keywords": [
+    "agents",
+    "sub-agents",
+    "sessions",
+    "monitoring",
+    "standup",
+    "codex"
+  ]
+}

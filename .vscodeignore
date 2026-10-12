@@ -3,6 +3,8 @@
 docs/**
 landing/**
 brand/**
+plugin/**
+.claude-plugin/**
 media/tray*.png
 scripts/**
 .github/**

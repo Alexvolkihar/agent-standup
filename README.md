@@ -37,6 +37,14 @@ _A fictional team fixing a slow login page — the built-in demo (⚙ → Source
 - **Office music** — optional live web radio (FIP and its themed stations) that fades down smoothly while an agent talks and fades back up when the room goes quiet.
 - Office ambience, optional (off by default) and fully synthesised: keyboards that type when agents run commands, clicks when they read, a coffee machine, a phone buzzing, a far-away door… (⚙ → Office ambience). Plus small reactions and jokes between agents ("episode mode").
 
+## Claude Code plugin
+
+You can also open the call from inside Claude Code. The [plugin](plugin/) adds two skills: `/agent-standup:open` starts the app and opens the call in your browser, and `/agent-standup:status` says in one line who is working and who needs you.
+
+    /plugin install agent-standup --marketplace Atoll92/agent-standup
+
+On Claude Code before 2.1.275: `/plugin marketplace add Atoll92/agent-standup`, then `/plugin install agent-standup@double-geste`. The plugin runs the same npm package as the command line, pinned to an exact version.
+
 ## Codex sessions too
 
 Sessions of OpenAI’s Codex (the desktop app and the `codex` command) appear next to your Claude Code sessions: in the session list (project “Codex”), on the board, and in the live call when one of them is the most recent. Nothing to set up: the app reads the files Codex already writes in `~/.codex/sessions` (or `$CODEX_HOME`), and never writes there.
