@@ -2,7 +2,7 @@
 const vscode = require('vscode');
 const http = require('http'), fs = require('fs');
 
-let panel = null, status = null, started = null;
+let panel = null, side = null, status = null, started = null;
 
 const cfg = () => vscode.workspace.getConfiguration('agentStandup');
 const tt = (s, ...a) => (vscode.l10n && vscode.l10n.t ? vscode.l10n.t(s, ...a) : s.replace(/\{(\d+)\}/g, (_, i) => a[i]));   // runtime strings: bundles in ./l10n, the English text is the key
@@ -63,13 +63,30 @@ const relay = (webview) => webview.onDidReceiveMessage((m) => {
 // Sidebar view: the same live call, in the activity bar.
 const sidebar = {
   async resolveWebviewView(view) {
-    view.webview.options = { enableScripts: true }; relay(view.webview);
+    view.webview.options = { enableScripts: true }; relay(view.webview); side = view; view.onDidDispose(() => { if (side === view) side = null; });
     try {
       const ext = await vscode.env.asExternalUri(vscode.Uri.parse((await url()) + '&embed=1'));
       view.webview.html = frameHtml(ext.toString(true));
     } catch (e) { view.webview.html = `<body style="font:13px sans-serif;color:#ccc;padding:12px">${e.message}</body>`; }
   },
 };
+
+// The call goes to the Claude Code tab you are on: the conversation on one side of a split screen, its call on the other (off in the page's ⚙).
+// VS Code tells a tab's label, not its session. Claude Code names a tab after the title of its session, cut after 24 characters: the label is looked up among the recent sessions,
+// this workspace's first, the most recent first. A tab that has no title yet ("Claude Code") or matches nothing changes nothing. The sidebar chat and a terminal are not tabs: nothing says which session they show.
+let tabKey = '';
+function followTab() {
+  try {
+    if (!panel && !side) return; const g = vscode.window.tabGroups.activeTabGroup, t = g && g.activeTab, vt = t && t.input && t.input.viewType;
+    if (typeof vt !== 'string' || !vt.includes('claudeVSCodePanel')) return;   // any other tab (a file, the call itself): the call stays where it is
+    const key = g.viewColumn + '|' + t.label; if (key === tabKey) return; tabKey = key;   // only when you change tab: the call may have been moved by hand since
+    const one = (x) => String(x).replace(/\s+/g, ' ').trim(), cut = /…$/.test(t.label), label = one(t.label.replace(/…$/, '')); if (!label || t.label === 'Claude Code') return;
+    const f = vscode.workspace.workspaceFolders, ws = f && f.length ? f[0].uri.fsPath.replace(/[^a-zA-Z0-9]/g, '-') : '';
+    const rows = require('./server.js').boardRows().filter((r) => typeof r.title === 'string' && (cut ? one(r.title).startsWith(label) : one(r.title) === label));
+    const r = rows.find((x) => ws && (x.proj === ws || x.proj.startsWith(ws + '-'))) || rows[0]; if (!r) return;
+    for (const w of [panel, side]) if (w) w.webview.postMessage({ agentStandup: 'pin', id: r.id, proj: r.proj, tab: true });
+  } catch {}
+}
 
 // The folder where the person drops their own pixel art (lead.png, you.png, others for the sub-agents, name-talk.png for an open mouth).
 async function openCharacters() {
@@ -127,6 +144,7 @@ function activate(ctx) {
   ctx.subscriptions.push(vscode.commands.registerCommand('agentStandup.openStatus', () => openPanel(target)));
   status.command = 'agentStandup.openStatus';
   try { ctx.subscriptions.push(vscode.window.onDidChangeWindowState((s) => { if (s.focused) poll(); })); } catch {}   // refresh the moment the window regains focus
+  try { ctx.subscriptions.push(vscode.window.tabGroups.onDidChangeTabs(followTab), vscode.window.tabGroups.onDidChangeTabGroups(followTab)); } catch {}
   const pollT = setInterval(poll, 4000); poll(); ctx.subscriptions.push({ dispose: () => clearInterval(pollT) });
   // If another VS Code window was serving the port and closes, take over so this window keeps working.
   const watch = setInterval(async () => { try { if (!started) return; const s = await started; if (!s.error && !(await ping(s.port))) { started = null; ensureServer(); } } catch { started = null; } }, 5000);

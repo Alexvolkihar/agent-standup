@@ -63,8 +63,8 @@
  "Files touched": "Berørte filer",
  "Final report": "Slutrapport",
  "first error": "første fejl",
- "French is read by your system voices: installing an “enhanced” or “premium” one makes a big difference.": "Fransk læses af dine systemstemmer: at installere en “forbedret” eller “premium” stemme gør en stor forskel.",
- "Good-quality local voices, in English (French lines use your system voices). Free, nothing leaves your machine.": "Lokale stemmer af god kvalitet, på engelsk (fransk bruger dine systemstemmer). Gratis, intet forlader din computer.",
+ "For the best experience, pick the very natural voices.": "Vælg de meget naturlige stemmer for den bedste oplevelse.",
+ "Good-quality local voices, in English. Free, nothing leaves your machine.": "Lokale stemmer af god kvalitet, på engelsk. Gratis, intet forlader din computer.",
  "Hide code & file names in videos": "Skjul kode og filnavne i videoer",
  "Highlights": "Højdepunkter",
  "Human": "Menneske",
@@ -222,5 +222,11 @@
  "Drawn characters": "Tegnede figurer",
  "To tweak them, copy them into your folder and pick “My folder”.": "For at tilpasse dem: kopiér dem til din mappe og vælg “Min mappe”.",
  "My folder": "Min mappe",
- "The characters drawn by the app. Pick “My folder” for your own images, or a pack.": "Figurerne tegnet af appen. Vælg “Min mappe” for dine egne billeder, eller en pakke."
+ "The characters drawn by the app. Pick “My folder” for your own images, or a pack.": "Figurerne tegnet af appen. Vælg “Min mappe” for dine egne billeder, eller en pakke.",
+ "A visitor when another session needs you": "En gæst, når en anden session har brug for dig",
+ "Click to stay in this session": "Klik for at blive i denne session",
+ "Follow the Claude Code tab I am on": "Følg den Claude Code-fane, jeg står på",
+ "Following the latest session": "Følger den seneste session",
+ "Go there": "Gå derhen",
+ "Pinned: click to follow the latest session": "Fastgjort: klik for at følge den seneste session"
 }

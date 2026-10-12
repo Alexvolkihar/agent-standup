@@ -38,6 +38,14 @@
   :is(#pill, #sline).working { color:var(--gold) } :is(#pill, #sline).turn { color:#0b1020; background:var(--accent) } #pill:is(.working, .blocked, .stalled, .turn, .idle) { letter-spacing:0 } :is(#pill, #sline):focus-visible { outline:2px solid var(--accent); outline-offset:-2px }
   @media (max-width:1080px) { #pill { display:none } #sline { display:-webkit-box } } @media (max-width:760px) { #sline::after { content:attr(data-sub); font-weight:400; opacity:.8 } } @media (max-width:400px) { #sline { -webkit-line-clamp:3 } }
   @media (min-width:1081px) { header .brand { min-width:150px } #pill { flex-shrink:20 } .tok, .ctxp { flex-shrink:0 } }   /* wide: a long status gives way before the name and the counters */
+  /* several sessions at once (live): the sessions of the moment as tabs under the header, the one the call is in among them, each with its state; and a visitor from another session that needs you, who takes you there on a click */
+  #tabs { display:none; flex:none; align-items:center; gap:5px; padding:4px 10px; border-bottom:1px solid var(--line); overflow-x:auto; scrollbar-width:none } #tabs::-webkit-scrollbar { display:none } #tabs:not(:empty) { display:flex }
+  .stab { flex:0 1 auto; min-width:92px; max-width:190px; display:flex; align-items:center; gap:5px; padding:2px 9px; border-radius:99px; border:1px solid var(--line); color:var(--dim); font-size:11.5px; line-height:1.5; white-space:nowrap } .stab span { overflow:hidden; text-overflow:ellipsis } .stab:hover { color:var(--text); border-color:var(--accent) }
+  .stab.on { flex-shrink:0; max-width:min(320px,62vw); background:var(--panel2); color:var(--text); font-weight:600; border-color:var(--accent) } .stab.turn:not(.on) { color:var(--accent) } .stab.blocked:not(.on) { color:#fff; background:#c0392b; border-color:#ff8a80; font-weight:600 } .stab.all { flex:none; min-width:0; padding:2px 8px }   /* a narrow panel: the tabs keep a readable width and the row scrolls */
+  #visit { position:absolute; right:12px; bottom:14px; z-index:6; display:none; align-items:flex-end; gap:8px; max-width:min(380px,calc(100% - 24px)); cursor:pointer } #visit.on { display:flex; animation:visit .45s cubic-bezier(.2,1.3,.4,1) } @keyframes visit { from { transform:translateX(120%) } } body.react #visit { bottom:140px }
+  #visit .vsay { position:relative; min-width:0; background:#fff; color:#1b1d27; border-radius:11px 11px 2px 11px; padding:7px 10px; font-size:12.5px; line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,.4); overflow-wrap:anywhere } #visit .vsay small { display:block; color:#5a6072; font-size:11px; margin-bottom:2px } #visit .vgo { display:inline-block; margin-top:5px; padding:1px 10px; border-radius:99px; background:var(--accent); color:#0b1020; font-weight:600; font-size:11.5px }
+  #visit .vwho { flex:none; width:88px; height:66px; border-radius:12px; overflow:hidden; border:2px solid var(--accent); box-shadow:0 4px 14px rgba(0,0,0,.45); background:#222 } #visit.blocked .vwho { border-color:#ff5252 } #visit.speaking .vwho { box-shadow:0 0 0 3px rgba(124,156,255,.4), 0 4px 14px rgba(0,0,0,.45) } #visit .vwho svg { width:100%; height:100%; display:block }
+  #visit .vx { position:absolute; top:-9px; left:-9px; width:20px; height:20px; border-radius:50%; background:var(--panel2); border:1px solid var(--line); color:var(--dim); font-size:11px; line-height:18px } #visit .vx:hover { color:var(--text) }
   @keyframes pulse { 50% { opacity:.3 } }
   .seg { display:flex; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:2px }
   .seg button { padding:4px 11px; border-radius:6px; color:var(--dim); font-size:12.5px }
@@ -266,6 +274,7 @@
   <button class="ic" id="bMenu" title="Réglages">⚙</button>
 </header>
 <div id="sline"></div>
+<div id="tabs" role="tablist" aria-label="Sessions"></div>
 
 <div id="menu">
   <input id="menuQ" type="search" placeholder="Search settings…" aria-label="Search settings" style="margin:4px 8px 2px;width:calc(100% - 16px)">
@@ -280,7 +289,7 @@
   <button class="mi" data-t="notify"><span data-fr="Me prévenir quand les agents ont fini" data-en="Notify me when agents finish">Me prévenir quand les agents ont fini</span><i class="sw"></i></button>
   <button class="mi" data-t="music"><span data-fr="Musique d’ambiance (radio FIP)" data-en="Office music (FIP radio)">Musique d’ambiance (radio FIP)</span><i class="sw"></i></button>
   <div class="box" id="musicBox" style="display:none"><select id="station"></select><input id="musicVol" type="range" min="0" max="1" step="0.05" style="width:100%" aria-label="Music volume"></div>
-  <div class="box" id="vstyleBox"><label class="lbl" for="vstyle" data-fr="Style des voix" data-en="Voice style">Style des voix</label><select id="vstyle"></select></div>
+  <div class="box" id="vstyleBox"><label class="lbl" for="vstyle" data-fr="Style des voix" data-en="Voice style">Style des voix</label><select id="vstyle"></select><div class="hint" id="vstyleTip" style="padding:6px 0 0;display:none" data-fr="Pour la meilleure expérience, choisissez les voix très naturelles." data-en="For the best experience, pick the very natural voices.">Pour la meilleure expérience, choisissez les voix très naturelles.</div></div>
   <div class="box" id="kokoroBox" style="display:none"><button class="btn" id="kokoroInstall" style="width:100%"></button><div class="hint" id="kokoroHint" style="padding:2px 0 6px"></div></div>
   <h4 data-fr="Affichage" data-en="Display">Affichage</h4>
   <button class="mi" data-t="roster"><span data-fr="Liste des agents (à gauche)" data-en="Agents list (left)">Liste des agents (à gauche)</span><i class="sw"></i></button>
@@ -289,6 +298,8 @@
   <div class="box"><div class="lbl"><span data-fr="Bavardage entre agents" data-en="Chatter between agents">Bavardage entre agents</span></div><select id="chatSel"><option value="quiet" data-fr="Discret" data-en="Quiet">Discret</option><option value="normal" data-fr="Normal" data-en="Normal">Normal</option><option value="lively" data-fr="Animé" data-en="Lively">Animé</option></select></div>
   <button class="mi" data-t="vanish"><span data-fr="Retirer les agents terminés (2 min)" data-en="Remove finished agents (2 min)">Retirer les agents terminés (2 min)</span><i class="sw"></i></button>
   <button class="mi" data-t="epi"><span data-fr="Réactions et blagues" data-en="Reactions & jokes">Réactions et blagues</span><i class="sw"></i></button>
+  <button class="mi" data-t="visits"><span data-fr="Un visiteur quand une autre session vous attend" data-en="A visitor when another session needs you">Un visiteur quand une autre session vous attend</span><i class="sw"></i></button>
+  <button class="mi" data-t="followTab" id="mFollowTab" style="display:none"><span data-fr="Suivre l’onglet Claude Code affiché" data-en="Follow the Claude Code tab I am on">Suivre l’onglet Claude Code affiché</span><i class="sw"></i></button>
   <h4 data-fr="Source" data-en="Source">Source</h4>
   <div class="box"><div class="seg" style="width:100%" id="modeSeg"><button data-m="live" style="flex:1" data-fr="Live" data-en="Live">Live</button><button data-m="replay" style="flex:1" data-fr="Replay" data-en="Replay">Replay</button><button data-m="demo" style="flex:1" data-fr="Démo" data-en="Demo">Demo</button></div>
     <select id="liveProj" style="display:none;margin-top:6px" title="Project to follow"></select>
@@ -317,7 +328,7 @@
     <div id="reactBar" aria-label="Reactions"><button data-e="👍">👍</button><button data-e="👏">👏</button><button data-e="☕">☕</button><button data-e="🔥">🔥</button><button data-e="🙌">🙌</button></div>
     <div id="hl"></div>
     <canvas id="gantt" height="90"></canvas>
-    <div id="toasts" role="status" aria-live="polite"></div>
+    <div id="toasts" role="status" aria-live="polite"></div><div id="visit" role="status" aria-live="polite"></div>
     <div id="empty"><h2 id="eT"></h2><p id="eP"></p><button class="cta" id="eDemo"></button></div>
     <div id="gate"><h2 id="gT"></h2><p id="gP"></p><button class="cta" id="gB"></button></div>
     <div id="detail"><div class="hd"><b id="dname"></b><button class="ic" id="dclose">✕</button></div><div id="dbody"></div></div>
@@ -345,7 +356,7 @@ const CID = Math.random().toString(36).slice(2, 12);   // identifies this window
 const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
 
-let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'cartoon', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call', hideCode: false, ownNames: true };
+let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'cartoon', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call', hideCode: false, ownNames: true, visits: true, followTab: true };
 { let loc = {}; try { loc = JSON.parse(localStorage.getItem('cc.prefs') || '{}') || {}; } catch {}   // the settings file (shared by every window) and this origin's copy: the more recent one wins
   const sv = window.SAVED_PREFS && typeof window.SAVED_PREFS === 'object' ? window.SAVED_PREFS : {}; Object.assign(prefs, (sv._t || 0) > (loc._t || 0) ? sv : loc); }
 if (prefs.vstyle === 'babble') prefs.vstyle = 'animal', prefs.vstyleChosen = true;
@@ -671,6 +682,10 @@ const AUD = {
     const s = c.createBufferSource(); s.buffer = b; const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800 + Math.random() * 1500; const g = c.createGain(); g.gain.value = 0.18; s.connect(hp).connect(g).connect(this.sfx); s.start();
   },
   join() { this.tone(523, .14, 'triangle', .1); this.tone(784, .2, 'triangle', .1, .12); },
+  knock() {   // someone at the door: a visitor from another session. Like the chime above, it is heard with the ambience off
+    if (!this.ctx || this.off()) return; const c = this.ctx;
+    [[196, 0], [196, 0.17], [247, 0.34]].forEach(([f, w]) => { const t = c.currentTime + w, o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0.22, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12); o.connect(g).connect(c.destination); o.start(t); o.stop(t + 0.13); });
+  },
   ding() { this.tone(988, .5, 'triangle', .14); this.tone(1318, .5, 'sine', .06, .02); },
   murmur(pitch, dur, vol = 1) {   // cartoon mumble, used when there is no real voice (vol: lower for a thought that escapes)
     if (!this.ctx || !prefs.voice) return; const c = this.ctx, t = c.currentTime, o = c.createOscillator(); o.type = 'sawtooth';
@@ -1066,7 +1081,7 @@ function recomputeStatus(upTo) {
 }
 function syncUI() {
   $('#bPlay').textContent = S.playing ? '⏸' : '▶';
-  paintPill();
+  paintPill(); paintTabs();
   document.body.classList.toggle('replay', !S.live);
 }
 
@@ -1118,7 +1133,7 @@ const NEEDS_OK = /^(Edit|Write|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMo
 const atTail = () => S.idx >= S.events.length - 3;   // only trust wall-clock ages when playback has caught up with the live end
 function agentState(id, now) {
   let s = S.status[id]; const r = S.run[id], w = S.waitOn[id], la = S.lastAct[id];
-  if (id === 'main' && !s) {   // the lead is at work until the message that closes its turn, even while it thinks; a transcript without that mark falls back on "quiet for 25 s", and a turn cut short on 3 minutes of silence
+  if (id === 'main' && !s) {   // the lead is at work until the message that closes its turn, even while it thinks, and from its first turn on (the server says which transcripts carry that mark); one without it falls back on "quiet for 25 s", and a turn cut short on 3 minutes of silence
     const open = S.live && la && (S.sawEnd ? !S.turnOver && now - la < 180000 : now - la < 25000);
     if (r || (w && w.size) || open) s = 'working'; else if (S.live && la) return { k: 'done', txt: '✓ ' + L('à vous', 'your turn') };
   }
@@ -1146,7 +1161,7 @@ function paintStates() {
     if (st.k === 'done' && was && was !== 'done' && was !== 'idle') { pr.textContent = '🎉'; pr.className = 'prop cheer'; setTimeout(() => { if (pr.classList.contains('cheer')) { pr.textContent = ''; pr.className = 'prop'; } }, 1200); }
     else if (!pr.classList.contains('cheer')) { if (pr.textContent !== want) pr.textContent = want; pr.className = 'prop ' + (want ? st.k : ''); }
     if (shown && !S.gone.has(p.id)) ros.push({ p, st });
-    if (p.id === 'main' && st.k === 'done' && was && was !== 'done' && was !== 'idle' && S.live && S.playing && Date.now() - (S.mainBusyAt || 0) > 45000) confetti();
+    if (p.id === 'main' && st.k === 'done' && was && was !== 'done' && was !== 'idle' && S.live && S.playing) { S.wrap = was; if (Date.now() - (S.mainBusyAt || 0) > 45000) confetti(); }   // the lead is done, its face says so: it always has a word for it (see wrapUp, which needs to know what it was doing just before), and confetti after a long turn
     if (p.id === 'main') { if (st.k === 'working' || st.k === 'waiting') S.mainBusyAt = S.mainBusyAt || Date.now(); else if (st.k === 'done') S.mainBusyAt = 0; }
     S.prevState[p.id] = st.k; const tip = `${p.name} — ${p.role}${st.txt ? '\n' + st.txt : ''}${S.lastTool[p.id] ? '\n' + S.lastTool[p.id] : ''}`; if (t.title !== tip) t.title = tip;
   }
@@ -1395,7 +1410,6 @@ setInterval(() => {   // now and then a busy agent has a little thought; never w
 }, 7000);
 function oops(id) { if (!prefs.banter || !S.playing || S.recomputing) return; const t = $('#t-' + id); if (!t || t.style.display === 'none' || (t._oops && Date.now() - t._oops < 4000)) return; t._oops = Date.now(); t.classList.remove('oops'); void t.offsetWidth; t.classList.add('oops'); thought(id, '😬'); }
 function confetti() {
-  S.wrap = true;   // the lead is done: if the end of its last message was never read, it is read now (see wrapUp)
   if (!prefs.banter || document.hidden) return; const box = $('#center'), cols = ['#f5c04a', '#7c9cff', '#ff7a6b', '#5ad19a', '#c58bff'];
   for (let i = 0; i < 26; i++) { const c = document.createElement('i'); c.className = 'confetti'; c.style.left = Math.random() * 100 + '%'; c.style.background = cols[i % cols.length]; c.style.animationDelay = Math.random() * 0.6 + 's'; c.style.animationDuration = 1.8 + Math.random() * 1.4 + 's'; box.appendChild(c); setTimeout(() => c.remove(), 4200); }
 }
@@ -1653,7 +1667,7 @@ function ackLine(ev) {
 //  conversation: short exchanges between agents at the right moments, built from what really happened in the session
 // =====================================================================
 const CHAT = { quiet: 0.45, normal: 1, lively: 1.8 }, chatMul = () => CHAT[prefs.chat] || 1;   // normal unless chosen otherwise
-const EXW = { en: { edit: ['edit', 'edits'], call: ['tool call', 'tool calls'], error: ['error', 'errors'] }, fr: { edit: ['modification', 'modifications'], call: ['appel d’outil', 'appels d’outils'], error: ['erreur', 'erreurs'] } };
+const EXW = { en: { edit: ['edit', 'edits'], call: ['tool call', 'tool calls'], error: ['error', 'errors'], file: ['file', 'files'] }, fr: { edit: ['modification', 'modifications'], call: ['appel d’outil', 'appels d’outils'], error: ['erreur', 'erreurs'], file: ['fichier', 'fichiers'] } };
 const P = (k, n) => { const w = EXW[FR() ? 'fr' : 'en'][k]; return `${n} ${n === 1 ? w[0] : w[1]}`; };
 const EXCH = {
   en: { done: ['All done.', 'Finished.', 'Okay, that’s done.', 'Done on my side.', 'That’s wrapped up.'],
@@ -1678,13 +1692,13 @@ const EXCH = {
     sync: ['Petit point rapide : où en est-on ?', 'Point d’étape, tout le monde ?', 'On fait un tour de table rapide.'], syncAns: [(a) => `Toujours dessus : ${a}.`, (a) => `${a}, ça avance bien.`, (a) => `En ce moment : ${a}.`] },
 };
 const exPick = (arr, seed, ...args) => { let k = seed % arr.length; if (arr[k] === S.lastX && arr.length > 1) k = (k + 1) % arr.length; S.lastX = arr[k]; return typeof arr[k] === 'function' ? arr[k](...args) : arr[k]; };
-function exchFacts(i, agent) {   // what this agent did since it received its order: edits, tool calls, errors, the last file, how long it took
-  const ev = S.events; let o = -1;
-  for (let k = i; k >= Math.max(0, i - 600); k--) if (ev[k].kind === 'order' && ev[k].to === agent) { o = k; break; }
-  const f = { tools: 0, edits: 0, errs: 0, file: '', dur: '', ms: 0 };
+function exchFacts(i, agent) {   // what this agent did since it received its order: edits, tool calls, errors, the files it changed, how long it took
+  const ev = S.events, lead = agent === 'main'; let o = -1;   // the lead: back to your message, or to the message that closed its previous stretch when it was woken without you (a background task that finished)
+  for (let k = i, acted = false; k >= Math.max(0, i - (lead ? 6000 : 600)); k--) { const e = ev[k]; if (lead ? e.kind === 'user' || (e.end && acted) : e.kind === 'order' && e.to === agent) { o = e.end ? k + 1 : k; break; } if (e.agent === 'main' && (e.end || e.kind === 'say' || e.kind === 'tools')) acted = true; }
+  const f = { tools: 0, edits: 0, errs: 0, file: '', files: [], dur: '', ms: 0 };
   for (let k = o >= 0 ? o : Math.max(0, i - 250); k <= i; k++) {
     const e = ev[k]; if (e.agent !== agent) continue;
-    if (e.kind === 'tools') for (const t of e.tools) { f.tools++; if (/^(Edit|Write|MultiEdit|NotebookEdit)/.test(t.name)) { f.edits++; f.file = base((t.d || {}).file || t.arg) || f.file; } }
+    if (e.kind === 'tools') for (const t of e.tools) { f.tools++; if (/^(Edit|Write|MultiEdit|NotebookEdit)/.test(t.name)) { f.edits++; f.file = base((t.d || {}).file || t.arg) || f.file; if (f.file && !f.files.includes(f.file)) f.files.push(f.file); } }
     else if (e.kind === 'results') f.errs += e.items.filter((it) => it.err).length;
   }
   if (o >= 0 && ev[i].ts && ev[o].ts) { f.ms = Math.max(0, ev[i].ts - ev[o].ts); f.dur = fmtShort(f.ms); }
@@ -1795,13 +1809,29 @@ async function leadAck(ev, token) {
   else if (k === 'cmd') { const note = (d.note || '').trim().replace(/[.\s]+$/, ''), cmd = String(d.text || '').trim().split(/\s+/).slice(0, 2).join(' ').slice(0, 26); what = note ? W.note + note + '.' : cmd ? what + cmd + '.' : W.any; }
   await sayLine('main', `${W.in[hash('k' + ev.ts) % W.in.length]} ${what}`, '💬', token);
 }
-async function wrapUp(token) {   // live, once the lead is done: the part of its last message that the clipped reading left out, so you know what was done
-  if (!S.wrap || S.speakers.size || !prefs.voice && !prefs.banter) return false; S.wrap = false;
-  let k = S.events.length - 1; while (k >= 0 && !(S.events[k].agent === 'main' && S.events[k].kind === 'say')) k--; if (k < 0) return false; const e = S.events[k], m = S.mainSaid;
-  if (S.wrapped === e || e.ts <= (S.from || 0)) return false; S.wrapped = e;   // once per message: the lead's state can flip to done several times (a short command, a silence) without a new message
-  const mine = !!m && m.ev === e; if (mine && m.full) return false;   // mine: the reading of this very message was cut short. Otherwise it was never read, and is summed up from its start
-  const rest = gist(e.text, mine ? plain(e.text).slice(0, m.said) : ''); if (rest.length < 25) return false; const line = (mine ? L('Pour résumer : ', 'To sum up: ') : '') + rest;
-  await sayLine('main', line, '🎉', token); return true;
+// Live, each time the lead is done (the happy face), it has a word. From its own message when part of it was left unread (wrapUp); else what it just did, taken from the session, and how it ends:
+// you: its turn is over, the floor goes back to you. step: it only went quiet, nothing says its turn is over. team: the agents it waited for are all back, and Claude Code wakes it with their reports.
+// The last two are the wins in the middle of a turn: about one closing message in five is followed by more work without a word from you.
+const CLOSE = {
+  en: { edit: [(a) => `I changed ${a}.`, (a) => `I updated ${a}.`, (a) => `My changes are in ${a}.`], calls: [(w, d) => `That was ${w}${d ? ' in ' + d : ''}.`, (w, d) => `In total: ${w}${d ? ' in ' + d : ''}.`], said: ['That’s my answer.', 'That’s all from me.', 'Nothing more from me.'], ask: ['I’ll wait for your answer.', 'Your call.', 'Tell me what you prefer.'], you: ['Your turn.', 'Over to you.', 'Back to you.'], step: ['One step done.', 'That part is done.', 'So far so good.'], team: ['The team is back. I’ll go through the reports.', 'All the reports are in. Let me read them.', 'Everyone has reported. I’ll take it from here.'], and: ' and ' },
+  fr: { edit: [(a) => `J’ai modifié ${a}.`, (a) => `J’ai mis à jour ${a}.`, (a) => `Mes changements sont dans ${a}.`], calls: [(w, d) => `Ça fait ${w}${d ? ' en ' + d : ''}.`, (w, d) => `Au total : ${w}${d ? ' en ' + d : ''}.`], said: ['Voilà ma réponse.', 'C’est tout pour moi.', 'Rien de plus de mon côté.'], ask: ['J’attends votre réponse.', 'À vous de décider.', 'Dites-moi ce que vous préférez.'], you: ['À vous.', 'C’est à vous.', 'Je vous rends la main.'], step: ['Une étape de faite.', 'Cette partie est faite.', 'Jusqu’ici, tout va bien.'], team: ['L’équipe est de retour. Je parcours les rapports.', 'Tous les rapports sont là. Je les lis.', 'Tout le monde a rendu son rapport. Je prends la suite.'], and: ' et ' },
+};
+function closeLine(e, tail) {   // e: the message that closed this stretch of work; none when there is no new one, and then the line is only how it ends
+  const W = CLOSE[FR() ? 'fr' : 'en'], f = e ? exchFacts(S.pos - 1, 'main') : null, n = f ? f.files.length : 0, ask = tail === 'you' && !!e && /[?？]$/.test(plain(e.text));   // it ends on a question: the floor is yours, to answer it
+  const make = (s) => { const end = W[tail][(s >>> 3) % W[tail].length]; if (!e) return end; if (ask) return W.ask[s % W.ask.length];
+    const did = n ? W.edit[s % W.edit.length](n < 3 ? f.files.join(W.and) : P('file', n)) : f.tools ? W.calls[s % W.calls.length](P('call', f.tools), f.ms >= 20000 ? f.dur : '') : tail === 'you' ? W.said[s % W.said.length] : ''; return (did ? did + ' ' : '') + end; };
+  const s = hash('c' + (e ? e.ts : Date.now())); let line = make(s); if (line === S.lastClose) line = make(s + 8); return (S.lastClose = line);   // never the same line twice in a row
+}
+async function wrapUp(token, brief) {   // brief: the call already has more to play (the lead went on, or you typed): the short line only, not the rest of a message that is no longer the news
+  if (!S.wrap || S.speakers.size || !prefs.voice && !prefs.banter) return false; const was = S.wrap; S.wrap = false;
+  if (agentState('main', Date.now()).k !== 'done') return false;   // back at work before it had the floor
+  if (was === 'waiting') { if (!prefs.banter) return false; await sayLine('main', closeLine(null, 'team'), '🎉', token); return true; }   // its last message dates from before the wait
+  let k = Math.min(S.pos, S.events.length) - 1; while (k >= 0 && !(S.events[k].agent === 'main' && S.events[k].kind === 'say')) k--; const e = k >= 0 ? S.events[k] : null, m = S.mainSaid;   // among what the call has played
+  const fresh = !!e && S.wrapped !== e && e.ts > (S.from || 0); if (fresh) S.wrapped = e;   // a message counts once: the lead's state can flip to done several times (a short command, a silence) without a new message
+  const mine = fresh && !!m && m.ev === e; let line = '';   // mine: this very message was read, in full or cut short. Otherwise it was never read, and is summed up from its start
+  if (fresh && !brief && !(mine && m.full)) { const rest = gist(e.text, mine ? plain(e.text).slice(0, m.said) : ''); if (rest.length >= 25) line = (mine ? L('Pour résumer : ', 'To sum up: ') : '') + rest; }
+  if (!line && prefs.banter) line = closeLine(fresh ? e : null, S.turnOver ? 'you' : 'step');   // nothing of its message is left to read: a little line of the call, off with the others in ⚙
+  if (!line) return false; await sayLine('main', line, '🎉', token); return true;
 }
 async function smallTalk(token) {
   if (prefs.chat === 'quiet') return;   // quiet: nothing to fill the silences, only the real exchanges
@@ -1831,6 +1861,8 @@ async function run(i) {
   while (token === S.token) {
     const lim = S.stopAt || S.events.length; S.pos = i;
     if (S.live && S.late.length) { await converse(S.late.shift(), token); if (token !== S.token) return; continue; }   // a line that turned out to be a report after it was read
+    if (S.live && S.knock && !S.hurry) { const v = S.knock; S.knock = null; await visitSay(v, token); if (token !== S.token) return; continue; }   // a visitor from another session: between two lines of the call, never over one
+    if (S.live && S.wrap && i < lim && !S.hurry && S.boost <= 1 && nearLive()) { if (await wrapUp(token, true)) { if (token !== S.token) return; continue; } }   // the lead's word for what it just finished comes before what happened next: a win in the middle of a turn is followed by more work within seconds
     if (i >= lim) { if (S.live && !S.stopAt) { if (!S.idle) { S.idle = true; syncUI(); } if (await wrapUp(token)) continue; await smallTalk(token); await sleep(350); continue; } break; }
     if (S.idle) { S.idle = false; syncUI(); }
     if (S.live) {   // way behind: skip ahead to stay current, but only count what is actually said: sub-agents produce thousands of silent tool events
@@ -1869,7 +1901,7 @@ async function run(i) {
     if (FR() && !S.hurry) { prefetchTr(i); await Promise.race([ensureTr(group.map((g) => baseText(g))), sleep(S.live ? 7000 : 14000)]); if (token !== S.token) return; }
     prefetchQuips(i); warmTTS(i);
     const playOne = (g) => {
-      applyStatus(g); g._as = g.kind; if (g.agent === 'user') S.owed = true; else if (g.agent === 'main') S.owed = false;   // your order waits for a word from the lead
+      applyStatus(g); if (g.end) paintStates(); g._as = g.kind; if (g.agent === 'user') S.owed = true; else if (g.agent === 'main') S.owed = false;   // your order waits for a word from the lead
       const label = g.kind === 'order' ? `${L('pour', 'to')} ${nameOf(g.to)}` : g.kind === 'report' ? `${L('rapport à', 'report to')} ${nameOf(g.to)}` : '', line = talkLine(g);
       startTalk(g.agent, line, label);
       if (g.kind === 'order') { S.status[g.to] = 'working'; AUD.join(); setTimeout(() => { paintStatus(); fly(g.agent, g.to, '📨'); popTile(g.to); }, 30); }
@@ -1925,7 +1957,7 @@ async function loadSession(proj, id) {
   const data = await (await fetch(`/api/session?proj=${encodeURIComponent(proj)}&id=${id}`)).json();
   if (mine !== S.loadN || data.error) return false;
   S.term = {}; S.camFor = null; S.focus = null; S.agents = {}; for (const k in nameBook) delete nameBook[k]; [{ id: 'user' }, ...data.agents].forEach((a) => (S.agents[a.id] = persona(a)));
-  clearThoughts(); Object.assign(TH, { since: {}, next: {}, said: {}, last: 0 }); S.events = data.events; stampT(0); S.byK = new Map(data.events.map((e) => [e.k, e])); S.seq = data.seq || 0; S.ep = data.ep || ''; S.sawEnd = data.events.some((e) => e.end); S.late = []; S.pos = 0; S.joinAt = Date.now(); S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on');
+  clearThoughts(); Object.assign(TH, { since: {}, next: {}, said: {}, last: 0 }); S.events = data.events; stampT(0); S.byK = new Map(data.events.map((e) => [e.k, e])); S.seq = data.seq || 0; S.ep = data.ep || ''; S.sawEnd = !!data.marks || data.events.some((e) => e.end); S.late = []; S.pos = 0; S.joinAt = Date.now(); S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on');
   const opt = $('#sessions').selectedOptions[0]; S.title = (S.live ? niceProj(proj) : opt && opt.dataset.title) || '';
   if (proj === '_demo') S.events.forEach((e) => { if (e.fr) trMem.set(baseText(e), e.fr); });   // the demo ships its own French
   $('#subtitle').textContent = S.title; recomputeStatus(0); buildStage(); renderHighlights(); setFocus('main'); renderLog(true); computeGantt(); layout(); paintStatus(); prefetchTr(0); return true;
@@ -1936,13 +1968,15 @@ async function fillProjects() {   // live view: follow the latest activity anywh
   sel.innerHTML = `<option value="">${L('Tous les projets (le plus récent)', 'All projects (most recent)')}</option>` + rows.map((r) => `<option value="${esc(r.proj)}">${esc(niceProj(r.proj))}</option>`).join('');
   sel.value = prefs.proj && rows.some((r) => r.proj === prefs.proj) ? prefs.proj : ''; sel.style.display = rows.length > 1 ? '' : 'none';
 }
-$('#liveProj').onchange = () => { Q.delete('proj'); prefs.proj = $('#liveProj').value; S.pin = ''; savePrefs(); S.cur = null; followCurrent(); };
+$('#liveProj').onchange = () => { Q.delete('proj'); prefs.proj = $('#liveProj').value; S.pin = S.pinProj = ''; savePrefs(); S.cur = null; followCurrent(); };
 async function followCurrent() {
-  const cur = await (await fetch('/api/current?proj=' + encodeURIComponent(Q.get('proj') || prefs.proj || '') + (S.pin ? '&id=' + encodeURIComponent(S.pin) : '') + (S.cur && !S.pin ? '&sproj=' + encodeURIComponent(S.cur.proj) + '&sid=' + encodeURIComponent(S.cur.id) : ''))).json();
+  const cur = await (await fetch('/api/current?proj=' + encodeURIComponent((S.pin && S.pinProj) || Q.get('proj') || prefs.proj || '') + (S.pin ? '&id=' + encodeURIComponent(S.pin) : '') + (S.cur && !S.pin ? '&sproj=' + encodeURIComponent(S.cur.proj) + '&sid=' + encodeURIComponent(S.cur.id) : ''))).json();
   if (!cur.id) { $('#empty').classList.add('on'); return false; } $('#empty').classList.remove('on');
-  if (S.pin && cur.id !== S.pin) S.pin = '';   // the pinned session is gone: follow the latest one instead of staying silently pinned
+  if (S.pin && cur.id !== S.pin) S.pin = S.pinProj = '';   // the pinned session is gone: follow the latest one instead of staying silently pinned
   if (S.cur && S.cur.id === cur.id && S.cur.proj === cur.proj) return false;
+  const key = cur.proj + '/' + cur.id, was = S.lastKey, moved = !!was && was !== key && !S.locked; if (moved) S.left[was] = Date.now();   // what was said of the session the call leaves is not said again when it comes back to it
   if (!(await loadSession(cur.proj, cur.id))) return false;
+  S.lastKey = key; if (moved) { const r = rowOf(cur); toast('↪ ' + (r ? tabName(r) : niceProj(cur.proj))); } paintTabs(); sessPoll();
   const start = liveStart(); if (!S.locked && !S.userPaused) run(start); return true;
 }
 // Live: a call starts when you join it. Only what happened since then, and was not said yet, is said (the last 16 events at most, when a session is picked up on the way);
@@ -1953,7 +1987,7 @@ function midWork() {   // someone is in the middle of something: the session doe
 }
 function liveStart() {
   const n = S.events.length; if (!S.locked && !S.since) S.since = Date.now() - (midWork() ? JOIN_BACK_MS : 0);   // S.since 0: joining now
-  const since = S.locked ? Date.now() : S.since; let i = n; while (i > Math.max(0, n - 16) && S.events[i - 1].ts > since) i--;
+  const since = S.locked ? Date.now() : Math.max(S.since, (S.cur && S.left[S.cur.proj + '/' + S.cur.id]) || 0); let i = n; while (i > Math.max(0, n - 16) && S.events[i - 1].ts > since) i--;
   recomputeStatus(i); S.idx = S.pos = i; S.from = since; trNew(Math.max(0, n - 16)); paintStatus(); return i;
 }
 function amend(e, was) {   // the server corrected an event the call already has: another tool call in the same message, a last line that turns out to be a report, the mark that closes the lead's turn
@@ -1973,7 +2007,7 @@ setInterval(async () => {
     if (switched || !S.cur) return;
     const cur = S.cur, d = await (await fetch(`/api/session?proj=${encodeURIComponent(cur.proj)}&id=${cur.id}&after=${S.seq}&ep=${encodeURIComponent(S.ep)}`)).json();
     if (d.error || cur !== S.cur) return; if (d.resync) { S.cur = null; return; }   // the server no longer has our place (restarted, transcript rewritten): reload next tick
-    S.seq = d.seq; if (!d.events || !d.events.length) return;
+    S.seq = d.seq; if (d.marks) S.sawEnd = true; if (!d.events || !d.events.length) return;
     for (const a of d.agents) if (!S.agents[a.id]) { S.agents[a.id] = persona(a); addTile(S.agents[a.id]); }
     const from = S.events.length, fresh = [], changed = [];   // the session is not written in order: what is new goes at the end (the order the call got it in), what the server corrected is corrected in place
     for (const e of d.events) { const old = S.byK.get(e.k); if (old) { changed.push([old, { kind: old.kind, n: old.tools ? old.tools.length : 0, end: old.end }]); Object.assign(old, e); } else { S.byK.set(e.k, e); fresh.push(e); } }
@@ -1988,7 +2022,8 @@ setInterval(async () => {
 
 window.addEventListener('message', (e) => {   // the VS Code status bar asks to follow a given session
   const d = e.data; if (!EMBED || e.source !== window.parent || !d || d.agentStandup !== 'pin' || typeof d.id !== 'string') return;
-  prefs.proj = typeof d.proj === 'string' ? d.proj : ''; S.pin = d.id; S.cur = null; setView('call'); if (S.live) { fillProjects(); followCurrent(); } else setMode('live');
+  if (d.tab) { if (prefs.followTab !== false && S.live && !S.demo && typeof d.proj === 'string') goSession(d.proj, d.id); return; }   // the Claude Code tab you went to: the call goes with you (see followTab in extension.js)
+  prefs.proj = typeof d.proj === 'string' ? d.proj : ''; S.pin = d.id; S.pinProj = prefs.proj; S.cur = null; setView('call'); if (S.live) { fillProjects(); followCurrent(); } else setMode('live');
 });
 // ---------- meeting chrome: participants and a clock ----------
 function renderMeet() {
@@ -2026,7 +2061,7 @@ async function renderBoardView() {
 }
 $('#boardv').onkeydown = (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('bcard')) { e.preventDefault(); e.target.click(); } };
 async function openSession(proj, id) {
-  prefs.proj = proj; S.pin = id; savePrefs(); setView('call');
+  prefs.proj = proj; S.pin = id; S.pinProj = proj; savePrefs(); setView('call');
   if (S.live || S.demo) { if (S.demo) await setMode('live'); S.cur = null; fillProjects(); await followCurrent(); } else await setMode('live');
 }
 $('#boardv').onclick = (e) => { const c = e.target.closest('.bcard'); if (c) openSession(c.dataset.p, c.dataset.i); };
@@ -2049,6 +2084,71 @@ async function openSwitcher() {
 }
 function closeSwitcher() { const sw = $('#switcher'); if (sw) sw.remove(); }
 setInterval(() => { if (!document.hidden) renderBoardView(); }, 2500);
+// ---------- several sessions at once (live): the sessions of the moment as tabs under the header, and a visitor when another one needs you ----------
+// The row is there only when there is something to tell apart: a second session at work or waiting for you, or a call you pinned. With a single session the header is as it always was.
+// The tabs keep the order in which the sessions showed up, so the one the call is in stays where it was. A click on another tab takes the call there and keeps it there (📌);
+// a click on the call's own tab pins it, or lets the call follow the latest activity again. In VS Code the call also goes to the Claude Code tab you are on (⚙, see followTab in extension.js).
+S.rows = []; S.tabOrder = []; S.knockAt = {}; S.left = {}; S.visit = S.knock = null;
+const UNTITLED = /^[0-9a-f]{8}-[0-9a-f-]{27}$/, sessKey = (r) => r.proj + '/' + r.id, tabName = (r) => (r.title && !UNTITLED.test(r.title) ? r.title : r.title ? L('Session sans titre', 'Untitled session') : niceProj(r.proj) || L('Session sans titre', 'Untitled session'));
+const inWatch = (r) => { const k = Q.get('proj') || prefs.proj || ''; return !k || [r.proj, r.dir || ''].some((d) => d === k || d.startsWith(k + '-')); };   // the folder the live view follows, when it follows one
+const rowOf = (c) => (c && S.rows.find((r) => r.proj === c.proj && r.id === c.id)) || null;
+function paintTabs() {
+  const el = $('#tabs'), cur = S.cur; if (!S.live || S.demo) { if (paintTabs.html) el.innerHTML = paintTabs.html = ''; if (S.visit) hideVisit(); return; } if (!cur) return;   // between two sessions the tabs stay as they are: the row does not come and go
+  const ck = sessKey(cur), by = new Map(S.rows.filter((r) => sessKey(r) === ck || (r.state !== 'idle' && inWatch(r))).map((r) => [sessKey(r), r])); if (!by.has(ck)) by.set(ck, { proj: cur.proj, id: cur.id, title: '', state: '' });   // the call's own session always has its tab, also before the list knows it
+  S.tabOrder = S.tabOrder.filter((k) => by.has(k)); for (const k of by.keys()) if (!S.tabOrder.includes(k)) S.tabOrder.push(k);
+  const ks = S.tabOrder.slice(0, 8); if (!ks.includes(ck)) ks[ks.length - 1] = ck;   // the others are in ⋯
+  const html = by.size < 2 && !S.pin ? '' : ks.map((k) => { const r = by.get(k), on = k === ck, st = BSTATE[r.state], pinned = on && !!S.pin;   // one session and nothing pinned: no row, there is nothing to tell apart
+    const tip = tabName(r) + '\n' + niceProj(r.proj) + (st ? ' · ' + L(st[2], st[1]) : '') + (on ? '\n' + (pinned ? L('Épinglée : cliquez pour suivre la session la plus récente', 'Pinned: click to follow the latest session') : L('Cliquez pour rester dans cette session', 'Click to stay in this session')) : '');
+    return `<button class="stab ${r.state}${on ? ' on' : ''}" role="tab" aria-selected="${on}" data-k="${esc(k)}" title="${esc(tip)}">${st ? st[0] : ''}<span>${esc(tabName(r))}</span>${pinned ? '📌' : ''}</button>`; }).join('')
+    + `<button class="stab all" title="${esc(L('Aller à une session', 'Go to a session'))} (Cmd / Ctrl + K)" aria-label="${esc(L('Aller à une session', 'Go to a session'))}">⋯</button>`;
+  if (html === paintTabs.html) return; if (!html) paintTabs.cur = ''; el.innerHTML = paintTabs.html = html;
+  if (paintTabs.cur !== ck) { paintTabs.cur = ck; const on = el.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+}
+function goSession(proj, id) {   // the call moves to this session and stays in it
+  S.pin = id; S.pinProj = proj; if (S.cur && S.cur.proj === proj && S.cur.id === id) { paintTabs(); return; }
+  hideVisit(); S.cur = null; followCurrent();
+}
+$('#tabs').onclick = (e) => {
+  const b = e.target.closest('.stab'); if (!b) return; if (b.classList.contains('all')) { openSwitcher(); return; }
+  const [p, i] = b.dataset.k.split('/'); if (!b.classList.contains('on')) { goSession(p, i); return; }
+  if (S.pin) { S.pin = S.pinProj = ''; toast(L('Suit la session la plus récente', 'Following the latest session')); } else { S.pin = i; S.pinProj = p; toast('📌 ' + tabName(rowOf(S.cur) || { proj: p })); }
+  paintTabs();
+};
+// The visitor: another session has just stopped for you (a question, an edit that waits for your go-ahead, or its turn is over). Someone from there leans in at the edge of the call and says so,
+// between two lines and never over one; a click takes the call there. One at a time, a session that needs you before one that is merely done. Off in ⚙; its line exists in English and French, as the other little lines.
+const VISIT = {
+  en: { ask: [(t) => `Knock knock. They have a question for you in “${t}”.`, (t) => `Sorry to cut in: “${t}” has a question for you.`], ok: [(t) => `Knock knock. “${t}” is waiting for your go-ahead.`, (t) => `Excuse me, you are wanted in “${t}”: it waits for your approval.`], turn: [(t) => `Just passing by: “${t}” is done, it is your turn over there.`, (t) => `News from “${t}”: they are finished and wait for you.`] },
+  fr: { ask: [(t) => `Toc toc. On a une question pour vous dans « ${t} ».`, (t) => `Pardon de vous couper : « ${t} » a une question pour vous.`], ok: [(t) => `Toc toc. « ${t} » attend votre feu vert.`, (t) => `Excusez-moi, on vous demande dans « ${t} » : on y attend votre accord.`], turn: [(t) => `Je ne fais que passer : « ${t} » a fini, c’est à vous là-bas.`, (t) => `Des nouvelles de « ${t} » : ils ont fini et vous attendent.`] },
+};
+function knocks() {
+  const now = Date.now(), first = !knocks.seen, seen = knocks.seen || (knocks.seen = {}), ck = S.cur ? sessKey(S.cur) : ''; let best = null;
+  for (const r of S.rows) {
+    const k = sessKey(r), was = seen[k], st = r.state === 'turn' && now - r.mtime < 6000 ? 'working' : r.state; seen[k] = st;   // a session that does not mark the end of its turns: a line less than 6 s old may only be a pause before the next call
+    if (first || !was || was === st || k === ck || !inWatch(r) || now - (S.knockAt[k] || 0) < 20000) continue;
+    const kind = st === 'blocked' ? (/^AskUserQuestion/.test(r.tool) ? 'ask' : 'ok') : st === 'turn' && /^(working|waiting|blocked)$/.test(was) ? 'turn' : '';
+    if (kind && (!best || (kind !== 'turn' && best.kind === 'turn'))) best = { r, kind, k };
+  }
+  const v = S.visit, vr = v && S.rows.find((r) => sessKey(r) === v.k); if (v && (!vr || v.k === ck || (v.kind === 'turn' ? !/^(turn|idle)$/.test(vr.state) : vr.state !== 'blocked'))) hideVisit();   // answered there, or the call went there: the visitor leaves
+  if (best && prefs.visits !== false && !S.locked && !(S.visit && S.visit.kind !== 'turn' && best.kind === 'turn')) { S.knockAt[best.k] = now; showVisit(best); }
+}
+function showVisit(v) {   // the same face and name each time for a given session; with your own characters, one of them
+  const h = hash('visit' + v.k), p = persona0({ id: 'visit:' + v.k, name: NAMES[h % NAMES.length], role: '' }), W = VISIT[FR() ? 'fr' : 'en'][v.kind], t = tabName(v.r), el = $('#visit');
+  p.custom = CHARS.pool.length ? CHARS.pool[h % CHARS.pool.length] : null; v.p = p; v.line = W[(h + (showVisit.n = (showVisit.n || 0) + 1)) % W.length](t.length > 46 ? t.slice(0, 44).replace(/\s+\S*$/, '') + '…' : t);
+  el.className = 'on ' + (v.kind === 'turn' ? 'turn' : 'blocked');
+  el.innerHTML = `<div class="vsay"><button class="vx" aria-label="${esc(L('Fermer', 'Close'))}">✕</button><small>${esc(p.name)} · ${esc(niceProj(v.r.proj))}</small>${esc(v.line)}<br><button class="vgo">${esc(L('Y aller', 'Go there'))} →</button></div><div class="vwho">${avatarSVG(p, undefined, 'v' + p.gid + '_')}</div>`;
+  S.visit = S.knock = v; AUD.knock(); clearTimeout(showVisit.t); showVisit.t = setTimeout(() => { if (S.visit === v) hideVisit(); }, v.kind === 'turn' ? 16000 : 45000);   // the tab of that session keeps its state after the visitor has left
+}
+function hideVisit() { clearTimeout(showVisit.t); S.visit = S.knock = null; const el = $('#visit'); if (el.className) { el.className = ''; el.innerHTML = ''; } }
+async function visitSay(v, token) {
+  if (S.visit !== v || AUD.off() || !prefs.voice) return; const el = $('#visit'); el.classList.add('speaking'); AUD.duck(true);
+  await speakLine(v.line, v.p, true, token); el.classList.remove('speaking'); if (!S.speakers.size) AUD.duck(false);
+}
+$('#visit').onclick = (e) => { const v = S.visit; if (!v) return; if (e.target.closest('.vx')) hideVisit(); else goSession(v.r.proj, v.r.id); };
+async function sessPoll() {
+  if (!S.live || S.demo || document.hidden || sessPoll.busy) return; sessPoll.busy = true;
+  try { const rows = await (await fetch('/api/board')).json(); if (Array.isArray(rows) && S.live && !S.demo) { S.rows = rows; knocks(); paintTabs(); } } catch {} finally { sessPoll.busy = false; }
+}
+setInterval(sessPoll, 3000);
 async function setMode(m) {
   if (m === 'demo') {   // a built-in fictional session: nothing to install, nothing private on screen
     pause(); S.live = false; S.demo = true; S.userPaused = false; S.cur = null; $('#empty').classList.remove('on');
@@ -2217,14 +2317,14 @@ $('#vstyle').innerHTML = [['animal', 'Animal Crossing (babillage)', 'Animal Cros
 // ---- ⚙ → very natural voices (Kokoro): install box and status, polled while installing
 let kokoroTimer = null;
 async function kokoroUI() {
-  const box = $('#kokoroBox'), on = prefs.vstyle === 'kokoro'; box.style.display = on ? '' : 'none'; if (!on) { clearInterval(kokoroTimer); kokoroTimer = null; return; }
+  const box = $('#kokoroBox'), on = prefs.vstyle === 'kokoro'; box.style.display = on ? '' : 'none'; $('#vstyleTip').style.display = on ? 'none' : ''; if (!on) { clearInterval(kokoroTimer); kokoroTimer = null; return; }
   let st; try { st = await (await fetch('/api/kokoro')).json(); } catch { return; }
   const b = $('#kokoroInstall'), h = $('#kokoroHint'); b.style.display = st.installed ? 'none' : '';
   b.disabled = st.installing || !st.npm; b.textContent = st.installing ? L('Installation…', 'Installing…') : L(`Installer (${st.sizeMb} Mo)`, `Install (${st.sizeMb} MB)`);
   h.textContent = st.installing ? L('Téléchargement en cours, vous pouvez continuer : les voix du système servent en attendant.', 'Downloading, you can carry on: system voices are used meanwhile.')
     : st.error ? st.error : !st.npm && !st.installed ? L('npm est introuvable : installez Node.js pour activer cette option.', 'npm not found: install Node.js to enable this option.')
-    : st.installed ? (st.gaveUp ? L('Le moteur s’est arrêté : les voix du système servent à la place.', 'The engine stopped: system voices are used instead.') : st.ready ? L('Voix prêtes.', 'Voices ready.') + ' ' + L('Le français est lu par les voix de votre système : en installer une « améliorée » ou « premium » change tout.', 'French is read by your system voices: installing an “enhanced” or “premium” one makes a big difference.') : L('Chargement du modèle (téléchargé au premier usage, environ 305 Mo)…', 'Loading the model (downloaded on first use, about 305 MB)…'))
-    : L('Voix locales de bonne qualité, en anglais (le français passe par les voix de votre système). Gratuit, rien n’est envoyé nulle part.', 'Good-quality local voices, in English (French lines use your system voices). Free, nothing leaves your machine.');
+    : st.installed ? (st.gaveUp ? L('Le moteur s’est arrêté : les voix du système servent à la place.', 'The engine stopped: system voices are used instead.') : st.ready ? L('Voix prêtes.', 'Voices ready.') : L('Chargement du modèle (téléchargé au premier usage, environ 305 Mo)…', 'Loading the model (downloaded on first use, about 305 MB)…'))
+    : L('Voix locales de bonne qualité, en anglais. Gratuit, rien n’est envoyé nulle part.', 'Good-quality local voices, in English. Free, nothing leaves your machine.');
   if ((st.installing || (st.installed && !st.ready && !st.gaveUp)) && !kokoroTimer) kokoroTimer = setInterval(async () => { await kokoroUI(); }, 2500);
   if (!st.installing && (st.ready || st.gaveUp || !st.installed) && kokoroTimer) { clearInterval(kokoroTimer); kokoroTimer = null; if (st.ready && TTS.engine !== 'kokoro') TTS.init(); }
 }
@@ -2359,7 +2459,7 @@ addEventListener('keydown', (e) => {
   if (e.key === '?') { openKeys(); return; }
   if (e.key === ' ') { if (e.target.closest && e.target.closest('button, .tile, .rr, .bcard, a, [role=button]')) return; e.preventDefault(); togglePlay(); } else if (e.key.toLowerCase() === 'm') toggleMute(); else if (e.key.toLowerCase() === 't') { const toTree = !document.body.classList.contains('tree'); setView(toTree ? 'tree' : 'call'); if (toTree) toast(L('Vue arbre : T pour revenir, ? pour l’aide', 'Tree view: T to go back, ? for help')); } else if (e.key.toLowerCase() === 'r') openRecap(); else if (e.key.toLowerCase() === 'l') $('#bLog').click(); else if (e.key === 'ArrowRight' && !S.live) { e.preventDefault(); stepEvent(1); } else if (e.key === 'ArrowLeft' && !S.live) { e.preventDefault(); stepEvent(-1); } else if (e.key.toLowerCase() === 'n') stepHighlight(e.shiftKey ? -1 : 1); else if (e.key.toLowerCase() === 'j') jumpAttn(1); else if (e.key.toLowerCase() === 'k') jumpAttn(-1); else if (e.key === 'Escape') { $('#recap').classList.remove('on'); $('#menu').classList.remove('on'); }
 });
-if (EMBED) $('#mBrowser').style.display = '';
+if (EMBED) $('#mBrowser').style.display = $('#mFollowTab').style.display = '';
 
 (async function init() {
   if (!LANGS.some((l) => l[0] === prefs.lang)) prefs.lang = 'en'; await loadLocale(prefs.lang); await loadChars();

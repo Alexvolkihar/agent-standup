@@ -24,7 +24,8 @@ function session() {
     result: (id, text, o = {}) => put(o.sub ? sub(o.sub) : main, { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: text }] } }, o.at),
     think: (text, o = {}) => put(o.sub ? sub(o.sub) : main, { type: 'assistant', message: { id: o.id || 'm' + ++nId, role: 'assistant', stop_reason: null, content: [{ type: 'thinking', thinking: text, signature: 'x' }] } }, o.at),   // the reasoning before a line or a call, when Claude Code keeps its text
     queued: (text, at) => put(main, { type: 'attachment', attachment: { type: 'queued_command', prompt: [{ type: 'text', text }], origin: { kind: 'human' }, commandMode: 'prompt' } }, at),   // an order typed while the lead works: written when delivered, stamped when typed
-    launch: (k, title, prompt) => { const id = s.tool('Agent', { description: title, prompt, subagent_type: 'general-purpose' }); fs.writeFileSync(path.join(subDir, `agent-a${k}.meta.json`), JSON.stringify({ agentType: 'general-purpose', description: title, toolUseId: id })); put(sub(k), { type: 'user', message: { role: 'user', content: prompt } }); return id; },
+    launch: (k, title, prompt, bg) => { const id = s.tool('Agent', { description: title, prompt, subagent_type: 'general-purpose', ...(bg ? { run_in_background: true } : {}) }); fs.writeFileSync(path.join(subDir, `agent-a${k}.meta.json`), JSON.stringify({ agentType: 'general-purpose', description: title, toolUseId: id })); put(sub(k), { type: 'user', message: { role: 'user', content: prompt } }); return id; },
+    notify: (id) => put(main, { type: 'queue-operation', operation: 'enqueue', content: `<task-notification>\n<tool-use-id>${id}</tool-use-id>\n<status>completed</status>\n</task-notification>` }),   // a background agent has stopped: Claude Code then wakes the lead
   };
   return s;
 }
@@ -48,6 +49,8 @@ async function open(s, join = true) {
   return call;
 }
 const count = (lines, text) => lines.filter((l) => l.includes(text)).length;
+const closing = async (c) => (await c.said()).filter((x) => x.id === 'main' && x.label === '🎉').map((x) => x.line), closed = (c, n, ms = 20000) => c.until((k) => window.__said.filter((x) => x.label === '🎉').length === k && !S.speakers.size, n, ms);   // the lead's word when its face turns happy
+const YOURS = /(Your turn|Over to you|Back to you)\.$/;
 
 test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
   srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); port = srv.address().port;
@@ -113,6 +116,30 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     s.say('Starting the long job now, this is going to take a while because the whole suite runs twice.'); await wait(500); const id = s.tool('Bash', { command: 'sleep 30' }); await wait(28000);   // longer than the old 25 s rule
     assert.equal(await c.lead(), 'working'); s.result(id, 'ok'); await wait(4000); assert.equal(await c.lead(), 'working'); assert.equal(count(await c.lines(), 'To sum up'), 0);
     s.say('The long job is finished.', { end: true }); await c.heard('long job is finished'); await c.until(() => agentState('main', Date.now()).k === 'done', null, 8000); await c.close();
+  });
+
+  await t.test('the lead has a word each time its turn ends: what it changed, that it waits for your answer, or the floor back to you; never in the middle, and off with the little lines', async () => {
+    const s = session(); s.user('hello', Date.now() - 600000); s.say('Ready.', { at: Date.now() - 590000, end: true }); const c = await open(s);
+    s.user('Fix the login'); await wait(1500); s.result(s.tool('Edit', { file_path: '/x/src/login.js', old_string: 'a', new_string: 'b' }), 'ok'); await wait(1500); assert.deepEqual(await closing(c), []);
+    s.say('The login is fixed.', { end: true }); await c.heard('login is fixed'); await closed(c, 1); assert.match((await closing(c))[0], /login\.js/); assert.match((await closing(c))[0], YOURS);
+    s.user('Thanks'); await wait(1500); s.say('Should I also add a test for it?', { end: true }); await c.heard('also add a test'); await closed(c, 2); assert.match((await closing(c))[1], /^(I’ll wait for your answer|Your call|Tell me what you prefer)\.$/);
+    s.user('No need'); await wait(1500); s.say('Fine, I leave it there.', { end: true }); await c.heard('leave it there'); await closed(c, 3); assert.match((await closing(c))[2], /^(That’s my answer|That’s all from me|Nothing more from me)\. /); assert.doesNotMatch((await closing(c))[2], /login\.js/, 'what an earlier turn changed is not said again');
+    await c.page.evaluate(() => { prefs.banter = false; }); s.user('Bye'); await wait(1500); s.say('Goodbye.', { end: true }); await c.heard('Goodbye'); await c.quiet(3000); assert.equal((await closing(c)).length, 3); await c.close();
+  });
+
+  await t.test('a win in the middle of a turn is voiced too, and is not "your turn": the agents the lead waited for are back; and a first turn is not over because the lead thinks', async () => {
+    const s = session(); s.user('hello', Date.now() - 600000); s.say('Ready.', { at: Date.now() - 590000, end: true }); const c = await open(s);
+    s.user('Audit the tests'); await wait(1500); const id = s.launch(1, 'Audit the tests', 'Read every test and list the weak ones.', true); s.result(id, 'Async agent launched successfully.'); await wait(500);
+    s.say('The audit runs in the background, I will come back with what it finds.', { end: true }); await c.heard('audit runs in the background');   // Claude Code closes the turn here, and opens it again when the agent stops
+    s.result(s.tool('Bash', { command: 'npm test' }, { sub: 1 }), 'ok', { sub: 1 }); await c.quiet(1500); assert.equal(await c.lead(), 'waiting'); assert.deepEqual(await closing(c), []);
+    s.say('AUDIT: two tests are weak.', { sub: 1 }); await wait(1000); s.notify(id); await closed(c, 1, 30000);
+    assert.match((await closing(c))[0], /^(The team is back|All the reports are in|Everyone has reported)\./); assert.doesNotMatch((await closing(c))[0], YOURS);
+    s.result(s.tool('Edit', { file_path: '/x/test/auth.test.js', old_string: 'a', new_string: 'b' }), 'ok'); await wait(800); s.say('Both weak tests are fixed.', { end: true }); await c.heard('weak tests are fixed'); await closed(c, 2);
+    assert.match((await closing(c))[1], /auth\.test\.js/); assert.match((await closing(c))[1], YOURS); await c.close();
+    const q = session(); q.user('Look at the login'); const d = await open(q); await d.heard('Look at the login'); await wait(27000); assert.equal(await d.lead(), 'working', 'before its first line');   // a session that has not closed a turn yet: the lead is at work while it thinks, it is not your turn after 25 s
+    q.result(q.tool('Read', { file_path: '/x/src/login.js' }), 'ok'); await wait(800); q.say('I have read it, thinking about the fix.'); await d.heard('thinking about the fix'); await wait(27000);
+    assert.equal(await d.lead(), 'working', 'in the middle of its first turn'); assert.deepEqual(await closing(d), []);
+    q.say('The fix is in place.', { end: true }); await d.heard('fix is in place'); await closed(d, 1); assert.match((await closing(d))[0], YOURS); await d.close();
   });
 
   await t.test('your own line is always voiced: typed long before it was delivered, or in the middle of a backlog', async () => {

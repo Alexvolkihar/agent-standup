@@ -58,7 +58,7 @@
  "Files touched": "Bearbeitete Dateien",
  "Final report": "Abschlussbericht",
  "first error": "erster Fehler",
- "French is read by your system voices: installing an “enhanced” or “premium” one makes a big difference.": "Französisch wird von deinen Systemstimmen gelesen: Eine „erweiterte“ oder „Premium“-Stimme zu installieren macht viel aus.",
+ "For the best experience, pick the very natural voices.": "Für das beste Erlebnis wähle die sehr natürlichen Stimmen.",
  "Hide code & file names in videos": "Code & Dateinamen in Videos ausblenden",
  "Highlights": "Highlights",
  "Human": "Mensch",
@@ -176,7 +176,7 @@
  "Drop your pixel art (PNG) in this folder to replace the characters:": "Leg deine Pixel-Art (PNG) in diesen Ordner, um die Figuren zu ersetzen:",
  "lead.png = the lead · you.png = you · others = the sub-agents · name-talk.png = open mouth": "lead.png = Hauptagent · you.png = du · andere = Subagenten · name-talk.png = offener Mund",
  "Downloading, you can carry on: system voices are used meanwhile.": "Wird heruntergeladen, du kannst weitermachen: bis dahin kommen die Systemstimmen zum Einsatz.",
- "Good-quality local voices, in English (French lines use your system voices). Free, nothing leaves your machine.": "Lokale Stimmen in guter Qualität, auf Englisch (Französisch nutzt deine Systemstimmen). Kostenlos, nichts verlässt deinen Rechner.",
+ "Good-quality local voices, in English. Free, nothing leaves your machine.": "Lokale Stimmen in guter Qualität, auf Englisch. Kostenlos, nichts verlässt deinen Rechner.",
  "Installing…": "Installation läuft…",
  "Loading the model (downloaded on first use, about 305 MB)…": "Modell wird geladen (beim ersten Mal heruntergeladen, etwa 305 MB)…",
  "npm not found: install Node.js to enable this option.": "npm nicht gefunden: Installiere Node.js, um diese Option zu nutzen.",
@@ -223,5 +223,11 @@
  "Drawn characters": "Gezeichnete Figuren",
  "To tweak them, copy them into your folder and pick “My folder”.": "Zum Anpassen in deinen Ordner kopieren und „Mein Ordner“ wählen.",
  "My folder": "Mein Ordner",
- "The characters drawn by the app. Pick “My folder” for your own images, or a pack.": "Die von der App gezeichneten Figuren. Wähle „Mein Ordner“ für eigene Bilder oder ein Pack."
+ "The characters drawn by the app. Pick “My folder” for your own images, or a pack.": "Die von der App gezeichneten Figuren. Wähle „Mein Ordner“ für eigene Bilder oder ein Pack.",
+ "A visitor when another session needs you": "Ein Besucher, wenn eine andere Sitzung Sie braucht",
+ "Click to stay in this session": "Klicken, um in dieser Sitzung zu bleiben",
+ "Follow the Claude Code tab I am on": "Dem Claude Code-Tab folgen, in dem ich bin",
+ "Following the latest session": "Folgt der neuesten Sitzung",
+ "Go there": "Hingehen",
+ "Pinned: click to follow the latest session": "Angeheftet: klicken, um der neuesten Sitzung zu folgen"
 }

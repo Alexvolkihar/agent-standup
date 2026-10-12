@@ -58,7 +58,7 @@
  "Files touched": "건드린 파일",
  "Final report": "최종 보고",
  "first error": "첫 오류",
- "French is read by your system voices: installing an “enhanced” or “premium” one makes a big difference.": "프랑스어는 시스템 음성으로 읽습니다. “향상된” 또는 “프리미엄” 음성을 설치하면 훨씬 좋아집니다.",
+ "For the best experience, pick the very natural voices.": "가장 좋은 경험을 원한다면 매우 자연스러운 목소리를 선택하세요.",
  "Hide code & file names in videos": "동영상에서 코드와 파일 이름 숨기기",
  "Highlights": "하이라이트",
  "Human": "사람",
@@ -176,7 +176,7 @@
  "Drop your pixel art (PNG) in this folder to replace the characters:": "이 폴더에 픽셀 아트(PNG)를 넣으면 캐릭터가 바뀝니다:",
  "lead.png = the lead · you.png = you · others = the sub-agents · name-talk.png = open mouth": "lead.png = 메인 에이전트 · you.png = 나 · 나머지 = 서브에이전트 · name-talk.png = 입을 벌린 모습",
  "Downloading, you can carry on: system voices are used meanwhile.": "다운로드 중입니다. 계속 사용하셔도 됩니다. 그동안은 시스템 음성을 사용합니다.",
- "Good-quality local voices, in English (French lines use your system voices). Free, nothing leaves your machine.": "품질 좋은 로컬 음성으로, 영어입니다 (프랑스어는 시스템 음성을 사용). 무료이며 아무것도 컴퓨터 밖으로 전송되지 않습니다.",
+ "Good-quality local voices, in English. Free, nothing leaves your machine.": "품질 좋은 로컬 음성으로, 영어입니다. 무료이며 아무것도 컴퓨터 밖으로 전송되지 않습니다.",
  "Installing…": "설치 중…",
  "Loading the model (downloaded on first use, about 305 MB)…": "모델 불러오는 중 (처음 사용할 때 다운로드, 약 305 MB)…",
  "npm not found: install Node.js to enable this option.": "npm을 찾을 수 없습니다. 이 옵션을 사용하려면 Node.js를 설치하세요.",
@@ -223,5 +223,11 @@
  "Drawn characters": "기본 캐릭터",
  "To tweak them, copy them into your folder and pick “My folder”.": "수정하려면 내 폴더에 복사한 뒤 “내 폴더”를 선택하세요.",
  "My folder": "내 폴더",
- "The characters drawn by the app. Pick “My folder” for your own images, or a pack.": "앱이 그리는 캐릭터입니다. 직접 만든 이미지를 쓰려면 “내 폴더”를, 아니면 팩을 선택하세요."
+ "The characters drawn by the app. Pick “My folder” for your own images, or a pack.": "앱이 그리는 캐릭터입니다. 직접 만든 이미지를 쓰려면 “내 폴더”를, 아니면 팩을 선택하세요.",
+ "A visitor when another session needs you": "다른 세션이 나를 찾으면 방문자가 알려 주기",
+ "Click to stay in this session": "클릭하면 이 세션에 머뭅니다",
+ "Follow the Claude Code tab I am on": "보고 있는 Claude Code 탭 따라가기",
+ "Following the latest session": "가장 최근 세션을 따라갑니다",
+ "Go there": "그곳으로 가기",
+ "Pinned: click to follow the latest session": "고정됨: 클릭하면 가장 최근 세션을 따라갑니다"
 }

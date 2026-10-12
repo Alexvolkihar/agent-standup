@@ -58,7 +58,7 @@
  "Files touched": "触れたファイル",
  "Final report": "最終レポート",
  "first error": "最初のエラー",
- "French is read by your system voices: installing an “enhanced” or “premium” one makes a big difference.": "フランス語はシステム音声で読み上げます。“拡張”または“プレミアム”の音声を入れると大きく変わります。",
+ "For the best experience, pick the very natural voices.": "いちばん楽しむには「とても自然な音声」を選んでください。",
  "Hide code & file names in videos": "動画でコードとファイル名を隠す",
  "Highlights": "ハイライト",
  "Human": "人間",
@@ -176,7 +176,7 @@
  "Drop your pixel art (PNG) in this folder to replace the characters:": "このフォルダにドット絵（PNG）を入れると、キャラクターを差し替えられます:",
  "lead.png = the lead · you.png = you · others = the sub-agents · name-talk.png = open mouth": "lead.png = メインエージェント · you.png = あなた · それ以外 = サブエージェント · name-talk.png = 口を開けた状態",
  "Downloading, you can carry on: system voices are used meanwhile.": "ダウンロード中です。そのまま作業を続けられます。それまではシステム音声を使います。",
- "Good-quality local voices, in English (French lines use your system voices). Free, nothing leaves your machine.": "品質の良いローカル音声（英語。フランス語はシステム音声を使います）。無料で、データがPCの外に出ることはありません。",
+ "Good-quality local voices, in English. Free, nothing leaves your machine.": "品質の良いローカル音声（英語）。無料で、データがPCの外に出ることはありません。",
  "Installing…": "インストール中…",
  "Loading the model (downloaded on first use, about 305 MB)…": "モデルを読み込み中（初回使用時にダウンロード、約305 MB）…",
  "npm not found: install Node.js to enable this option.": "npm が見つかりません。このオプションを使うには Node.js をインストールしてください。",
@@ -223,5 +223,11 @@
  "Drawn characters": "描画キャラクター",
  "To tweak them, copy them into your folder and pick “My folder”.": "調整するには、自分のフォルダーにコピーして「自分のフォルダー」を選んでください。",
  "My folder": "自分のフォルダー",
- "The characters drawn by the app. Pick “My folder” for your own images, or a pack.": "アプリが描画するキャラクターです。自分の画像を使うには「自分のフォルダー」、またはパックを選んでください。"
+ "The characters drawn by the app. Pick “My folder” for your own images, or a pack.": "アプリが描画するキャラクターです。自分の画像を使うには「自分のフォルダー」、またはパックを選んでください。",
+ "A visitor when another session needs you": "別のセッションが呼んでいるときに訪問者が知らせる",
+ "Click to stay in this session": "クリックでこのセッションに留まる",
+ "Follow the Claude Code tab I am on": "表示中の Claude Code タブに合わせる",
+ "Following the latest session": "最新のセッションを追っています",
+ "Go there": "そこへ行く",
+ "Pinned: click to follow the latest session": "固定中：クリックで最新のセッションを追う"
 }

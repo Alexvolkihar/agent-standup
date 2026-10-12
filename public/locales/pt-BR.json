@@ -65,7 +65,7 @@
  "Files touched": "Arquivos modificados",
  "Final report": "Relatório final",
  "first error": "primeiro erro",
- "French is read by your system voices: installing an “enhanced” or “premium” one makes a big difference.": "O francês é lido pelas vozes do seu sistema: instalar uma “aprimorada” ou “premium” faz muita diferença.",
+ "For the best experience, pick the very natural voices.": "Para a melhor experiência, escolha as vozes muito naturais.",
  "Hide code & file names in videos": "Ocultar código e arquivos nos vídeos",
  "Highlights": "Destaques",
  "Human": "Humano",
@@ -176,7 +176,7 @@
  "Your Claude Code agents as a live team call": "Seus agentes do Claude Code em uma chamada de equipe ao vivo",
  "your turn": "sua vez",
  "Downloading, you can carry on: system voices are used meanwhile.": "Baixando, pode continuar: enquanto isso, as vozes do sistema são usadas.",
- "Good-quality local voices, in English (French lines use your system voices). Free, nothing leaves your machine.": "Vozes locais de boa qualidade, em inglês (o francês usa as vozes do seu sistema). Grátis, nada sai do seu computador.",
+ "Good-quality local voices, in English. Free, nothing leaves your machine.": "Vozes locais de boa qualidade, em inglês. Grátis, nada sai do seu computador.",
  "Installing…": "Instalando…",
  "Loading the model (downloaded on first use, about 305 MB)…": "Carregando o modelo (baixado no primeiro uso, cerca de 305 MB)…",
  "npm not found: install Node.js to enable this option.": "npm não encontrado: instale o Node.js para ativar esta opção.",
@@ -223,5 +223,11 @@
  "Drawn characters": "Personagens desenhados",
  "To tweak them, copy them into your folder and pick “My folder”.": "Para ajustá-los, copie-os para sua pasta e escolha “Minha pasta”.",
  "My folder": "Minha pasta",
- "The characters drawn by the app. Pick “My folder” for your own images, or a pack.": "Os personagens desenhados pelo aplicativo. Escolha “Minha pasta” para suas próprias imagens, ou um pacote."
+ "The characters drawn by the app. Pick “My folder” for your own images, or a pack.": "Os personagens desenhados pelo aplicativo. Escolha “Minha pasta” para suas próprias imagens, ou um pacote.",
+ "A visitor when another session needs you": "Um visitante quando outra sessão precisa de você",
+ "Click to stay in this session": "Clique para ficar nesta sessão",
+ "Follow the Claude Code tab I am on": "Seguir a aba do Claude Code em que estou",
+ "Following the latest session": "Seguindo a sessão mais recente",
+ "Go there": "Ir para lá",
+ "Pinned: click to follow the latest session": "Fixada: clique para seguir a sessão mais recente"
 }

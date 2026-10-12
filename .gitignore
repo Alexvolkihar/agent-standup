@@ -13,3 +13,7 @@ desktop/node_modules/
 desktop/core/
 dist-release/
 dist-release-*/
+
+# research notes and reports written during a session: never part of the repository or of a package
+research_notes/
+reports/

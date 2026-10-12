@@ -66,14 +66,15 @@ test('a live call followed record by record ends with exactly what a fresh load 
   const { port, stop } = await serve(), q = 'proj=-f&id=s';
   try {
     const first = await load(port, q), have = new Map(first.events.map((e) => [e.k, e])), seen = []; let seq = first.seq, late = 0; const ep = first.ep;
-    assert.equal(typeof ep, 'string'); assert.ok(Number.isInteger(seq)); assert.equal(have.size, first.events.length);
+    assert.equal(typeof ep, 'string'); assert.ok(Number.isInteger(seq)); assert.equal(have.size, first.events.length); assert.equal(first.marks, 1, 'before the lead has written anything, its turn is open');   // marks: the turns of this transcript end with a mark, so the lead is at work until one comes
+    const marks = [];
     for (const [file, rec] of steps.slice(1)) {
       fs.appendFileSync(file, line(rec)); await wait(280);   // the server does not build a timeline twice within 250 ms
-      const d = await load(port, q + '&after=' + seq + '&ep=' + ep); assert.equal(d.ep, ep); assert.ok(d.seq >= seq); assert.deepEqual(Object.keys(d).sort(), ['agents', 'ep', 'events', 'id', 'seq']);
+      const d = await load(port, q + '&after=' + seq + '&ep=' + ep); assert.equal(d.ep, ep); assert.ok(d.seq >= seq); assert.deepEqual(Object.keys(d).filter((k) => k !== 'marks').sort(), ['agents', 'ep', 'events', 'id', 'seq']); marks.push(d.marks || 0);
       for (const e of d.events) { seen.push([have.has(e.k) ? 'changed' : 'new', e.kind, e.agent, e.end || 0]); if (!have.has(e.k) && [...have.values()].some((x) => x.ts > e.ts)) late++; have.set(e.k, e); }   // what the page does: a known key is replaced in place, an unknown one is added
       seq = d.seq; assert.deepEqual((await load(port, q + '&after=' + seq + '&ep=' + ep)).events, []);   // asked again with the new number: nothing
     }
-    const fresh = await load(port, q); assert.equal(fresh.ep, ep); assert.equal(fresh.seq, seq);
+    const fresh = await load(port, q); assert.equal(fresh.ep, ep); assert.equal(fresh.seq, seq); assert.equal(marks[0], 0, 'a transcript whose records carry no stop reason is not said to mark its turns'); assert.equal(marks[marks.length - 1], 1); assert.equal(fresh.marks, 1);
     assert.equal(new Set(fresh.events.map((e) => e.k)).size, fresh.events.length);   // keys are unique
     assert.deepEqual([...have.keys()].sort(), fresh.events.map((e) => e.k).sort()); for (const e of fresh.events) assert.deepEqual(have.get(e.k), e);
     fs.mkdirSync(path.join(tmp, 'projects', '-f2'), { recursive: true }); fs.cpSync(dir, path.join(tmp, 'projects', '-f2'), { recursive: true });   // the same files read for the first time by a server that never saw them grow: same keys, same events
@@ -181,5 +182,14 @@ test('a pack name that is not a pack is answered as such, whatever the word', as
     }
     assert.ok(JSON.parse((await get(port, '/api/characters?pack=cats')).body).chars.length > 0);
     assert.deepEqual(JSON.parse((await get(port, '/api/packs')).body).map((p) => p.name), ['cats']);
+  } finally { stop(); }
+});
+test('the list of sessions: a line that goes on with a tool call is not the end of the turn', async () => {
+  const dir = path.join(tmp, 'projects', '-b'), f = path.join(dir, 's.jsonl'); fs.mkdirSync(dir, { recursive: true });
+  const { port, stop } = await serve(), state = async () => { await wait(1300); return JSON.parse((await get(port, '/api/board')).body).find((r) => r.proj === '-b').state; };   // the list is worked out at most once every 1.2 s
+  try {
+    fs.writeFileSync(f, [typed(0, 'Write the file'), said(1, 'I write it now.', { stop: 'tool_use' })].map(line).join('')); assert.equal(await state(), 'working');   // the call itself is written when it is whole, many seconds later for a long file
+    fs.appendFileSync(f, line(used(2, 'toolu_w', 'Bash', { command: 'ls' })) + line(result(3, 'toolu_w', 'ok')) + line(said(4, 'It is written.', { stop: 'end_turn' }))); assert.equal(await state(), 'turn');
+    fs.appendFileSync(f, line(typed(5, 'Thanks')) + line(said(6, 'A session that does not say why its messages stop.'))); assert.equal(await state(), 'turn');   // as before
   } finally { stop(); }
 });
