@@ -1,5 +1,5 @@
 // Renders the brand sources (brand/*.svg) into the files the extension, the desktop app, the page and the site use:
-//   media/icon.png (store icon) · media/icon.svg (side bar glyph) · media/tray.png + tray@2x.png (desktop tray) · public/icon.svg + public/favicon.svg (header, browser tab)
+//   media/icon.png (store icon) · plugin/.claude-plugin/icon.png (plugin listing) · media/icon.svg (side bar glyph) · media/tray.png + tray@2x.png (desktop tray) · public/icon.svg + public/favicon.svg (header, browser tab)
 //   desktop/icon.ico · desktop/icon.icns (macOS only: needs iconutil) · docs/media/social.jpg (link preview) · docs/media/banner.png (README header)
 //   npm run brand        needs puppeteer-core and a Chrome (CHROME_PATH), and the network for the two fonts of the banners
 // Three drawings of the icon: icon.svg down to 48 px, icon-32.svg for 20 to 40 px, icon-16.svg below.
@@ -29,16 +29,17 @@ function ico(pics) {   // pics: [{ n, png, rgba }], 256 px stored as PNG, the sm
   const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox', '--hide-scrollbars'] }), page = await browser.newPage();
   await page.goto('about:blank');
   // an icon drawing at n × n pixels; inset (0 to 1) leaves that share of the square empty all round, as macOS icons do
-  const draw = async (file, n, inset = 0) => {
+  const draw = async (file, n, inset = 0, edit = (svg) => svg) => {
     const r = await page.evaluate(async (svg, n, inset) => {
       const im = new Image(); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); await im.decode();
       const c = document.createElement('canvas'); c.width = c.height = n; const g = c.getContext('2d'), o = Math.round(n * inset); g.imageSmoothingQuality = 'high'; g.drawImage(im, o, o, n - 2 * o, n - 2 * o);
       return { png: c.toDataURL('image/png').split(',')[1], rgba: Array.from(g.getImageData(0, 0, n, n).data) };
-    }, src(file), n, inset);
+    }, edit(src(file)), n, inset);
     return { n, png: Buffer.from(r.png, 'base64'), rgba: r.rgba };
   };
   console.log('icons');
   out('media/icon.png', (await draw('icon.svg', 256)).png);
+  out('plugin/.claude-plugin/icon.png', (await draw('icon.svg', 1024, 0, (svg) => svg.replace('rx="230"', 'rx="0"'))).png);   // the listing icon of the Claude Code plugin: a full square, the directory rounds it itself
   out('media/tray.png', (await draw(pick(18), 18)).png); out('media/tray@2x.png', (await draw(pick(36), 36)).png);
   out('media/icon.svg', src('glyph.svg')); out('public/icon.svg', sized(src('icon-32.svg'))); out('public/favicon.svg', sized(src('icon-16.svg')));
   out('desktop/icon.ico', ico(await Promise.all([256, 64, 48, 32, 24, 16].map((n) => draw(pick(n), n)))));
