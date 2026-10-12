@@ -22,5 +22,8 @@ The interface is translated with one small JSON file per language. French and En
 ## The VS Code side
 Command titles and setting descriptions use VS Code's own mechanism: `package.nls.<lang>.json` at the repository root (keys like `command.open.title`). The status bar texts are in `l10n/bundle.l10n.<lang>.json` (the English text is the key; keep `{0}`). The language codes are lowercase there (`zh-tw`, `pt-br`).
 
+## The website and the landing page
+They work the same way, with their own files: `website/locales/<code>.json` (agent-standup.com, one page per language, written by `npm run website`) and `landing/locales/<code>.json` (the landing page, which fetches the file of the chosen language). English and French are in the pages themselves (`data-en` / `data-fr` in `website/src/home.html` and `landing/template.html`). `node scripts/site-locales.js extract` regenerates the two `en.json`, and `npm run i18n` checks these files too. Keep the HTML tags of a text exactly as in the English.
+
 ## What is *not* translated
 The words agents say come from your session (their own language). The built-in demo and the little banter lines (answers to orders, goodbyes) exist in English and French only.

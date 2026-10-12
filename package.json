@@ -30,7 +30,7 @@
     "promo:codex": "node scripts/capture-codex.js",
     "promo:vibe": "node scripts/capture-vibe.js",
     "story": "node scripts/make-story.js",
-    "i18n": "node scripts/i18n.js check",
+    "i18n": "node scripts/i18n.js check && node scripts/site-locales.js",
     "i18n:extract": "node scripts/i18n.js extract",
     "build:cli": "node scripts/build-cli.js",
     "test": "node --test test/*.test.js"

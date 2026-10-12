@@ -13,6 +13,9 @@ h1 { font-size: clamp(40px, 6.2vw, 72px); line-height: 1.02 }
 h2 { font-size: clamp(28px, 3.6vw, 42px); line-height: 1.08 }
 h3 { font-size: 21px; font-weight: 700; line-height: 1.2 }
 p { margin: 0 }
+/* Korean breaks lines between words, not inside them; a Japanese headline keeps its words whole where it can */
+:lang(ko) { word-break: keep-all }
+:lang(ja) h1 { word-break: keep-all; overflow-wrap: anywhere }
 .dim { color: var(--dim) }
 
 header.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 0 }
@@ -21,7 +24,11 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 nav { display: flex; align-items: center; gap: 22px; font-size: 15.5px; font-weight: 500 }
 nav a, nav button { color: var(--dim); text-decoration: none; background: none; border: 0; font: inherit; cursor: pointer; padding: 0 }
 nav a:hover, nav button:hover { color: var(--ink) }
-nav .lang { border: 1px solid var(--line); border-radius: 99px; padding: 3px 11px; color: var(--soft) }
+.langs { position: relative }
+.langs summary { list-style: none; cursor: pointer; border: 1px solid var(--line); border-radius: 99px; padding: 3px 11px; color: var(--soft); white-space: nowrap } .langs summary::-webkit-details-marker { display: none }
+.langs summary::after { content: ' ▾'; opacity: .7 } .langs summary:hover { color: var(--ink) }
+.langs div { position: absolute; right: 0; top: calc(100% + 8px); z-index: 5; display: grid; min-width: 190px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 6px; box-shadow: 0 14px 34px rgba(0, 0, 0, .35) }
+.langs div a { padding: 6px 12px; border-radius: 9px; color: var(--soft); white-space: nowrap } .langs div a:hover, .langs div a[aria-current] { background: var(--bg2); color: var(--ink) }
 @media (max-width: 640px) { nav .hide { display: none } }
 
 .btn { display: inline-flex; align-items: center; gap: 8px; font: 700 16.5px Figtree, system-ui, sans-serif; padding: 13px 22px; border-radius: 99px; text-decoration: none; border: 0; cursor: pointer; transition: transform .12s, background .12s }

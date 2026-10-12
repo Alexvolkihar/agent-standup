@@ -14,6 +14,8 @@
 
 **→ Website & download: https://agent-standup.com**
 
+🌐 [Français](https://agent-standup.com/fr/) · [繁體中文](https://agent-standup.com/zh-tw/) · [简体中文](https://agent-standup.com/zh-cn/) · [Español](https://agent-standup.com/es/) · [Deutsch](https://agent-standup.com/de/) · [Dansk](https://agent-standup.com/da/) · [Português](https://agent-standup.com/pt-br/) · [日本語](https://agent-standup.com/ja/) · [한국어](https://agent-standup.com/ko/)
+
 ![Agent Standup: a team of AI agents in a call](https://atoll92.github.io/agent-standup/media/hero.gif)
 
 _A fictional team fixing a slow login page — the built-in demo (⚙ → Source → Demo). [Watch the full 1-minute video](https://atoll92.github.io/agent-standup/media/demo.mp4)._
@@ -124,7 +126,7 @@ The header shows how full the lead's context is (`ctx 62%`, orange then red, wit
 Codex and Mistral Vibe sessions are read as well (see [Codex sessions too](#codex-sessions-too) and [Mistral Vibe sessions too](#mistral-vibe-sessions-too)). Other agent tools (Gemini CLI, OpenCode…) are researched in [ROADMAP.md](ROADMAP.md): their log formats are mostly undocumented, so no adapter is shipped for them yet.
 
 ## Languages
-Pick one in ⚙ → Language: **English, Français, 繁體中文, 简体中文, Español, Deutsch, Dansk, Português (Brasil), 日本語, 한국어**. The interface (menus, chips, tooltips, recap) is translated; VS Code's command titles, setting descriptions and status bar follow VS Code's own display language. English and French are written by hand; the other languages are **AI-drafted and not yet reviewed by native speakers**, so corrections are very welcome: each language is one small JSON file (`public/locales/<code>.json`), see [public/locales/README.md](public/locales/README.md) to fix or add one (`npm run i18n` checks the files). The words the agents say stay in the language of your session (French translation of their lines is optional); the little banter lines and the demo exist in English and French.
+Pick one in ⚙ → Language: **English, Français, 繁體中文, 简体中文, Español, Deutsch, Dansk, Português (Brasil), 日本語, 한국어**. The interface (menus, chips, tooltips, recap) is translated; VS Code's command titles, setting descriptions and status bar follow VS Code's own display language. English and French are written by hand; the other languages are **AI-drafted and not yet reviewed by native speakers**, so corrections are very welcome: each language is one small JSON file (`public/locales/<code>.json`), see [public/locales/README.md](public/locales/README.md) to fix or add one (`npm run i18n` checks the files). The [website](https://agent-standup.com) and the landing page exist in the same ten languages, with the same caveat; their files are in `website/locales/` and `landing/locales/`. The words the agents say stay in the language of your session (French translation of their lines is optional); the little banter lines and the demo exist in English and French.
 
 ## Your own characters
 **Your own agent names.** A sub-agent you defined yourself (`.claude/agents/code-reviewer.md`) or named when it was launched keeps that name on its tile, in the transcript and in the voices: "Code Reviewer" rather than a first name drawn from the list. Two of the same type become "Code Reviewer" and "Code Reviewer 2". The agent types Claude Code ships (general-purpose, Explore, Plan…) still get a first name. ⚙ → Characters → **Keep my agents’ own names** turns it off.

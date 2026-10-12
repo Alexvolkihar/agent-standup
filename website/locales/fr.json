@@ -1,0 +1,14 @@
+{
+ "_meta": {
+  "language": "fr",
+  "note": "Only the texts that are not the content of an element (title, description, image descriptions): the rest of the French is in website/src/home.html (data-fr)."
+ },
+ "Agent Standup — your AI agents, in a stand-up call": "Agent Standup — vos agents IA, en réunion d’équipe",
+ "Agent Standup turns your Claude Code, Codex and Mistral Vibe sessions into a live team call: see who is working, who waits on whom and who needs you. Free and open source. VS Code, Cursor, any terminal, or a desktop app.": "Agent Standup transforme vos sessions Claude Code, Codex et Mistral Vibe en réunion d’équipe en direct : voyez qui travaille, qui attend qui et qui a besoin de vous. Gratuit et open source. VS Code, Cursor, tout terminal, ou une application de bureau.",
+ "Your AI agents, in a stand-up call. See who is working, waiting or blocked. Free and open source.": "Vos agents IA, en réunion d’équipe. Voyez qui travaille, qui attend et qui est bloqué. Gratuit et open source.",
+ "A call with five agents at their desks; the one speaking is enlarged": "Un appel avec cinq agents à leur bureau ; celui qui parle est agrandi",
+ "An agent sharing its terminal with the output of a command": "Un agent partage son terminal avec la sortie d’une commande",
+ "An agent sharing its editor with the change it is making to a file": "Un agent partage son éditeur avec la modification qu’il apporte à un fichier",
+ "The recap of a session: agents, tool calls, commands, errors, tokens, files changed": "Le récap d’une session : agents, appels d’outils, commandes, erreurs, tokens, fichiers modifiés",
+ "Eight of the characters: the lead with its headset, and seven sub-agents": "Huit des personnages : le chef avec son casque, et sept sous-agents"
+}
