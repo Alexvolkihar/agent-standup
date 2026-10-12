@@ -172,3 +172,14 @@ test('own agent names: the name given at launch, or the person\'s own agent type
     assert.equal(v.status, 200); assert.equal(h.status, 200); assert.ok(Array.isArray(JSON.parse(v.body).voices)); assert.ok(Date.now() - t0 < 20000);
   } finally { stop(); }
 });
+test('a pack name that is not a pack is answered as such, whatever the word', async () => {
+  const { port, stop } = await serve();
+  try {
+    for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'nope']) {
+      const list = await get(port, '/api/characters?pack=' + name); assert.equal(list.status, 200, name); assert.deepEqual(JSON.parse(list.body).chars, [], name);
+      assert.equal((await get(port, '/packs/' + name + '/a.png')).status, 404, name);
+    }
+    assert.ok(JSON.parse((await get(port, '/api/characters?pack=cats')).body).chars.length > 0);
+    assert.deepEqual(JSON.parse((await get(port, '/api/packs')).body).map((p) => p.name), ['cats']);
+  } finally { stop(); }
+});
