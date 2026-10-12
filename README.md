@@ -8,7 +8,7 @@
 
 **Runs as a VS Code extension, a terminal command, or a desktop app.** Try it in 30 seconds, no install and no editor (Node 18+): `npx @double_geste/agent-standup --open`, then ⚙ → Source → Demo.
 
-**→ Website & download: https://atoll92.github.io/agent-standup/**
+**→ Website & download: https://agent-standup.com**
 
 ![Agent Standup: a team of AI agents in a call](https://atoll92.github.io/agent-standup/media/hero.gif)
 

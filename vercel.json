@@ -4,5 +4,8 @@
   "installCommand": "",
   "framework": null,
   "cleanUrls": true,
-  "trailingSlash": true
+  "trailingSlash": true,
+  "redirects": [
+    { "source": "/:path*", "has": [{ "type": "host", "value": "www.agent-standup.com" }], "destination": "https://agent-standup.com/:path*", "permanent": true }
+  ]
 }
