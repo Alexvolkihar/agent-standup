@@ -412,7 +412,7 @@ function renderCharInfo() {
   $('#charOpen').style.display = EMBED ? '' : 'none';
 }
 function persona(a) { const p = persona0(a); p.custom = customFor(a.id); return p; }
-const subName = (a, h) => (prefs.ownNames && a.own ? (nameBook[a.id] = a.own) : a.given || uniqueName(a.id, h));   // own: the name the person gave this agent (see ownName in server.js); otherwise a first name from the list
+const subName = (a, h) => (a.own && prefs.ownNames ? (nameBook[a.id] = a.own) : a.given || uniqueName(a.id, h));   // own: the name the person gave this agent (see ownName in server.js); otherwise a first name from the list. a.own is tested first: the landing page reuses this section and has no settings
 function renameAll() {   // ⚙ → own names on or off: every sub-agent is named again, in the order it arrived
   for (const k in nameBook) delete nameBook[k]; for (const p of Object.values(S.agents)) if (p.id !== 'main' && p.id !== 'user') p.name = subName(p, hash(p.id));
   buildStage(); paintStatus(); renderLog(true); syncUI();
