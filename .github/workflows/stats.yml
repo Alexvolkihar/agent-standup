@@ -1,0 +1,24 @@
+name: Daily stats
+# Once a day, adds one line of public counters (stores, GitHub) to history.jsonl in the "stats" release, so `npm run stats` can show a trend.
+# Nothing here publishes or tags anything: the other workflows start on a push to main or on a v* tag only.
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Add today's line to the history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download stats -p history.jsonl -O history.jsonl || echo "no history yet: starting one"
+          node scripts/stats.js --record history.jsonl
+          gh release upload stats history.jsonl --clobber
