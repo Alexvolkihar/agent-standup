@@ -30,9 +30,9 @@ function session() {
   return s;
 }
 // ---- the call, watched ----
-async function open(s, join = true) {
+async function open(s, join = true, more = '') {   // more: what else the address holds (&embed=1 for the page as VS Code shows it)
   const page = await browser.newPage(), errors = []; page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto(`http://localhost:${port}/?proj=${s.proj}`); await page.waitForFunction('typeof S !== "undefined" && S.cur', { timeout: 15000 });
+  await page.goto(`http://localhost:${port}/?proj=${s.proj}${more}`); await page.waitForFunction('typeof S !== "undefined" && S.cur', { timeout: 15000 });
   await page.evaluate(() => { window.__said = []; const o = window.startTalk; window.startTalk = function (id, line, label) { window.__said.push({ id, line: String(line), label: label || '' }); return o.apply(this, arguments); }; });
   await page.evaluate(() => { window.__voice = []; const o = window.speakLine; window.speakLine = function (text, p, primary, token, fr, always) { window.__voice.push({ id: p && p.id, text: String(text), silent: !!(S.hurry && !always) }); return o.apply(this, arguments); }; });   // silent: shown without a voice because the call is behind
   if (join) await page.click('#gB');
@@ -195,6 +195,21 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     s.say('I added `test/login.test.js`, run it to check.', { end: true }); await shows(['login.test.js*', 'notes.md!', 'README.md']); assert.equal((await strip()).more, '+3');   // the one the lead names, and only that one of this turn
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=files]').click()); assert.equal((await strip()).on, false);   // ⚙ › Display: off
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=files]').click()); await shows(['login.test.js*', 'notes.md!', 'README.md']);
+    await c.close();
+  });
+
+  await t.test('in VS Code the call goes to the Claude Code tab you go to, and a tab never pins it: nothing changes for the session it is in, it is kept a moment in another one, a pin moves along', async () => {
+    const s = session(), old = path.join(tmp, 'projects', s.proj, 'old.jsonl'), ago = Date.now() - 45 * 60000; s.user('hello'); s.say('Ready.', { end: true });
+    fs.writeFileSync(old, [{ type: 'user', message: { role: 'user', content: 'an older conversation' } }, { type: 'assistant', message: { id: 'o1', role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text: 'Done.' }] } }].map((r) => JSON.stringify({ timestamp: new Date(ago).toISOString(), ...r })).join('\n') + '\n'); fs.utimesSync(old, ago / 1000, ago / 1000);   // a second session of the same folder, quiet for long enough to have no tab of its own
+    const c = await open(s, true, '&embed=1'), tab = (id) => c.page.evaluate((proj, id) => window.postMessage({ agentStandup: 'pin', id, proj, tab: true }, '*'), s.proj, id);   // what extension.js sends when you change tab
+    const at = () => c.page.evaluate(() => ({ id: S.cur && S.cur.id, pin: S.pin || '', row: !!document.querySelector('#tabs .stab') })), goes = (id) => c.until((k) => S.cur && S.cur.id === k, id);
+    await c.quiet(500); assert.deepEqual(await at(), { id: 's', pin: '', row: false });
+    await tab('s'); await wait(2500); assert.deepEqual(await at(), { id: 's', pin: '', row: false }, 'the tab of the session the call is in: no pin, no row of tabs');
+    await tab('old'); await goes('old'); await wait(4000); assert.deepEqual({ ...(await at()), row: 0 }, { id: 'old', pin: '', row: 0 }, 'another tab: the call goes there and is kept there, without a pin');
+    await c.page.evaluate(() => { S.hold.until = 0; }); await goes('s'); assert.equal((await at()).pin, '');   // the moment is over: the latest activity is followed again
+    await c.page.evaluate((proj) => goSession(proj, 's'), s.proj); await tab('old'); await goes('old'); assert.equal((await at()).pin, 'old', 'a pinned call takes its pin along');
+    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click()); await tab('s'); await wait(2500); assert.equal((await at()).id, 'old', '⚙: off');
+    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click());
     await c.close();
   });
 });

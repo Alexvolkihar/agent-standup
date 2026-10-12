@@ -2026,11 +2026,12 @@ async function fillProjects() {   // live view: follow the latest activity anywh
   sel.innerHTML = `<option value="">${L('Tous les projets (le plus récent)', 'All projects (most recent)')}</option>` + rows.map((r) => `<option value="${esc(r.proj)}">${esc(niceProj(r.proj))}</option>`).join('');
   sel.value = prefs.proj && rows.some((r) => r.proj === prefs.proj) ? prefs.proj : ''; sel.style.display = rows.length > 1 ? '' : 'none';
 }
-$('#liveProj').onchange = () => { Q.delete('proj'); prefs.proj = $('#liveProj').value; S.pin = S.pinProj = ''; savePrefs(); S.cur = null; followCurrent(); };
+$('#liveProj').onchange = () => { Q.delete('proj'); prefs.proj = $('#liveProj').value; S.pin = S.pinProj = ''; S.hold = null; savePrefs(); S.cur = null; followCurrent(); };
 async function followCurrent() {
-  const cur = await (await fetch('/api/current?proj=' + encodeURIComponent((S.pin && S.pinProj) || Q.get('proj') || prefs.proj || '') + (S.pin ? '&id=' + encodeURIComponent(S.pin) : '') + (S.cur && !S.pin ? '&sproj=' + encodeURIComponent(S.cur.proj) + '&sid=' + encodeURIComponent(S.cur.id) : ''))).json();
+  if (S.hold && (S.pin || Date.now() > S.hold.until)) S.hold = null; const at = S.pin ? { id: S.pin, proj: S.pinProj } : S.hold;   // the session the call is kept in: the pinned one, or for a moment the one of the tab you went to (see tabSession)
+  const cur = await (await fetch('/api/current?proj=' + encodeURIComponent((at && at.proj) || Q.get('proj') || prefs.proj || '') + (at ? '&id=' + encodeURIComponent(at.id) : '') + (S.cur && !at ? '&sproj=' + encodeURIComponent(S.cur.proj) + '&sid=' + encodeURIComponent(S.cur.id) : ''))).json();
   if (!cur.id) { $('#empty').classList.add('on'); return false; } $('#empty').classList.remove('on');
-  if (S.pin && cur.id !== S.pin) S.pin = S.pinProj = '';   // the pinned session is gone: follow the latest one instead of staying silently pinned
+  if (at && at === S.hold && cur.id !== at.id) S.hold = null; if (S.pin && cur.id !== S.pin) S.pin = S.pinProj = '';   // the pinned session is gone: follow the latest one instead of staying silently pinned
   if (S.cur && S.cur.id === cur.id && S.cur.proj === cur.proj) return false;
   const key = cur.proj + '/' + cur.id, was = S.lastKey, moved = !!was && was !== key && !S.locked; if (moved) S.left[was] = Date.now();   // what was said of the session the call leaves is not said again when it comes back to it
   if (!(await loadSession(cur.proj, cur.id))) return false;
@@ -2080,7 +2081,7 @@ setInterval(async () => {
 
 window.addEventListener('message', (e) => {   // the VS Code status bar asks to follow a given session
   const d = e.data; if (!EMBED || e.source !== window.parent || !d || d.agentStandup !== 'pin' || typeof d.id !== 'string') return;
-  if (d.tab) { if (prefs.followTab !== false && S.live && !S.demo && typeof d.proj === 'string') goSession(d.proj, d.id); return; }   // the Claude Code tab you went to: the call goes with you (see followTab in extension.js)
+  if (d.tab) { if (prefs.followTab !== false && S.live && !S.demo && typeof d.proj === 'string') tabSession(d.proj, d.id); return; }   // the Claude Code tab you went to: the call goes with you (see tabSession, and followTab in extension.js)
   prefs.proj = typeof d.proj === 'string' ? d.proj : ''; S.pin = d.id; S.pinProj = prefs.proj; S.cur = null; setView('call'); if (S.live) { fillProjects(); followCurrent(); } else setMode('live');
 });
 // ---------- meeting chrome: participants and a clock ----------
@@ -2145,8 +2146,8 @@ setInterval(() => { if (!document.hidden) renderBoardView(); }, 2500);
 // ---------- several sessions at once (live): the sessions of the moment as tabs under the header, and a visitor when another one needs you ----------
 // The row is there only when there is something to tell apart: a second session at work or waiting for you, or a call you pinned. With a single session the header is as it always was.
 // The tabs keep the order in which the sessions showed up, so the one the call is in stays where it was. A click on another tab takes the call there and keeps it there (📌);
-// a click on the call's own tab pins it, or lets the call follow the latest activity again. In VS Code the call also goes to the Claude Code tab you are on (⚙, see followTab in extension.js).
-S.rows = []; S.tabOrder = []; S.knockAt = {}; S.left = {}; S.visit = S.knock = null;
+// a click on the call's own tab pins it, or lets the call follow the latest activity again. In VS Code the call also goes to the Claude Code tab you are on, without being pinned there (⚙, see tabSession, and followTab in extension.js).
+S.rows = []; S.tabOrder = []; S.knockAt = {}; S.left = {}; S.visit = S.knock = null; S.hold = null;
 const UNTITLED = /^[0-9a-f]{8}-[0-9a-f-]{27}$/, sessKey = (r) => r.proj + '/' + r.id, tabName = (r) => (r.title && !UNTITLED.test(r.title) ? r.title : r.title ? L('Session sans titre', 'Untitled session') : niceProj(r.proj) || L('Session sans titre', 'Untitled session'));
 const inWatch = (r) => { const k = Q.get('proj') || prefs.proj || ''; return !k || [r.proj, r.dir || ''].some((d) => d === k || d.startsWith(k + '-')); };   // the folder the live view follows, when it follows one
 const rowOf = (c) => (c && S.rows.find((r) => r.proj === c.proj && r.id === c.id)) || null;
@@ -2165,6 +2166,11 @@ function paintTabs() {
 function goSession(proj, id) {   // the call moves to this session and stays in it
   S.pin = id; S.pinProj = proj; if (S.cur && S.cur.proj === proj && S.cur.id === id) { paintTabs(); return; }
   hideVisit(); S.cur = null; followCurrent();
+}
+function tabSession(proj, id) {   // the Claude Code tab you went to, in VS Code. A tab never pins the call: going to the tab of the session the call is in changes nothing, and a call that is pinned takes its pin along
+  if (S.cur && S.cur.proj === proj && S.cur.id === id) return;
+  if (S.pin) return goSession(proj, id);
+  S.hold = { proj, id, until: Date.now() + 90000 }; hideVisit(); S.cur = null; followCurrent();   // kept here as long as a session that has just written keeps the call (STICK_MS in server.js), then the latest activity is followed again: going to a conversation is not activity, and without this the call would leave at once for a busier session
 }
 $('#tabs').onclick = (e) => {
   const b = e.target.closest('.stab'); if (!b) return; if (b.classList.contains('all')) { openSwitcher(); return; }
