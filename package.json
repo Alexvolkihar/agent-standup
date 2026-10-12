@@ -25,6 +25,7 @@
     "capture": "node scripts/capture-demo.js all",
     "stats": "node scripts/stats.js",
     "promo": "node scripts/capture-promo.js",
+    "promo:codex": "node scripts/capture-codex.js",
     "story": "node scripts/make-story.js",
     "i18n": "node scripts/i18n.js check",
     "i18n:extract": "node scripts/i18n.js extract",
