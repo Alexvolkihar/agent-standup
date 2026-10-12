@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.27.0
+- **Codex sessions too.** Sessions of OpenAI’s Codex (the desktop app and the `codex` command) appear next to your Claude Code sessions: in the session list under “Codex”, on the board, and in the live call when one of them is the most recent. Nothing to set up: the app reads the files Codex already writes in `~/.codex/sessions` (or `$CODEX_HOME`) and never writes there. You see what you typed, what the agent says, each command with its real output, the files it created or changed, web searches, MCP calls, the questions it asks you, its reasoning summaries as inner thoughts, token counts and the end of each turn. The lead is called Codex.
+- **Not yet for Codex:** its sub-agents (a Codex call is the lead and you) and pictures. A command appears when it has finished, because that is when Codex writes it down.
+- **Leave Codex out if you prefer:** the VS Code setting `agentStandup.codex`, or `AGENT_STANDUP_CODEX=off` (command line: `--codex off`). The session list and the board keep all the Claude Code sessions they showed before; Codex ones are added beside them. With French translation or the jokes turned on, the lines of a Codex session are sent through your Claude login like any other line.
+- **Opening the call on one session works again.** Clicking the status bar in VS Code to open the call on a given session showed an empty page: one line ran too early and stopped everything. It had been there since 1.20.0.
+- The website, the store description (nine languages) and the command line help now say Claude Code and Codex. Unofficial as before: not affiliated with Anthropic or OpenAI.
+
 ## 1.26.0
 - **A new icon: the lead itself.** The app icon is now the lead as you see it in the call (the peach character with the gold headset, its focused smile, its desk and its coffee), in front of a window at night. It replaces the old icon in the extension list, the desktop app (macOS and Windows) and the website, and the camera emoji in the header and the browser tab. The red dot on the tab when an agent may be waiting for you is still there.
 - **The lead’s room has a window.** The three screens with rising curves behind the lead looked like a trading desk. They are replaced by a window on the city at night, with a few lit windows that twinkle slowly.
