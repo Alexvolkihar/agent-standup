@@ -180,3 +180,32 @@ test('Vibe can be turned off, and is not looked for when the app is pointed at o
     const projects = process.env.AGENT_STANDUP_PROJECTS; delete process.env.AGENT_STANDUP_PROJECTS; process.env.VIBE_HOME = '/somewhere/vibe'; assert.equal(vibe.home(), '/somewhere/vibe'); delete process.env.VIBE_HOME; assert.equal(vibe.home(), path.join(os.homedir(), '.vibe')); process.env.AGENT_STANDUP_PROJECTS = projects;
   } finally { process.env.AGENT_STANDUP_VIBE = keep; }
 });
+
+test('a Vibe session the reader does not expect costs that session at most: the other sessions, of every tool, are still listed', async () => {
+  const bad = (id, files) => { const d = path.join(ROOT, 'unified', id); for (const [f, body] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(d, f)), { recursive: true }); fs.writeFileSync(path.join(d, f), typeof body === 'string' ? body : JSON.stringify(body)); } return d; };
+  const cur = (generation) => ({ generation, snapshot_sequence: 1, session_id: 'x' }), man = (chunks, seg = 'journal/1.jsonl') => ({ projection_state: { chunks }, recovery_journal_segment: { path: seg } }), env = { snapshot: { session: { status: { type: 'running' }, title: 'Odd session' } } };
+  const odd = [   // entries in shapes Vibe does not write today: each one alone must not stop the others
+    { id: 'e1', type: 'effect', detail: { toolName: 'TodoWrite', input: { todos: 'not a list' } }, state: { status: 'completed' }, createdAt: NOW, turnId: 't' },
+    { id: 'e2', type: 'effect', detail: { toolName: 'AskUserQuestion', input: { questions: [{ question: 'q', options: null }] } }, state: { status: 'completed' }, createdAt: NOW, turnId: 't' },
+    { id: 'e3', type: 'effect', detail: { toolName: 'subagent.spawn', input: null, childSessionId: {} }, state: null, createdAt: 'yesterday', turnId: 't' },
+    { id: 'e4', type: 'message', role: 'assistant', content: { not: 'a list' }, createdAt: NOW }, { id: 5, type: 'message' }, null, 'text', { id: 'e6', type: 'effect', detail: 7 },
+    { id: 'ok', type: 'message', role: 'assistant', content: [{ type: 'text', text: 'Still here.' }], createdAt: NOW, turnId: 't' },
+  ];
+  const sha = 'a'.repeat(64), dirs = [
+    bad('odd-entries', { CURRENT: cur('g1'), 'generations/g1/manifest.json': man([sha]), 'generations/g1/projection-state.json': env, ['chunks/' + sha + '.json']: odd, 'journal/1.jsonl': '{"type":"projection_delta","sequence":2,"payload":{"delta":[null,{"op":"replace_entry"},{"op":"append_entry","entry":7},{"op":"set_history_entries","entries":"x"}]}}\nnot json\n', 'meta.json': 'not json' }),
+    bad('no-generation', { CURRENT: cur('missing') }), bad('not-json', { CURRENT: 'not json at all' }), bad('null-current', { CURRENT: 'null' }),
+    bad('escapes', { CURRENT: cur('../../../../etc'), 'meta.json': { child_sessions: [{ tool_call_id: 't', agent: 'a', relative_path: '../../../../etc' }], environment: { working_directory: 7 }, title: { not: 'text' } } }),
+    bad('bad-pages', { CURRENT: cur('g1'), 'generations/g1/manifest.json': man(['../../x', 'zz', sha], '../../../etc/passwd'), 'generations/g1/projection-state.json': { snapshot: 'text' }, ['chunks/' + sha + '.json']: { not: 'a list' } }),
+  ];
+  const { port, stop } = await serve(), wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  try {
+    await wait(2100);   // the lists are remembered for two seconds
+    const list = await get(port, '/api/sessions'), board = await get(port, '/api/board'), cur0 = await get(port, '/api/current');
+    assert.deepEqual([list.status, board.status, cur0.status], [200, 200, 200]);
+    const rows = list.json(); assert.ok(rows.some((r) => r.proj === '-c' && r.id === 'cc'), 'the Claude Code session'); assert.ok(rows.some((r) => r.id === S1) && rows.some((r) => r.id === U1), 'the sound Vibe sessions');
+    for (const id of ['odd-entries', 'no-generation', 'not-json', 'null-current', 'escapes', 'bad-pages']) { const r = await get(port, `/api/session?proj=_vibe&id=${id}`); assert.equal(r.status, 200, id); assert.ok(Array.isArray(r.json().events), id); }
+    const tl = (await get(port, '/api/session?proj=_vibe&id=odd-entries')).json(); assert.ok(tl.events.some((e) => e.text === 'Still here.'), 'what can be read of a session with odd entries is shown');
+    assert.ok(!JSON.stringify([rows, board.json()]).includes('root:'), 'nothing from outside the Vibe folder');
+    assert.equal((await get(port, '/api/session?proj=-c&id=cc')).json().events.length, 2);
+  } finally { stop(); for (const d of dirs) fs.rmSync(d, { recursive: true, force: true }); }
+});

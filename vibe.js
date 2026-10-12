@@ -65,7 +65,8 @@ function meta(dir) {
   const mc = (Array.isArray(cfg.models) ? cfg.models : []).find((m) => m && (m.alias === model || m.name === model)), s = j.stats && typeof j.stats === 'object' ? j.stats : null;
   const v = {
     title: typeof j.title === 'string' ? j.title.trim() : '', start: Date.parse(j.start_time) || 0, cwd: typeof env.working_directory === 'string' ? env.working_directory : typeof j.origin_directory === 'string' ? j.origin_directory : '',
-    children: (Array.isArray(j.child_sessions) ? j.child_sessions : []).filter((c) => c && typeof c === 'object').map((c) => ({ tool: String(c.tool_call_id || ''), agent: String(c.agent || ''), rel: String(c.relative_path || '').replace(/\\/g, '/'), sid: String(c.session_id || '') })),
+    children: (Array.isArray(j.child_sessions) ? j.child_sessions : []).filter((c) => c && typeof c === 'object').map((c) => ({ tool: String(c.tool_call_id || ''), agent: String(c.agent || ''), rel: ((x) => (/^agents\/[\w][\w.\-]*$/.test(x) ? x : ''))(String(c.relative_path || '').replace(/\\/g, '/')),   // inside the session's own agents folder, or not followed
+      sid: String(c.session_id || '') })),
     stats: s ? { p: +s.session_prompt_tokens || 0, c: +s.session_completion_tokens || 0, r: +s.session_cached_tokens || 0, x: +s.context_tokens || 0 } : null, model, cw: mc && mc.max_context_length > 0 ? +mc.max_context_length : 0,
   };
   if (metaCache.size > 3000) metaCache.clear(); metaCache.set(dir, { sig, v }); return v;
@@ -87,7 +88,7 @@ function firstPrompt(file, size) {
   return out;
 }
 const brief = (s) => { const m = /^(.{8,70}?)[.!?](\s|$)/.exec(s); if (m) return m[1]; if (s.length <= 56) return s; const cut = s.slice(0, 56), sp = cut.lastIndexOf(' '); return (sp > 30 ? cut.slice(0, sp) : cut) + '…'; };   // what a sub-agent was asked, in a few words: Vibe gives a task no title
-const title = (r) => { if (!r.uni) return meta(r.dir).title || firstPrompt(r.file, r.size) || r.id; const u = uniLoad(r), se = (u.env && u.env.session) || {}; return meta(r.dir).title || str(se.title).trim() || str(se.preview).replace(/\s+/g, ' ').trim().slice(0, 90) || r.id; };
+const title = (r) => (r.uni ? meta(r.dir).title || uniSummary(r).title || r.id : meta(r.dir).title || firstPrompt(r.file, r.size) || r.id);
 
 // ---- sub-agents: the sessions in <session>/agents/, each tied to the task call that started it
 function subFiles(id) {
@@ -110,9 +111,9 @@ const watch = (id) => { const r = row(id); return !r ? [] : r.uni ? [path.join(r
 const tailCache = new Map();
 function boardRow(r, now) {
   if (r.uni) {   // the current format says it outright: idle, running, or blocked on an approval or a question
-    const u = uniState(r), kind = str(u.env && u.env.session && u.env.session.status && u.env.session.status.type), age = now - r.mtime, live = u.kids.filter((k) => !k.done).length;
+    const u = uniSummary(r), kind = u.status, age = now - r.mtime, live = u.live;
     const state = age >= 30 * 60e3 ? 'idle' : kind === 'blocked' ? 'blocked' : kind === 'running' ? (u.waiting ? 'waiting' : 'working') : kind === 'idle' || kind === 'failed' ? 'turn' : age < 10 * 60e3 ? 'working' : 'idle';
-    return { proj: PROJ, id: r.id, title: title(r), mtime: r.mtime, state, tool: '', ageMs: age, subActive: state === 'idle' || state === 'turn' ? 0 : live, subTotal: u.kids.length, dir: dirKey(meta(r.dir).cwd), source: SOURCE };
+    return { proj: PROJ, id: r.id, title: title(r), mtime: r.mtime, state, tool: '', ageMs: age, subActive: state === 'idle' || state === 'turn' ? 0 : live, subTotal: u.kids, dir: dirKey(meta(r.dir).cwd), source: SOURCE };
   }
   const sig = r.mtime + ':' + r.size; let t = tailCache.get(r.file);
   if (!t || t.sig !== sig) {
@@ -128,17 +129,19 @@ function boardRow(r, now) {
 
 // ---- the current format: the history of a session, as Vibe would load it
 const str = (v) => (v == null ? '' : typeof v === 'string' ? v : JSON.stringify(v));
-const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
+const MAX_FILE = 64 * 1024 * 1024, readJson = (f) => { const st = fs.statSync(f); if (st.size > MAX_FILE) throw new Error('too large'); return JSON.parse(fs.readFileSync(f, 'utf8')); };   // a page of history is a few megabytes at most; anything far beyond is not read
+const uniSig = (r) => { const j = journalOf(r.dir), cs = stat(r.file); return (cs ? cs.mtimeMs + ':' + cs.size : '') + '|' + (j ? j.file + ':' + j.mtime + ':' + j.size : ''); };
 const chunkCache = new Map(), uniCache = new Map();   // a page of history never changes (it is named after its content); session folder → { sig, entries, env, model }
 function uniLoad(r) {
-  const j = journalOf(r.dir), cs = stat(r.file), sig = (cs ? cs.mtimeMs + ':' + cs.size : '') + '|' + (j ? j.file + ':' + j.mtime + ':' + j.size : ''), hit = uniCache.get(r.dir); if (hit && hit.sig === sig) return hit;
+  const sig = uniSig(r), hit = uniCache.get(r.dir); if (hit && hit.sig === sig) return hit;
   try {
-    const cur = readJson(r.file), gdir = path.join(r.dir, 'generations', String(cur.generation)), man = readJson(path.join(gdir, 'manifest.json')), snap = readJson(path.join(gdir, 'projection-state.json')).snapshot || {};
+    const cur = readJson(r.file); if (!SAFE.test(String(cur.generation))) throw new Error('generation');   // a name, never a path
+    const gdir = path.join(r.dir, 'generations', String(cur.generation)), man = readJson(path.join(gdir, 'manifest.json')), snap = readJson(path.join(gdir, 'projection-state.json')).snapshot || {};
     let entries = [];
-    for (const sha of (man.projection_state && man.projection_state.chunks) || []) { if (!/^[0-9a-f]{16,}$/.test(sha)) continue; let c = chunkCache.get(sha); if (!c) { c = readJson(path.join(r.dir, 'chunks', sha + '.json')); if (chunkCache.size > 60) chunkCache.delete(chunkCache.keys().next().value); chunkCache.set(sha, c); } if (Array.isArray(c)) entries = entries.concat(c); }
+    for (const sha of (man.projection_state && man.projection_state.chunks) || []) { if (!/^[0-9a-f]{16,}$/.test(sha)) continue; const key = r.dir + '/' + sha; let c = chunkCache.get(key); if (!c) { c = readJson(path.join(r.dir, 'chunks', sha + '.json')); if (chunkCache.size > 8) chunkCache.delete(chunkCache.keys().next().value); chunkCache.set(key, c); }   /* kept per session: a page is named after its content, but that is Vibe's promise, not something to rely on between two folders */ if (Array.isArray(c)) entries = entries.concat(c); }
     if (!entries.length && snap.history && Array.isArray(snap.history.entries)) entries = snap.history.entries.slice();
     let env = snap; const seg = man.recovery_journal_segment && typeof man.recovery_journal_segment.path === 'string' && SAFE_SEG.test(man.recovery_journal_segment.path) ? path.join(r.dir, man.recovery_journal_segment.path) : '';
-    let text = ''; if (seg) { try { text = fs.readFileSync(seg, 'utf8'); } catch {} }
+    let text = ''; if (seg) { try { const st = fs.statSync(seg); if (st.size <= MAX_FILE) text = fs.readFileSync(seg, 'utf8'); } catch {} }
     for (const line of text.split('\n')) {   // what happened since the snapshot. A last line still being written does not parse and is read next time
       if (!line) continue; let rec; try { rec = JSON.parse(line); } catch { continue; }
       if (!rec || rec.type !== 'projection_delta' || !(rec.sequence > cur.snapshot_sequence) || !rec.payload || !Array.isArray(rec.payload.delta)) continue;
@@ -153,7 +156,7 @@ function uniLoad(r) {
     }
     let model = hit && hit.gen === cur.generation ? hit.model : ''; if (!model) { try { model = str((readJson(path.join(gdir, 'runtime-state.json')).session_metadata || {}).active_model); } catch {} }
     const v = { sig, gen: cur.generation, entries: entries.filter((e) => e && typeof e === 'object' && typeof e.id === 'string'), env, model, state: null };
-    if (uniCache.size > 200) uniCache.delete(uniCache.keys().next().value); uniCache.set(r.dir, v); return v;
+    uniCache.delete(r.dir); if (uniCache.size >= 4) uniCache.delete(uniCache.keys().next().value); uniCache.set(r.dir, v); return v;   // the histories of the last few sessions looked at: a history can be megabytes
   } catch { return hit || { sig: '', entries: [], env: {}, model: '', state: null }; }   // caught in the middle of a snapshot: what was read last time stands until the next look
 }
 const SAFE_SEG = /^journal\/[\w.\-]+\.jsonl$/;
@@ -166,38 +169,39 @@ function uniState(r) {
   const { toolLabel, clip, resultMax } = helpers, mk = (agent) => ({ agent, raw: [], toolName: {}, msgUsage: new Map(), lastTs: 0 }), st = mk('main'), kids = new Map(), lastOf = new Map(); let th = '', waiting = false;
   const push = (to, e, key) => { e.k = to.agent + ':' + key; to.raw.push(e); if (e.ts > to.lastTs) to.lastTs = e.ts; return e; }, take = () => { const t = th; th = ''; return t ? { th: t } : {}; };
   const text = (c) => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => (x && typeof x.text === 'string' ? x.text : '')).filter(Boolean).join('\n') : '').trim();
-  for (const e of u.entries) {
+  const one = (e) => {
     const ts = +e.createdAt || 0, end = Math.max(ts, +e.updatedAt || 0);
-    if (e.type === 'reasoning') { const t = text(e.text) || text(e.summary); if (t) th = clip(t.replace(/[^\S\n]+/g, ' ').replace(/ ?\n[\n ]*/g, '\n').trim(), 900); continue; }
+    if (e.type === 'reasoning') { const t = text(e.text) || text(e.summary); if (t) th = clip(t.replace(/[^\S\n]+/g, ' ').replace(/ ?\n[\n ]*/g, '\n').trim(), 900); return; }
     if (e.type === 'message') {
-      const t = text(e.content); if (!t) continue;
+      const t = text(e.content); if (!t) return;
       if (e.role === 'user') push(st, { ts, agent: 'user', kind: 'user', text: t }, e.id);
       else if (e.role === 'assistant') lastOf.set(e.turnId, push(st, { ts, agent: 'main', kind: 'say', text: t, ...take() }, e.id));
-      continue;
+      return;
     }
-    if (e.type !== 'effect' || !e.detail || typeof e.detail !== 'object') continue;
+    if (e.type !== 'effect' || !e.detail || typeof e.detail !== 'object') return;
     const raw = str(e.detail.toolName), input = e.detail.input && typeof e.detail.input === 'object' ? e.detail.input : {}, state = e.state && typeof e.state === 'object' ? e.state : {}, out = state.output && typeof state.output === 'object' ? state.output : {}, sc = out.structured_content && typeof out.structured_content === 'object' ? out.structured_content : {};
     const open = !state.status || OPEN.test(str(state.status)), failed = state.status === 'failed' || out.type === 'failure' || sc.type === 'error' || (typeof sc.returncode === 'number' && sc.returncode !== 0), errText = str((state.error && state.error.message) || (out.error && out.error.message) || (sc.type === 'error' ? sc.error : ''));
-    if (raw === 'search_tool_functions' || raw === 'subagent.list') continue;   // the agent looking up its own tools: not part of the call
+    if (raw === 'search_tool_functions' || raw === 'subagent.list') return;   // the agent looking up its own tools: not part of the call
     if (/^subagent\./.test(raw)) {
       const name = str(e.detail.agentName || input.agentName), sub = (out._meta && out._meta['mistral.vibe.subagent']) || {}, cid = str(e.detail.childSessionId || sub.childSessionId);
       let kid = kids.get(name);
       if (raw === 'subagent.spawn' && cid) {   // a sub-agent joins: the task is its order
         kid = { aid: cid.replace(/[^\w.-]/g, '_'), name, type: str(input.agent), task: str(input.task), spawn: e.id, st: null, last: end, done: false, said: '' }; kid.st = mk(kid.aid); kids.set(name, kid);
-        st.toolName[e.id] = 'Task'; lastOf.set(e.turnId, push(st, { ts, agent: 'main', kind: 'agentcall', toolId: e.id, bg: true, text: kid.task, title: name, ...(name ? { nm: name } : {}), ...take() }, e.id)); continue;
+        st.toolName[e.id] = 'Task'; lastOf.set(e.turnId, push(st, { ts, agent: 'main', kind: 'agentcall', toolId: e.id, bg: true, text: kid.task, title: name, ...(name ? { nm: name } : {}), ...take() }, e.id)); return;
       }
-      if (kid && raw === 'subagent.send_message') { kid.last = end; if (str(input.message).trim()) push(st, { ts, agent: 'main', to: kid.aid, kind: 'order', toolId: e.id, bg: true, text: str(input.message), title: name }, e.id); continue; }   // one more order to the same sub-agent
-      if (kid && raw === 'subagent.wait') { if (open) { waiting = true; continue; } waiting = false; kid.last = end; const said = str(sc.value != null ? sc.value : text(out.content)).trim(); if (said && said !== kid.said) { kid.said = said; push(kid.st, { ts: end, agent: kid.aid, kind: 'say', text: said }, e.id); } continue; }   // what the lead got back when it waited: the sub-agent's words
-      if (kid && (raw === 'subagent.stop' || raw === 'subagent.interrupt')) { if (!open && raw === 'subagent.stop' && !kid.done) { kid.done = true; kid.last = end; push(st, { ts: Math.max(end, kid.st.lastTs + 1), agent: 'main', kind: 'agentdone', toolId: kid.spawn }, e.id); } continue; }
+      if (kid && raw === 'subagent.send_message') { kid.last = end; if (str(input.message).trim()) push(st, { ts, agent: 'main', to: kid.aid, kind: 'order', toolId: e.id, bg: true, text: str(input.message), title: name }, e.id); return; }   // one more order to the same sub-agent
+      if (kid && raw === 'subagent.wait') { if (open) { waiting = true; return; } waiting = false; kid.last = end; const said = str(sc.value != null ? sc.value : text(out.content)).trim(); if (said && said !== kid.said) { kid.said = said; push(kid.st, { ts: end, agent: kid.aid, kind: 'say', text: said }, e.id); } return; }   // what the lead got back when it waited: the sub-agent's words
+      if (kid && (raw === 'subagent.stop' || raw === 'subagent.interrupt')) { if (!open && raw === 'subagent.stop' && !kid.done) { kid.done = true; kid.last = end; push(st, { ts: Math.max(end, kid.st.lastTs + 1), agent: 'main', kind: 'agentdone', toolId: kid.spawn }, e.id); } return; }
     }
-    if (raw === 'vibe.todo') { if (input.action === 'write') { st.toolName[e.id] = 'TodoWrite'; lastOf.set(e.turnId, push(st, { ts, agent: 'main', kind: 'tool', tool: toolLabel({ id: e.id, name: 'TodoWrite', input: { todos: (Array.isArray(input.todos) ? input.todos : []).map((x) => ({ content: (x && x.content) || '', status: x && x.status === 'cancelled' ? 'completed' : (x && x.status) || 'pending' })) } }, ts), ...take() }, e.id)); } continue; }
+    if (raw === 'vibe.todo') { if (input.action === 'write') { st.toolName[e.id] = 'TodoWrite'; lastOf.set(e.turnId, push(st, { ts, agent: 'main', kind: 'tool', tool: toolLabel({ id: e.id, name: 'TodoWrite', input: { todos: (Array.isArray(input.todos) ? input.todos : []).map((x) => ({ content: (x && x.content) || '', status: x && x.status === 'cancelled' ? 'completed' : (x && x.status) || 'pending' })) } }, ts), ...take() }, e.id)); } return; }
     const name = UNI_TOOLS[raw] || raw || 'tool', rep0 = Array.isArray(input.content) ? input.content.filter((x) => x && typeof x === 'object') : [];
     const args = name === 'Read' ? { file_path: input.path, offset: input.offset, limit: input.limit } : name === 'Write' ? { file_path: input.path || input.file_path, content: str(input.content) } : name === 'Edit' ? { file_path: input.file_path || input.path, old_string: rep0.map((x) => str(x.old_str)).join('\n…\n'), new_string: rep0.map((x) => str(x.new_str)).join('\n…\n') } : name === 'Skill' ? { skill: input.name } : raw === 'process.start' ? { command: str(input.command), run_in_background: true } : input;
     st.toolName[e.id] = name; lastOf.set(e.turnId, push(st, { ts, agent: 'main', kind: 'tool', tool: toolLabel({ id: e.id, name, input: args }, ts), ...take() }, e.id));
-    if (open) continue;
+    if (open) return;
     const o = errText ? errText : name === 'Bash' ? [sc.stdout, sc.stderr].filter(Boolean).map(str).join('\n') : name === 'Read' ? str(sc.content) : name === 'Write' ? (sc.bytes_written != null ? sc.bytes_written + ' bytes' : '') : name === 'Edit' ? (sc.lines_changed != null ? sc.lines_changed + ' lines changed' : '') : str(state.outputText) || text(out.content) || (sc.value != null ? str(sc.value) : '');
     push(st, { ts: end, agent: 'main', kind: 'results', items: [{ id: e.id, err: !!failed, out: clip(o.trimEnd(), resultMax[name] || 600) }] }, e.id + '/r');
-  }
+  };
+  for (const e of u.entries) { try { one(e); } catch {} }   // an entry in a shape this reader does not expect is left out: it must never stop the rest, nor the sessions of the other tools
   const env = u.env || {}, se = env.session || {}, turn = env.latestTurn || {}, idle = se.status && (se.status.type === 'idle' || se.status.type === 'failed');
   for (const [tid, ev] of lastOf) if (ev.kind !== 'agentcall' && (tid !== turn.id || (turn.status && turn.status !== 'in_progress') || idle)) ev.end = 1;   // a turn that is over ends on the last thing the lead said or did in it
   if (idle) for (const k of kids.values()) if (!k.done) { k.done = true; push(st, { ts: Math.max(+turn.completedAt || 0, st.lastTs, k.st.lastTs + 1), agent: 'main', kind: 'agentdone', toolId: k.spawn }, k.spawn + '/done'); }   // the lead's turn is over: so are the sub-agents it had not stopped itself
@@ -216,6 +220,15 @@ function uniState(r) {
   }
   u.state = { main: st, kids: [...kids.values()], env, waiting }; return u.state;
 }
+const uniLight = new Map();   // session folder → what the lists need of a session (title, state, how many sub-agents), kept after its history has been let go
+function uniSummary(r) {
+  const sig = uniSig(r), hit = uniLight.get(r.dir); if (hit && hit.sig === sig) return hit;
+  let v = { sig, title: '', status: '', kids: 0, live: 0, waiting: false }, read = false;
+  try { const u = uniLoad(r), st = uniState(r), se = (st.env && st.env.session) || {}; read = u.sig === sig; v = { sig, title: str(se.title).trim() || str(se.preview).replace(/\s+/g, ' ').trim().slice(0, 90), status: str(se.status && se.status.type), kids: st.kids.length, live: st.kids.filter((k) => !k.done).length, waiting: !!st.waiting }; } catch {}
+  if (read) { if (uniLight.size > 500) uniLight.delete(uniLight.keys().next().value); uniLight.set(r.dir, v); }   // not kept when the session could not be read (caught in the middle of a write): asked again next time
+  return v;
+}
+const subCount = (id) => { const r = row(id); return !r ? 0 : r.uni ? uniSummary(r).kids : subFiles(id).length; };
 const state = (id) => { const r = row(id); return r && r.uni ? uniState(r).main : null; };   // null: a session in the earlier format, read line by line with parser()
 
 // ---- the earlier format: one line of messages.jsonl → the events of the call
@@ -306,4 +319,4 @@ function parser({ toolLabel, clip, resultMax = {} }) {
   };
   return record;
 }
-module.exports = { PROJ, SOURCE, home, dirKey, sessions, row, fileOf, inProject, projectLabel, title, boardRow, subFiles, watch, state, parser };
+module.exports = { PROJ, SOURCE, home, dirKey, sessions, row, fileOf, inProject, projectLabel, title, boardRow, subFiles, subCount, watch, state, parser };
