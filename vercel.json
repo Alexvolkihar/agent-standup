@@ -1,0 +1,8 @@
+{
+  "buildCommand": "node scripts/build-website.js",
+  "outputDirectory": "website/dist",
+  "installCommand": "",
+  "framework": null,
+  "cleanUrls": true,
+  "trailingSlash": true
+}

@@ -298,6 +298,9 @@ Agent Standup is free and MIT licensed. I'm also available for work around AI ag
 
 Press **?** in the app for the full list. Highlights: **Space** pause, **M** mute, **T** tree view, **J / K** next agent that needs you, **Cmd/Ctrl+K** go to a session, and in replay **← / →** step, **N** next highlight.
 
+## Name and logo
+The code is MIT licensed: use it, change it, fork it. The name, the logo and the characters are how people recognise this project, and they are not there to brand something else. [TRADEMARKS.md](TRADEMARKS.md) says what is fine (writing about it, building on it, shipping it unmodified) and what needs asking first (releasing a fork under this name, using the logo or the characters for another product). The artwork and its colours are in [brand/](brand/).
+
 ## Security and what it reads
 The full [privacy policy](PRIVACY.md) says what is read, what is kept on your computer and what can leave it.
 
