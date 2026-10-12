@@ -6,6 +6,16 @@
   "cleanUrls": true,
   "trailingSlash": true,
   "redirects": [
-    { "source": "/:path*", "has": [{ "type": "host", "value": "www.agent-standup.com" }], "destination": "https://agent-standup.com/:path*", "permanent": true }
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.agent-standup.com"
+        }
+      ],
+      "destination": "https://agent-standup.com/$1",
+      "permanent": true
+    }
   ]
 }
