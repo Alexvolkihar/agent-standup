@@ -21,7 +21,7 @@ function session() {
     user: (text, at) => put(main, { type: 'user', message: { role: 'user', content: text } }, at),
     say: (text, o = {}) => put(o.sub ? sub(o.sub) : main, { type: 'assistant', message: { id: o.id || 'm' + ++nId, role: 'assistant', stop_reason: o.end ? 'end_turn' : null, content: [{ type: 'text', text }] } }, o.at),
     tool: (name, input, o = {}) => { const id = 'toolu_' + ++nId; put(o.sub ? sub(o.sub) : main, { type: 'assistant', message: { id: o.id || 'm' + ++nId, role: 'assistant', stop_reason: null, content: [{ type: 'tool_use', id, name, input }] } }, o.at); return id; },
-    result: (id, text, o = {}) => put(o.sub ? sub(o.sub) : main, { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: text }] } }, o.at),
+    result: (id, text, o = {}) => put(o.sub ? sub(o.sub) : main, { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: text, ...(o.err ? { is_error: true } : {}) }] } }, o.at),
     think: (text, o = {}) => put(o.sub ? sub(o.sub) : main, { type: 'assistant', message: { id: o.id || 'm' + ++nId, role: 'assistant', stop_reason: null, content: [{ type: 'thinking', thinking: text, signature: 'x' }] } }, o.at),   // the reasoning before a line or a call, when Claude Code keeps its text
     queued: (text, at) => put(main, { type: 'attachment', attachment: { type: 'queued_command', prompt: [{ type: 'text', text }], origin: { kind: 'human' }, commandMode: 'prompt' } }, at),   // an order typed while the lead works: written when delivered, stamped when typed
     launch: (k, title, prompt, bg) => { const id = s.tool('Agent', { description: title, prompt, subagent_type: 'general-purpose', ...(bg ? { run_in_background: true } : {}) }); fs.writeFileSync(path.join(subDir, `agent-a${k}.meta.json`), JSON.stringify({ agentType: 'general-purpose', description: title, toolUseId: id })); put(sub(k), { type: 'user', message: { role: 'user', content: prompt } }); return id; },
@@ -171,5 +171,30 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     const s = session(); s.user('hello', Date.now() - 600000); s.say('Ready.', { at: Date.now() - 590000, end: true }); const c = await open(s);
     s.user('One thing'); await wait(1200); s.say('LAST line of the call.', { end: true }); await c.heard('LAST line'); await c.quiet(500);
     await c.page.evaluate(() => togglePlay()); await wait(800); await c.page.evaluate(() => togglePlay()); await c.quiet(); assert.equal(count(await c.lines(), 'LAST line'), 1); await c.close();
+  });
+
+  await t.test('the files made for you show under the call when the turn ends: those the lead names, else the documents; a click shows the file in its folder', async () => {
+    const server = require('../server.js'), run = server._reveal.run, shown = []; server._reveal.run = (f) => shown.push(f); t.after(() => { server._reveal.run = run; });   // no Finder window during the tests
+    const real = path.join(__dirname, '..', 'README.md'), s = session(); s.user('hello', Date.now() - 600000); s.say('Ready.', { at: Date.now() - 590000, end: true }); const c = await open(s);
+    const mark = "(b) => b.querySelector('span').textContent + (b.classList.contains('new') ? '*' : '') + (b.classList.contains('gone') ? '!' : '')";
+    const strip = () => c.page.evaluate(`({ on: document.querySelector('#files').classList.contains('on'), names: [...document.querySelectorAll('#files .sfc[data-f]')].map(${mark}), more: (document.querySelector('#files .more') || {}).textContent || '' })`);
+    const shows = (names) => c.page.waitForFunction(`document.querySelector('#files.on') && [...document.querySelectorAll('#files .sfc[data-f]')].map(${mark}).join('|') === ${JSON.stringify(names.join('|'))}`, { timeout: 30000, polling: 100 });
+    const write = (file) => s.result(s.tool('Write', { file_path: file, content: 'x' }), 'File created');
+    await c.quiet(500); assert.deepEqual(await strip(), { on: false, names: [], more: '' });   // a turn that created nothing
+    s.user('Write the report'); await c.heard('Write the report');
+    write(real); write('/x/docs/notes.md'); write('/x/src/helper.js'); write(path.join(tmp, 'scratch.js'));   // a source file is not made for you; a scratch file in a temporary folder is not even a file of the session
+    s.result(s.tool('Write', { file_path: '/x/docs/refused.md', content: 'x' }), 'Permission denied', { err: true }); s.result(s.tool('Edit', { file_path: '/x/src/app.js', old_string: 'a', new_string: 'b' }), 'ok');   // nor is a write that failed, nor a file that was only changed
+    await wait(2500); assert.equal((await strip()).on, false, 'nothing shows while the lead works');
+    s.say('The report is written.', { end: true }); await shows(['notes.md*', 'README.md*']); assert.equal((await strip()).more, '+1');   // no file named: the documents
+    await c.page.click('#files .sfc[data-f$="README.md"]'); await wait(600); assert.deepEqual(shown, [real]);
+    await c.page.click('#files .sfc[data-f="/x/docs/notes.md"]'); await shows(['notes.md*!', 'README.md*']); assert.deepEqual(shown, [real]);   // no longer there: said so, and nothing is opened
+    await c.page.click('#files .more'); assert.deepEqual(await c.page.evaluate(() => [...document.querySelectorAll('#fpop .sfr b')].map((b) => b.textContent)), ['helper.js', 'notes.md', 'README.md']);   // the list has them all
+    await c.page.keyboard.press('Escape'); assert.equal(await c.page.evaluate(() => !!document.querySelector('#fpop')), false);
+    s.user('Now a test for the login'); await c.page.waitForFunction(() => !document.querySelector('#files.on'), { timeout: 30000 });   // the next turn: the line goes away until it ends
+    write('/x/docs/second.md'); write('/x/test/login.test.js'); write('/x/test/old-login.test.js');
+    s.say('I added `test/login.test.js`, run it to check.', { end: true }); await shows(['login.test.js*', 'notes.md!', 'README.md']); assert.equal((await strip()).more, '+3');   // the one the lead names, and only that one of this turn
+    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=files]').click()); assert.equal((await strip()).on, false);   // ⚙ › Display: off
+    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=files]').click()); await shows(['login.test.js*', 'notes.md!', 'README.md']);
+    await c.close();
   });
 });

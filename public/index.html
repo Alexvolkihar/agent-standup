@@ -82,6 +82,16 @@
   .cx:empty { display:none } .tag .cx { font-size:10px }
   #hl { display:none; flex:0 0.01 auto; min-height:30px; max-height:66px; overflow-y:auto; scrollbar-width:thin; flex-wrap:wrap; gap:6px; padding:5px 12px; border-top:1px solid var(--line); background:var(--panel) } body.replay #hl.has { display:flex } body.board #hl, body.tree #hl { display:none !important }
   .hlc { font-size:11.5px; padding:3px 10px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); color:var(--text) } .hlc:hover { border-color:var(--accent) }
+  /* shared files: the files the session created, the way a call shows what was shared in it. One quiet line under the call when a turn ends (it scrolls sideways, as the session tabs do); the files of the turn that just ended carry a dot; the list of all of them opens above it */
+  #files { display:none; flex:none; align-items:center; gap:6px; padding:5px 12px; border-top:1px solid var(--line); background:var(--panel); overflow-x:auto; scrollbar-width:none } #files::-webkit-scrollbar { display:none } #files.on { display:flex; animation:fadein .4s } body.board #files, body.board #fpop { display:none !important }
+  .sfh { flex:none; padding:3px 4px 3px 0; color:var(--dim); font-size:11.5px; font-weight:600; white-space:nowrap } .sfh:hover, .sfh[aria-expanded=true] { color:var(--text) }
+  .sfc { flex:0 0 auto; max-width:210px; display:inline-flex; align-items:center; gap:5px; font-size:11.5px; line-height:1.45; padding:3px 10px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); color:var(--text); white-space:nowrap } .sfc:hover { border-color:var(--accent) } .sfc i { font-style:normal; flex:none } .sfc span { overflow:hidden; text-overflow:ellipsis } .sfc.more { color:var(--dim) }
+  .sfc.new::before { content:''; flex:none; width:6px; height:6px; border-radius:50%; background:var(--accent) } .sfr.new b::after { content:''; display:inline-block; width:6px; height:6px; margin-left:7px; border-radius:50%; background:var(--accent); vertical-align:1px }
+  .sfc.gone, .sfr.gone { opacity:.5 } .sfc.gone span, .sfr.gone b { text-decoration:line-through }
+  #fpop { position:absolute; left:10px; z-index:8; width:min(360px,calc(100% - 20px)); max-height:min(46vh,340px); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 14px 40px rgba(0,0,0,.55); padding:6px; animation:fadein .15s }
+  #fpop h4 { margin:6px 10px 4px; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); font-weight:600 }
+  .sfr { display:grid; grid-template-columns:auto 1fr; gap:0 9px; align-items:center; width:100%; text-align:left; padding:6px 10px; border-radius:8px } .sfr:hover { background:var(--panel2) } .sfr i { font-style:normal; grid-row:span 2 } .sfr b, .sfr em { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap } .sfr b { font-size:12.5px; font-weight:600 } .sfr em { font-style:normal; font-size:11px; color:var(--dim) }
+  body:not(.replay) #center:has(#files.on) #toasts { bottom:46px } body:not(.replay):not(.react) #center:has(#files.on) #visit { bottom:48px }   /* live: the line is the bottom of the call, and what pops up there stays above it */
   .tbadge .l { color:#ff9f1c } .tbadge span { font-size:11px } .tbadge .q { color:#b4bcd4 }
   .ic:active, .btn:active { transform:scale(.96) } .rr, .ic, .bcard { transition:background .15s var(--ease), border-color .15s var(--ease), transform .15s var(--ease) }
   .meet { font-size:11.5px; color:var(--dim); white-space:nowrap; display:flex; gap:8px; align-items:center } .meet i { width:8px; height:8px; border-radius:50%; background:#ff4d4d; animation:pulse 1.6s infinite }
@@ -298,6 +308,7 @@
   <div class="box"><div class="lbl"><span data-fr="Bavardage entre agents" data-en="Chatter between agents">Bavardage entre agents</span></div><select id="chatSel"><option value="quiet" data-fr="Discret" data-en="Quiet">Discret</option><option value="normal" data-fr="Normal" data-en="Normal">Normal</option><option value="lively" data-fr="Animé" data-en="Lively">Animé</option></select></div>
   <button class="mi" data-t="vanish"><span data-fr="Retirer les agents terminés (2 min)" data-en="Remove finished agents (2 min)">Retirer les agents terminés (2 min)</span><i class="sw"></i></button>
   <button class="mi" data-t="epi"><span data-fr="Réactions et blagues" data-en="Reactions & jokes">Réactions et blagues</span><i class="sw"></i></button>
+  <button class="mi" data-t="files"><span data-fr="Fichiers créés pour vous, à la fin d’un tour" data-en="Files made for you, when a turn ends">Fichiers créés pour vous, à la fin d’un tour</span><i class="sw"></i></button>
   <button class="mi" data-t="visits"><span data-fr="Un visiteur quand une autre session vous attend" data-en="A visitor when another session needs you">Un visiteur quand une autre session vous attend</span><i class="sw"></i></button>
   <button class="mi" data-t="followTab" id="mFollowTab" style="display:none"><span data-fr="Suivre l’onglet Claude Code affiché" data-en="Follow the Claude Code tab I am on">Suivre l’onglet Claude Code affiché</span><i class="sw"></i></button>
   <h4 data-fr="Source" data-en="Source">Source</h4>
@@ -326,6 +337,7 @@
     <div id="present"><div class="pwin term"><div class="pbar"><i class="r"></i><i class="y"></i><i class="g"></i><span id="ptitle"></span><span id="pbadge"></span></div><div id="pbody"></div><div id="pstat"></div></div><div id="ptodo" style="display:none"></div><div id="pcap"></div><div id="pcam" class="tile working"></div></div>
     <div id="stage"></div><div id="tree"></div><div id="boardv"></div>
     <div id="reactBar" aria-label="Reactions"><button data-e="👍">👍</button><button data-e="👏">👏</button><button data-e="☕">☕</button><button data-e="🔥">🔥</button><button data-e="🙌">🙌</button></div>
+    <div id="files"></div>
     <div id="hl"></div>
     <canvas id="gantt" height="90"></canvas>
     <div id="toasts" role="status" aria-live="polite"></div><div id="visit" role="status" aria-live="polite"></div>
@@ -356,7 +368,7 @@ const CID = Math.random().toString(36).slice(2, 12);   // identifies this window
 const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
 
-let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'cartoon', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call', hideCode: false, ownNames: true, visits: true, followTab: true };
+let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'cartoon', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call', hideCode: false, ownNames: true, visits: true, followTab: true, files: true };
 { let loc = {}; try { loc = JSON.parse(localStorage.getItem('cc.prefs') || '{}') || {}; } catch {}   // the settings file (shared by every window) and this origin's copy: the more recent one wins
   const sv = window.SAVED_PREFS && typeof window.SAVED_PREFS === 'object' ? window.SAVED_PREFS : {}; Object.assign(prefs, (sv._t || 0) > (loc._t || 0) ? sv : loc); }
 if (prefs.vstyle === 'babble') prefs.vstyle = 'animal', prefs.vstyleChosen = true;
@@ -1068,6 +1080,7 @@ const applyStatus = (ev) => {
   if (ev.kind === 'user' || (ev.agent === 'main' && (ev.kind === 'say' || ev.kind === 'tools' || (ev.kind === 'order' && !ev.wf)))) S.turnOver = !!ev.end;   // Claude Code marks the message that closes the lead's turn; anything after it opens the next one (not the agents a workflow launches by itself)
 };
 function recomputeStatus(upTo) {
+  S.files = new Map(); S.turnN = 0; S.turnSaid = '';
   S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.lastTool = {}; S.mainBusyAt = 0; S.turnOver = false; S.th = {}; S.ctx = {}; S.model = {}; S.cw = {}; S.compacts = {}; S.ctxWarned = {}; S.rep = {}; S.loops = {}; S.recomputing = true; document.querySelectorAll('.tile').forEach((t) => { clearTimeout(t._byeT); t.classList.remove('bye'); }); hidePresent();
   S.status = {}; S.tc = {}; S.doneAt = {}; S.gone.clear(); S.leaving.clear(); document.querySelectorAll('.tile.vanishing').forEach((t) => t.classList.remove('vanishing')); const doneIdx = {}; document.querySelectorAll('.ticker').forEach((x) => { x.classList.remove('on'); x.innerHTML = ''; });
   for (let i = 0; i < upTo; i++) {
@@ -1088,6 +1101,7 @@ function syncUI() {
 // ---------- tool ticker, shared screen, flying messages ----------
 // ---------- what each agent is doing: tool calls with their real outputs ----------
 S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.ctx = {}; S.model = {}; S.cw = {}; S.compacts = {}; S.ctxWarned = {}; S.rep = {}; S.loops = {}; S.present = null; S.camFor = null; let presentTimer = null;
+S.files = new Map(); S.turnN = 0; S.turnSaid = ''; S.fgone = new Set();   // files: path → the Write call that created it, in the order they were written · turnN: how many orders you gave so far · turnSaid: what you and the lead said in this turn · fgone: the files found missing on a click
 const later = (k, fn, ms = 160) => { later.p = later.p || {}; if (later.p[k]) return; later.p[k] = setTimeout(() => { later.p[k] = 0; fn(); }, ms); };   // coalesce bursts of repaints
 const fmtTok = (n) => (n < 1000 ? String(n) : n < 1e6 ? (n / 1000).toFixed(n < 1e4 ? 1 : 0) + 'k' : (n / 1e6).toFixed(n < 1e7 ? 2 : 1) + 'M');
 const tokTotal = (u) => (u ? u.i + u.o + u.w : 0);   // headline = input + output + cache writes; cache reads are cheap and shown separately
@@ -1102,7 +1116,8 @@ function loopStep(R, ev) {   // R: per-agent repetition state; returns a detecti
 }
 const WIN1M = /(opus-4-[78]|opus-5|sonnet-5|fable-5)/;
 function ctxWin(model, ctx) { const base = WIN1M.test(model || '') ? 1e6 : 2e5; return ctx > base ? 1e6 : base; }   // the transcript does not say which window is in use: infer it, a bigger observed context proves the 1M window
-function tally(ev) {   // numbers that pile up over a session: token usage, errors, last sign of life
+function tally(ev) {   // numbers that pile up over a session: token usage, errors, last sign of life, the files it created
+  noteFiles(ev);
   if (ev.kind === 'compact') { S.compacts[ev.agent] = (S.compacts[ev.agent] || 0) + 1; delete S.ctxWarned[ev.agent]; }
   const det = loopStep(S.rep, ev); if (det) { S.loops[ev.agent] = det; later('badges', renderBadges, 300); } else if (S.loops[ev.agent] && (ev.kind === 'results' ? (S.loops[ev.agent].kind === 'errors' && ev.items.every((it) => !it.err)) : (ev.kind === 'tools' && S.rep[ev.agent].n < 2))) { delete S.loops[ev.agent]; later('badges', renderBadges, 300); }
   if (ev.kind === 'usage') { const c = ev.u.i + ev.u.r + ev.u.w; if (c > 0 && ev.model !== '<synthetic>') { S.ctx[ev.agent] = c; S.model[ev.agent] = ev.model; if (ev.cw) S.cw[ev.agent] = ev.cw; later('tok', renderCtx, 300); } const u = (S.usage[ev.agent] = S.usage[ev.agent] || { i: 0, o: 0, r: 0, w: 0 }); u.i += ev.u.i; u.o += ev.u.o; u.r += ev.u.r; u.w += ev.u.w; later('tok', renderTokens, 300); }
@@ -1168,7 +1183,7 @@ function paintStates() {
   paintPill();
   const b = $('#board'), parts = [['working', '⚙', L('au travail', 'working')], ['waiting', '🔗', L('en attente', 'waiting')], ['blocked', '✋', L('vous attendent', 'need you')], ['stalled', '⚠', L('bloqués', 'stalled')], ['done', '✓', L('terminés', 'done')]]
     .filter(([k]) => n[k] && !S.pillSess).map(([k, i, l]) => `<span class="${k}" title="${n[k]} ${l}">${i} ${n[k]}<em> ${l}</em></span>`).join('');
-  if (b.innerHTML !== parts) b.innerHTML = parts; fitBoard(); S.nBlocked = n.blocked + n.stalled; S.attn = attn; paintRoster(ros); return n;
+  if (b.innerHTML !== parts) b.innerHTML = parts; fitBoard(); S.nBlocked = n.blocked + n.stalled; S.attn = attn; paintRoster(ros); paintFiles(); return n;
 }
 function fitBoard(force) {   // the chips lose their words when they do not all fit (a long language, a narrower window): a chip is never cut mid-word. Tried again with the words only when the window or the texts around have changed
   const b = $('#board'), key = innerWidth + '|' + b.textContent.length + '|' + $('#pill').textContent.length + '|' + $('#subtitle').textContent.length;
@@ -1340,6 +1355,49 @@ function showPresent(id) {
 function hidePresent() {
   clearTimeout(presentTimer); if (!S.present) return; S.present = null; $('#present').classList.remove('on'); document.body.classList.remove('presenting'); document.querySelectorAll('.tile.presenter').forEach((t) => t.classList.remove('presenter')); $('#pcap').textContent = ''; layout();
 }
+// ---------- shared files: the files the session created (its Write calls), the way a call shows what was shared in it ----------
+// They show when a turn ends, the moment you would go and look for them: one line under the call, the newest first, a dot on those of the turn that just ended. A click shows the file in its folder
+// (the server opens Finder, Explorer or the file manager, and only for a file this session wrote). Nothing shows while the team works.
+// The line names the files made for you, not everything that was written: those the lead names when it speaks to you in that turn (or that you asked for by name); in a turn where it names none, the ones that are documents by their type.
+// A session that writes fifteen source files shows none of them there. All of them are in the list, behind "+N". Off in ⚙ › Display.
+const FSKIP = /^(\/private)?\/(tmp|var\/folders)\/|[\\/]AppData[\\/]Local[\\/]Temp[\\/]|[\\/]\.claude[\\/]projects[\\/]/i;   // not documents: scratch files in a temporary folder, and the notes an agent keeps for itself
+const FICON = [[/\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i, '🖼'], [/\.(csv|tsv|xlsx?|json|ya?ml|sql)$/i, '📊']], FMAX = 8;   // FMAX: how many files the line names; the others are in the list
+const FDOC = /\.(html?|md|markdown|txt|rtf|pdf|docx?|pptx?|xlsx?|csv|tsv|png|jpe?g|gif|webp|svg)$/i;   // read or looked at, not run
+const namesFile = (text, name) => { for (let i = name ? text.indexOf(name) : -1; i >= 0; i = text.indexOf(name, i + 1)) if (!/[\w.\-]/.test(text[i - 1] || ' ') && !/[\w\-]/.test(text[i + name.length] || ' ')) return true; return false; };   // the whole name: "report.md" is not named by "old-report.md"
+const filesForYou = (all) => { const named = new Set(all.filter((f) => f.named).map((f) => f.turn)); return all.filter((f) => f.named || (!named.has(f.turn) && FDOC.test(f.name))); };
+const fileParts = (f) => { const p = String(f || '').split(/[\\/]/), name = p.pop() || ''; return { name, dir: p.slice(-3).join(' › '), icon: (FICON.find(([re]) => re.test(name)) || [0, '📄'])[1] }; };
+function noteFiles(ev) {   // a file written twice is one file, of the turn that wrote it last; a write that failed created nothing
+  if (ev.kind === 'user') { S.turnN++; S.turnSaid = String(ev.text || ''); }
+  else if (ev.kind === 'say' && ev.agent === 'main') { const t = String(ev.text || ''); S.turnSaid = (S.turnSaid + '\n' + t).slice(-20000); for (const f of S.files.values()) if (!f.named && namesFile(t, f.name)) f.named = true; }   // named before it is written ("I will put it in plan.md") or after: both count
+  else if (ev.kind === 'tools') { for (const t of ev.tools) { const d = t.d || {}, was = S.files.get(d.file); if (d.kind !== 'write' || !d.file || FSKIP.test(d.file) || (was && was.id === t.id)) continue; const name = fileParts(d.file).name; S.files.delete(d.file); S.files.set(d.file, { file: d.file, name, id: t.id, agent: ev.agent, turn: S.turnN, named: !!(was && was.named) || namesFile(S.turnSaid, name), was }); } }
+  else if (ev.kind === 'results') { for (const it of ev.items) if (it.err) for (const [k, f] of S.files) if (f.id === it.id) { if (f.was) S.files.set(k, f.was); else S.files.delete(k); } }
+}
+const turnDone = () => S.events.length > 0 && !S.locked && (S.live ? agentState('main', Date.now()).k === 'done' : !!S.turnOver || S.idx >= S.events.length - 1);   // replay: the mark that closes the lead's turn, or the end of a session that has none
+const fileTip = (f) => `${f.file}\n${f.agent !== 'main' && S.agents[f.agent] ? nameOf(f.agent) + ' · ' : ''}${S.fgone.has(f.file) ? L('Ce fichier n’existe plus', 'This file is no longer there') : L('Cliquer pour l’afficher dans son dossier', 'Click to show it in its folder')}`;
+const fileCls = (f) => (f.turn === S.turnN ? ' new' : '') + (S.fgone.has(f.file) ? ' gone' : '');
+function paintFiles() {   // called with every repaint of the states: touches the page only when the line would read differently
+  const el = $('#files'), all = [...S.files.values()].reverse(), mine = prefs.files !== false ? filesForYou(all) : [], on = mine.length > 0 && turnDone(), rest = all.length - Math.min(mine.length, FMAX);
+  const key = on ? prefs.lang + '|' + S.turnN + '|' + all.map((f) => f.file + (S.fgone.has(f.file) ? '!' : '')).join('|') + '||' + mine.map((f) => f.file).join('|') : ''; if (el.dataset.k === key) return;
+  const open = on && !!$('#fpop'), ttl = L('Fichiers créés pendant cette session', 'Files created in this session'); el.dataset.k = key; filesPop(false); if (el.classList.contains('on') !== on) { el.classList.toggle('on', on); later('lay', layout); }
+  el.innerHTML = !on ? '' : `<button class="sfh" id="fAll" aria-expanded="false" title="${esc(ttl)}">📎 ${esc(L('Fichiers', 'Files'))}</button>` + mine.slice(0, FMAX).map((f) => `<button class="sfc${fileCls(f)}" data-f="${esc(f.file)}" title="${esc(fileTip(f))}"><i>${fileParts(f.file).icon}</i><span>${esc(f.name)}</span></button>`).join('') + (rest > 0 ? `<button class="sfc more" title="${esc(ttl)}" aria-label="${esc(ttl)}">+${rest}</button>` : '');
+  el.scrollLeft = 0; if (open) filesPop(true);
+}
+function filesPop(open) {   // the whole list, above the line: every file with the folder it is in and who created it
+  const old = $('#fpop'), b = $('#fAll'); if (old) old.remove(); if (b) b.setAttribute('aria-expanded', String(!!open)); if (!open) return;
+  const all = [...S.files.values()].reverse(), p = document.createElement('div'), ttl = L('Fichiers créés pendant cette session', 'Files created in this session'); p.id = 'fpop'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', ttl);
+  p.innerHTML = `<h4>${esc(ttl)} · ${all.length}</h4>` + all.map((f) => { const x = fileParts(f.file), who = f.agent !== 'main' && S.agents[f.agent] ? nameOf(f.agent) : ''; return `<button class="sfr${fileCls(f)}" data-f="${esc(f.file)}" title="${esc(fileTip(f))}"><i>${x.icon}</i><b>${esc(x.name)}</b><em>${esc([x.dir, who].filter(Boolean).join(' · '))}</em></button>`; }).join('');
+  p.style.bottom = Math.round($('#center').getBoundingClientRect().bottom - $('#files').getBoundingClientRect().top) + 6 + 'px'; p.onclick = filesClick; $('#center').appendChild(p);
+}
+async function revealFile(file) {
+  if (S.demo || !S.cur) { toast(L('Fichier de la démo : rien à ouvrir', 'A file of the demo: nothing to open')); return; }
+  let r = null; try { r = await fetch('/api/reveal', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ proj: S.cur.proj, id: S.cur.id, file }) }); } catch {}
+  if (r && r.ok) { if (S.fgone.delete(file)) paintFiles(); return; }
+  if (r && r.status === 410) { S.fgone.add(file); paintFiles(); toast(L('Ce fichier n’existe plus', 'This file is no longer there')); } else toast(L('Impossible d’ouvrir le dossier', 'Could not open the folder'));
+}
+function filesClick(e) { const f = e.target.closest('[data-f]'); if (f) revealFile(f.dataset.f); else if (e.target.closest('.sfh, .more')) filesPop(!$('#fpop')); }
+$('#files').onclick = filesClick;
+addEventListener('click', (e) => { if ($('#fpop') && !e.target.closest('#fpop, #files')) filesPop(false); });
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#fpop')) { filesPop(false); const b = $('#fAll'); if (b) b.focus(); } });
 // the speaker always gets the spotlight (and keeps it until someone else talks)
 function setFocus(id) {
   if (S.focus === id) return; const o = $('#t-' + S.focus); if (o) o.classList.remove('focus'); S.focus = id; const t = $('#t-' + id);
@@ -1957,7 +2015,7 @@ async function loadSession(proj, id) {
   const data = await (await fetch(`/api/session?proj=${encodeURIComponent(proj)}&id=${id}`)).json();
   if (mine !== S.loadN || data.error) return false;
   S.term = {}; S.camFor = null; S.focus = null; S.agents = {}; for (const k in nameBook) delete nameBook[k]; [{ id: 'user' }, ...data.agents].forEach((a) => (S.agents[a.id] = persona(a)));
-  clearThoughts(); Object.assign(TH, { since: {}, next: {}, said: {}, last: 0 }); S.events = data.events; stampT(0); S.byK = new Map(data.events.map((e) => [e.k, e])); S.seq = data.seq || 0; S.ep = data.ep || ''; S.sawEnd = !!data.marks || data.events.some((e) => e.end); S.late = []; S.pos = 0; S.joinAt = Date.now(); S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on');
+  clearThoughts(); Object.assign(TH, { since: {}, next: {}, said: {}, last: 0 }); S.events = data.events; stampT(0); S.byK = new Map(data.events.map((e) => [e.k, e])); S.seq = data.seq || 0; S.ep = data.ep || ''; S.sawEnd = !!data.marks || data.events.some((e) => e.end); S.late = []; S.pos = 0; S.joinAt = Date.now(); S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on'); S.fgone = new Set();
   const opt = $('#sessions').selectedOptions[0]; S.title = (S.live ? niceProj(proj) : opt && opt.dataset.title) || '';
   if (proj === '_demo') S.events.forEach((e) => { if (e.fr) trMem.set(baseText(e), e.fr); });   // the demo ships its own French
   $('#subtitle').textContent = S.title; recomputeStatus(0); buildStage(); renderHighlights(); setFocus('main'); renderLog(true); computeGantt(); layout(); paintStatus(); prefetchTr(0); return true;
@@ -1993,7 +2051,7 @@ function liveStart() {
 function amend(e, was) {   // the server corrected an event the call already has: another tool call in the same message, a last line that turns out to be a report, the mark that closes the lead's turn
   const i = S.events.indexOf(e), row = $(`#log .row[data-i="${i}"]`); if (row) row.outerHTML = logRow(i);
   if (e.end) S.sawEnd = true; if (S.locked || S.recomputing || !S.live) return; const past = i < S.pos;   // at the door everything is worked out again on Join
-  if (e.kind === 'tools') { const done = e._n != null ? e._n : past ? was.n : null; if (done != null && e.tools.length > done) { const more = { ...e, tools: e.tools.slice(done) }; e._n = e.tools.length; applyStatus(more); tickTools(more); } }
+  if (e.kind === 'tools') { const done = e._n != null ? e._n : past ? was.n : null; if (done != null && e.tools.length > done) { const more = { ...e, tools: e.tools.slice(done) }; e._n = e.tools.length; applyStatus(more); tickTools(more); noteFiles(more); } }
   if (e.kind === 'report' && was.kind === 'say' && (e._as === 'say' || past)) {   // it was read as an ordinary line: the report still counts (the agent is done, a ding, perhaps a word of thanks), without reading it again
     applyStatus(e); AUD.ding(); fly(e.agent, e.to, '✅'); popTile(e.agent); if (e._as === 'say') { e._as = 'report'; S.late.push(e); }
   }
@@ -2307,7 +2365,7 @@ function menuInit() {
     $('#menuNone').style.display = q && !secs.some((sc) => sc.items.some((e) => !e.classList.contains('mhide'))) ? '' : 'none';
   };
 }
-$('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'customLaptop') { for (const k in imgCache) delete imgCache[k]; buildStage(); paintStatus(); } if (b.dataset.t === 'ownNames') renameAll(); if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify') { prefs.notifyChosen = true; savePrefs(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
+$('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'customLaptop') { for (const k in imgCache) delete imgCache[k]; buildStage(); paintStatus(); } if (b.dataset.t === 'files') paintFiles(); if (b.dataset.t === 'ownNames') renameAll(); if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify') { prefs.notifyChosen = true; savePrefs(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
   if (b.dataset.t === 'music') { $('#musicBox').style.display = prefs.music ? '' : 'none'; if (prefs.music) { AUD.init(); AUD.apply(); } } };
 $('#station').innerHTML = STATIONS.map((s) => `<option value="${s.id}">📻 ${s.name}</option>`).join('');
 $('#station').value = prefs.station; $('#musicVol').value = prefs.musicVol; $('#musicBox').style.display = prefs.music ? '' : 'none';

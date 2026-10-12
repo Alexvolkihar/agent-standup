@@ -67,6 +67,7 @@ function sessions(limit = 80) {
   return out;
 }
 const inProject = (id, key) => { const r = row(id); if (!r || !key) return false; if (key === PROJ) return true; const d = head(r.file).dir; return d === key || d.startsWith(key + '-'); };
+const cwd = (id) => { const r = row(id); return r ? head(r.file).cwd : ''; };   // the folder the session was started in: where a file it names by a relative path is
 const projectLabel = (cwd) => { const h = os.homedir(), rel = cwd && cwd.startsWith(h + path.sep) ? cwd.slice(h.length + 1) : cwd; return 'Codex' + (rel ? ' · ' + rel.split(path.sep).join('/') : ''); };
 
 // ---- names: the one Codex gave the thread (session_index.jsonl, the last line for an id wins), else the first thing the person typed
@@ -206,4 +207,4 @@ function parser({ toolLabel, clip, resultMax = {} }) {
     if (p.type === 'web_search_call' && !cx.items && id) call(id, 'WebSearch', { query: (p.action && p.action.query) || '' });
   };
 }
-module.exports = { PROJ, SOURCE, home, dirKey, sessions, row, fileOf, inProject, projectLabel, title, boardRow, parser };
+module.exports = { PROJ, SOURCE, home, dirKey, sessions, row, fileOf, cwd, inProject, projectLabel, title, boardRow, parser };

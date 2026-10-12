@@ -193,3 +193,28 @@ test('the list of sessions: a line that goes on with a tool call is not the end 
     fs.appendFileSync(f, line(typed(5, 'Thanks')) + line(said(6, 'A session that does not say why its messages stop.'))); assert.equal(await state(), 'turn');   // as before
   } finally { stop(); }
 });
+test('a file the session created is shown in its folder; no other path is, and nothing is opened from another site', async () => {
+  const dir = path.join(tmp, 'projects', '-r'), made = path.join(tmp, 'made'), doc = path.join(made, 'report.md'), lost = path.join(made, 'lost.md'), other = path.join(made, 'other.md'); fs.mkdirSync(dir, { recursive: true }); fs.mkdirSync(made, { recursive: true });
+  fs.writeFileSync(doc, '# report'); fs.writeFileSync(other, 'read, never written');
+  fs.writeFileSync(path.join(dir, 's.jsonl'), [typed(0, 'Write the report'), used(1, 'toolu_w1', 'Write', { file_path: doc, content: '# report' }), result(2, 'toolu_w1', 'ok'), used(3, 'toolu_w2', 'Write', { file_path: lost, content: 'x' }), result(4, 'toolu_w2', 'ok'),
+    used(5, 'toolu_r', 'Read', { file_path: other }), result(6, 'toolu_r', 'x'), used(7, 'toolu_e', 'Edit', { file_path: other, old_string: 'a', new_string: 'b' }), result(8, 'toolu_e', 'ok'), said(9, 'Done.', { stop: 'end_turn' })].map(line).join(''));
+  const { port, stop } = await serve(), server = require('../server.js'), run = server._reveal.run, shown = []; server._reveal.run = (f) => shown.push(f);
+  const ask = (b, headers = {}) => get(port, '/api/reveal', { 'content-type': 'application/json', ...headers }, 'POST', typeof b === 'string' ? b : JSON.stringify(b));
+  try {
+    const ok = await ask({ proj: '-r', id: 's', file: doc }); assert.equal(ok.status, 200); assert.deepEqual(shown, [doc]);
+    assert.equal((await ask({ proj: '-r', id: 's', file: lost })).status, 410);                    // created, then removed
+    assert.equal((await ask({ proj: '-r', id: 's', file: other })).status, 404);                   // read and edited, not created by the session
+    assert.equal((await ask({ proj: '-r', id: 's', file: '/etc/hosts' })).status, 404);
+    assert.equal((await ask({ proj: '-r', id: 'nope', file: doc })).status, 404);
+    assert.equal((await ask({ proj: '..', id: 's', file: doc })).status, 400);
+    assert.equal((await ask({ proj: '-r', id: 's' })).status, 400); assert.equal((await ask('not json')).status, 400);
+    assert.equal((await ask({ proj: '-r', id: 's', file: doc }, { 'sec-fetch-site': 'cross-site' })).status, 403);
+    assert.equal((await ask({ proj: '-r', id: 's', file: doc }, { origin: 'https://example.com' })).status, 403);
+    assert.equal((await get(port, '/api/reveal?proj=-r&id=s&file=' + encodeURIComponent(doc))).status, 404);   // a link cannot do it: POST only
+    assert.deepEqual(shown, [doc]);
+    assert.deepEqual(server._reveal.cmds('/a/b c/report.md', 'darwin'), [['open', ['-R', '/a/b c/report.md']]]);
+    assert.deepEqual(server._reveal.cmds('C:\\a b\\report.md', 'win32')[0].slice(0, 2), ['explorer.exe', ['/select,"C:\\a b\\report.md"']]);
+    const linux = server._reveal.cmds('/a/b c/report.md', 'linux'); assert.equal(linux[0][0], 'dbus-send'); assert.ok(linux[0][1].includes('array:string:file:///a/b%20c/report.md')); assert.deepEqual(linux[1], ['xdg-open', ['/a/b c']]);
+    assert.deepEqual(server._reveal.cmds('/a/x,y.md', 'linux'), [['xdg-open', ['/a']]]);
+  } finally { server._reveal.run = run; stop(); }
+});

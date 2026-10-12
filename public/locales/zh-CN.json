@@ -229,5 +229,11 @@
  "Follow the Claude Code tab I am on": "跟随我所在的 Claude Code 标签页",
  "Following the latest session": "正在跟随最新的会话",
  "Go there": "前往",
- "Pinned: click to follow the latest session": "已固定：点击以跟随最新的会话"
+ "Pinned: click to follow the latest session": "已固定：点击以跟随最新的会话",
+ "This file is no longer there": "这个文件已不存在",
+ "Click to show it in its folder": "点击后在文件夹中显示",
+ "Files created in this session": "此会话创建的文件",
+ "A file of the demo: nothing to open": "演示中的文件：没有可打开的内容",
+ "Could not open the folder": "无法打开文件夹",
+ "Files made for you, when a turn ends": "回合结束时，显示为你创建的文件"
 }

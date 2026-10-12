@@ -608,6 +608,23 @@ function listCharacters(pack) {
     return { stem: st, file: f, talk: by.get(l + '-talk') || null, role: /^(lead|claude)$/.test(l) ? 'lead' : /^(you|human|user)$/.test(l) ? 'you' : 'agent' }; }).sort((a, b) => a.stem.localeCompare(b.stem));
   return { dir, max: CHAR_MAX, chars };
 }
+// ---- Shared files: a file the session created is shown in its folder (Finder, Explorer, the file manager) when the page asks. Only a file a Write call of that very session names, and only if it is still there:
+// the page cannot have any other path opened, nothing is read and nothing is run. A Codex or Vibe session may name a file from the folder it was started in.
+function writtenFile(proj, id, file) {
+  const sx = sourceOf(proj); if (!(sx ? guard(() => sx.fileOf(id), null) : fs.existsSync(path.join(ROOT, proj, id + '.jsonl')))) return null;
+  if (!timeline(proj, id).events.some((e) => e.kind === 'tools' && e.tools.some((t) => t.d && t.d.kind === 'write' && t.d.file === file))) return null;
+  if (path.isAbsolute(file)) return path.normalize(file);
+  const cwd = sx && sx.cwd ? guard(() => sx.cwd(id), '') : ''; return cwd ? path.resolve(cwd, file) : null;
+}
+const reveal = {   // run: replaced in the tests, which must not open a window
+  cmds(file, platform = process.platform) {   // one or two commands: the second is tried when the first fails
+    if (platform === 'darwin') return [['open', ['-R', file]]];
+    if (platform === 'win32') return [['explorer.exe', ['/select,"' + file + '"'], { windowsVerbatimArguments: true }]];   // Explorer wants the quotes around the path only (no file name holds a quote on Windows)
+    const dir = ['xdg-open', [path.dirname(file)]];   // Linux: the file manager is asked to select the file; one that cannot do it opens the folder (as does a name with a comma, which dbus-send would read as two files)
+    return file.includes(',') ? [dir] : [['dbus-send', ['--session', '--dest=org.freedesktop.FileManager1', '--type=method_call', '--print-reply', '/org/freedesktop/FileManager1', 'org.freedesktop.FileManager1.ShowItems', 'array:string:' + require('url').pathToFileURL(file).href, 'string:'], { timeout: 3000 }], dir];
+  },
+  run(file) { const go = (list) => { const c = list[0]; if (!c) return; try { execFile(c[0], c[1], c[2] || {}, (err) => { if (err) go(list.slice(1)); }); } catch { go(list.slice(1)); } }; go(reveal.cmds(file)); },
+};
 let audioOwner = { id: null, seen: 0 };
 function start(port = PORT) {
   return http.createServer((req, res) => {
@@ -664,6 +681,15 @@ function start(port = PORT) {
     if (url.pathname === '/api/board') return json(boardRows());
     if (url.pathname === '/api/characters') return json(listCharacters(url.searchParams.get('pack') || ''));
     if (url.pathname === '/api/packs') return json(Object.keys(PACKS).map((name) => ({ name, n: listCharacters(name).chars.length })));
+    if (url.pathname === '/api/reveal' && req.method === 'POST') return readBody((body) => {   // 404: not a file this session created · 410: created, and no longer there
+      try {
+        let b = null; try { b = JSON.parse(body); } catch {} const SAFE = /^[\w.\-]+$/, ok = (v) => typeof v === 'string' && SAFE.test(v) && v !== '..' && v.length <= 200;
+        if (!b || !ok(b.proj) || !ok(b.id) || typeof b.file !== 'string' || !b.file || b.file.length > 4096) return json({ error: 'bad request' }, 400);
+        const fp = writtenFile(b.proj, b.id, b.file); if (!fp) return json({ error: 'not a file of this session' }, 404);
+        let st = null; try { st = fs.statSync(fp); } catch {} if (!st || !st.isFile()) return json({ error: 'gone' }, 410);
+        reveal.run(fp); json({ ok: true });
+      } catch (e) { json({ error: String(e.message || e) }, 500); }
+    });
     if (url.pathname === '/api/media') {
       const q = (k) => url.searchParams.get(k) || '', SAFE = /^[\w.\-]+$/, n = +q('n') || 0, bad = [q('proj'), q('id'), q('agent'), q('tool')].some((v) => !SAFE.test(v) || v === '..' || v.length > 200) || q('tool').length < 6;   // no tool call has an id that short, and looking for one meant reading the whole transcript
       const file = bad || !Number.isInteger(n) || n < 0 || n > 9 ? null : mediaFile(q('proj'), q('id'), q('agent')), im = file && toolImage(file, q('tool'), n);
@@ -703,7 +729,7 @@ function start(port = PORT) {
   } catch (e) { if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });
 }
-module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, charactersDir, listCharacters };
+module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, charactersDir, listCharacters, _reveal: reveal };
 if (require.main === module) {
   start().on('error', (e) => {
     console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use (maybe Agent Standup is already running, e.g. inside VS Code). Try: PORT=4790 node server.js` : String(e));

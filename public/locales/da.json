@@ -228,5 +228,11 @@
  "Follow the Claude Code tab I am on": "Følg den Claude Code-fane, jeg står på",
  "Following the latest session": "Følger den seneste session",
  "Go there": "Gå derhen",
- "Pinned: click to follow the latest session": "Fastgjort: klik for at følge den seneste session"
+ "Pinned: click to follow the latest session": "Fastgjort: klik for at følge den seneste session",
+ "This file is no longer there": "Denne fil findes ikke længere",
+ "Click to show it in its folder": "Klik for at vise den i dens mappe",
+ "Files created in this session": "Filer oprettet i denne session",
+ "A file of the demo: nothing to open": "En fil fra demoen: intet at åbne",
+ "Could not open the folder": "Mappen kunne ikke åbnes",
+ "Files made for you, when a turn ends": "Filer lavet til dig, når en tur slutter"
 }

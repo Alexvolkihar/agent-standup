@@ -229,5 +229,11 @@
  "Follow the Claude Code tab I am on": "Seguir la pestaña de Claude Code en la que estoy",
  "Following the latest session": "Siguiendo la sesión más reciente",
  "Go there": "Ir allí",
- "Pinned: click to follow the latest session": "Fijada: haz clic para seguir la sesión más reciente"
+ "Pinned: click to follow the latest session": "Fijada: haz clic para seguir la sesión más reciente",
+ "This file is no longer there": "Este archivo ya no existe",
+ "Click to show it in its folder": "Haz clic para mostrarlo en su carpeta",
+ "Files created in this session": "Archivos creados en esta sesión",
+ "A file of the demo: nothing to open": "Un archivo de la demo: no hay nada que abrir",
+ "Could not open the folder": "No se pudo abrir la carpeta",
+ "Files made for you, when a turn ends": "Archivos hechos para ti, al terminar un turno"
 }

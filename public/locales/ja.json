@@ -229,5 +229,11 @@
  "Follow the Claude Code tab I am on": "表示中の Claude Code タブに合わせる",
  "Following the latest session": "最新のセッションを追っています",
  "Go there": "そこへ行く",
- "Pinned: click to follow the latest session": "固定中：クリックで最新のセッションを追う"
+ "Pinned: click to follow the latest session": "固定中：クリックで最新のセッションを追う",
+ "This file is no longer there": "このファイルはもうありません",
+ "Click to show it in its folder": "クリックするとフォルダ内に表示します",
+ "Files created in this session": "このセッションで作成されたファイル",
+ "A file of the demo: nothing to open": "デモのファイルです：開くものはありません",
+ "Could not open the folder": "フォルダを開けませんでした",
+ "Files made for you, when a turn ends": "あなた向けに作成されたファイルを、ターンの終わりに表示"
 }

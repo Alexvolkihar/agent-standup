@@ -229,5 +229,11 @@
  "Follow the Claude Code tab I am on": "보고 있는 Claude Code 탭 따라가기",
  "Following the latest session": "가장 최근 세션을 따라갑니다",
  "Go there": "그곳으로 가기",
- "Pinned: click to follow the latest session": "고정됨: 클릭하면 가장 최근 세션을 따라갑니다"
+ "Pinned: click to follow the latest session": "고정됨: 클릭하면 가장 최근 세션을 따라갑니다",
+ "This file is no longer there": "이 파일은 더 이상 없습니다",
+ "Click to show it in its folder": "클릭하면 폴더에서 보여 줍니다",
+ "Files created in this session": "이 세션에서 만든 파일",
+ "A file of the demo: nothing to open": "데모의 파일입니다: 열 것이 없습니다",
+ "Could not open the folder": "폴더를 열 수 없습니다",
+ "Files made for you, when a turn ends": "나를 위해 만든 파일을 턴이 끝날 때 표시"
 }
