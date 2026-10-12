@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.28.0
+- **Korean (한국어).** The interface is available in a tenth language: menus, chips, tooltips, the recap, and in VS Code the command titles, the setting descriptions and the status bar. Pick it in ⚙ → Language. Contributed by [jainefer](https://github.com/jainefer) (#5). Like the other languages apart from English and French it is an AI draft not yet reviewed by a native speaker: corrections are welcome.
+- The website and the README suggest the very natural voices for the best experience (⚙ → Voice style, a one-time install).
+
 ## 1.27.0
 - **Codex sessions too.** Sessions of OpenAI’s Codex (the desktop app and the `codex` command) appear next to your Claude Code sessions: in the session list under “Codex”, on the board, and in the live call when one of them is the most recent. Nothing to set up: the app reads the files Codex already writes in `~/.codex/sessions` (or `$CODEX_HOME`) and never writes there. You see what you typed, what the agent says, each command with its real output, the files it created or changed, web searches, MCP calls, the questions it asks you, its reasoning summaries as inner thoughts, token counts and the end of each turn. The lead is called Codex.
 - **Not yet for Codex:** its sub-agents (a Codex call is the lead and you) and pictures. A command appears when it has finished, because that is when Codex writes it down.
