@@ -269,7 +269,7 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
   });
 
   await t.test('a session of another tool in the same folder has its tab, which names the tool; in its call the lead says it too', async () => {
-    const s = session(), VB = path.join(tmp, 'vibe'), vid = 'session_20261013_100000_abcd1234', vd = path.join(VB, 'logs', 'session', vid), ago = Date.now() - 60000; process.env.AGENT_STANDUP_VIBE = VB; fs.mkdirSync(vd, { recursive: true });
+    const s = session(), VB = path.join(tmp, 'vibe'), vid = 'session_20261013_100000_abcd1234', vd = path.join(VB, 'logs', 'session', vid), ago = Date.now() - 180000; process.env.AGENT_STANDUP_VIBE = VB; fs.mkdirSync(vd, { recursive: true });
     fs.writeFileSync(path.join(vd, 'meta.json'), JSON.stringify({ start_time: new Date(ago - 60000).toISOString(), environment: { working_directory: '/' + s.proj.slice(1) }, child_sessions: [], title: 'Review the diff' }));   // a Mistral Vibe session started in the folder of the Claude Code one, in a terminal
     fs.writeFileSync(path.join(vd, 'messages.jsonl'), [{ role: 'user', content: 'Review the diff' }, { role: 'assistant', content: 'Nothing to change.' }].map((l) => JSON.stringify(l)).join('\n') + '\n'); fs.utimesSync(path.join(vd, 'messages.jsonl'), ago / 1000, ago / 1000);
     s.user('Claude session'); s.say('Ready.', { end: true }); const c = await open(s);
@@ -279,7 +279,11 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     const was = await c.page.evaluate(() => prefs.proj || ''); await c.page.evaluate((id) => openSession('_vibe', id), vid); await wait(1500);   // the same session opened from the Sessions view or from ⋯
     assert.deepEqual(await c.page.evaluate(() => ({ id: S.cur && S.cur.id, pin: S.pin, proj: prefs.proj || '' })), { id: vid, pin: vid, proj: was }, 'the call is pinned there, and the project to follow is not “Mistral Vibe”: it used to be, and a window with no folder then never showed a Claude Code session again');
     assert.notEqual(JSON.parse(fs.readFileSync(process.env.AGENT_STANDUP_PREFS, 'utf8')).proj, '_vibe', 'nor is it saved');
-    await c.close(); delete process.env.AGENT_STANDUP_VIBE;
+    await c.close();
+    const d = await open(s, true, `&pin=${vid}&pproj=_vibe`), both = `(${tabs})().split('|').sort().join('|')`;   // the call as the VS Code status bar opens it on the Vibe session: pinned there, in a window that still follows its folder
+    await d.until(`${both} === '>[Vibe] Review the diff|Claude session'`, null, 30000); assert.deepEqual(await d.page.evaluate(() => ({ id: S.cur.id, pin: S.pin, at: S.pinProj })), { id: vid, pin: vid, at: '_vibe' });
+    await d.page.click('#tabs .stab.on'); await d.until(() => S.cur && S.cur.id === 's' && !S.pin); await d.until(`${both} === '>Claude session|[Vibe] Review the diff'`);   // let go, the call goes to the latest session of the folder, the Claude Code one: it used to stay among the Vibe sessions
+    await d.close(); delete process.env.AGENT_STANDUP_VIBE;
   });
 
   await t.test('an editor open on another folder than the sessions: the call goes to the latest session of anywhere, and the tabs show the others too', async () => {

@@ -22,7 +22,7 @@ function standIn({ tabGroups = true } = {}) {
     commands: { registerCommand: (n, f) => { v.cmds[n] = f; return { dispose() {} }; }, executeCommand: async () => {} },
     window: { state: { focused: true }, showErrorMessage: (m) => v.errors.push(m), showInformationMessage: () => {}, onDidChangeWindowState: () => ({ dispose() {} }),
       registerWebviewViewProvider: (id, p) => { v.provider = p; return { dispose() {} }; },
-      createWebviewPanel: () => { v.panels++; return { webview: webview('panel'), reveal() {}, onDidDispose() {} }; },
+      createWebviewPanel: () => { v.panels++; return { webview: (v.panel = webview('panel')), reveal() {}, onDidDispose() {} }; },
       createStatusBarItem: () => ({ show() {}, dispose() {}, text: '', tooltip: '' }),
       ...(tabGroups ? { tabGroups: { get activeTabGroup() { return v.active; }, onDidChangeTabs: (f) => { v.tabs.push(f); return { dispose() {} }; }, onDidChangeTabGroups: (f) => { v.groups.push(f); return { dispose() {} }; } } } : {}) },
     env: { isTelemetryEnabled: false, asExternalUri: async (u) => u, openExternal: async (u) => { v.opened.push(u); return true; } },
@@ -33,11 +33,11 @@ function standIn({ tabGroups = true } = {}) {
   return v;
 }
 const claude = (label) => ({ label, input: { viewType: 'mainThreadWebview-claudeVSCodePanel' } });
-async function activated(v) {   // a fresh copy of the extension for each stand-in: it keeps its panel and its last tab to itself
+async function activated(v, first) {   // a fresh copy of the extension for each stand-in: it keeps its panel and its last tab to itself. first: the session the status bar opens the call on
   const load = Module._load; Module._load = function (req, ...a) { return req === 'vscode' ? v.vscode : load.call(this, req, ...a); };
   const file = require.resolve('../extension.js'); delete require.cache[file]; const ext = require(file), ctx = { subscriptions: [], globalState: { get() {}, update: async () => {} } };
   const log = console.log; console.log = () => {};
-  try { ext.activate(ctx); await v.cmds['agentStandup.open'](); await v.provider.resolveWebviewView({ webview: (v.side = { options: {}, html: '', onDidReceiveMessage: () => ({ dispose() {} }), postMessage: (m) => { v.sent.push({ where: 'side', ...m }); return Promise.resolve(true); } }), onDidDispose() {} }); } finally { console.log = log; Module._load = load; }
+  try { ext.activate(ctx); await v.cmds['agentStandup.open'](first); await v.provider.resolveWebviewView({ webview: (v.side = { options: {}, html: '', onDidReceiveMessage: () => ({ dispose() {} }), postMessage: (m) => { v.sent.push({ where: 'side', ...m }); return Promise.resolve(true); } }), onDidDispose() {} }); } finally { console.log = log; Module._load = load; }
   return { ext, close: async () => { for (const s of ctx.subscriptions) try { s.dispose && s.dispose(); } catch {} await ext.deactivate(); } };
 }
 
@@ -46,6 +46,14 @@ test('the extension registers its commands, its panel and its sidebar view, also
   try {
     assert.deepEqual(Object.keys(v.cmds).sort(), ['agentStandup.focus', 'agentStandup.open', 'agentStandup.openCharacters', 'agentStandup.openInBrowser', 'agentStandup.openStatus']);
     assert.equal(v.panels, 1); assert.match(v.side.html, /<iframe src="http:\/\/localhost:\d+\/\?live=1&proj=-work-app&embed=1"/); assert.deepEqual(v.errors, []);
+  } finally { await x.close(); }
+});
+
+test('the status bar opens the call on a session without changing the folder the window follows: a Vibe session is kept under its tool, which is not a folder', async () => {
+  const v = standIn(), x = await activated(v, { id: 'abc-123', proj: '_vibe' });
+  try {
+    assert.match(v.panel.html, /<iframe src="http:\/\/localhost:\d+\/\?live=1&proj=-work-app&pin=abc-123&pproj=_vibe&embed=1"/);   // proj used to be _vibe here: the window then showed Vibe sessions only, also once the call was let go
+    assert.match(v.side.html, /\?live=1&proj=-work-app&embed=1"/);
   } finally { await x.close(); }
 });
 

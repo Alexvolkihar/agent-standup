@@ -40,7 +40,7 @@ async function openPanel(pin) {   // pin: { id, proj } of the session to follow 
   if (panel) { try { panel.reveal(); if (pin && pin.id) panel.webview.postMessage({ agentStandup: 'pin', id: pin.id, proj: pin.proj }); return; } catch { panel = null; } }   // a disposed panel falls through and is recreated
   let u;
   try { u = await url(); } catch (e) { return vscode.window.showErrorMessage(e.message); }
-  if (pin && pin.id) u = u.replace(/([?&])proj=[^&]*&?/, '$1').replace(/[?&]$/, '') + `&pin=${encodeURIComponent(pin.id)}&proj=${encodeURIComponent(pin.proj || '')}`;   // one proj parameter only: the pinned session's project
+  if (pin && pin.id) u += `&pin=${encodeURIComponent(pin.id)}&pproj=${encodeURIComponent(pin.proj || '')}`;   // the session the call opens on, and where it is kept (pproj). The window goes on following its own folder (proj): a Vibe or Codex session is kept under its tool, which is not a folder, and put in proj it left the window showing that tool's sessions only
   const ext = await vscode.env.asExternalUri(vscode.Uri.parse(u + '&embed=1'));
   panel = vscode.window.createWebviewPanel('agentStandup', 'Agent Standup', vscode.ViewColumn.Beside, { enableScripts: true, retainContextWhenHidden: true });
   relay(panel.webview); panel.webview.html = frameHtml(ext.toString(true));
