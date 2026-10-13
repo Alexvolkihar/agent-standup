@@ -234,5 +234,11 @@
  "Files created in this session": "Filer oprettet i denne session",
  "A file of the demo: nothing to open": "En fil fra demoen: intet at åbne",
  "Could not open the folder": "Mappen kunne ikke åbnes",
- "Files made for you, when a turn ends": "Filer lavet til dig, når en tur slutter"
+ "Files made for you, when a turn ends": "Filer lavet til dig, når en tur slutter",
+ "🐞 Report a problem": "🐞 Rapportér et problem",
+ "Report a problem": "Rapportér et problem",
+ "Nothing is sent from here. The button opens a draft on GitHub with the text below: read it, say what happened, then send it yourself.": "Intet sendes herfra. Knappen åbner en kladde på GitHub med teksten nedenfor: læs den, skriv hvad der skete, og send den selv.",
+ "The app’s errors are kept in a file on this computer:": "Appens fejl gemmes i en fil på denne computer:",
+ "Copy": "Kopiér",
+ "Open the draft on GitHub": "Åbn kladden på GitHub"
 }

@@ -8,7 +8,7 @@ const os = require('os');
 const crypto = require('crypto');
 const codex = require('./codex.js');     // Codex sessions, read as the same call (see codex.js)
 const vibe = require('./vibe.js');       // Mistral Vibe sessions, the same way (see vibe.js)
-const SOURCES = [codex, vibe], sourceOf = (proj) => SOURCES.find((m) => m.PROJ === proj) || null, guard = (fn, or) => { try { return fn(); } catch { return or; } };   // guard: a session of another tool that cannot be read costs that session, never the list   // the tools other than Claude Code: each lists its sessions under one made-up project
+const SOURCES = [codex, vibe], sourceOf = (proj) => SOURCES.find((m) => m.PROJ === proj) || null, guard = (fn, or) => { try { return fn(); } catch (e) { logError('reader', e); return or; } };   // guard: a session of another tool that cannot be read costs that session, never the list   // the tools other than Claude Code: each lists its sessions under one made-up project
 const kokoro = require('./kokoro.js');   // natural voices, installed on demand (see kokoro.js)
 const zlib = require('zlib');
 const { execFileSync, execFile } = require('child_process');
@@ -270,6 +270,47 @@ function boardRows0() {
 const PREFS = process.env.AGENT_STANDUP_PREFS || (process.platform === 'win32' ? path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'agent-standup', 'prefs.json') : path.join(os.homedir(), '.config', 'agent-standup', 'prefs.json'));
 function readPrefs() { try { const v = JSON.parse(fs.readFileSync(PREFS, 'utf8')); return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch { return null; } }
 function writePrefs(v) { fs.mkdirSync(path.dirname(PREFS), { recursive: true }); const tmp = PREFS + '.' + process.pid + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(v, null, 1)); fs.renameSync(tmp, PREFS); }
+// The app's own errors, kept on this computer only, in errors.log beside the settings: what the page, a request, a reader or the process could not do. Nothing is sent anywhere:
+// ⚙ › Report a problem shows them and opens the draft of an issue that the person reads and sends themselves. One JSON line each: when, which version, where, the message and the top of the stack.
+// tidy: the home folder is written "~" (also in the form Claude Code names its project folders) and the address of the page, which carries the project in its query, is written "page".
+// The same error is written once an hour at most, 60 lines an hour at most, and the file loses its older half past 256 KB. Logging never throws.
+const ERRLOG = path.join(path.dirname(PREFS), 'errors.log'), errSeen = new Map(), errRate = { at: 0, n: 0 };
+const VERSION = (() => { for (const p of ['package.json', '../package.json']) try { const j = JSON.parse(fs.readFileSync(path.join(__dirname, p), 'utf8')); if (/agent-standup/.test(j.name)) return String(j.version || ''); } catch {} return ''; })();   // ../: the desktop app keeps this file in core/
+// homeRe: the home folder in the forms a message or a stack writes it: as it is, with "/" for "\", with "\\" (inside JSON), and with "-" for every other character (a project folder of Claude Code).
+// On Windows the case is not told apart: the editor writes the drive "c:" where the system says "C:". A home of a few letters ("/root") is not looked for in its dashed form, which would be found in any text.
+function homeRe(home, win) {
+  try {
+    if (!home || home.length < 4) return null; const q = (f) => f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), dashed = home.replace(/[^a-zA-Z0-9]/g, '-');
+    const plain = [...new Set([home, home.replace(/\\/g, '/'), home.replace(/\\/g, '\\\\')])].sort((a, b) => b.length - a.length).map((f) => q(f) + '(?!\\w)');
+    return new RegExp(plain.concat(dashed.length >= 8 ? [q(dashed)] : []).join('|'), win ? 'gi' : 'g');
+  } catch { return null; }
+}
+const HOME_RE = homeRe(os.homedir(), process.platform === 'win32');
+function tidy(x, n, re = HOME_RE) {
+  let t = String(x == null ? '' : x); if (re) t = t.replace(re, '~');
+  t = t.replace(/(\/(?:Users|home)\/|[A-Za-z]:[\\\/]{1,2}Users[\\\/]{1,2})[^\/\\:*?"'<>|)\r\n]+/gi, '~');   // the home of anyone else, up to the next separator: a name may hold a space
+  t = t.replace(/https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\/[^\s)"']*?(?=:\d+:\d+|[\s)"']|$)/gi, 'page').slice(0, n);
+  return t.replace(/[\uD800-\uDBFF]$/, '');   // a cut through the middle of an emoji leaves half a character, which a link cannot carry
+}
+function logError(where, e) {
+  try {
+    const msg = tidy(e && e.message != null ? e.message : e, 300), stack = tidy(String((e && e.stack) || '').split('\n').map((l) => l.trim()).filter((l) => /^at |@/.test(l)).slice(0, 8).join('\n'), 1500), now = Date.now();
+    const key = where + '|' + msg + '|' + stack.split('\n')[0]; if (!msg || now - (errSeen.get(key) || 0) < 3600e3) return;
+    if (now - errRate.at > 3600e3) { errRate.at = now; errRate.n = 0; } if (++errRate.n > 60) return;
+    if (errSeen.size > 300) errSeen.clear(); errSeen.set(key, now);
+    fs.mkdirSync(path.dirname(ERRLOG), { recursive: true });
+    try { if (fs.statSync(ERRLOG).size > 262144) { const all = fs.readFileSync(ERRLOG, 'utf8').split('\n'); fs.writeFileSync(ERRLOG, all.slice(all.length >> 1).join('\n')); } } catch {}
+    fs.appendFileSync(ERRLOG, JSON.stringify({ t: new Date().toISOString(), v: VERSION, where: tidy(where, 80), msg, stack }) + '\n');
+  } catch {}
+}
+function errorReport() {   // what ⚙ › Report a problem shows: the app, the system and the last errors of the log
+  let errors = []; try { errors = fs.readFileSync(ERRLOG, 'utf8').split('\n').filter(Boolean).slice(-40).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((x) => x && typeof x === 'object'); } catch {}
+  return { version: VERSION, host: String(process.env.AGENT_STANDUP_HOST || '').slice(0, 80), platform: `${process.platform} ${os.release()} ${process.arch}`, node: process.version, electron: process.versions.electron || '', file: tidy(ERRLOG, 300), errors };
+}
+// An exception nobody caught is written before the process does what it would have done anyway (the "monitor" event changes nothing to that). Inside an editor the process is shared with
+// every other extension: there, only an error that went through this folder is ours. OWN: the process was started from this folder (node server.js, the command, the desktop app, a test).
+const OWN = (() => { try { const m = require.main && require.main.filename; return !!m && (m.startsWith(__dirname + path.sep) || path.dirname(__dirname) === path.dirname(m)); } catch { return false; } })();   // the second: the desktop app, whose main file sits one folder above core/
+process.on('uncaughtExceptionMonitor', (e, origin) => { try { if (OWN || String((e && e.stack) || '').includes(__dirname)) logError(origin === 'unhandledRejection' ? 'promise' : 'crash', e); } catch {} });
 // Most recently active session (optionally limited to one project dir) — drives the live feed.
 const STICK_MS = 90000;   // a session written to in the last 90 s keeps the call, so another session writing elsewhere does not steal it mid-line
 function sessionMtime(proj, id) {
@@ -675,7 +716,7 @@ function start(port = PORT) {
   const sendFile = (fp) => { const s = fs.createReadStream(fp); s.on('error', () => res.destroy()); s.pipe(res); };   // a file that vanished between the check and the read ends this answer, not the server
   // Endpoints with side effects (they spawn programs or claim the sound), and the one that serves pictures from a session, refuse requests that a browser marks as coming from another site, e.g. an <img> on a web page.
   const sfs = req.headers['sec-fetch-site'];
-  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && (req.method !== 'GET' || ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts', '/api/prefs', '/api/prefs.js', '/api/voices', '/api/kokoro', '/api/kokoro/install', '/api/media'].includes(url.pathname))) { res.writeHead(403); return res.end('forbidden'); }
+  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && (req.method !== 'GET' || ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts', '/api/prefs', '/api/prefs.js', '/api/voices', '/api/kokoro', '/api/kokoro/install', '/api/media', '/api/errors'].includes(url.pathname))) { res.writeHead(403); return res.end('forbidden'); }
   const readBody = (cb) => {   // request bodies are small JSON: stop reading beyond 256 KB and give up after 10 s
     const chunks = []; let size = 0, over = false; req.setTimeout(10000, () => req.destroy());
     if (+req.headers['content-length'] > 262144) { res.writeHead(413); res.end('too large'); return req.destroy(); }
@@ -714,6 +755,8 @@ function start(port = PORT) {
     if (url.pathname === '/api/prefs.js') { res.writeHead(200, { 'content-type': 'application/javascript', 'cache-control': 'no-store' }); return res.end('window.SAVED_PREFS = ' + JSON.stringify(readPrefs()).replace(/</g, '\\u003c') + ';'); }
     if (url.pathname === '/api/prefs' && req.method === 'PUT') return readBody((body) => { try { const v = JSON.parse(body); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('prefs must be an object'); writePrefs(v); json({ ok: true }); } catch (e) { json({ error: String(e.message || e) }, 400); } });
     if (url.pathname === '/api/prefs') return json(readPrefs() || {});
+    if (url.pathname === '/api/errors' && req.method === 'POST') return readBody((body) => { try { const b = JSON.parse(body) || {}; logError('page' + (typeof b.where === 'string' && b.where ? ' ' + b.where.slice(0, 40) : ''), { message: String(b.msg || ''), stack: String(b.stack || '') }); json({ ok: true }); } catch (e) { json({ error: String(e.message || e) }, 400); } });   // an error of the page, written to the local log
+    if (url.pathname === '/api/errors') return json(errorReport());
     if (url.pathname === '/api/current') return json(currentSession(url.searchParams.get('proj') || '', url.searchParams.get('id') || '', { proj: url.searchParams.get('sproj') || '', id: url.searchParams.get('sid') || '' }));
     if (url.pathname === '/api/board') return json(boardRows());
     if (url.pathname === '/api/characters') return json(listCharacters(url.searchParams.get('pack') || ''));
@@ -764,10 +807,10 @@ function start(port = PORT) {
     if (!file.startsWith(PUBLIC + path.sep) || !fst || !fst.isFile()) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
     res.end(fs.readFileSync(file));
-  } catch (e) { if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
+  } catch (e) { logError(req.method + ' ' + url.pathname, e); if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });
 }
-module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, _reveal: reveal };
+module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, logError, _reveal: reveal, _scrub: { tidy, homeRe } };
 if (require.main === module) {
   start().on('error', (e) => {
     console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use (maybe Agent Standup is already running, e.g. inside VS Code). Try: PORT=4790 node server.js` : String(e));

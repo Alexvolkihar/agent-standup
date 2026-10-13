@@ -42,6 +42,7 @@ if (flags.port !== undefined) {   // a real port number or nothing: no silent fa
   if (!/^\d+$/.test(String(flags.port)) || +flags.port < 1 || +flags.port > 65535) { console.error(`Invalid --port "${flags.port}": use a number between 1 and 65535.`); process.exit(2); }
   process.env.PORT = String(+flags.port);
 }
+process.env.AGENT_STANDUP_HOST = 'command line';   // named in a problem report (⚙ › Report a problem)
 const server = require('../server.js');
 const projKey = (dir) => String(dir || '').replace(/[^a-zA-Z0-9]/g, '-');   // Claude Code's project folder naming
 

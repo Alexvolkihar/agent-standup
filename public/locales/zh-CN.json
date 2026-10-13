@@ -235,5 +235,11 @@
  "Files created in this session": "此会话创建的文件",
  "A file of the demo: nothing to open": "演示中的文件：没有可打开的内容",
  "Could not open the folder": "无法打开文件夹",
- "Files made for you, when a turn ends": "回合结束时，显示为你创建的文件"
+ "Files made for you, when a turn ends": "回合结束时，显示为你创建的文件",
+ "🐞 Report a problem": "🐞 报告问题",
+ "Report a problem": "报告问题",
+ "Nothing is sent from here. The button opens a draft on GitHub with the text below: read it, say what happened, then send it yourself.": "这里不会发送任何内容。按钮会在 GitHub 上打开一份包含下方文字的草稿：请先阅读，写明发生了什么，再由你自己提交。",
+ "The app’s errors are kept in a file on this computer:": "应用的错误保存在这台电脑上的一个文件中：",
+ "Copy": "复制",
+ "Open the draft on GitHub": "在 GitHub 上打开草稿"
 }

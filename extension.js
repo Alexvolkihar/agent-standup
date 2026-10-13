@@ -3,6 +3,7 @@ const vscode = require('vscode');
 const http = require('http'), fs = require('fs');
 
 let panel = null, side = null, status = null, started = null;
+const logErr = (where, e) => { try { require('./server.js').logError(where, e); } catch {} };   // the local error log (see logError in server.js): nothing is sent
 
 const cfg = () => vscode.workspace.getConfiguration('agentStandup');
 const tt = (s, ...a) => (vscode.l10n && vscode.l10n.t ? vscode.l10n.t(s, ...a) : s.replace(/\{(\d+)\}/g, (_, i) => a[i]));   // runtime strings: bundles in ./l10n, the English text is the key
@@ -50,14 +51,15 @@ const frameHtml = (src) => `<!doctype html><html><head><meta charset="utf-8">
     <style>html,body{margin:0;height:100%;background:#12131a}iframe{border:0;width:100%;height:100vh}</style></head>
     <body><iframe src="${src}" allow="autoplay; clipboard-write"></iframe>
     <script>const vs = acquireVsCodeApi(); const fr = document.querySelector('iframe'); addEventListener('message', (e) => { if (e.source === fr.contentWindow) { if (e.data && e.data.agentStandup) vs.postMessage(e.data); } else if (e.data && e.data.agentStandup === 'pin') fr.contentWindow.postMessage(e.data, '*'); });</script></body></html>`;
-// Messages from the page: open it in the browser, or open a donation link (https only, known donation sites only).
+// Messages from the page: open it in the browser, or open a donation link or the draft of a problem report (https only, known sites only).
+// A link that carries a query (the draft of a report) is handed over as text: given as a Uri, VS Code decodes and re-encodes the query, and the draft arrives cut at its first "&" or "#".
 const DONATE_HOSTS = /^(www\.)?(buymeacoffee\.com|ko-fi\.com|paypal\.me|paypal\.com|github\.com)$/;
 const relay = (webview) => webview.onDidReceiveMessage((m) => {
   if (!m) return;
   if (m.agentStandup === 'openBrowser') openBrowser();
   if (m.agentStandup === 'openCharacters') openCharacters();
   if (m.agentStandup === 'notify' && typeof m.text === 'string') vscode.window.showInformationMessage('Agent Standup: ' + m.text.slice(0, 120));
-  if (m.agentStandup === 'openExternal') { try { const u = new URL(m.url); if (u.protocol === 'https:' && DONATE_HOSTS.test(u.hostname)) vscode.env.openExternal(vscode.Uri.parse(u.toString())); } catch {} }
+  if (m.agentStandup === 'openExternal') { try { const u = new URL(m.url); if (u.protocol === 'https:' && DONATE_HOSTS.test(u.hostname)) vscode.env.openExternal(u.search ? u.toString() : vscode.Uri.parse(u.toString())); } catch {} }
 });
 
 // Sidebar view: the same live call, in the activity bar.
@@ -86,7 +88,7 @@ function followTab() {
     let rows = named(srv.boardRows()); if (!rows.length) rows = named(srv.sessionRows());   // a conversation of another day is no longer among the sessions of the moment: it is looked up in the whole list
     const r = rows.find((x) => ws && (x.proj === ws || x.proj.startsWith(ws + '-'))) || rows[0]; if (!r) return;
     for (const w of [panel, side]) if (w) w.webview.postMessage({ agentStandup: 'pin', id: r.id, proj: r.proj, tab: true });
-  } catch {}
+  } catch (e) { logErr('follow tab', e); }
 }
 
 // The folder where the person drops their own pixel art (lead.png, you.png, others for the sub-agents, name-talk.png for an open mouth).
@@ -113,6 +115,7 @@ function pingActive(ctx) {
 }
 function activate(ctx) {
   pingActive(ctx);
+  try { process.env.AGENT_STANDUP_HOST = `${vscode.env.appName || 'editor'} ${vscode.version || ''}`.trim(); } catch {}   // named in a problem report: VS Code, Cursor, VSCodium…
   const codex0 = process.env.AGENT_STANDUP_CODEX, vibe0 = process.env.AGENT_STANDUP_VIBE;   // what the environment asked for, put back when the setting is on
   const applyPath = () => { process.env.AGENT_STANDUP_CLAUDE = cfg().get('claudePath') || ''; process.env.AGENT_STANDUP_CHARACTERS = cfg().get('charactersPath') || ''; if (cfg().get('codex') === false) process.env.AGENT_STANDUP_CODEX = 'off'; else if (codex0 === undefined) delete process.env.AGENT_STANDUP_CODEX; else process.env.AGENT_STANDUP_CODEX = codex0; if (cfg().get('vibe') === false) process.env.AGENT_STANDUP_VIBE = 'off'; else if (vibe0 === undefined) delete process.env.AGENT_STANDUP_VIBE; else process.env.AGENT_STANDUP_VIBE = vibe0; };
   applyPath(); ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration((ev) => { if (ev.affectsConfiguration('agentStandup.claudePath') || ev.affectsConfiguration('agentStandup.charactersPath') || ev.affectsConfiguration('agentStandup.codex') || ev.affectsConfiguration('agentStandup.vibe')) applyPath(); }));
@@ -140,7 +143,7 @@ function activate(ctx) {
       status.backgroundColor = blocked ? new vscode.ThemeColor('statusBarItem.errorBackground') : undefined;
       const best = act.find((r) => r.state === 'blocked') || act.find((r) => r.state === 'working') || act.find((r) => r.state === 'waiting') || act[0] || null; target = best ? { id: best.id, proj: best.proj } : null;
       status.tooltip = act.length ? act.slice(0, 6).map((r) => `${{ blocked: '✋', working: '⚙', waiting: '🔗', turn: '✓', idle: '💤' }[r.state]} ${r.title}`).join('\n') + '\n\n' + tt('Click to open the call') : tt('Open the live Agent Standup call');
-    } catch {}
+    } catch (e) { logErr('status bar', e); }
   };
   ctx.subscriptions.push(vscode.commands.registerCommand('agentStandup.openStatus', () => openPanel(target)));
   status.command = 'agentStandup.openStatus';

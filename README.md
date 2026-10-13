@@ -298,6 +298,7 @@ The website at agent-standup.com counts its visits with Vercel Web Analytics, th
 - **Terminal output missing for a command** — the call is still running (spinner), or it is an internal call (sub-agent launch / message); outputs are only recorded once a call finishes.
 - **Pill says OFFLINE** — the local server stopped answering (another VS Code window that was serving the port was closed: the extension takes over within a few seconds), or restart `node server.js`.
 - **Delay behind the real session** — expected ≈ 5–7 s in French (translation), ≈ 2 s in English; the call skips ahead when it falls too far behind.
+- **Something else broke** — ⚙ → **Report a problem** shows what the app logged on your computer and opens a pre-filled issue for you to send.
 
 ## Limits
 
@@ -336,7 +337,7 @@ The full [privacy policy](PRIVACY.md) says what is read, what is kept on your co
 - **The only things that call out** are optional and off by default: French translation and jokes (your own Claude login, the small Haiku model, with all tools disabled; when one of them is on, the lines of a Codex session are sent the same way, to Anthropic), the FIP radio stream, and the usage counter (one empty request a day to a 1-pixel file, only if you turn it on).
 - **No dependencies**: the code is plain Node.js and one HTML file, so there is nothing hidden in `node_modules`. The optional Kokoro voices install a third-party package only when you click Install.
 - **Many sessions at once?** The **Sessions** view shows every session across your projects on one board (working, waiting, needs you, done); click one to open its call. **Live** follows one session at a time, the most recent or the project you pick.
-- Found a problem? Please open an issue.
+- **Found a problem?** ⚙ → **Report a problem** opens the draft of an issue on GitHub, filled with the app's version, your system and the last errors the app wrote to its local log (`errors.log`, beside your settings). You see the text first, and nothing is sent until you send the issue yourself.
 
 ## Privacy and usage counting
 Agent Standup reads local session files and sends nothing anywhere by default. The only optional network uses are: French translation / jokes (your own Claude login, off unless you turn them on), the FIP radio stream (if you turn it on), and the **optional usage counter**: if you set `agentStandup.shareUsage` to `true` (off by default, and ignored when VS Code telemetry is off), the extension makes at most one empty request per day to a 1-pixel file in this repository's releases. There is no identifier and no content; GitHub sees your IP like for any download. It lets the maintainer count active installs (`npm run stats`).

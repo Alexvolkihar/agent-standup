@@ -2,6 +2,7 @@
 // that shows what your agents are doing and notifies you when one may need you. Nothing leaves your machine.
 const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification } = require('electron');
 const path = require('path'), fs = require('fs');
+process.env.AGENT_STANDUP_HOST = 'desktop app';   // named in a problem report (⚙ › Report a problem)
 const core = require('./core/server.js');
 const SELFTEST = process.argv.includes('--selftest') ? process.argv[process.argv.indexOf('--selftest') + 1] : null;   // renders the window to a PNG and quits: used to check a build
 let win = null, tray = null, port = 0, quitting = false, lastNeeds = 0, trayTimer = null;

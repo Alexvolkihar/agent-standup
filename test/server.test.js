@@ -269,3 +269,29 @@ test('a file the session created is shown in its folder; no other path is, and n
     assert.deepEqual(server._reveal.cmds('/a/x,y.md', 'linux'), [['xdg-open', ['/a']]]);
   } finally { server._reveal.run = run; stop(); }
 });
+
+test('the errors of the app are kept in a file on this computer: each one once, without the home folder or the address of the page; another site neither reads nor writes them', async () => {
+  const server = require('../server.js'), file = path.join(tmp, 'errors.log'), read = () => { try { return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };
+  const { port, stop } = await serve(), post = (body, headers = {}) => get(port, '/api/errors', { 'content-type': 'application/json', ...headers }, 'POST', body);
+  try {
+    const before = read().length, home = os.homedir(), e = new Error('cannot read ' + path.join(home, 'secret', 'notes.md'));
+    e.stack = `Error: ${e.message}\n    at reader (${path.join(home, 'app', 'vibe.js')}:10:5)\n    at http://localhost:${port}/?live=1&proj=${home.replace(/[^a-zA-Z0-9]/g, '-')}-Documents-X:782:15`;
+    server.logError('reader', e); server.logError('reader', e);   // the same error twice: one line
+    const mine = read().slice(before); assert.equal(mine.length, 1); assert.equal(mine[0].where, 'reader'); assert.equal(mine[0].v, require('../package.json').version); assert.ok(!isNaN(Date.parse(mine[0].t)));
+    assert.ok(!JSON.stringify(mine[0]).includes(home), 'the home folder is written ~'); assert.ok(!mine[0].stack.includes('proj='), 'the address of the page carries the project'); assert.match(mine[0].stack, /\nat page:782:15$/); assert.ok(!mine[0].stack.includes('cannot read'), 'the stack is the frames only');
+    server.logError('reader', null); server.logError('reader', ''); assert.equal(read().length, before + 1);   // nothing to say: nothing written, and nothing thrown
+    // an error of the page
+    assert.equal((await post(JSON.stringify({ where: 'error', msg: 'paint is not a function', stack: `TypeError: paint is not a function\n    at step (http://localhost:${port}/?live=1&embed=1:900:3)` }))).status, 200);
+    const rep = JSON.parse((await get(port, '/api/errors')).body), last = rep.errors[rep.errors.length - 1];
+    assert.deepEqual([last.where, last.msg, last.stack], ['page error', 'paint is not a function', 'at step (page:900:3)']); assert.equal(rep.version, require('../package.json').version); assert.ok(rep.platform.startsWith(process.platform)); assert.equal(rep.node, process.version);
+    assert.equal((await post('[not json')).status, 400); assert.equal((await post('{"msg":"from another site"}', { 'sec-fetch-site': 'cross-site' })).status, 403); assert.equal((await get(port, '/api/errors', { 'sec-fetch-site': 'cross-site' })).status, 403);
+    assert.ok(!read().some((x) => x.msg === 'from another site'));
+    // the home folder in every form it is written, on Windows too: a name with a space, the drive in the other case, "/" for "\", the path inside JSON, the folder of a Claude Code project
+    const { tidy, homeRe } = server._scrub, win = homeRe('C:\\Users\\John Smith', true), w = (t) => tidy(t, 300, win);
+    assert.equal(w('at f (c:\\Users\\John Smith\\.vscode\\extensions\\x\\server.js:1:2)'), 'at f (~\\.vscode\\extensions\\x\\server.js:1:2)'); assert.equal(w('C:/Users/John Smith/work/a.js'), '~/work/a.js');
+    assert.equal(w('C:\\Users\\John Smith\\.claude\\projects\\c--Users-John-Smith-work-X\\a.jsonl'), '~\\.claude\\projects\\~-work-X\\a.jsonl'); assert.equal(w(JSON.stringify('C:\\Users\\John Smith\\a.js')), '"~\\\\a.js"');
+    assert.equal(w('D:\\Users\\Some One Else\\a.js'), '~\\a.js'); assert.equal(tidy('tree-root in /rootfs --root-dir, file /root/a.js', 300, homeRe('/root', false)), 'tree-root in /rootfs --root-dir, file ~/a.js');   // someone else's home goes too; a home of a few letters is not found in every word
+    assert.equal(tidy('Failed to load "http://localhost:4747/?live=1&proj=x" then http://[::1]:5000/?a=1:3:4', 300), 'Failed to load "page" then page:3:4');
+    assert.equal(tidy('x'.repeat(299) + '😀', 300), 'x'.repeat(299)); assert.doesNotThrow(() => encodeURIComponent(tidy('x'.repeat(299) + '😀', 300)));   // a cut through an emoji leaves no half character: the link of the report could not carry it
+  } finally { stop(); }
+});

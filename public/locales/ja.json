@@ -235,5 +235,11 @@
  "Files created in this session": "このセッションで作成されたファイル",
  "A file of the demo: nothing to open": "デモのファイルです：開くものはありません",
  "Could not open the folder": "フォルダを開けませんでした",
- "Files made for you, when a turn ends": "あなた向けに作成されたファイルを、ターンの終わりに表示"
+ "Files made for you, when a turn ends": "あなた向けに作成されたファイルを、ターンの終わりに表示",
+ "🐞 Report a problem": "🐞 問題を報告",
+ "Report a problem": "問題を報告",
+ "Nothing is sent from here. The button opens a draft on GitHub with the text below: read it, say what happened, then send it yourself.": "ここからは何も送信されません。ボタンを押すと、下のテキストが入った下書きが GitHub で開きます。内容を確認し、何が起きたかを書いてから、ご自身で送信してください。",
+ "The app’s errors are kept in a file on this computer:": "アプリのエラーは、このコンピューター上のファイルに保存されます：",
+ "Copy": "コピー",
+ "Open the draft on GitHub": "GitHub で下書きを開く"
 }

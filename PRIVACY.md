@@ -18,6 +18,7 @@ Agent Standup runs on your own computer. It reads files that are already there, 
 - **Your settings**, in one small file in your user configuration folder.
 - **Spoken lines, for a day.** When voices are on, each line is turned into a sound file in a private temporary folder so it does not have to be made twice. Files older than a day are deleted.
 - **The natural voice model**, only if you install it.
+- **A log of the app's own errors**, in a file named `errors.log` beside your settings. Each line holds the date, the app's version, where the error happened, its message and the first lines of its stack trace. The path of your home folder is replaced by `~`, and the address of the page (which names the project) by the word `page`. An error message can still name a file or a project of yours, or hold a few characters of what the app was reading when it failed. The file is cut down when it passes 256 KB, and it is never sent anywhere by the app.
 
 Nothing else is written. Uninstalling the app and deleting those folders removes everything.
 
@@ -34,6 +35,7 @@ The following happen only if you turn them on or start them yourself:
 | You turn on "share usage" in VS Code (off by default, and never when VS Code telemetry is off) | One empty request a day for a 1-pixel file. No identifier, no content | GitHub |
 | You install the very natural voices | A download of the voice package and its model; no session content | The npm registry and Hugging Face |
 | You run the app with `npx`, or the Claude Code plugin does | A download of the app's package; no session content | The npm registry |
+| You choose "Report a problem" in the ⚙ menu, then send the draft that opens on GitHub | The text the app showed you first: its version, your system and browser, your language, and the last errors of the log above; plus what you write. Until you send it on GitHub, nothing is sent | GitHub, as a public issue under your GitHub account |
 
 Each of these services sees your IP address, as any website does, and applies its own privacy policy.
 

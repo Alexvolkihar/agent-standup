@@ -235,5 +235,11 @@
  "Files created in this session": "Archivos creados en esta sesión",
  "A file of the demo: nothing to open": "Un archivo de la demo: no hay nada que abrir",
  "Could not open the folder": "No se pudo abrir la carpeta",
- "Files made for you, when a turn ends": "Archivos hechos para ti, al terminar un turno"
+ "Files made for you, when a turn ends": "Archivos hechos para ti, al terminar un turno",
+ "🐞 Report a problem": "🐞 Informar de un problema",
+ "Report a problem": "Informar de un problema",
+ "Nothing is sent from here. The button opens a draft on GitHub with the text below: read it, say what happened, then send it yourself.": "Desde aquí no se envía nada. El botón abre un borrador en GitHub con el texto de abajo: léelo, cuenta qué pasó y envíalo tú mismo.",
+ "The app’s errors are kept in a file on this computer:": "Los errores de la app se guardan en un archivo en este ordenador:",
+ "Copy": "Copiar",
+ "Open the draft on GitHub": "Abrir el borrador en GitHub"
 }

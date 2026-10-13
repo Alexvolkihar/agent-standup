@@ -331,6 +331,7 @@
   <button class="mi" data-t="hideCode"><span data-fr="Masquer code et fichiers dans les vidéos" data-en="Hide code & file names in videos">Masquer code et fichiers dans les vidéos</span><i class="sw"></i></button>
   <div class="keys">Space ⏯ · M 🔇 · T tree · R recap · L log · Esc ✕</div>
   <button class="mi" id="mBrowser" style="display:none"><span data-fr="↗ Ouvrir dans le navigateur" data-en="↗ Open in browser">↗ Ouvrir dans le navigateur</span></button>
+  <button class="mi" id="mReport"><span data-fr="🐞 Signaler un problème" data-en="🐞 Report a problem">🐞 Signaler un problème</span></button>
 </div>
 
 <main>
@@ -361,6 +362,19 @@
 // =====================================================================
 //  helpers, prefs, i18n
 // =====================================================================
+// The page's own errors are written to the local log (errors.log beside the settings, see logError in server.js): nothing leaves the computer. ⚙ › Report a problem shows them.
+// Twenty a page at most, each message once; what is not a fault of the app is left out (a sound the browser refuses to play, the server that went away, an interrupted request).
+const ERRS = { n: 0, seen: new Set() };
+function reportError(where, e) {
+  try {
+    const msg = String((e && e.message) || e || '').slice(0, 500), name = (e && e.name) || '';
+    if (!msg || ERRS.n >= 20 || ERRS.seen.has(msg) || /^(AbortError|NotAllowedError|NotSupportedError)$/.test(name) || /^Script error\.?$|ResizeObserver loop|Failed to fetch|NetworkError|Load failed/i.test(msg)) return;
+    ERRS.seen.add(msg); ERRS.n++;
+    fetch('/api/errors', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ where, msg, stack: String((e && e.stack) || '').slice(0, 4000) }) }).catch(() => {});
+  } catch {}
+}
+addEventListener('error', (ev) => { if (ev.error || ev.message) reportError('error', ev.error || { message: ev.message, stack: `at ${ev.filename}:${ev.lineno}:${ev.colno}` }); });
+addEventListener('unhandledrejection', (ev) => reportError('promise', ev.reason));
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
@@ -2541,6 +2555,29 @@ function openKeys() {
   $('#recapx').onclick = () => $('#recap').classList.remove('on'); $('#recap').classList.add('on');
 }
 $('#mKeys').onclick = () => { $('#menu').classList.remove('on'); openKeys(); };
+// ⚙ › Report a problem: the last errors of the local log, shown exactly as they would be sent, and the draft of an issue on GitHub that carries them. Nothing leaves from here:
+// the person reads the draft on GitHub, says what happened and sends it. The text of the report is in English whatever the language: it is read by the developer.
+const ISSUES = 'https://github.com/Atoll92/agent-standup/issues/new';
+async function openReport() {
+  let r = null; try { r = await (await fetch('/api/errors')).json(); } catch {}
+  const str = (x) => (typeof x === 'string' ? x.replace(/```/g, "'''") : ''), whole = (s) => (s.toWellFormed ? s.toWellFormed() : s.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '').replace(/(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '$1'));   // whole: no half of an emoji left by a cut, which a link cannot carry
+  const errs = ((r && Array.isArray(r.errors) && r.errors) || []).filter((e) => e && typeof e === 'object').slice(-5).reverse(), one = (e) => `${str(e.t)} · ${str(e.v)} · ${str(e.where)}\n${str(e.msg)}${str(e.stack) ? '\n' + str(e.stack).split('\n').slice(0, 5).map((l) => '  ' + l.slice(0, 200)).join('\n') : ''}`;
+  const app = r ? [`Agent Standup ${r.version}${r.host ? ' · ' + r.host : ''}`, `${r.platform} · Node ${r.node}${r.electron ? ' · Electron ' + r.electron : ''}`] : ['Agent Standup']; app.push(navigator.userAgent, 'Language: ' + (prefs.lang || ''));
+  const body = (list) => whole('**What happened?**\n\n\n**App**\n' + app.join('\n') + '\n\n**Last errors in the local log**\n' + (list.length ? '```\n' + list.map(one).join('\n\n') + '\n```' : 'none'));
+  let list = errs; while (list.length > 1 && encodeURIComponent(body(list)).length > 5500) list = list.slice(0, -1);   // the draft travels in the address: the oldest errors give way
+  let text = body(list); while (encodeURIComponent(text).length > 5500) text = whole(text.slice(0, Math.floor(text.length * 0.8))) + '\n…\n```';   // one error alone that is too long is cut, and its block closed
+  const url = ISSUES + '?title=' + encodeURIComponent(list[0] ? whole(`[${str(r && r.version)}] ${str(list[0].msg).slice(0, 90)}`) : '') + '&body=' + encodeURIComponent(text);
+  $('#recap .box').innerHTML = `<h1>${L('Signaler un problème', 'Report a problem')}</h1>
+    <p>${L('Rien n’est envoyé d’ici. Le bouton ouvre un brouillon sur GitHub avec le texte ci-dessous : relisez-le, dites ce qui s’est passé, puis envoyez-le vous-même.', 'Nothing is sent from here. The button opens a draft on GitHub with the text below: read it, say what happened, then send it yourself.')}</p>
+    <pre id="reportTxt" style="margin:12px 0;padding:12px 14px;max-height:44vh;overflow:auto;white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:10px;font:12px ui-monospace,Menlo,monospace"></pre>
+    ${r && r.file ? `<p class="dim" style="font-size:12px">${L('Les erreurs de l’app sont gardées dans un fichier sur cet ordinateur :', 'The app’s errors are kept in a file on this computer:')} <span class="f">${esc(r.file)}</span></p>` : ''}
+    <p style="text-align:right;margin:18px 0 0"><button class="btn" id="reportCopy">📋 ${L('Copier', 'Copy')}</button> <button class="btn" id="recapx">${L('Fermer', 'Close')}</button> <button class="cta" id="reportGo">${L('Ouvrir le brouillon sur GitHub', 'Open the draft on GitHub')}</button></p>`;
+  $('#reportTxt').textContent = text;
+  $('#reportCopy').onclick = async () => { let ok = false; try { await navigator.clipboard.writeText(text); ok = true; } catch { try { const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); } catch {} } $('#reportCopy').textContent = ok ? '✓ ' + L('Copié', 'Copied') : L('Copie impossible', 'Copy failed'); setTimeout(() => { if ($('#reportCopy')) $('#reportCopy').textContent = '📋 ' + L('Copier', 'Copy'); }, 2000); };
+  $('#reportGo').onclick = () => openExternal(url);
+  $('#recapx').onclick = () => $('#recap').classList.remove('on'); $('#recap').classList.add('on');
+}
+$('#mReport').onclick = () => { $('#menu').classList.remove('on'); openReport(); };
 addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openSwitcher(); return; }
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;   // browser shortcuts (Cmd+R, Ctrl+N…) stay the browser's

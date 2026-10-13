@@ -235,5 +235,11 @@
  "Files created in this session": "이 세션에서 만든 파일",
  "A file of the demo: nothing to open": "데모의 파일입니다: 열 것이 없습니다",
  "Could not open the folder": "폴더를 열 수 없습니다",
- "Files made for you, when a turn ends": "나를 위해 만든 파일을 턴이 끝날 때 표시"
+ "Files made for you, when a turn ends": "나를 위해 만든 파일을 턴이 끝날 때 표시",
+ "🐞 Report a problem": "🐞 문제 신고",
+ "Report a problem": "문제 신고",
+ "Nothing is sent from here. The button opens a draft on GitHub with the text below: read it, say what happened, then send it yourself.": "여기서는 아무것도 전송되지 않습니다. 버튼을 누르면 아래 텍스트가 담긴 초안이 GitHub에서 열립니다. 내용을 읽고 무슨 일이 있었는지 적은 뒤 직접 보내 주세요.",
+ "The app’s errors are kept in a file on this computer:": "앱의 오류는 이 컴퓨터의 파일에 보관됩니다:",
+ "Copy": "복사",
+ "Open the draft on GitHub": "GitHub에서 초안 열기"
 }

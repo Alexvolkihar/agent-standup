@@ -14,8 +14,8 @@ titled('-work-app', 'long', 'Fix the login page and its tests', 5); titled('-wor
 titled('-other', 'twin', 'Fix the login page and its tests', 1); titled('-other', 'away', 'Only in another folder', 3); titled('-work-app', 'lastweek', 'A conversation of last week', 6 * 24 * 60);   // twin: the same title in another folder, and more recent. All of them are there before the extension first looks: it keeps what it read for a moment
 // ---- VS Code, as much of it as the extension touches ----
 function standIn({ tabGroups = true } = {}) {
-  const v = { cmds: {}, provider: null, sent: [], tabs: [], groups: [], panels: 0, errors: [], active: null };
-  const webview = (where) => ({ options: {}, html: '', onDidReceiveMessage: () => ({ dispose() {} }), postMessage: (m) => { v.sent.push({ where, ...m }); return Promise.resolve(true); } });
+  const v = { cmds: {}, provider: null, sent: [], tabs: [], groups: [], panels: 0, errors: [], active: null, opened: [], relay: null };
+  const webview = (where) => ({ options: {}, html: '', onDidReceiveMessage: (f) => { v.relay = f; return { dispose() {} }; }, postMessage: (m) => { v.sent.push({ where, ...m }); return Promise.resolve(true); } });
   const settings = { port: 0, statusBar: true, onlyThisWorkspace: true, autoOpen: false, claudePath: '', charactersPath: '', shareUsage: false };
   v.vscode = {
     workspace: { getConfiguration: () => ({ get: (k) => settings[k] }), workspaceFolders: [{ uri: { fsPath: '/work/app' } }], onDidChangeConfiguration: () => ({ dispose() {} }) },
@@ -25,7 +25,7 @@ function standIn({ tabGroups = true } = {}) {
       createWebviewPanel: () => { v.panels++; return { webview: webview('panel'), reveal() {}, onDidDispose() {} }; },
       createStatusBarItem: () => ({ show() {}, dispose() {}, text: '', tooltip: '' }),
       ...(tabGroups ? { tabGroups: { get activeTabGroup() { return v.active; }, onDidChangeTabs: (f) => { v.tabs.push(f); return { dispose() {} }; }, onDidChangeTabGroups: (f) => { v.groups.push(f); return { dispose() {} }; } } } : {}) },
-    env: { isTelemetryEnabled: false, asExternalUri: async (u) => u, openExternal: async () => true },
+    env: { isTelemetryEnabled: false, asExternalUri: async (u) => u, openExternal: async (u) => { v.opened.push(u); return true; } },
     Uri: { parse: (s) => ({ toString: () => s }), file: (s) => ({ fsPath: s, toString: () => 'file://' + s }) },
     ViewColumn: { Beside: -2 }, StatusBarAlignment: { Right: 2 }, ThemeColor: class { constructor(id) { this.id = id; } },
   };
@@ -67,5 +67,15 @@ test('the call is sent to the Claude Code tab you go to: found by its title, who
     assert.deepEqual(v.go(claude('Short title'), 2), to('short', '-work-app'), 'the same title in another column is another tab');
     assert.equal(require('../server.js').boardRows().some((r) => r.id === 'lastweek'), false); assert.deepEqual(v.go(claude('A conversation of last w…')), to('lastweek', '-work-app'), 'a conversation of another day is no longer among the sessions of the moment: it is found in the whole list');
     v.active = null; assert.doesNotThrow(() => v.groups[0]({}));
+  } finally { await x.close(); }
+});
+
+test('a link the page asks for is opened on a known site only; the draft of a problem report is handed over as text, so that its query arrives whole', async () => {
+  const v = standIn(), x = await activated(v), ask = (url) => v.relay({ agentStandup: 'openExternal', url });
+  try {
+    const draft = 'https://github.com/Atoll92/agent-standup/issues/new?title=a%20%26%20b&body=line%0A%23%20one', coffee = 'https://www.buymeacoffee.com/bored_dev_and_his_robots';
+    ask(draft); ask(coffee); ask('https://example.com/?x=1'); ask('http://github.com/Atoll92/agent-standup/issues/new?title=a'); ask('not a link');
+    assert.equal(v.opened.length, 2); assert.equal(v.opened[0], draft);   // as text: given as a Uri, VS Code decodes and re-encodes the query, and "&" or "#" cut the draft
+    assert.equal(typeof v.opened[1], 'object'); assert.equal(v.opened[1].toString(), coffee);
   } finally { await x.close(); }
 });
