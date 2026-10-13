@@ -109,12 +109,13 @@ test('a turn that ends on a message Claude Code writes itself is over: the API i
   const err = (s, text, stop = 'stop_sequence') => ({ ...said(s, text, { stop }), isApiErrorMessage: true });   // written by Claude Code itself, in the place of the model's answer
   const own = (r) => ({ ...r, message: { ...r.message, model: '<synthetic>' } });
   fs.writeFileSync(path.join(dir, 's.jsonl'), [typed(0, 'one'), said(1, 'Looking.'), err(2, 'API Error: 529 Overloaded.'), typed(3, 'two'), err(4, 'You have hit your limit'), typed(5, 'three'), err(6, 'API Error: the safeguards flagged this message', 'refusal'),
-    typed(7, 'four'), own(said(8, 'No response requested.', { stop: 'stop_sequence' })), typed(9, 'five'), said(10, 'A long answer that was cut', { stop: 'max_tokens' }), typed(11, 'six'), said(12, 'Stopped by a safety check in the middle', { stop: 'refusal' }), said(13, 'and it goes on.', { stop: 'tool_use' })].map(line).join(''));
+    typed(7, 'four'), own(said(8, 'No response requested.', { stop: 'stop_sequence' })), typed(9, 'five'), said(10, 'A long answer that was cut', { stop: 'max_tokens' }), typed(11, 'six'), said(12, 'Stopped by a safety check in the middle', { stop: 'refusal' }), said(13, 'and it goes on.', { stop: 'tool_use' }),
+    typed(14, 'seven'), used(15, 'toolu_w', 'Bash', { command: 'sleep 60' }), err(16, 'API Error: Connection lost mid-response.'), result(17, 'toolu_w', 'ok'), said(18, 'Back, and done.', { stop: 'end_turn' })].map(line).join(''));   // the connection dropped while a call was out: the lead goes on when it answers
   fs.writeFileSync(path.join(dir, 's', 'subagents', 'agent-a1.jsonl'), [typed(1, 'sub order'), err(1.5, 'API Error: 500')].map(line).join(''));   // a sub-agent that fails does not end the lead's turn
   const { port, stop } = await serve();
   try {
     const ev = (await load(port, 'proj=-x&id=s')).events.filter((e) => e.kind === 'say' || e.kind === 'user');
-    assert.deepEqual(ev.map((e) => e.agent + ' ' + e.text + (e.end ? ' END' : '')), ['user one', 'main Looking.', 'a1 API Error: 500', 'main API Error: 529 Overloaded. END', 'user two', 'main You have hit your limit END', 'user three', 'main API Error: the safeguards flagged this message END', 'user four', 'main No response requested. END', 'user five', 'main A long answer that was cut', 'user six', 'main Stopped by a safety check in the middle', 'main and it goes on.']);
+    assert.deepEqual(ev.map((e) => e.agent + ' ' + e.text + (e.end ? ' END' : '')), ['user one', 'main Looking.', 'a1 API Error: 500', 'main API Error: 529 Overloaded. END', 'user two', 'main You have hit your limit END', 'user three', 'main API Error: the safeguards flagged this message END', 'user four', 'main No response requested. END', 'user five', 'main A long answer that was cut', 'user six', 'main Stopped by a safety check in the middle', 'main and it goes on.', 'user seven', 'main API Error: Connection lost mid-response.', 'main Back, and done. END']);
   } finally { stop(); }
 });
 
@@ -235,6 +236,10 @@ test('a document a command names is a file of the session when it was written si
     assert.equal(await ask(gone, true), 410);   // removed by the command
     assert.equal(await ask(path.join(work, 'make.py'), true), 404); assert.equal(await ask(path.join(work, 'other.pdf'), true), 404); assert.equal(await ask('/etc/hosts', true), 404);
     assert.equal(await ask(pdf), 200); assert.deepEqual(shown, [pdf]); assert.equal(await ask(old), 404); assert.deepEqual(shown, [pdf]);
+    fs.writeFileSync(path.join(dir, 'big.jsonl'), [typed(0, 'Build it'), here(used(1, 'toolu_1', 'Bash', { command: 'make 2>&1 | tee \\\\server\\share\\log.txt //host/share/b.pdf ' + 'x<<1|y<<2;'.repeat(1900) })), here(result(2, 'toolu_1', ('std::cout << a << b << "report.pdf";\n').repeat(500))),
+      here(used(3, 'toolu_2', 'Bash', { command: "cat <<EOF > a.txt\nx.pdf\nEOF\ncat <<'END' >> b.md\ny.pdf" })), said(4, 'Done.', { stop: 'end_turn' })].map(line).join(''));
+    const t0 = Date.now(), big = (await load(port, 'proj=-c&id=big')).events.filter((e) => e.kind === 'tools').flatMap((e) => e.tools); assert.ok(Date.now() - t0 < 1500, 'a text full of "<<" is read as fast as any other: ' + (Date.now() - t0) + ' ms');
+    assert.equal(big[0].d.outs, undefined); assert.deepEqual(big[1].d.outs, [path.join(work, 'a.txt'), path.join(work, 'b.md')]);   // no path on another machine; two here-documents, the second one never closed
   } finally { server._reveal.run = run; stop(); }
 });
 

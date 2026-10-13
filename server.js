@@ -27,13 +27,23 @@ const clip = (x, n = 700) => String(x == null ? '' : x).slice(0, n);
 // The documents a command names, in its text or in what it printed: an export, a report, a picture, a package. The call shows one under it when the lead names it too
 // and it was written since (see sessionFile): a name is all that is taken here, nothing is read. cd: a command, where "cd dir &&" says from which folder the names that follow are given.
 const OUT_EXT = /\.(html?|md|markdown|txt|rtf|pdf|docx?|pptx?|xlsx?|csv|tsv|png|jpe?g|gif|webp|svg|zip|tgz|vsix|mp4|mov|webm|mp3|wav|epub)$/i, ROOTED = /^([~\/\\]|[A-Za-z]:[\\/])/;
+function noHere(t) {   // a command without what its here-documents hold: that is a file's content, not the command (the rest of the line that opens one is: "> list.txt"). Read once from left to right, a few of them at most: a text full of "<<" (C++, shifts) costs nothing
+  let out = '', i = 0; const open = /<<-?[ \t]*(['"]?)(\w+)\1/y;
+  for (let n = 0; n < 8; n++) {
+    const j = t.indexOf('<<', i); if (j < 0) break; open.lastIndex = j; const m = t[j - 1] !== '<' && t[j + 2] !== '<' && open.exec(t); if (!m) { out += t.slice(i, j + 2); i = j + 2; continue; }
+    const eol = t.indexOf('\n', open.lastIndex); if (eol < 0) return out + t.slice(i, j) + ' ' + t.slice(open.lastIndex);
+    out += t.slice(i, j) + ' ' + t.slice(open.lastIndex, eol); i = t.length;   // to the line that closes it, or to the end when none does
+    for (let a = eol + 1; a <= t.length;) { const b = t.indexOf('\n', a), line = t.slice(a, b < 0 ? t.length : b); if (line.trim() === m[2]) { i = b < 0 ? t.length : b; break; } if (b < 0) break; a = b + 1; }
+  }
+  return out + t.slice(i);
+}
 function docPaths(text, cd) {
   const out = []; let dir = '';
-  const cmd = String(text || '').slice(0, 20000).replace(/(?<!<)<<(?!<)-?\s*(['"]?)(\w+)\1([^\n]*)\n[\s\S]*?\n[ \t]*\2[ \t]*(?=\n|$)/g, ' $3').replace(/(?<!<)<<(?!<)-?\s*['"]?\w+['"]?([^\n]*)\n[\s\S]*$/, ' $1');   // not what a here-document holds: that is a file's content, not the command (the rest of its first line is: "> list.txt")
+  const cmd = cd ? noHere(String(text || '').slice(0, 20000)) : String(text || '').slice(0, 20000);
   for (const seg of cmd.split(cd ? /&&|\|\||;|\n/ : /\n/)) {
     const m = cd && seg.match(/^\s*cd\s+(?:"([^"]+)"|'([^']+)'|(\S+))\s*$/); if (m) { const d = m[1] || m[2] || m[3]; dir = ROOTED.test(d) ? d : path.join(dir, d); continue; }
     for (const t of seg.matchAll(/"([^"\n]+)"|'([^'\n]+)'|([^\s"'`|&;<>()=,]+)/g)) {
-      const f = (t[1] || t[2] || t[3]).replace(/[.:;!?)\]]+$/, ''); if (!OUT_EXT.test(f) || /:\/\/|[*?{}$\[]/.test(f) || f.length > 400) continue;   // not a link, a pattern or a variable
+      const f = (t[1] || t[2] || t[3]).replace(/[.:;!?)\]]+$/, ''); if (!OUT_EXT.test(f) || /:\/\/|[*?{}$\[]|^(\\\\|\/\/)/.test(f) || f.length > 400) continue;   // not a link, a pattern or a variable, nor a path on another machine (the server would go and look there)
       const full = dir && !ROOTED.test(f) ? path.join(dir, f) : f; if (!out.includes(full)) out.push(full); if (out.length >= 16) return out;
     }
   }
@@ -335,6 +345,7 @@ function parseRecord(st, r) {
   }
   if (r.type === 'user') {
     const items = [], wf = r.toolUseResult && typeof r.toolUseResult === 'object' && typeof r.toolUseResult.runId === 'string' ? r.toolUseResult.runId : '';   // tool results: the real output that appeared on the agent's screen
+    if (st.out) for (const b of blocks(r)) if (b.type === 'tool_result') st.out.delete(b.tool_use_id);
     for (const b of blocks(r)) if (b.type === 'tool_result' && wf) push({ ts, agent, kind: 'wfrun', toolId: b.tool_use_id, run: wf });   // the answer to a Workflow call names the run it started: its agents are in subagents/workflows/<run>/
     for (const b of blocks(r)) if (b.type === 'tool_result' && (st.toolName[b.tool_use_id] === 'Agent' || st.toolName[b.tool_use_id] === 'Task') && !(st.bg && st.bg[b.tool_use_id]) && !/^\s*Async agent launched/i.test(resultText(b.content))) push({ ts, agent, kind: 'agentdone', toolId: b.tool_use_id });   // a synchronous call: the lead got the sub-agent's answer back, so it has finished (async launches answer immediately and are not a completion)
     for (const b of blocks(r)) if (b.type === 'tool_result' && st.toolName[b.tool_use_id] && !NO_RESULT.has(st.toolName[b.tool_use_id])) {
@@ -344,9 +355,9 @@ function parseRecord(st, r) {
     if (items.length) push({ ts, agent, kind: 'results', items });
     const typed = blocks(r).filter((b) => b.type === 'text').map((b) => b.text).join('\n').replace(HARNESS, ''), cut = /^\s*\[Request interrupted[^\]]*\]/i.test(typed);   // what the human typed, without the blocks the harness wraps around it
     if (agent !== 'main') { if (!st.prompt && typed.trim() && !st.raw.length) st.prompt = { ts, text: typed.trim() }; return; }   // a sub-agent's first user message is the order, emitted from the parent's side (kept here for the agents of a workflow, whose order is in no other file)
-    if (cut && st.act >= 0) st.raw[st.act].end = 1;   // Esc: the turn stops there, without the end_turn mark. The last thing the lead said or did closes it
+    if (cut && st.out) st.out.clear(); if (cut && st.act >= 0) st.raw[st.act].end = 1;   // Esc: the turn stops there, without the end_turn mark. The last thing the lead said or did closes it
     const txt = typed.replace(/^\s*\[Request interrupted[^\]]*\]\s*/i, '').trim();
-    if (txt && !/^<(system-reminder|command-|local-command|task-notification)/.test(txt) && !r.isMeta && !r.isCompactSummary) push({ ts, agent: 'user', kind: 'user', text: txt });   // not the summary Claude Code writes when it compacts: thousands of characters the human never typed
+    if (txt && !/^<(system-reminder|command-|local-command|task-notification)/.test(txt) && !r.isMeta && !r.isCompactSummary) { if (st.out) st.out.clear(); push({ ts, agent: 'user', kind: 'user', text: txt }); }   // a call that never got its answer is not waited for across your next message · not the summary Claude Code writes when it compacts: thousands of characters the human never typed
   } else if (r.type === 'assistant') {
     const m = r.message || {}; let said = null;
     if (agent === 'main') { st.lead = 1; if (m.stop_reason) st.stops = 1; }   // this transcript says why each message stopped: its turns end with a mark, and until one comes the lead is at work (see marks, below)
@@ -359,12 +370,12 @@ function parseRecord(st, r) {
       if (b.type === 'thinking' && typeof b.thinking === 'string' && b.thinking.trim()) st.th = clip(b.thinking.replace(/[^\S\n]+/g, ' ').replace(/ ?\n[\n ]*/g, '\n').trim(), 900);   // line breaks are kept: each line of its notes is a thought of its own
       else if (b.type === 'text' && typeof b.text === 'string' && b.text.trim()) { said = push({ ts, agent, kind: 'say', text: b.text.trim(), ...th() }); st.act = st.raw.length - 1; st.sayOf = m.id; st.sayAt = st.act; }
       else if (b.type === 'tool_use') {
-        st.toolName[b.id] = b.name; if (b.input && b.input.run_in_background) (st.bg = st.bg || {})[b.id] = true;
+        st.toolName[b.id] = b.name; (st.out = st.out || new Set()).add(b.id); if (b.input && b.input.run_in_background) (st.bg = st.bg || {})[b.id] = true;   // out: the calls that have no answer yet
         if (b.name === 'Agent' || b.name === 'Task') push({ ts, agent, kind: 'agentcall', toolId: b.id, bg: !!(b.input && b.input.run_in_background), text: (b.input && b.input.prompt) || '', title: (b.input && b.input.description) || '', ...(b.input && typeof b.input.name === 'string' && b.input.name.trim() ? { nm: b.input.name.trim() } : {}) });
         else { const tool = toolLabel(b, ts); if (tool.d && tool.d.outs) tool.d.outs = tool.d.outs.map((f) => absPath(f, r.cwd)); push({ ts, agent, kind: 'tool', tool, ...th() }); st.act = st.raw.length - 1; }
       }
     }
-    if (agent === 'main' && (m.stop_reason === 'end_turn' || r.isApiErrorMessage || (m.model === '<synthetic>' && m.stop_reason === 'stop_sequence'))) {   // also a turn that ends on a message Claude Code writes itself, in the place of the model's: the API is down, the limit is reached, the request was refused, or there was nothing to answer. Nothing follows it. (A message of the model that a safety check cuts is not the end: Claude Code tells the model, which goes on.) The lead's turn is over: Claude Code writes one record per content block, each with the message's stop reason, so the mark goes on the line this record carries (a thinking block carries none)
+    if (agent === 'main' && (m.stop_reason === 'end_turn' || ((r.isApiErrorMessage || (m.model === '<synthetic>' && m.stop_reason === 'stop_sequence')) && !(st.out && st.out.size)))) {   // also a turn that ends on a message Claude Code writes itself, in the place of the model's: the API is down, the limit is reached, the request was refused, or there was nothing to answer. Nothing follows it, unless a call of the lead is still out: the connection dropped while its agents worked, and it goes on when they answer. (A message of the model that a safety check cuts is not the end either: Claude Code tells the model, which goes on.) The lead's turn is over: Claude Code writes one record per content block, each with the message's stop reason, so the mark goes on the line this record carries (a thinking block carries none)
       if (!said && m.id && st.sayOf === m.id) said = st.raw[st.sayAt];   // ...or on the line the same message brought in an earlier record
       if (said) said.end = 1;
     }
