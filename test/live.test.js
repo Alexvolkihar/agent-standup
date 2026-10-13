@@ -212,4 +212,32 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click());
     await c.close();
   });
+
+  await t.test('several sessions at once: a row of tabs from the second one on, each with its state; a visitor when another one stops for you, who takes the call there; a click on a tab moves the call or pins it', async () => {
+    const s = session(), dir = path.join(tmp, 'projects', s.proj); s.user('First session'); s.say('Ready.', { end: true });
+    const other = (id) => { const f = path.join(dir, id + '.jsonl'), put = (r) => fs.appendFileSync(f, JSON.stringify({ timestamp: new Date().toISOString(), ...r }) + '\n'), msg = (content, stop) => put({ type: 'assistant', message: { id: 'm' + ++nId, role: 'assistant', stop_reason: stop, content } });   // another session of the same folder
+      return { user: (text) => put({ type: 'user', message: { role: 'user', content: text } }), say: (text) => msg([{ type: 'text', text }], 'end_turn'), tool: (name, input) => { const tid = 'toolu_' + ++nId; msg([{ type: 'tool_use', id: tid, name, input }], 'tool_use'); return tid; }, result: (tid) => put({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: tid, content: 'ok' }] } }) }; };
+    const c = await open(s), b = other('b'), q = other('q');
+    const row = () => c.page.evaluate(() => [...document.querySelectorAll('#tabs .stab:not(.all)')].map((x) => (x.classList.contains('on') ? '>' : '') + x.querySelector('span').textContent + ' ' + (['blocked', 'working', 'waiting', 'turn', 'idle'].find((k) => x.classList.contains(k)) || '?') + (x.textContent.includes('📌') ? ' 📌' : '')));
+    const rowIs = (tabs) => c.page.waitForFunction(`[...document.querySelectorAll('#tabs .stab:not(.all)')].map((x) => (x.classList.contains('on') ? '>' : '') + x.querySelector('span').textContent + ' ' + (['blocked', 'working', 'waiting', 'turn', 'idle'].find((k) => x.classList.contains(k)) || '?') + (x.textContent.includes('📌') ? ' 📌' : '')).join('|') === ${JSON.stringify(tabs.join('|'))}`, { timeout: 30000, polling: 100 });
+    const visitor = () => c.page.evaluate(() => { const v = document.querySelector('#visit.on'); return v ? { kind: v.classList.contains('blocked') ? 'blocked' : 'turn', says: v.querySelector('.vsay').textContent } : null; }), comes = (kind) => c.page.waitForFunction((k) => { const v = document.querySelector('#visit.on'); return v && v.classList.contains(k); }, { timeout: 30000, polling: 100 }, kind);
+    const at = () => c.page.evaluate(() => ({ id: S.cur && S.cur.id, pin: S.pin || '' })), goes = (id) => c.until((k) => S.cur && S.cur.id === k, id);
+    await c.quiet(500); assert.deepEqual(await row(), [], 'one session: no row');
+    b.user('Second session'); const cmd = b.tool('Bash', { command: 'npm test' }); await rowIs(['>First session turn', 'Second session working']); assert.equal(await visitor(), null);
+    b.result(cmd); b.say('The tests pass.'); await comes('turn'); let v = await visitor(); assert.match(v.says, /Second session/); assert.match(v.says, /done|finished/); assert.deepEqual(await row(), ['>First session turn', 'Second session turn']);   // its turn is over there
+    assert.deepEqual(await at(), { id: 's', pin: '' }, 'the call has not moved by itself');
+    await c.page.click('#visit .vgo'); await goes('b'); assert.deepEqual(await at(), { id: 'b', pin: 'b' }); assert.equal(await visitor(), null, 'the call went there: the visitor leaves'); await rowIs(['First session turn', '>Second session turn 📌']);
+    await c.page.click('#tabs .stab.on'); await rowIs(['First session turn', '>Second session turn']); assert.deepEqual(await at(), { id: 'b', pin: '' }, 'a click on the call’s own tab lets it go');
+    await c.page.click('#tabs .stab.on'); await rowIs(['First session turn', '>Second session turn 📌']); assert.equal((await at()).pin, 'b', 'and another one pins it');
+    await c.page.click('#tabs .stab:not(.on):not(.all)'); await goes('s'); await rowIs(['>First session turn 📌', 'Second session turn']); assert.deepEqual(await at(), { id: 's', pin: 's' }, 'a click on another tab takes the call there and keeps it there');
+    q.user('Third session'); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session working']);
+    q.tool('AskUserQuestion', { questions: [{ question: 'Which one?', header: 'Choice', options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], multiSelect: false }] });
+    await comes('blocked'); v = await visitor(); assert.match(v.says, /Third session/); assert.match(v.says, /question/); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session blocked']);   // a question: said as such, in red
+    await c.page.click('#visit .vx'); assert.equal(await visitor(), null, '✕ sends the visitor away'); assert.equal((await at()).id, 's');
+    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=visits]').click());   // ⚙: no visitor
+    b.user('One more thing'); await rowIs(['>First session turn 📌', 'Second session working', 'Third session blocked']); b.say('Done as well.'); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session blocked']);
+    await wait(11000); assert.equal(await visitor(), null, 'off in the settings: the tab alone says it');
+    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=visits]').click());
+    await c.close();
+  });
 });

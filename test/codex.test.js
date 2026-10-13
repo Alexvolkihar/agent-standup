@@ -124,6 +124,19 @@ test('a Codex session becomes the same events as a Claude Code one: lines, comma
   } finally { s.stop(); }
 });
 
+test('a file a Codex session created is looked for in the folder the session was started in; a file it only changed is not one of its files', async () => {
+  const s = await serve(), server = require('../server.js'), run = server._reveal.run, shown = []; server._reveal.run = (f) => shown.push(f);   // no Finder window during the tests
+  const ask = (id, file) => new Promise((res, rej) => { const r = http.request({ port: s.port, path: '/api/reveal', method: 'POST', headers: { 'content-type': 'application/json' } }, (x) => { x.resume(); x.on('end', () => res(x.statusCode)); }); r.on('error', rej); r.end(JSON.stringify({ proj: '_codex', id, file })); });
+  try {
+    for (const id of [NEW, OLD]) {   // the current format names a file by its whole path, the earlier one from the folder Codex works in
+      const tools = flat((await get(s.port, '/api/session?proj=_codex&id=' + id)).json()), made = tools[3].d.file, changed = tools[2].d.file;
+      assert.equal(await ask(id, made), 410, made);           // one of its files, looked for in that folder, where this test never wrote it
+      assert.equal(await ask(id, changed), 404, changed); assert.equal(await ask(id, 'src/never-written.js'), 404); assert.equal(await ask(id, path.join('..', made)), 404);
+    }
+    assert.deepEqual(shown, []);
+  } finally { server._reveal.run = run; s.stop(); }
+});
+
 test('the earlier Codex format is read too: messages, shell calls with their exit code, a patch, a plan', async () => {
   const s = await serve();
   try {
