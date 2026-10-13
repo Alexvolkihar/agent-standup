@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Kokoro worker: loads the Kokoro-82M model once, then reads one JSON request per stdin line ({ id, text, voice, speed, out }),
+// Kokoro worker: loads the Kokoro-82M model once, then reads one JSON request per stdin line ({ id, text, voice, speed, out } and, for a voice that is not English, { lang, mix }),
 // writes a 16-bit WAV to `out` and answers { id, ok, seconds } or { id, ok: false, error }. Started by kokoro.js.
-const fs = require('fs'), path = require('path'), readline = require('readline'), { createRequire } = require('module');
+const fs = require('fs'), path = require('path'), readline = require('readline'), { createRequire } = require('module'), { pathToFileURL } = require('url');
 const MODEL = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 const send = (o) => fs.writeSync(1, JSON.stringify(o) + '\n');
 const finite = (samples) => { for (let i = 0; i < samples.length; i++) if (samples[i] !== samples[i]) return false; return true; };   // a quantised model can return NaN for a whole line, which would be written as silence
@@ -24,6 +24,29 @@ function join(parts, rate) {   // [audio, pause, audio, …] → one Float32Arra
   const cut = parts.map((p, i) => { if (typeof p === 'number') return new Float32Array(Math.round(p * rate)); const s = p.audio; let a = 0, z = s.length; if (i) while (a < z && Math.abs(s[a]) < QUIET) a++; if (i < parts.length - 1) while (z > a && Math.abs(s[z - 1]) < QUIET) z--; return s.subarray(a, z); });
   const out = new Float32Array(cut.reduce((n, c) => n + c.length, 0)); let at = 0; for (const c of cut) { out.set(c, at); at += c.length; } return out;
 }
+// ---- Languages other than English. kokoro-js only knows how to turn English into phonemes, and refuses the voices of the other languages; the model itself is not English only.
+// The phonemes come from the full eSpeak NG the install adds next to kokoro-js (WebAssembly), written the way Kokoro's own Python front end (misaki) writes them, and go straight to the model.
+const E2M = Object.entries({ 'a^ɪ': 'I', 'a^ʊ': 'W', 'd^z': 'ʣ', 'd^ʒ': 'ʤ', 'e^ɪ': 'A', 'o^ʊ': 'O', 'ə^ʊ': 'Q', 's^s': 'S', 't^s': 'ʦ', 't^ʃ': 'ʧ', 'ɔ^ɪ': 'Y' }).sort();   // eSpeak's tied pairs → the single letters the model was trained on
+const MARKS = /(\s*(?:[;:,!?¡¿—…"«»“”(){}[\]]|\.(?![\p{L}\p{N}]))+\s*)+/gu;   // the punctuation the model reads as pauses and intonation. eSpeak drops it, so the text is phonemized between the marks and they are put back. A dot inside a word (server.js) is not one
+let espeakNg = null;
+async function espeak(dir, stretches, lang) {   // [text between two marks, …] → the phonemes of each, in one run of eSpeak when it answers one line per stretch
+  espeakNg ||= (await import(pathToFileURL(path.join(dir, 'node_modules', 'espeak-ng', 'dist', 'espeak-ng.js')).href)).default;
+  const run = async (text) => {   // the text goes in as a UTF-8 file: as an argument, accented letters arrive mangled. '-b', '1' and not '-b=1', for the same reason
+    const m = await espeakNg({ arguments: ['--phonout', 'generated', '-q', '-b', '1', '--ipa', '--tie=^', '-v', lang, '-f', 'in.txt'], preRun: [(M) => M.FS.writeFile('in.txt', text)], print() {}, printErr() {} });
+    return m.FS.readFile('generated', { encoding: 'utf8' }).split('\n').map((l) => l.replace(/\((\^?[a-z-])+\)/g, '').trim()).filter(Boolean);   // "(en)…(fr)": eSpeak's notes that it changed language for a word
+  };
+  const got = stretches.length ? await run(stretches.join('\n\n')) : []; if (got.length === stretches.length) return got;
+  const each = []; for (const s of stretches) each.push((await run(s)).join(' ')); return each;   // a stretch with nothing to say (an arrow, a symbol) gave no line: one run each, so that none is given the phonemes of another
+}
+async function phonemes(dir, text, lang) {
+  text = text.replace(/[‘’]/g, "'").replace(/«\s*/g, '“').replace(/\s*»/g, '”').replace(/\s+([:;!?])/g, '$1');   // French typography: no space before the mark for the model
+  const parts = []; let last = 0;
+  for (const m of text.matchAll(MARKS)) { if (m.index > last) parts.push([false, text.slice(last, m.index)]); parts.push([true, m[0]]); last = m.index + m[0].length; }
+  if (last < text.length) parts.push([false, text.slice(last)]);
+  const got = await espeak(dir, parts.filter((p) => !p[0]).map((p) => p[1]), lang); let i = 0, ps = parts.map(([mark, t]) => (mark ? t : got[i++])).join('');
+  for (const [a, b] of E2M) ps = ps.split(a).join(b);
+  return ps.replace(/[\^-]/g, '').trim();
+}
 async function main() {
   const dir = process.env.AGENT_STANDUP_KOKORO_DIR, dtype = process.env.AGENT_STANDUP_KOKORO_DTYPE || 'q4';
   const req = createRequire(path.join(dir, 'node_modules', 'x.js'));   // resolve from the install folder, not from the extension
@@ -38,7 +61,15 @@ async function main() {
   }
   const tok = tts.tokenizer;   // kokoro-js calls it with truncation on, which drops every phoneme past the model's limit and says nothing: count them all here and refuse instead
   if (tok) tts.tokenizer = (t, o) => { const r = tok(t, { ...o, truncation: false }); if (r.input_ids.dims.at(-1) > (tok.model_max_length || 512)) throw LONG; return r; };
-  const make = async (text, o) => { let a = await tts.generate(text, o); if (!finite(a.audio)) { a = await tts.generate(text, o); if (!finite(a.audio)) throw new Error('the model returned NaN'); } return a; };   // made once more; if it fails again the server hands the line to a system voice
+  const packs = new Map(), pack = (n) => { if (!packs.has(n)) { const b = fs.readFileSync(path.join(dir, 'node_modules', 'kokoro-js', 'voices', n + '.bin')); packs.set(n, new Float32Array(b.buffer.slice(b.byteOffset, b.byteOffset + b.length))); } return packs.get(n); };   // a voice: 510 styles of 256 numbers, one per length of line. All 54 come with kokoro-js
+  const foreign = async (text, o) => {   // what kokoro-js' generate_from_ids does, with a style that can be a mix of several voices (o.mix: [[voice, share], …])
+    const { input_ids } = tts.tokenizer(await phonemes(dir, text, o.lang), { truncation: true }), at = 256 * Math.min(Math.max(input_ids.dims.at(-1) - 2, 0), 509), style = new Float32Array(256);
+    for (const [name, share] of o.mix) { const v = pack(name); for (let i = 0; i < 256; i++) style[i] += share * v[at + i]; }
+    const { waveform } = await tts.model({ input_ids, style: new tf.Tensor('float32', style, [1, 256]), speed: new tf.Tensor('float32', [o.speed], [1]) });
+    return { audio: waveform.data, sampling_rate: 24000 };
+  };
+  const say = (text, o) => (o.lang ? foreign(text, o) : tts.generate(text, { voice: o.voice, speed: o.speed }));
+  const make = async (text, o) => { let a = await say(text, o); if (!finite(a.audio)) { a = await say(text, o); if (!finite(a.audio)) throw new Error('the model returned NaN'); } return a; };   // made once more; if it fails again the server hands the line to a system voice
   const parts = async (text, o) => {   // → [audio] when the line fits (the usual case, made exactly as before), else [audio, pause, audio, …] in the order of the text
     try { return [await make(text, o)]; } catch (e) { if (e !== LONG) throw e; }
     const [a, b, gap] = halve(text); return [...await parts(a, o), gap / o.speed, ...await parts(b, o)];
@@ -47,7 +78,7 @@ async function main() {
   for await (const line of readline.createInterface({ input: process.stdin })) {
     let m; try { m = JSON.parse(line); } catch { continue; }
     try {
-      const ps = await parts(String(m.text).trim(), { voice: m.voice, speed: +m.speed || 1 }), rate = ps[0].sampling_rate, audio = ps.length > 1 ? join(ps, rate) : ps[0].audio;
+      const ps = await parts(String(m.text).trim(), { voice: m.voice, speed: +m.speed || 1, lang: m.lang, mix: m.mix }), rate = ps[0].sampling_rate, audio = ps.length > 1 ? join(ps, rate) : ps[0].audio;
       fs.writeFileSync(m.out, wav(audio, rate)); send({ id: m.id, ok: true, seconds: audio.length / rate });
     }
     catch (e) { send({ id: m.id, ok: false, error: String((e && e.message) || e).slice(0, 200) }); }

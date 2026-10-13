@@ -30,7 +30,7 @@ _A fictional team fixing a slow login page — the built-in demo (⚙ → Source
 - **Stuck or quiet agents** — in the live call, a tile pulses amber with ⏳ when a command has been running for over a minute, shows 💤 when a working agent has gone quiet for 3 minutes, and a red ✗ counter for failed tool calls. The browser tab title shows how many agents are working.
 - **Built-in demo** — no session yet? ⚙ → Source → **Demo** plays a fictional team (no data of yours).
 - **Live call** — follows your newest session (Claude Code, Codex or Mistral Vibe) in real time. Each agent is a small character at its desk; the one who speaks gets the spotlight and keeps it until someone else talks. Agents that talk back-to-back talk over each other, like a real meeting.
-- **Real voices, lip-sync** — lines are spoken aloud; mouths follow the actual volume of the voice. For the best experience, switch to the very natural voices (see [Voices](#voices)).
+- **Real voices, lip-sync** — lines are spoken aloud by a small speech model on your machine (a one-time install); mouths follow the actual volume of the voice. Until then, and if you prefer it, the agents babble (see [Voices](#voices)).
 - **Live screen sharing with the real output** — when an agent works, its screen fills the stage (presenter's camera in the corner, "sharing" badge): a **terminal** with the command history and the actual output of each command, search results and tool calls; or an **editor** with the file it reads (real content and line numbers) or the exact diff it applies. See *What you see for each agent* below.
 - **Agents come and go** — a sub-agent joins when it is given a task and leaves the call 2 minutes (playback time) after its report, with a dissolve animation. It comes back if it gets a new task.
 - **Sub-agent tree** — the full hierarchy (you → the lead → sub-agents → their sub-agents) with status, tool counts and the current action.
@@ -39,7 +39,7 @@ _A fictional team fixing a slow login page — the built-in demo (⚙ → Source
 - **Video export** — ⚙ → Tools → 🎞 Export video records the call at 1280×720 with voices and subtitles, as an MP4 (H.264 + AAC) when the browser can record it, and as a `.webm` when it cannot. X, phones and most chat apps refuse `.webm`.
 - **Clip to share** — ⚙ → Tools → 🎬 Clip to share (25 s) records about 25 seconds, saved as `agent-standup-clip.mp4` (`.webm` when the browser cannot record MP4). In the middle of a replay it starts at the current position; otherwise one spoken line before the first error or loop of the session, and failing that at the moment the lead first hands out work. The line being said when time is up is finished rather than cut, so the length varies by a few seconds. The clip carries the site address (atoll92.github.io/agent-standup) in the top right corner and ends with a short end card; the full export has neither.
 - **Hide code & file names in videos** — ⚙ → Tools, off by default, for the full export and the clip. Commands, their output, file contents, diffs and search results on the shared screen are drawn as grey bars of the same length; file names are removed from the window title and from the activity tags on tiles (the tool's name, e.g. `Bash` or `Read`, stays); the session title is replaced by "Agent Standup"; pictures (screenshots, images) become an empty frame. **What the agents say is not masked**: speech bubbles, subtitles and voices are kept as they are, so check the clip before posting if agents quote code or names aloud.
-- **French or English** — agent text is translated on the fly (see below).
+- **In French, Spanish or Portuguese too** — the call can be held in French, Spanish or Brazilian Portuguese: agent text is translated on the fly and read by voices of that language (see below).
 - **Office music** — optional live web radio (FIP and its themed stations) that fades down smoothly while an agent talks and fades back up when the room goes quiet.
 - Office ambience, optional (off by default) and fully synthesised: keyboards that type when agents run commands, clicks when they read, a coffee machine, a phone buzzing, a far-away door… (⚙ → Office ambience). Plus small reactions and jokes between agents ("episode mode").
 
@@ -138,7 +138,7 @@ The header shows how full the lead's context is (`ctx 62%`, orange then red, wit
 Codex and Mistral Vibe sessions are read as well (see [Codex sessions too](#codex-sessions-too) and [Mistral Vibe sessions too](#mistral-vibe-sessions-too)), and so are the Cowork sessions of the Claude desktop app (see [Cowork sessions too](#cowork-sessions-too)). Other agent tools (Gemini CLI, OpenCode…) are researched in [ROADMAP.md](ROADMAP.md): their log formats are mostly undocumented, so no adapter is shipped for them yet.
 
 ## Languages
-Pick one in ⚙ → Language: **English, Français, 繁體中文, 简体中文, Español, Deutsch, Dansk, Português (Brasil), 日本語, 한국어**. The interface (menus, chips, tooltips, recap) is translated; VS Code's command titles, setting descriptions and status bar follow VS Code's own display language. English and French are written by hand; the other languages are **AI-drafted and not yet reviewed by native speakers**, so corrections are very welcome: each language is one small JSON file (`public/locales/<code>.json`), see [public/locales/README.md](public/locales/README.md) to fix or add one (`npm run i18n` checks the files). The [website](https://agent-standup.com) and the landing page exist in the same ten languages, with the same caveat; their files are in `website/locales/` and `landing/locales/`. The words the agents say stay in the language of your session (French translation of their lines is optional); the little banter lines and the demo exist in English and French.
+Pick one in ⚙ → Language: **English, Français, 繁體中文, 简体中文, Español, Deutsch, Dansk, Português (Brasil), 日本語, 한국어**. The interface (menus, chips, tooltips, recap) is translated; VS Code's command titles, setting descriptions and status bar follow VS Code's own display language. English and French are written by hand; the other languages are **AI-drafted and not yet reviewed by native speakers**, so corrections are very welcome: each language is one small JSON file (`public/locales/<code>.json`), see [public/locales/README.md](public/locales/README.md) to fix or add one (`npm run i18n` checks the files). The [website](https://agent-standup.com) and the landing page exist in the same ten languages, with the same caveat; their files are in `website/locales/` and `landing/locales/`. The words the agents say stay in the language of your session, unless the call is held in French, Spanish or Brazilian Portuguese (see [Translation](#translation-french-spanish-brazilian-portuguese)); the little banter lines exist in these three languages and in English, the demo in English and French.
 
 ## Your own characters
 **Your own agent names.** A sub-agent you defined yourself (`.claude/agents/code-reviewer.md`) or named when it was launched keeps that name on its tile, in the transcript and in the voices: "Code Reviewer" rather than a first name drawn from the list. Two of the same type become "Code Reviewer" and "Code Reviewer 2". The agent types Claude Code ships (general-purpose, Explore, Plan…) still get a first name. ⚙ → Characters → **Keep my agents’ own names** turns it off.
@@ -169,16 +169,17 @@ The **Sessions** tab lists every session active in the last 12 hours, across all
 Every tile carries one status: **working** (with what it is doing), **waiting on another agent** (who), **needs you?** (a file edit or write, or a question, has been pending for 15 s+), **stalled** (waiting on an agent that has been silent for 2 min+), or **done**. A summary sits in the header, and the tab title shows how many agents need you. The "needs you?" signal is a heuristic: Claude Code does not record permission prompts, so commands (Bash) are not flagged because they can legitimately run for minutes (they get a ⏳ badge after 1 min instead). Measured on real sessions, edits that stay pending for 15 s+ are rare, so the signal is mostly right.
 
 ## Voices
-Each line is read with a voice of its own language (French or English), whatever language the interface is in.
+With the real voices, each line is read with a voice of its own language (English, French, Spanish or Portuguese), whatever language the interface is in. A line in a language the model does not speak (German, Danish, Japanese, Korean, Chinese) is read by a system voice of that language when your computer has one.
 
-Five styles in ⚙ (default: **Cartoon voices**, so everything stays understandable):
+Four choices in ⚙ → Voice style (default: **Very natural voices**):
 - **Animal Crossing** — every agent "talks" in gibberish, one blip per letter, with a sentence melody (up for questions, down for statements) and a register of its own.
 - **Simlish** — the same idea with flowing syllables, vowels and little consonant noises.
-- **Cartoon voices** — the real words read by your system voice, with a character per agent (chipmunk, deep, robot, wobbly, radio, monster, squeaky).
-- **Natural voices** — plain system voices.
-- **Very natural voices** — [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M), a small open speech model that runs on your machine. Optional: pick it in ⚙ and click Install (about 730 MB, one folder in your user cache, installed with npm; the model is fetched on first use). Until it is ready the system voices keep talking. Its voices are English: French lines are read by your system voices, each character keeping one of its own (see [Voice engines](#voice-engines-per-os) to install a better French voice).
+- **Cartoon voices** — the real words read by your system voice, with a character per agent (chipmunk, deep, robot, wobbly, radio, monster, squeaky). Nothing to install.
+- **Very natural voices** — [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M), a small open speech model that runs on your machine. The real words, and the default: click Install in ⚙ (about 750 MB, one folder in your user cache, installed with npm; the model is fetched on first use, and one download covers every language). Until it is ready the agents babble, Animal Crossing style, and a line at the bottom of the call offers the install in one click (close it and it does not come back). It speaks English, French, Spanish and Brazilian Portuguese with eight voices each. The model has few voices outside English (one French, three Spanish, three Portuguese): the lead takes one as it is, and the other characters get one of them mixed with their English voice, so each agent sounds like itself in every language. These three languages need a phonemizer the install adds ([eSpeak NG](https://github.com/espeak-ng/espeak-ng), 18 MB, GPL-3.0, fetched by npm like the rest and not shipped with the app); if you installed the voices before 1.31.1, ⚙ → Voice style offers to add them when the interface is in one of these languages, and until then their lines are read by your system voices.
 
-**Our tip:** once you are set up, switch to *Very natural voices*. It is a one-time install and the agents then sound like real people, which is the nicest way to follow a call.
+**Our tip:** install the very natural voices once you are set up. The agents then sound like real people, which is the nicest way to follow a call.
+
+Up to 1.31.0 the cartoon voices were the default; if you have them, you keep them. The *Natural* style (plain system voices) is gone: if you had it you are now on the very natural voices.
 
 Long lines are subtitled one sentence at a time, in step with the voice.
 
@@ -239,7 +240,7 @@ The first click on **Join** is required by browsers to allow sound.
 | `agentStandup.charactersPath` | _(empty)_ | Folder with your own character images (default `~/.agent-standup/characters`) |
 | `agentStandup.codex` | `true` | Also show Codex sessions (read from `~/.codex/sessions`, or `$CODEX_HOME`). Turn off to show Claude Code sessions only |
 | `agentStandup.vibe` | `true` | Also show Mistral Vibe sessions (read from `~/.vibe/logs/session`, or `$VIBE_HOME`). Turn off to leave them out |
-| `agentStandup.claudePath` | _(auto)_ | Full path to the Claude Code executable if it isn't found automatically (needed only for French translation) |
+| `agentStandup.claudePath` | _(auto)_ | Full path to the Claude Code executable if it isn't found automatically (needed only for translation) |
 | `agentStandup.autoOpen` | `false` | Open the call when VS Code starts |
 | `agentStandup.onlyThisWorkspace` | `true` | Follow only sessions started in the open folder (falls back to the newest session if there is none) |
 
@@ -265,21 +266,23 @@ Turn on **Office music** in ⚙ and pick a station (FIP, Groove, Jazz, Electro, 
 
 If several Agent Standup windows are open on the same machine (sidebar, editor panel, browser tab), only the last one where you pressed **Join / Play / 🔊** plays sound; the others stay silent and show 🔈 (click it to take the sound back). This avoids hearing the same call twice, possibly in two languages. A window that stops answering releases the sound after a few seconds.
 
-## Voice engines (per OS)
+## System voices (per OS)
 
-Voices are generated on your machine and played identically in the editor and in the browser:
+The system voices read the cartoon style. With the very natural voices they are only a fallback: for a line in a language the model does not speak, and for a line it could not make. They are generated on your machine:
 
 | OS | Engine | Notes |
 |---|---|---|
-| macOS | `say` | For nicer voices: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices → download a *Premium* / *Enhanced* voice. French is always read by these voices, also in the *Very natural* style: an Enhanced French voice (Thomas, Audrey, Aurélie) is worth the download |
-| Windows | installed system voices (SAPI, via PowerShell) | For French: Settings → Time & language → Speech (or Language) → add French |
+| macOS | `say` | For nicer voices: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices → download a *Premium* / *Enhanced* voice |
+| Windows | installed system voices (SAPI, via PowerShell) | Settings → Time & language → Speech (or Language) → add the language |
 | Linux | `espeak-ng` | Must be installed |
 
-If no voice is available the agents "mumble" instead. Each agent gets a stable voice from the best ones installed.
+If no voice of that language is available the line goes to an English voice.
 
-## Translation (French ↔ English)
+## Translation (French, Spanish, Brazilian Portuguese)
 
 Agent messages are in the language of the session. With French selected, each line is translated as it arrives using your local `claude` CLI (`claude -p`, Haiku) through two warm background workers: about 3–4 s per line once warm (the very first line takes ~10 s), then spoken. If a translation is not ready in time (7 s live), that line is read in the original language. The menu shows a hint if translation or the French voice is unavailable.
+
+Spanish and Brazilian Portuguese work the same way, but only once you switch it on: with one of them as the interface language, ⚙ → Language shows **Call in this language**. It is off by default because translating sends the lines to Anthropic through your Claude Code login and counts on your plan. Off, the call is the session as it is; a session that is already in Spanish or Portuguese is read by voices of that language either way.
 
 Optional speed-up: set `ANTHROPIC_API_KEY` in the environment of VS Code / the server and translation calls the Anthropic API directly (~1–2 s).
 
@@ -313,14 +316,14 @@ The website at agent-standup.com counts its visits with Vercel Web Analytics, th
 - **Characters or backgrounds look empty** — update to ≥ 1.2.1 (fixed a duplicate SVG id bug).
 - **Terminal output missing for a command** — the call is still running (spinner), or it is an internal call (sub-agent launch / message); outputs are only recorded once a call finishes.
 - **Pill says OFFLINE** — the local server stopped answering (another VS Code window that was serving the port was closed: the extension takes over within a few seconds), or restart `node server.js`.
-- **Delay behind the real session** — expected ≈ 5–7 s in French (translation), ≈ 2 s in English; the call skips ahead when it falls too far behind.
+- **Delay behind the real session** — expected ≈ 5–7 s when the call is translated (French, Spanish, Portuguese), ≈ 2 s otherwise; the call skips ahead when it falls too far behind.
 - **Something else broke** — ⚙ → **Report a problem** shows what the app logged on your computer and opens a pre-filled issue for you to send.
 
 ## Limits
 
 - Tool outputs are trimmed (about 1–2 KB each); the shared screen shows the beginning of long outputs.
 - Output only exists once a tool call has finished: a running command shows a spinner and its live timer, not partial output.
-- Voices on macOS/Windows/Linux differ in quality; Windows needs a French voice installed for French.
+- The very natural voices need about 750 MB and npm; without them the agents babble, or read with your system voices in the cartoon style, whose quality depends on the system.
 - Very large sessions (10 MB+ of transcript) take a second or two to load the first time (about 1.9 s for a 12 MB, 168-sub-agent session on a recent Mac); after that updates take milliseconds.
 - Video export and the clip record in real time and need a Chromium-based browser/VS Code. MP4 recording was checked in Chrome; it has not been tested inside VS Code's own panel, which may still produce a `.webm`.
 - "Hide code & file names in videos" does not mask what the agents say (speech bubbles, subtitles, voices).
@@ -350,10 +353,10 @@ The full [privacy policy](PRIVACY.md) says what is read, what is kept on your co
 
 - **It reads local files and sends nothing by default.** Agent Standup reads the session files Claude Code already writes (`~/.claude/projects`, or `CLAUDE_CONFIG_DIR`) and the ones Codex, Mistral Vibe and Cowork write (`~/.codex/sessions`, or `CODEX_HOME`; `~/.vibe/logs/session`, or `VIBE_HOME`; the `local-agent-mode-sessions` folder of the Claude desktop app; each can be turned off) and draws them in a page. It never writes to your sessions; the only time it starts Claude Code is the optional translation helper described below.
 - **Local only.** The server listens on `127.0.0.1` (never on the network), refuses requests whose Host or Origin is not local, and refuses cross-site requests on every endpoint that does something (translation, jokes, sound, settings).
-- **The only things that call out** are optional and off by default: French translation and jokes (your own Claude login, the small Haiku model, with all tools disabled; when one of them is on, the lines of a Codex session are sent the same way, to Anthropic), the FIP radio stream, and the usage counter (one empty request a day to a 1-pixel file, only if you turn it on).
+- **The only things that call out** are optional and off by default: translation (French, or Spanish and Portuguese once switched on) and jokes (your own Claude login, the small Haiku model, with all tools disabled; when one of them is on, the lines of a Codex session are sent the same way, to Anthropic), the FIP radio stream, and the usage counter (one empty request a day to a 1-pixel file, only if you turn it on).
 - **No dependencies**: the code is plain Node.js and one HTML file, so there is nothing hidden in `node_modules`. The optional Kokoro voices install a third-party package only when you click Install.
 - **Many sessions at once?** The **Sessions** view shows every session across your projects on one board (working, waiting, needs you, done); click one to open its call. **Live** follows one session at a time, the most recent or the project you pick.
 - **Found a problem?** ⚙ → **Report a problem** opens the draft of an issue on GitHub, filled with the app's version, your system and the last errors the app wrote to its local log (`errors.log`, beside your settings). You see the text first, and nothing is sent until you send the issue yourself.
 
 ## Privacy and usage counting
-Agent Standup reads local session files and sends nothing anywhere by default. The only optional network uses are: French translation / jokes (your own Claude login, off unless you turn them on), the FIP radio stream (if you turn it on), and the **optional usage counter**: if you set `agentStandup.shareUsage` to `true` (off by default, and ignored when VS Code telemetry is off), the extension makes at most one empty request per day to a 1-pixel file in this repository's releases. There is no identifier and no content; GitHub sees your IP like for any download. It lets the maintainer count active installs (`npm run stats`).
+Agent Standup reads local session files and sends nothing anywhere by default. The only optional network uses are: translation / jokes (your own Claude login, off unless you turn them on), the FIP radio stream (if you turn it on), and the **optional usage counter**: if you set `agentStandup.shareUsage` to `true` (off by default, and ignored when VS Code telemetry is off), the extension makes at most one empty request per day to a 1-pixel file in this repository's releases. There is no identifier and no content; GitHub sees your IP like for any download. It lets the maintainer count active installs (`npm run stats`).

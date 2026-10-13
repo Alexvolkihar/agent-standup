@@ -2,6 +2,13 @@
 const test = require('node:test'), assert = require('node:assert'), fs = require('fs'), os = require('os'), path = require('path'), http = require('http');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'as-test-'));
 process.env.AGENT_STANDUP_PREFS = path.join(tmp, 'prefs.json'); process.env.AGENT_STANDUP_KOKORO_DIR = path.join(tmp, 'kokoro'); process.env.AGENT_STANDUP_PROJECTS = path.join(tmp, 'projects');
+// A stand-in for Claude Code, so that nothing here ever starts the real one: it "translates" a text into the name of the language it was asked for, a bar, and the text. Both ways the server calls it: a worker fed one line at a time, and one batch.
+const CLAUDE = path.join(tmp, 'claude'); process.env.AGENT_STANDUP_CLAUDE = CLAUDE;
+fs.writeFileSync(CLAUDE, `#!/usr/bin/env node
+const a = process.argv.slice(2), sys = a[a.indexOf('--system-prompt') + 1] || '', lang = (s) => (/(?:natural spoken|meeting, in) ([A-Za-z ]+?)[,.]/.exec(s) || [])[1];
+if (a.includes('--input-format')) require('readline').createInterface({ input: process.stdin }).on('line', (l) => { const m = JSON.parse(l); console.log(JSON.stringify({ type: 'result', result: lang(sys) + '|' + m.message.content })); });
+else { let s = ''; process.stdin.on('data', (d) => (s += d)).on('end', () => { const arr = JSON.parse(s.slice(s.indexOf('\\n') + 1)); console.log(JSON.stringify(arr.map((t) => lang(s) + '|' + t))); }); }
+`, { mode: 0o755 });
 const get = (port, p, headers = {}, method = 'GET', body) => new Promise((res, rej) => { const r = http.request({ port, path: p, method, headers }, (x) => { let b = '', n = 0; x.on('data', (d) => { b += d; n += d.length; }); x.on('end', () => res({ status: x.statusCode, body: b, type: x.headers['content-type'], bytes: n })); }); r.on('error', rej); if (body) r.write(body); r.end(); });
 test('settings are kept in a file; cross-site writes are refused', async () => {
   const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;
@@ -365,4 +372,18 @@ test('the live call is in the session you last touched: the one you typed in, or
     fs.writeFileSync(path.join(far, 's.jsonl'), [typed(5, 'Read the whole log'), bash(6, 'toolu_f1'), result(7, 'toolu_f1', 'x'.repeat(300 * 1024)), said(8, 'Still reading.')].map(line).join(''));   // the order is further back than the 192 KB the list reads
     await wait(1300); assert.equal(JSON.parse((await get(port, '/api/board')).body).find((r) => r.proj === '-follow2').asked, T(5), 'an order far back in a long turn is found on the first look');
   } finally { stop(); }
+});
+
+test('the call is translated into the language the page asks for: French when it says nothing, Spanish and Brazilian Portuguese by name', { skip: process.platform === 'win32' }, async () => {
+  const key = process.env.ANTHROPIC_API_KEY; delete process.env.ANTHROPIC_API_KEY;   // with a key the server would call the real API
+  const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;
+  const post = async (p, body) => JSON.parse((await get(port, p, {}, 'POST', JSON.stringify(body))).body), line = 'I fixed server.js.';
+  try {
+    assert.deepEqual(await post('/api/translate', { texts: [line], lang: 'es' }), { texts: ['Spanish|' + line], ok: true });
+    assert.deepEqual(await post('/api/translate', { texts: [line], lang: 'pt' }), { texts: ['Brazilian Portuguese|' + line], ok: true }, 'the same line in another language is not taken from what was kept for Spanish, and the worker changes language');
+    assert.deepEqual((await post('/api/translate', { texts: [line] })).texts, ['French|' + line], 'a page that names no language gets French, as before');
+    assert.deepEqual((await post('/api/translate', { texts: [line], lang: 'de' })).texts, ['French|' + line], 'a language the call cannot be held in is not passed to the prompt');
+    const many = ['One.', 'Two.', 'Three.', 'Four.', line]; assert.deepEqual(await post('/api/translate', { texts: many, lang: 'es' }), { texts: many.map((t) => 'Spanish|' + t), ok: true }, 'more than three lines go in one batch, in the same language');
+    assert.deepEqual((await post('/api/quips', { texts: ['Report A.'], lang: 'pt' })).texts, ['Brazilian Portuguese|Report A.']); assert.deepEqual((await post('/api/quips', { texts: ['Report A.'], lang: 'ja' })).texts, ['English|Report A.']);
+  } finally { srv.close(); require('../server.js').shutdown(); if (key) process.env.ANTHROPIC_API_KEY = key; }
 });

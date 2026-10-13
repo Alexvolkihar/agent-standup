@@ -210,6 +210,7 @@
   @keyframes flash2 { 40% { opacity:.9 } }
   .puff { position:fixed; left:0; top:0; z-index:9; pointer-events:none; border-radius:50% }
   #toasts { position:absolute; left:12px; bottom:12px; z-index:6; display:flex; flex-direction:column; gap:6px; pointer-events:none }
+  .toast.offer { pointer-events:auto; animation:none; display:flex; align-items:center; gap:8px; padding:4px 6px 4px 12px; order:9 } .toast.offer .btn { padding:3px 10px; font-size:12px; white-space:nowrap } .toast.offer .ic { font-size:11px; padding:2px 6px }   /* the offer of the real voices: stays until answered, under the passing toasts */
   .toast { background:rgba(27,29,39,.92); border:1px solid var(--line); border-radius:99px; padding:5px 12px; font-size:12px; animation:toast 3s ease forwards } @keyframes toast { 0% { opacity:0; transform:translateY(6px) } 10%, 80% { opacity:1; transform:none } 100% { opacity:0 } }
   .eye { transform-box:fill-box; transform-origin:center; animation:blink 4.6s infinite; animation-delay:var(--d,0s) } @keyframes blink { 0%,94%,100% { transform:scaleY(1) } 97% { transform:scaleY(.08) } }
   .brow { transform-box:fill-box; transform-origin:center; transition:transform .25s } .tile.speaking .brow { animation:brow .7s ease-in-out infinite } @keyframes brow { 50% { transform:translateY(-1.1px) } }
@@ -308,6 +309,7 @@
   <div class="hint" id="menuNone" style="display:none;padding-top:6px;color:var(--dim)" data-fr="Aucun réglage trouvé" data-en="No setting found">Aucun réglage trouvé</div>
   <h4 data-fr="Langue" data-en="Language">Langue</h4>
   <div class="box"><select id="langSel" aria-label="Language"></select></div>
+  <button class="mi" data-t="callTr" id="callTrMi" style="display:none"><span data-fr="Appel dans cette langue (traduit avec votre Claude Code)" data-en="Call in this language (translated with your Claude Code)">Appel dans cette langue (traduit avec votre Claude Code)</span><i class="sw"></i></button>
   <div class="hint" id="trHint" style="display:none"></div>
   <h4 data-fr="Son" data-en="Sound">Son</h4>
   <button class="mi" data-t="voice"><span data-fr="Voix des agents" data-en="Agent voices">Voix des agents</span><i class="sw"></i></button>
@@ -359,7 +361,7 @@
     <div id="files"></div>
     <div id="hl"></div>
     <canvas id="gantt" height="90"></canvas>
-    <div id="toasts" role="status" aria-live="polite"></div><div id="visit" role="status" aria-live="polite"></div>
+    <div id="toasts" role="status" aria-live="polite"><div class="toast offer" id="vOffer" style="display:none"><span id="vOfferT"></span><button class="btn" id="vOfferB"></button><button class="ic" id="vOfferX" aria-label="Close">✕</button></div></div><div id="visit" role="status" aria-live="polite"></div>
     <div id="empty"><h2 id="eT"></h2><p id="eP"></p><button class="cta" id="eDemo"></button></div>
     <div id="gate"><h2 id="gT"></h2><p id="gP"></p><button class="cta" id="gB"></button></div>
     <div id="detail"><div class="hd"><b id="dname"></b><button class="ic" id="dclose">✕</button></div><div id="dbody"></div></div>
@@ -400,11 +402,11 @@ const CID = Math.random().toString(36).slice(2, 12);   // identifies this window
 const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
 
-let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'cartoon', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call', hideCode: false, ownNames: true, visits: true, followTab: true, files: true };
+let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'kokoro', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call', hideCode: false, ownNames: true, visits: true, followTab: true, files: true };
 { let loc = {}; try { loc = JSON.parse(localStorage.getItem('cc.prefs') || '{}') || {}; } catch {}   // the settings file (shared by every window) and this origin's copy: the more recent one wins
   const sv = window.SAVED_PREFS && typeof window.SAVED_PREFS === 'object' ? window.SAVED_PREFS : {}; Object.assign(prefs, (sv._t || 0) > (loc._t || 0) ? sv : loc); }
 if (prefs.vstyle === 'babble') prefs.vstyle = 'animal', prefs.vstyleChosen = true;
-if (!prefs.vstyleChosen && (prefs.vstyle === 'animal' || prefs.vstyle === 'sims')) prefs.vstyle = 'cartoon';   // the gibberish styles are opt-in: understandable voices by default
+if (!['animal', 'sims', 'cartoon', 'kokoro'].includes(prefs.vstyle) || (!prefs.vstyleChosen && prefs.vstyle !== 'cartoon')) prefs.vstyle = 'kokoro';   // the real voices of the model are the default, and babble until they are installed. Whoever has the cartoon voices keeps them (they were the default up to 1.31.0, and still read the words with no install); the plain system voices ("natural") are gone
 if (!prefs.notifyChosen) prefs.notify = true;   // “tell me when the agents are done” is on unless the person chose otherwise
 let prefsTimer = null;
 const savePrefs = () => { prefs._t = Date.now(); try { localStorage.setItem('cc.prefs', JSON.stringify(prefs)); } catch {} clearTimeout(prefsTimer); prefsTimer = setTimeout(() => { fetch('/api/prefs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(prefs) }).catch(() => {}); }, 400); };
@@ -413,17 +415,34 @@ const savePrefs = () => { prefs._t = Date.now(); try { localStorage.setItem('cc.
 const LANGS = [['en', 'English', 'en'], ['fr', 'Français', 'fr'], ['zh-TW', '繁體中文', 'zh-Hant-TW'], ['zh-CN', '简体中文', 'zh-Hans-CN'], ['es', 'Español', 'es'], ['de', 'Deutsch', 'de'], ['da', 'Dansk', 'da'], ['pt-BR', 'Português (Brasil)', 'pt-BR'], ['ja', '日本語', 'ja'], ['ko', '한국어', 'ko']];
 let LOC = {};
 const FR = () => prefs.lang === 'fr';
-const FR_W = /\b(le|la|les|des|une|un|et|est|pour|dans|que|qui|pas|sur|avec|je|tu|nous|vous|ce|cette|ça|du|au|aux|mais|sont|été|fait|plus|ne|ont|il|elle|ils|elles|très|aussi|donc|bien|tout|voici|voilà|merci|oui|non|comme|où|déjà|encore)\b/gi, EN_W = /\b(the|and|is|are|to|of|in|that|with|for|this|it|on|you|we|not|have|has|was|be|will|can|from|your|at|as|but|all|now|also|done|here|there|which|what|then|just|so)\b/gi;
-const langOf = (t) => {   // 'fr' or 'en' when a line clearly reads as one of them, else null: the voice then follows the interface language
-  t = String(t || ''); const fr = (t.match(FR_W) || []).length + (t.match(/[éèêàçùâîôûœ]/g) || []).length, en = (t.match(EN_W) || []).length;
-  return fr >= 2 && fr > en * 1.5 ? 'fr' : en >= 2 && en > fr * 1.5 ? 'en' : null;
+// The language the call is held in: what the agents say is translated into it, the little built-in lines exist in it and its voices are used. A French interface means a French call, as it always did.
+// Spanish and Brazilian Portuguese can be one too, when the person switches it on (⚙ → Language): translating sends the lines to Anthropic through their own Claude Code and counts on their plan, which
+// nobody who picked one of these two languages before had agreed to. With any other interface language, or the switch off, the call is the session as it is, with the built-in lines in English.
+const CALL_LANG = { fr: 'fr', es: 'es', 'pt-BR': 'pt' };
+let noTr = false;   // no Claude Code and no API key on this computer: nothing can be translated, and a Spanish or Portuguese call is not held (French goes on saying what is missing, as it always did)
+const CALL = () => { const l = CALL_LANG[prefs.lang]; return l && (l === 'fr' || (prefs.callTr && !noTr)) ? l : 'en'; }, TRL = () => CALL() !== 'en';
+const FR_L = 'le|la|les|des|une|un|et|est|pour|dans|que|qui|pas|sur|avec|je|tu|nous|vous|ce|cette|ça|du|au|aux|mais|sont|été|fait|plus|ne|ont|il|elle|ils|elles|très|aussi|donc|bien|tout|voici|voilà|merci|oui|non|comme|où|déjà|encore', FR_W = new RegExp('\\b(' + FR_L + ')\\b', 'gi'), EN_W = /\b(the|and|is|are|to|of|in|that|with|for|this|it|on|you|we|not|have|has|was|be|will|can|from|your|at|as|but|all|now|also|done|here|there|which|what|then|just|so)\b/gi;
+// Spanish and Portuguese: only words that are neither French nor English words, and that the other of the two does not have (para, por, como, este… say nothing). Accents are not ASCII: the edges are spelled out.
+const wordsRe = (w) => new RegExp('(^|[^\\p{L}\\p{N}_])(?:' + w + ')(?![\\p{L}\\p{N}_])', 'giu');
+const ES_W = wordsRe('el|los|las|una|unos|y|es|con|del|al|pero|más|muy|también|ya|hay|están|esto|donde|sí|gracias|aquí|ahora|hecho|listo|ha|han|lo|sus|yo|tú|sin|cuando|puede|hacer|tiene|voy|estoy|tengo|puedo|necesito|quiero|creo|pruebas|archivo|archivos|cambios'),
+  PT_W = wordsRe('o|um|uma|uns|e(?!\\.)|é|em|com|não|da|dos|das|na|nas|mas|são|mais|muito|também|já|há|estão|isso|isto|esse|essa|onde|sim|obrigado|aqui|agora|tudo|feito|pronto|você|vocês|eu|meu|minha|seu|sua|foi|tem|vou|fazer|pode|sem|quando|ao|pelo|pela|estou|tenho|posso|preciso|quero|acho|testes|arquivo|arquivos|alterações');
+const FR_S = wordsRe(FR_L);   // the French words with the same edges: \b reads "está" as "est" and "quién" as "qui"
+// German, Danish, Japanese, Korean and Chinese are told apart too, though no call is held in them and the model has no voice for them: a line in one of them goes to a system voice of that language, not to an English voice.
+const DE_W = wordsRe('der|die|und|ist|nicht|ich|mit|für|auf|ein|eine|einen|zu|dem|wir|sie|auch|wird|sind|von|noch|aber|oder|wenn|dass|habe|kann|jetzt|hier|nur|schon|mehr|dann|nach|wurde|werden|keine|diese|dieser|datei|dateien|fehler|nein|bitte|danke'),
+  DA_W = wordsRe('og|det|jeg|ikke|til|på|har|vi|som|vil|skal|også|eller|fra|så|nu|kun|mere|efter|ved|blev|bliver|ingen|denne|dette|filen|filer|fejl|være|været|hvis|når|af|tak|nej');
+const langOf = (t) => {   // the language a line clearly reads as ('fr', 'en', 'es', 'pt', 'de', 'da', 'ja', 'ko', 'zh'), else null: the voice then follows the language of the call
+  t = String(t || ''); const n = (re) => (t.match(re) || []).length, kana = n(/[\u3040-\u30ff]/g), hang = n(/[\uac00-\ud7af]/g), han = n(/[\u4e00-\u9fff]/g), cjk = kana + hang + han;
+  if (cjk >= 2 && cjk * 3 > n(/[A-Za-z]/g)) return kana || (prefs.lang === 'ja' && !hang) ? 'ja' : hang > han ? 'ko' : 'zh';   // by the script; Japanese without a single kana is rare, and then the interface says
+  const fr = n(FR_W) + n(/[éèêàçùâîôûœ]/g), en = n(EN_W), [[lo, top], [, next]] = [['es', n(ES_W) + n(/[ñ¿¡]/g)], ['pt', n(PT_W) + n(/[ãõ]/g)], ['de', n(DE_W) + n(/[äöüß]/g)], ['da', n(DA_W) + n(/[æøå]/g)]].sort((a, b) => b[1] - a[1]);
+  if (top >= 2 && top > next * 1.5 && top > n(FR_S) * 1.5 && top > en * 1.5) return lo;   // against the French words alone: é, à, ç are Portuguese and Spanish letters too
+  return fr >= 2 && fr > en * 1.5 && fr > n(/[áíóúñ¿¡ãõ]/g) * 2 ? 'fr' : en >= 2 && en > fr * 1.5 ? 'en' : null;   // á, í, ó, ú, ñ, ã are never French: "está" and "quién" would count as "est" and "qui"
 };
 const tr = (en) => (prefs.lang === 'en' || prefs.lang === 'fr' ? en : LOC[en] || en);
 const L = (fr, en) => (FR() ? fr : tr(en));
 async function loadLocale(code) { LOC = {}; if (code === 'en' || code === 'fr') return; try { const r = await fetch('/locales/' + encodeURIComponent(code) + '.json'); if (r.ok) LOC = await r.json(); } catch {} }
 async function setLang(code, save) {
   if (!LANGS.some((l) => l[0] === code)) code = 'en'; prefs.lang = code; await loadLocale(code); if (save) { prefs.langChosen = true; savePrefs(); }
-  if (FR()) fetch('/api/warm').catch(() => {}); AUD.stopAll(); synth && synth.cancel(); applyLang(); if (FR()) prefetchTr(S.idx);
+  if (TRL()) fetch('/api/warm?lang=' + CALL()).catch(() => {}); AUD.stopAll(); synth && synth.cancel(); applyLang(); if (TRL()) prefetchTr(S.idx); kokoroUI(); voiceOffer();   /* its texts, and the offer to add the voices of this language */
 }
 
 // =====================================================================
@@ -648,35 +667,37 @@ const speakable = (t) => t.replace(/https?:\/\/(?:www\.)?([\w-]+(?:\.[\w-]+)*)\S
   .replace(/\s*[—–]\s*/g, ', ').replace(/\(([^)]{0,40})\)/g, ', $1,').replace(/\s+/g, ' ').trim();
 
 // ---------- translation (local claude CLI) ----------
-const trMem = new Map(), trPending = new Map();
+const trMaps = {}, trMap = (l = CALL()) => (trMaps[l] = trMaps[l] || new Map()), trPending = new Map();
+const trMem = { has: (t) => trMap().has(t), get: (t) => trMap().get(t), set: (t, v, l) => trMap(l).set(t, v) };   // one memory per language of the call: what was translated into French is not what is said in Spanish
 const baseText = (ev, max) => short(ev.text, max || (S.live ? (ev.kind === 'order' ? 220 : 180) : (ev.kind === 'order' ? 200 : 230)));
 function ensureTr(texts) {
-  texts = [...new Set(texts)].filter((t) => t && !trMem.has(t)).filter((t) => langOf(t) !== 'fr');   // already French: nothing to translate
-  const waits = texts.filter((t) => trPending.has(t)).map((t) => trPending.get(t)), fresh = texts.filter((t) => !trPending.has(t));
+  const lang = CALL(), pk = (t) => lang + '|' + t; if (lang === 'en') return Promise.resolve([]);
+  texts = [...new Set(texts)].filter((t) => t && !trMem.has(t)).filter((t) => langOf(t) !== lang);   // already in the language of the call: nothing to translate
+  const waits = texts.filter((t) => trPending.has(pk(t))).map((t) => trPending.get(pk(t))), fresh = texts.filter((t) => !trPending.has(pk(t)));
   if (fresh.length) {
-    const pr = fetch('/api/translate', { method: 'POST', body: JSON.stringify({ texts: fresh }) }).then((r) => r.json()).then((d) => {
-      (d.texts || []).forEach((fr, i) => trMem.set(fresh[i], fr)); S.trOk = d.ok !== false; if (!S.trOk) loadHealth(); else updateHint();
+    const pr = fetch('/api/translate', { method: 'POST', body: JSON.stringify({ texts: fresh, lang }) }).then((r) => r.json()).then((d) => {
+      (d.texts || []).forEach((x, i) => trMem.set(fresh[i], x, lang)); S.trOk = d.ok !== false; if (!S.trOk) loadHealth(); else updateHint();
       clearTimeout(S.relog); S.relog = setTimeout(() => renderLog(true), 500);
-    }).catch(() => { S.trOk = false; loadHealth(); }).finally(() => fresh.forEach((t) => trPending.delete(t)));
-    fresh.forEach((t) => trPending.set(t, pr)); waits.push(pr);
+    }).catch(() => { S.trOk = false; loadHealth(); }).finally(() => fresh.forEach((t) => trPending.delete(pk(t))));
+    fresh.forEach((t) => trPending.set(pk(t), pr)); waits.push(pr);
   }
   return Promise.all(waits);
 }
 function trNew(from) {   // live: start translating every new line the moment it arrives (small parallel calls)
-  if (!FR()) return; for (let k = from; k < S.events.length; k++) if (!quiet(S.events[k])) ensureTr([baseText(S.events[k])]);
+  if (!TRL()) return; for (let k = from; k < S.events.length; k++) if (!quiet(S.events[k])) ensureTr([baseText(S.events[k])]);
 }
 function prefetchTr(i) {
-  if (!FR() || S.live) return; const t = [];
+  if (!TRL() || S.live) return; const t = [];
   for (let k = i; k < Math.min(S.events.length, i + 120) && t.length < 24; k++) if (!quiet(S.events[k])) t.push(baseText(S.events[k]));
   ensureTr(t);
 }
 function spoken(ev) {
-  let t = baseText(ev); if (FR() && trMem.has(t)) t = trMem.get(t);
+  let t = baseText(ev); if (TRL() && trMem.has(t)) t = trMem.get(t);
   if (ev.kind === 'order') return `${nameOf(ev.to)}, ${t}`;
   if (ev.kind === 'report') return L('Terminé. ', 'Done. ') + t;
   return t;
 }
-async function loadHealth() { try { S.health = await (await fetch('/api/health')).json(); } catch {} updateHint(); }
+async function loadHealth() { try { S.health = await (await fetch('/api/health')).json(); noTr = S.health.claude === null && !S.health.apiKey; } catch {} updateHint(); }
 function trProblem() {   // why translation can't work, with what to do about it
   const h = S.health || {};
   if (h.claude === null && !h.apiKey) return L('Claude Code est introuvable : installez-le (npm i -g @anthropic-ai/claude-code) ou indiquez son chemin dans le réglage « agentStandup.claudePath ».', 'Claude Code not found: install it (npm i -g @anthropic-ai/claude-code) or set its path in the “agentStandup.claudePath” setting.');
@@ -685,7 +706,7 @@ function trProblem() {   // why translation can't work, with what to do about it
   return L('Traduction indisponible pour l’instant : vérifiez que « claude » fonctionne dans un terminal.', 'Translation unavailable right now: check that “claude” works in a terminal.');
 }
 function updateHint() {
-  const h = $('#trHint'), noFr = FR() && TTS.server && !TTS.pool.fr.length, noTts = prefs.voice && !TTS.server && TTS.platform !== '', noRadio = prefs.music && RADIO.err, other = elsewhere(), bad = (FR() && !S.trOk) || noFr || noTts || noRadio || other;
+  const h = $('#trHint'), noFr = FR() && TTS.server && !babbles() && !TTS.pool.fr.length, noTts = prefs.voice && prefs.vstyle === 'cartoon' && !TTS.server && TTS.platform !== '', noRadio = prefs.music && RADIO.err, other = elsewhere(), bad = (TRL() && !S.trOk) || noFr || noTts || noRadio || other;
   h.style.display = bad ? '' : 'none';
   h.textContent = other ? L('Le son est joué dans une autre fenêtre Agent Standup. Cliquez sur 🔈 pour le reprendre ici.', 'Sound is playing in another Agent Standup window. Click 🔈 to take it over here.') : noRadio ? L('Radio injoignable : vérifiez votre connexion ou changez de station.', 'Radio unreachable: check your connection or pick another station.') : noFr ? L('Aucune voix française installée (Windows : Paramètres › Heure et langue › Voix).', 'No French voice installed (Windows: Settings › Time & language › Speech).') : noTts ? L('Aucune voix système trouvée : les agents marmonneront.', 'No system voice found: agents will mumble.') : trProblem();
 }
@@ -822,34 +843,37 @@ const estMs = (text) => Math.min(9000, 900 + text.length * 42) / spd();
 
 const NOVELTY = /grandma|grandpa|rocko|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|fred|junior|kathy|ralph|hysterical|deranged|pipe/i;
 const ROBOT = /^(eddy|flo|reed|sandy|shelley)\b/i;   /* Apple's synthetic voices: understandable, and plainly a machine. Kept for when nothing else is installed */
-const GOOD = /premium|enhanced|natural|siri|neural|améli|amelie|thomas|jacques|audrey|aurélie|aurelie|marie|samantha|daniel|karen|moira|serena|oliver|google|hortense|julie|paul|denise|henri|eloise|zira|david|hazel|mark|aria|guy/i;
+const GOOD = /premium|enhanced|natural|siri|neural|améli|amelie|thomas|jacques|audrey|aurélie|aurelie|marie|samantha|daniel|karen|moira|serena|oliver|google|hortense|julie|paul\b|denise|henri|eloise|zira|david|hazel|mark|aria|guy/i;
 const voiceScore = (n) => (/premium|enhanced|natural|neural|siri/i.test(n) ? 100 : 0) + (GOOD.test(n) ? 30 : 0) - (ROBOT.test(n) ? 50 : 0) - (NOVELTY.test(n) ? 200 : 0);
-const frHome = () => [...(navigator.languages || []), navigator.language || ''].map((l) => String(l).replace('-', '_')).find((l) => /^fr_[A-Z]{2}$/.test(l)) || 'fr_FR';   /* French from France unless the computer itself is set to another French */
+const VLANGS = ['fr', 'en', 'es', 'pt', 'de', 'da', 'ja', 'ko', 'zh'], HOME = { fr: 'fr_FR', es: 'es_ES', pt: 'pt_BR', de: 'de_DE', da: 'da_DK', ja: 'ja_JP', ko: 'ko_KR', zh: 'zh_CN' };   /* the languages a line can be said in; where each is from when the computer does not say */
+const noVoices = () => Object.fromEntries(VLANGS.map((l) => [l, []]));
+const homeOf = (lang) => (lang === 'zh' && /^zh-/.test(prefs.lang) ? prefs.lang.replace('-', '_') : null) || [...(navigator.languages || []), navigator.language || ''].map((l) => String(l).replace('-', '_')).find((l) => new RegExp('^' + lang + '_[A-Z]{2}$').test(l)) || HOME[lang];   /* French from France unless the computer itself is set to another French */
 function rankVoices(list, lang) {   // [{ name, locale }] → names, best distinct voices first. The synthetic ones only when fewer than two others exist
-  const home = lang === 'fr' ? frHome() : '', sc = (v) => voiceScore(v.name) + (home && v.locale === home ? 10 : 0), seen = new Set(), out = [];
+  const home = HOME[lang] ? homeOf(lang) : '', sc = (v) => voiceScore(v.name) + (home && v.locale === home ? 10 : 0), seen = new Set(), out = [];
   [...list].sort((a, b) => sc(b) - sc(a)).forEach((v) => { const base = v.name.replace(/\s*\(.*$/, ''), x = sc(v); if (x > -100 && (x >= 0 || out.length < 2) && !seen.has(base)) { seen.add(base); out.push(v.name); } });
   return out.slice(0, 5);
 }
 const TTS = {
-  server: false, engine: 'system', platform: '', pool: { fr: [], en: [] }, sys: { fr: [], en: [] }, kv: new Set(), cache: new Map(), made: new Map(), q: [], busy: false, now: 0,
+  server: false, engine: 'system', platform: '', pool: noVoices(), sys: noVoices(), kv: new Set(), cache: new Map(), made: new Map(), q: [], busy: false, now: 0,
   async init() {
-    this.engine = 'system'; this.server = false; this.pool = { fr: [], en: [] }; this.sys = { fr: [], en: [] }; this.kv = new Set(); this.cache.clear(); this.made.clear(); this.q = [];
+    this.engine = 'system'; this.server = false; this.pool = noVoices(); this.sys = noVoices(); this.kv = new Set(); this.cache.clear(); this.made.clear(); this.q = [];
     try {
-      let k = null; if (prefs.vstyle === 'kokoro') { try { k = await (await fetch('/api/voices?engine=kokoro')).json(); } catch {} if (!k || !k.available || !k.ready) k = null; }   // natural voices installed on demand; until they are, the system voices stay in use
+      let k = null; if (prefs.vstyle === 'kokoro') { try { k = await (await fetch('/api/voices?engine=kokoro')).json(); } catch {} if (!k || !k.available || !k.ready) k = null; }   // the real voices, installed on demand; until they are ready the agents babble (see babbles)
       let d = { available: false, voices: [] }; try { d = await (await fetch('/api/voices')).json(); } catch {}
-      this.platform = d.platform || (k && k.platform) || ''; const sys = {}; for (const l of ['fr', 'en']) sys[l] = d.available ? rankVoices(d.voices.filter((v) => v.locale.startsWith(l + '_')), l) : [];
-      if (k) {   // Kokoro speaks the languages it has voices for (English); the others are read by the system voices, each character keeping one of its own
+      this.platform = d.platform || (k && k.platform) || ''; const sys = {}, of = (l) => { const all = d.voices.filter((v) => v.locale.startsWith(l + '_')), home = all.filter((v) => v.locale === homeOf(l)); return l === 'zh' && home.length ? home : all; };   /* Chinese: the voices of one place only, a Cantonese voice does not read Mandarin */
+      for (const l of VLANGS) sys[l] = d.available ? rankVoices(of(l), l) : [];
+      if (k) {   // Kokoro speaks the languages the server lists voices for (English, and French, Spanish and Portuguese once their phonemizer is installed); a line in another language (German, Japanese…) is read by a system voice of that language, each character keeping one of its own
         this.server = true; this.engine = 'kokoro'; this.sys = sys;
-        for (const l of ['fr', 'en']) { const kv = k.voices.filter((v) => v.locale.startsWith(l + '_')).map((v) => v.name); kv.forEach((v) => this.kv.add(v)); this.pool[l] = kv.length ? kv : sys[l]; }
+        for (const l of VLANGS) { const kv = k.voices.filter((v) => v.locale.startsWith(l + '_')).map((v) => v.name); kv.forEach((v) => this.kv.add(v)); this.pool[l] = kv.length ? kv : sys[l]; }
         return;
       }
       if (!d.available) return; this.server = true; this.pool = sys; } catch {}
   },
-  voiceFor(p, fr = FR()) { const pool = this.pool[fr ? 'fr' : 'en']; return pool.length ? (p.id === 'main' ? pool[0] : pool[(p.vi >>> 2) % pool.length]) : null; },
+  voiceFor(p, lo = CALL()) { const pool = this.pool[lo].length || lo === 'fr' ? this.pool[lo] : this.pool.en; return pool.length ? (p.id === 'main' ? pool[0] : pool[(p.vi >>> 2) % pool.length]) : null; },
   rate() { return Math.round(Math.max(120, Math.min(330, 178 * (S.live ? 1.12 * lagFactor() * (S.boost > 1 ? 1.25 : 1) : +$('#speed').value))) / 10) * 10; },
   rateAt(k, boost) { const i = S.idx, b = S.boost; S.idx = k; S.boost = boost; const r = this.rate(); S.idx = i; S.boost = b; return r; },   // the rate rate() will give once playback is at event k
   buf(text, voice, rate, ahead) {   // ahead: made in advance (see warmTTS); otherwise the line is wanted now
-    const eng = this.kv.has(voice) ? 'kokoro' : 'system', fb = eng === 'kokoro' && this.sys.en.length ? this.sys.en[Math.max(0, this.pool.en.indexOf(voice)) % this.sys.en.length] : '';   /* fb: the system voice that reads the line if Kokoro cannot */
+    const eng = this.kv.has(voice) ? 'kokoro' : 'system', vl = VLANGS.find((l) => this.pool[l].includes(voice)) || 'en', fb = eng === 'kokoro' && this.sys[vl].length ? this.sys[vl][Math.max(0, this.pool[vl].indexOf(voice)) % this.sys[vl].length] : '';   /* fb: the system voice of the same language that reads the line if Kokoro cannot */
     const vt = eng + '|' + voice + '|' + text, K = (r) => eng + '|' + voice + '|' + r + '|' + text, key = K(rate), got = this.made.get(vt) || [];   // got: the rates at which this text is ready in this voice
     if (!ahead && S.live && !got.includes(rate)) { const r = got.find((x) => Math.abs(x - rate) <= rate * 0.2 && this.cache.has(K(x))); if (r) return this.cache.get(K(r)); }   // made ahead at the rate of a moment ago (the call fell behind or caught up since): played as it is, a second of silence is worse than a slightly different pace
     if (!this.cache.has(key)) {
@@ -865,6 +889,7 @@ const TTS = {
     const end = () => { this.busy = false; this.pump(); }; this.buf(j.text, j.voice, j.rate, true).then(end, end);
   },
 };
+const babbles = () => prefs.vstyle !== 'cartoon' && (prefs.vstyle !== 'kokoro' || TTS.engine !== 'kokoro');   // babble: by choice (Animal Crossing, Simlish), or because the real voices are not there yet (not installed, downloading, loading, stopped). The system voices read the words in the cartoon style only
 // The lines to come are synthesized ahead of time, so that a voice starts with its line and not a second later. What is made must be what will be asked for: the same text (the lead-in, the part
 // that is read when the call is behind), the same voice and the same rate. So this follows what run() will do with the next events if nothing else arrives before then: how it groups them
 // (sub-agents back to back, orders in a row) and how it sets the pace. Keep the two in step: a difference costs nothing but the benefit (the line is then made when it is said).
@@ -874,7 +899,7 @@ function paceAt(k) {
   return { hurry, pace: Math.min(q > 7 ? 70 : q > 3 ? 130 : 260, lg > 30 ? 70 : lg > 15 ? 130 : lg > 6 ? 200 : 260), boost: hurry || S.events.length - k > 60 ? 3 : 1 };
 }
 function warmTTS(i) {   // called by run() before each line (i is that line) and when new events arrive (i is the first of them)
-  if (!TTS.server || !AUD.ctx || AUD.off() || !prefs.voice || prefs.vstyle === 'animal' || prefs.vstyle === 'sims') return;
+  if (!TTS.server || !AUD.ctx || AUD.off() || !prefs.voice || babbles()) return;
   const fresh = i <= S.idx, from = fresh ? i : S.idx + 1, len = S.events.length, jobs = []; let n = 0; if (!fresh && !S.playing) return;   // new events while a line is being read: the lines after it are planned again, they may now be read shorter and faster
   for (let k = from; k < Math.min(len, from + 400) && n < 4;) {
     const e = S.events[k]; if (quiet(e)) { k++; continue; }
@@ -884,8 +909,8 @@ function warmTTS(i) {   // called by run() before each line (i is that line) and
     else if (isSub(e.agent)) { while (j < Math.min(len, k + 28) && group.length < 3) { const e2 = S.events[j]; if (quiet(e2)) j++; else if (e2.kind !== 'order' && isSub(e2.agent) && !group.some((g) => g.agent === e2.agent)) { group.push(e2); j++; } else break; } }
     const pl = paceAt(k), many = e.kind === 'order' && group.length > 1, rate = TTS.rateAt(many || !S.live ? k : j - 1, pl.boost);
     for (const g of many ? [e] : group) {   // orders in a row: only the first is read out
-      n++; const p = S.agents[g.agent], bt = baseText(g); if ((pl.hurry && g.kind !== 'user') || !p || (FR() && !trMem.has(bt) && langOf(bt) !== 'fr')) continue;   // not translated yet: what will be said is not known
-      const said = clipSpeech(talkLine(g), pl.pace), text = speakable(said), voice = TTS.voiceFor(p, sessFr(said, g)); if (text && voice) jobs.push({ k, text, voice, rate });
+      n++; const p = S.agents[g.agent], bt = baseText(g); if ((pl.hurry && g.kind !== 'user') || !p || (TRL() && !trMem.has(bt) && langOf(bt) !== CALL())) continue;   // not translated yet: what will be said is not known
+      const said = clipSpeech(talkLine(g), pl.pace), text = speakable(said), voice = TTS.voiceFor(p, sessVoice(said, g)); if (text && voice) jobs.push({ k, text, voice, rate });
     }
     k = j;
   }
@@ -956,12 +981,12 @@ async function speakBabble(text, p, gain, token) {
   await new Promise((res) => { if (lastN) lastN.onended = res; setTimeout(res, lastN ? (t - c.currentTime) * 1000 + 600 : Math.max(100, (Math.min(t, end) - c.currentTime) * 1000 + 80)); });   // the line ends when its last sound does (a long last word used to go on after it), or when Pause stops it
   nodes.forEach((o) => AUD.live.delete(o)); delete S.level[p.id];
 }
-async function speakServer(text, p, gain, token, fr = FR()) {
-  const voice = TTS.voiceFor(p, fr); if (!voice) throw new Error('no voice');
+async function speakServer(text, p, gain, token, lo = CALL()) {
+  const voice = TTS.voiceFor(p, lo); if (!voice) throw new Error('no voice');
   const buf = await TTS.buf(speakable(text), voice, TTS.rate()); if (token !== S.token) return;
   const c = AUD.ctx, src = c.createBufferSource(); src.buffer = buf;
   const an = c.createAnalyser(); an.fftSize = 256; const g = c.createGain(); g.gain.value = gain; let stops = [];
-  if (prefs.vstyle === 'natural' || prefs.vstyle === 'kokoro') src.connect(an); else { const ch = fxChain(c, src, fxFor(p)); stops = ch.stops; ch.node.connect(an); }
+  if (prefs.vstyle === 'cartoon') { const ch = fxChain(c, src, fxFor(p)); stops = ch.stops; ch.node.connect(an); } else src.connect(an);
   an.connect(g); g.connect(AUD.voice);
   const data = new Uint8Array(an.fftSize);
   S.level[p.id] = () => { an.getByteTimeDomainData(data); let s = 0; for (const v of data) { const x = (v - 128) / 128; s += x * x; } return Math.sqrt(s / data.length); };   // drives the mouth
@@ -970,10 +995,10 @@ async function speakServer(text, p, gain, token, fr = FR()) {
   captionRun(p.id, text, ms); await new Promise((res) => { src.onended = res; setTimeout(res, ms + 1000); src.start(); });   // the line ends when its sound ends (or when Pause stops it); the timer only covers a sound that never starts
   try { src.stop(); } catch {} AUD.live.delete(src); delete S.level[p.id]; stops.forEach((o) => { try { o.stop(); } catch {} });
 }
-function speakBrowser(text, p, token, fr = FR()) {   // fallback where no server voice exists (Windows/Linux)
+function speakBrowser(text, p, token, lo = CALL()) {   // the browser's own voice, when the server could not make the line
   return new Promise((resolve) => {
-    const vs = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith(fr ? 'fr' : 'en')); if (!vs.length) return resolve(false);
-    const ranked = rankVoices(vs.map((v) => ({ name: v.name, locale: v.lang.replace('-', '_') })), fr ? 'fr' : 'en'), voice = vs.find((v) => v.name === (p.id === 'main' ? ranked[0] : ranked[(p.vi >>> 2) % ranked.length])) || vs[0];
+    const vs = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith(lo)); if (!vs.length) return resolve(false);
+    const ranked = rankVoices(vs.map((v) => ({ name: v.name, locale: v.lang.replace('-', '_') })), lo), voice = vs.find((v) => v.name === (p.id === 'main' ? ranked[0] : ranked[(p.vi >>> 2) % ranked.length])) || vs[0];
     const parts = speakable(text).match(/[^.!?;:]+[.!?;:]*/g) || [text]; synth.cancel(); let i = 0, done = false, started = false, t0 = 0, said = 0; const all = parts.reduce((n, x) => n + x.length, 0);
     const fin = (ok) => { if (!done) { done = true; resolve(ok); } };
     setTimeout(() => { if (!started && !done) { synth.cancel(); fin(false); } }, 2500);   // engine never started (e.g. inside a webview)
@@ -982,7 +1007,7 @@ function speakBrowser(text, p, token, fr = FR()) {   // fallback where no server
       if (i >= parts.length || done || token !== S.token) return fin(true);
       if (t0 && said >= 20) { const el = performance.now() - t0; captionRun(p.id, text, el * all / said, el); }   // the length of the audio is not known in advance here: the subtitles are set again on the pace the voice really has, after each sentence
       said += parts[i].length; const part = parts[i++].trim(); if (!part) return next();
-      const u = new SpeechSynthesisUtterance(part); u.lang = fr ? 'fr-FR' : 'en-US'; u.voice = voice; u.pitch = prefs.vstyle === 'natural' ? 0.95 + ((p.vi >>> 5) % 5) * 0.03 : p.id === 'main' ? 0.8 : [1.5, 0.6, 1.2, 1.7, 0.9, 0.5, 1.35][(p.vi >>> 3) % 7]; u.rate = Math.min(1.7, 0.97 * spd());
+      const u = new SpeechSynthesisUtterance(part); u.lang = lo === 'en' ? 'en-US' : homeOf(lo).replace('_', '-'); u.voice = voice; u.pitch = prefs.vstyle !== 'cartoon' ? 0.95 + ((p.vi >>> 5) % 5) * 0.03 : p.id === 'main' ? 0.8 : [1.5, 0.6, 1.2, 1.7, 0.9, 0.5, 1.35][(p.vi >>> 3) % 7]; u.rate = Math.min(1.7, 0.97 * spd());
       u.onstart = () => { started = true; if (!t0) { t0 = performance.now(); captionRun(p.id, text, estMs(text)); } }; u.onend = () => setTimeout(next, 120); u.onerror = () => fin(started); synth.speak(u);
     };
     next();
@@ -1012,34 +1037,36 @@ function captionRun(id, text, totalMs, from = 0) {   // from: how far into the l
   for (const x of ps) { const when = at - from; if (when <= 0) cur = x; else timers.push(setTimeout(() => setCaption(id, x), when)); at += totalMs * x.length / n; }
   setCaption(id, cur); capTimers.set(id, timers);
 }
-const frVoice = (t) => (langOf(t) ?? (FR() ? 'fr' : 'en')) === 'fr';   // a French line gets a French voice whatever the interface language, and the other way round
+// In a Spanish or Portuguese call every line is meant to be in that language (it was translated into it) unless it is plainly English: Spanish, Portuguese and French share too many short words to be told apart on one line.
+const inCall = (lo) => { const c = CALL(); return !lo ? c : (c === 'es' || c === 'pt') && lo !== 'en' ? c : lo; };
+const voiceLang = (t) => inCall(langOf(t));   // a French line gets a French voice whatever the language of the call, and the same for the others
 // A line of the session that is too short to tell ("OK.", a file name) does not follow the interface language: in a French session watched in English, the lead would change voice for that
 // one line and change back. It follows, in this order: the whole line it is cut from, what the same character said just before (its voice goes on) or says next, the language of the session so far.
-// The session's language is counted once per line as the events arrive; in French, a line counts for what is said, i.e. its translation once it is there.
-const SL = { ev0: null, ui: null, n: 0, fr: 0, en: 0, pend: [] };
-function sessLang() {   // 'fr' or 'en': the majority among the lines of the session that langOf can decide; null when there is none
-  const ev = S.events, ui = FR(), add = (t) => { const lo = langOf(t); if (lo) SL[lo]++; };
-  if (ev[0] !== SL.ev0 || ui !== SL.ui || ev.length < SL.n) Object.assign(SL, { ev0: ev[0], ui, n: 0, fr: 0, en: 0, pend: [] });   // another session, or another interface language
-  for (; SL.n < ev.length; SL.n++) { const e = ev[SL.n]; if (quiet(e) || typeof e.text !== 'string') continue; const t = baseText(e); if (!ui) add(t); else if (trMem.has(t)) add(trMem.get(t)); else if (langOf(t) === 'fr') SL.fr++; else SL.pend.push(t); }
+// The session's language is counted once per line as the events arrive; when the call is translated, a line counts for what is said, i.e. its translation once it is there.
+const SL = { ev0: null, ui: null, n: 0, c: {}, pend: [] };
+function sessLang() {   // the majority among the lines of the session that langOf can decide; null when there is none
+  const ev = S.events, ui = CALL(), add = (t) => { const lo = langOf(t); if (lo) SL.c[lo] = (SL.c[lo] || 0) + 1; };
+  if (ev[0] !== SL.ev0 || ui !== SL.ui || ev.length < SL.n) Object.assign(SL, { ev0: ev[0], ui, n: 0, c: {}, pend: [] });   // another session, or another language of the call
+  for (; SL.n < ev.length; SL.n++) { const e = ev[SL.n]; if (quiet(e) || typeof e.text !== 'string') continue; const t = baseText(e); if (ui === 'en') add(t); else if (trMem.has(t)) add(trMem.get(t)); else if (langOf(t) === ui) SL.c[ui] = (SL.c[ui] || 0) + 1; else SL.pend.push(t); }
   if (SL.pend.length) SL.pend = SL.pend.filter((t) => !trMem.has(t) || add(trMem.get(t)));   // translations that have arrived since
-  return SL.fr > SL.en ? 'fr' : SL.en > SL.fr ? 'en' : null;
+  const top = Object.entries(SL.c).sort((a, b) => b[1] - a[1]); return top.length && (top.length < 2 || top[0][1] > top[1][1]) ? top[0][0] : null;
 }
-function sessFr(text, ev) {   // for the lines that come from the session (ev: the event, when there is one); the little built-in lines keep frVoice, they are written in the interface language
+function sessVoice(text, ev) {   // for the lines that come from the session (ev: the event, when there is one); the little built-in lines keep voiceLang, they are written in the language of the call
   let lo = langOf(text);
   if (!lo && ev) {
-    const now = (e) => { const t = baseText(e); return langOf(FR() && trMem.has(t) ? trMem.get(t) : t); }, at = S.events.indexOf(ev, Math.max(0, S.idx - 60)); lo = now(ev);
+    const now = (e) => { const t = baseText(e); return langOf(TRL() && trMem.has(t) ? trMem.get(t) : t); }, at = S.events.indexOf(ev, Math.max(0, S.idx - 60)); lo = now(ev);
     for (let k = at - 1, n = 0; !lo && k >= 0 && k > at - 5000 && n < 6; k--) { const e = S.events[k]; if (e.agent === ev.agent && !quiet(e) && typeof e.text === 'string') { lo = now(e); n++; } }
     for (let k = at + 1, n = 0; !lo && at >= 0 && k < S.events.length && k < at + 5000 && n < 6; k++) { const e = S.events[k]; if (e.agent === ev.agent && !quiet(e) && typeof e.text === 'string') { lo = now(e); n++; } }   // its first words: what it says next, when that is already there
   }
-  return (lo ?? sessLang() ?? (FR() ? 'fr' : 'en')) === 'fr';
+  return inCall(lo ?? sessLang());
 }
-async function speakLine(text, p, primary, token, fr = frVoice(text), always = false) {   // always: your own lines are voiced even when the call is behind
+async function speakLine(text, p, primary, token, lo = voiceLang(text), always = false) {   // always: your own lines are voiced even when the call is behind
   captionRun(p.id, text, estMs(text));
   if (AUD.off() || !prefs.voice) { if (!AUD.off() && prefs.office) AUD.murmur(0.5 + (p.vi % 5) / 10, estMs(text) / 1000); return sleep(estMs(text)); }
   if (S.hurry && !always) return sleep(estMs(text));
-  if ((prefs.vstyle === 'animal' || prefs.vstyle === 'sims') && AUD.ctx) { try { await speakBabble(text, p, primary ? 1 : 0.5, token); return; } catch {} }
-  if (TTS.server && AUD.ctx) { try { await speakServer(text, p, primary ? 1 : 0.5, token, fr); return; } catch {} }
-  if (primary && synth && !EMBED && (await speakBrowser(text, p, token, fr))) return;
+  const bab = babbles(); if (bab && AUD.ctx) { try { await speakBabble(text, p, primary ? 1 : 0.5, token); return; } catch {} }
+  if (!bab && TTS.server && AUD.ctx) { try { await speakServer(text, p, primary ? 1 : 0.5, token, lo); return; } catch {} }
+  if (!bab && primary && synth && !EMBED && (await speakBrowser(text, p, token, lo))) return;
   if (token !== S.token) return;   // paused while a voice was being tried: no mumble after the fact
   const ms = estMs(text), o = AUD.murmur(0.5 + (p.vi % 5) / 10, ms / 1000); captionRun(p.id, text, ms);
   return o ? new Promise((res) => { o.addEventListener('ended', res); setTimeout(res, ms + 500); }) : sleep(ms);   // the mumble that stands in for a voice: the line ends with it, also when Pause stops it
@@ -1528,10 +1555,12 @@ function poof(tile, color) {
       { duration: 650 + Math.random() * 450, easing: 'cubic-bezier(.2,.7,.4,1)', delay: 120 }).onfinish = () => d.remove();
   }
 }
-function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; const c = $('#toasts'); c.appendChild(t); while (c.children.length > 3) c.firstChild.remove(); setTimeout(() => t.remove(), 3100); }
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; const c = $('#toasts'); c.appendChild(t); while (c.querySelectorAll('.toast:not(.offer)').length > 3) c.querySelector('.toast:not(.offer)').remove(); setTimeout(() => t.remove(), 3100); }
 const BYE = { en: ['Bye, everyone!', 'Off I go. 👋', 'Thanks, see you!', 'My work here is done.', 'Catch you later!', 'Logging off, bye!', 'That’s a wrap!', 'Good luck with the rest!', 'Mic drop. 🎤', 'Leaving the call… ☕'],
-  fr: ['Salut tout le monde !', 'Je file. 👋', 'Merci, à plus !', 'Ma mission est terminée.', 'À tout à l’heure !', 'Je me déconnecte, ciao !', 'C’est dans la boîte !', 'Bon courage pour la suite !', 'Mic drop. 🎤', 'Je quitte l’appel… ☕'] };
-function byeLine(id) { const P = BYE[FR() ? 'fr' : 'en'], seed = hash(id + String(S.clock | 0)); let l = P[seed % P.length]; if (l === S.lastBye) l = P[(seed + 1) % P.length]; return (S.lastBye = l); }
+  fr: ['Salut tout le monde !', 'Je file. 👋', 'Merci, à plus !', 'Ma mission est terminée.', 'À tout à l’heure !', 'Je me déconnecte, ciao !', 'C’est dans la boîte !', 'Bon courage pour la suite !', 'Mic drop. 🎤', 'Je quitte l’appel… ☕'],
+  es: ['¡Adiós a todos!', 'Me voy. 👋', '¡Gracias, nos vemos!', 'Mi trabajo aquí ha terminado.', '¡Hasta luego!', 'Me desconecto, ¡chao!', '¡Listo, eso es todo!', '¡Suerte con lo que queda!', 'Mic drop. 🎤', 'Salgo de la llamada… ☕'],
+  pt: ['Tchau, pessoal!', 'Estou indo. 👋', 'Valeu, até mais!', 'Meu trabalho aqui está feito.', 'Até logo!', 'Estou saindo, tchau!', 'Pronto, é isso!', 'Boa sorte com o resto!', 'Mic drop. 🎤', 'Saindo da chamada… ☕'] };
+function byeLine(id) { const P = BYE[CALL()], seed = hash(id + String(S.clock | 0)); let l = P[seed % P.length]; if (l === S.lastBye) l = P[(seed + 1) % P.length]; return (S.lastBye = l); }
 function vanish(id) {
   S.gone.add(id); const t = $('#t-' + id), p = S.agents[id]; if (!t || !p) return;
   toast(`${p.name} ${L('a quitté l’appel', 'left the call')} 👋`);
@@ -1595,9 +1624,13 @@ const THINK = {
     todo: ['One thing at a time: {x}.', '{x}… then the next one.'], next: ['After this: {x}.'], grep: ['Where is “{x}” hiding?', '“{x}”… it has to be somewhere.'], web: ['“{x}”… let’s see what comes up.'], grep0: ['It has to be somewhere in here.', 'Where is that thing hiding?'], task: ['{x}. Stay on it.', '{x}… getting there, I think.'] },
   fr: { run: ['Toujours en cours… {x}.', 'Allez… {x}.', '{x}. Ça arrive.'], err: ['Pourquoi ça a planté ?', 'Encore cette erreur… qu’est-ce que je rate ?', 'Pas ce que j’attendais de « {x} ».'], two: ['{a}, puis {b}… quel est le lien ?', '{a} et {b}. C’est forcément dans l’un des deux.'], one: ['Il y a un truc dans {a} qui ne colle pas.', '{a}… c’était où, déjà ?'], again: ['Retour à {a}. Encore.', '{a}, une fois de plus. Je rate quelque chose.'],
     todo: ['Une chose à la fois : {x}.', '{x}… puis la suite.'], next: ['Après ça : {x}.'], grep: ['Où se cache « {x} » ?', '« {x} »… c’est forcément quelque part.'], web: ['« {x} »… voyons ce que ça donne.'], grep0: ['C’est forcément quelque part là-dedans.', 'Où est-ce que ça se cache ?'], task: ['{x}. On reste dessus.', '{x}… j’y arrive, je crois.'] },
+  es: { run: ['Sigue en marcha… {x}.', 'Vamos… {x}.', '{x}. Ya casi.'], err: ['¿Por qué ha fallado?', 'Otra vez ese error… ¿qué se me escapa?', 'No es lo que esperaba de “{x}”.'], two: ['{a}, luego {b}… ¿qué los une?', '{a} y {b}. Tiene que estar en uno de los dos.'], one: ['Algo en {a} no cuadra.', '{a}… ¿dónde estaba esa parte?'], again: ['De vuelta a {a}. Otra vez.', '{a}, una vez más. Algo se me escapa.'],
+    todo: ['Una cosa a la vez: {x}.', '{x}… y luego lo siguiente.'], next: ['Después de esto: {x}.'], grep: ['¿Dónde se esconde “{x}”?', '“{x}”… tiene que estar en algún sitio.'], web: ['“{x}”… a ver qué sale.'], grep0: ['Tiene que estar por aquí.', '¿Dónde se esconde eso?'], task: ['{x}. Sigo con ello.', '{x}… creo que ya casi.'] },
+  pt: { run: ['Ainda rodando… {x}.', 'Vamos… {x}.', '{x}. Já vai.'], err: ['Por que isso falhou?', 'Esse erro de novo… o que estou deixando passar?', 'Não era o que eu esperava de “{x}”.'], two: ['{a}, depois {b}… qual é a ligação?', '{a} e {b}. Tem que estar em um dos dois.'], one: ['Alguma coisa em {a} não bate.', '{a}… onde ficava essa parte mesmo?'], again: ['De volta a {a}. De novo.', '{a}, mais uma vez. Estou deixando passar alguma coisa.'],
+    todo: ['Uma coisa de cada vez: {x}.', '{x}… depois a próxima.'], next: ['Depois disso: {x}.'], grep: ['Onde “{x}” está se escondendo?', '“{x}”… tem que estar em algum lugar.'], web: ['“{x}”… vamos ver o que aparece.'], grep0: ['Tem que estar em algum lugar aqui.', 'Onde isso está se escondendo?'], task: ['{x}. Sigo nisso.', '{x}… estou chegando lá, acho.'] },
 };
 function thoughtFor(id) {
-  const now = Date.now(), W = THINK[FR() ? 'fr' : 'en'], seen = (TH.said[id] = TH.said[id] || []), cut = (x, n) => { x = String(x || '').replace(/\s+/g, ' ').trim(); return (x.length > n ? x.slice(0, n).replace(/\s+\S*$/, '') : x).replace(/[.…,;:\s]+$/, ''); };   // the line it goes into brings its own punctuation
+  const now = Date.now(), W = THINK[CALL()], seen = (TH.said[id] = TH.said[id] || []), cut = (x, n) => { x = String(x || '').replace(/\s+/g, ' ').trim(); return (x.length > n ? x.slice(0, n).replace(/\s+\S*$/, '') : x).replace(/[.…,;:\s]+$/, ''); };   // the line it goes into brings its own punctuation
   const real = realThought(id); if (real) return real;   // its own words first, always: the rest is only for when there are none (left)
   const buf = (S.term[id] || []).slice(-8), last = buf[buf.length - 1], r = S.run[id], hot = [], out = [], add = (to, k, v) => { for (const tpl of W[k]) to.push(tpl.replace(/\{(\w+)\}/g, (m, key) => v[key]).replace(/([?!])[.…]+/g, '$1').replace(/([?!]) (\p{Ll})/u, (m, a, b) => a + ' ' + b.toUpperCase())); };   // "Why is it slow?" keeps its own mark, without a full stop after it
   const cmd = (t) => String(t || '').trim().replace(/^(?:cd\s+\S+\s*(?:&&|;)\s*)+/, '').replace(/^(?:[A-Za-z_]\w*=\S*\s+)+/, '').split(/\s+(?:&&|\|\||[|;>])/)[0].split(/\s+/).slice(0, 3).join(' ');   // the command itself: not the folder it starts from, nor what it is piped into
@@ -1637,11 +1670,11 @@ const clearThoughts = () => { document.querySelectorAll('.tile.musing').forEach(
 function stopMumble() { const v = TH.voice; if (v) { TH.voice = null; try { v.src.stop(); } catch {} } }
 async function mumble(id, text) {   // lips closed: the mouth does not move, the music does not make room, and anyone who starts to speak cuts it
   const p = S.agents[id], t = $('#t-' + id); if (!p || !t || !prefs.voice || AUD.off() || !AUD.ctx || S.speakers.size || TH.voice) return;
-  if (!TTS.server || prefs.vstyle === 'animal' || prefs.vstyle === 'sims') { const o = AUD.murmur(0.5 + (p.vi % 5) / 10, Math.min(2.2, estMs(text) / 1000), 0.4); if (o) { TH.voice = { id, src: o }; o.addEventListener('ended', () => { if (TH.voice && TH.voice.src === o) TH.voice = null; }); } return; }
-  const voice = TTS.voiceFor(p, frVoice(text)), token = S.token; if (!voice) return; let buf; try { buf = await TTS.buf(speakable(text), voice, TTS.rate(), true); } catch { return; }   // made like a line prepared ahead: it never delays a real one
+  if (!TTS.server || babbles()) { const o = AUD.murmur(0.5 + (p.vi % 5) / 10, Math.min(2.2, estMs(text) / 1000), 0.4); if (o) { TH.voice = { id, src: o }; o.addEventListener('ended', () => { if (TH.voice && TH.voice.src === o) TH.voice = null; }); } return; }
+  const voice = TTS.voiceFor(p, voiceLang(text)), token = S.token; if (!voice) return; let buf; try { buf = await TTS.buf(speakable(text), voice, TTS.rate(), true); } catch { return; }   // made like a line prepared ahead: it never delays a real one
   if (token !== S.token || S.speakers.size || TH.voice || !t.classList.contains('musing')) return;   // someone spoke meanwhile, or the thought is gone
   const c = AUD.ctx, src = c.createBufferSource(), lp = c.createBiquadFilter(), g = c.createGain(); src.buffer = buf; lp.type = 'lowpass'; lp.frequency.value = 1100; g.gain.value = 0.2; let stops = [];
-  if (prefs.vstyle === 'natural' || prefs.vstyle === 'kokoro') src.connect(lp); else { const ch = fxChain(c, src, fxFor(p)); stops = ch.stops; ch.node.connect(lp); }
+  if (prefs.vstyle === 'cartoon') { const ch = fxChain(c, src, fxFor(p)); stops = ch.stops; ch.node.connect(lp); } else src.connect(lp);
   lp.connect(g); g.connect(AUD.voice); AUD.live.add(src); TH.voice = { id, src };
   src.onended = () => { AUD.live.delete(src); stops.forEach((o) => { try { o.stop(); } catch {} }); if (TH.voice && TH.voice.src === src) TH.voice = null; }; src.start();
 }
@@ -1799,13 +1832,15 @@ function openRecap() {
 //  episode mode: title cards and reactions
 // =====================================================================
 const REACT = { fr: { ack: ['Compris, chef.', 'C’est parti.', 'Encore du boulot…', 'Je m’en occupe.', 'Ok ok ok.'], done: ['Ça compile chez moi.', 'Oh là là, encore des bugs.', 'Qui a écrit ce code ?', 'Super, on a fini.', 'Classique.'] },
-                en: { ack: ['Got it, boss.', 'On it.', 'More work, great.', 'I’ll handle it.', 'Okay okay okay.'], done: ['Works on my machine.', 'Oh man, more bugs.', 'Who wrote this code?', 'Nice, we are done.', 'Classic.'] } };
+                en: { ack: ['Got it, boss.', 'On it.', 'More work, great.', 'I’ll handle it.', 'Okay okay okay.'], done: ['Works on my machine.', 'Oh man, more bugs.', 'Who wrote this code?', 'Nice, we are done.', 'Classic.'] },
+                es: { ack: ['Entendido, jefe.', 'Vamos allá.', 'Más trabajo, genial.', 'Yo me encargo.', 'Vale, vale, vale.'], done: ['En mi máquina funciona.', 'Madre mía, más bugs.', '¿Quién escribió este código?', 'Genial, hemos terminado.', 'Un clásico.'] },
+                pt: { ack: ['Entendido, chefe.', 'Vamos lá.', 'Mais trabalho, que ótimo.', 'Deixa comigo.', 'Tá, tá, tá.'], done: ['Na minha máquina funciona.', 'Nossa, mais bugs.', 'Quem escreveu esse código?', 'Boa, terminamos.', 'Clássico.'] } };
 const quipMem = new Map();
 function prefetchQuips(i) {
   if (!prefs.epi) return; const texts = [];
   for (let k = i; k < Math.min(S.events.length, i + 60) && texts.length < 6; k++) if (S.events[k].kind === 'report') texts.push(baseText(S.events[k], 160));
   const need = texts.filter((t) => !quipMem.has(t)); if (!need.length) return; need.forEach((t) => quipMem.set(t, null));
-  fetch('/api/quips', { method: 'POST', body: JSON.stringify({ texts: need, lang: FR() ? 'fr' : 'en' }) }).then((r) => r.json()).then((d) => (d.texts || []).forEach((q, i) => d.ok && q && q !== need[i] && quipMem.set(need[i], q))).catch(() => {});
+  fetch('/api/quips', { method: 'POST', body: JSON.stringify({ texts: need, lang: CALL() }) }).then((r) => r.json()).then((d) => (d.texts || []).forEach((q, i) => d.ok && q && q !== need[i] && quipMem.set(need[i], q))).catch(() => {});
 }
 
 // Little lines that make the call feel alive. They never appear in the transcript and never replace real content: they are short, local (no API) and can be turned off in ⚙.
@@ -1816,11 +1851,17 @@ const ACK = {
   fr: { tests: ['Je lance les tests, comme d’hab.', 'Des tests ? Toujours.', 'On va voir ce qui casse.', 'Vert ou rouge, je te dirai.'], review: ['Je mets mes lunettes de relecteur.', 'Je relis tout deux fois.', 'Je serai gentil. Peut-être.', 'Audit en cours, je reviens.'], explore: ['Je pars explorer le code.', 'Je grep comme si c’était la fin du monde.', 'Allez, on creuse.', 'Je vais le trouver.'],
     fix: ['L’heure de la chasse aux bugs.', 'Je sens un bug.', 'Mode débogueur : activé.', 'Qui a cassé ça ?'], docs: ['Je rédige ça.', 'La doc, mon truc préféré.', 'Des mots arrivent.'], ui: ['Pixels, me voilà.', 'On va rendre ça joli.', 'Je regarde la mise en page.'], cleanup: ['Je nettoie ce désordre.', 'Séance de rangement.', 'Je supprime. Prudemment.'],
     perf: ['On va rendre ça rapide.', 'Je profile, un instant.', 'À la chasse aux millisecondes.'], any: ['Je m’en occupe !', 'Compris, chef.', 'Je lis le brief.', 'C’est comme fait. Sûrement.', 'Ok ok ok.', 'Pas un mot de plus.', 'Je suis déjà parti.', 'Reçu cinq sur cinq.', 'D’abord un café. Ensuite ça.'] },
+  es: { tests: ['Lanzo las pruebas, como siempre.', '¿Pruebas? Siempre.', 'A ver qué se rompe.', 'Verde o rojo, te aviso.'], review: ['Me pongo las gafas de revisor.', 'Lo leo todo dos veces.', 'Seré amable. Quizá.', 'Auditando, ahora vuelvo.'], explore: ['Me voy a explorar el código.', 'Haciendo grep como si no hubiera un mañana.', 'Hora de escarbar.', 'Lo encontraré.'],
+    fix: ['Hora de cazar bugs.', 'Huelo un bug.', 'Modo depurador: activado.', '¿Quién ha roto esto?'], docs: ['Lo pongo por escrito.', 'Documentación, mi favorita.', 'Se vienen palabras.'], ui: ['Píxeles, allá voy.', 'Vamos a dejarlo bonito.', 'Déjame ver el diseño.'], cleanup: ['Limpiando el desorden.', 'Hora de ordenar.', 'Borrando cosas. Con cuidado.'],
+    perf: ['Vamos a hacerlo rápido.', 'Perfilando, un momento.', 'A la caza de milisegundos.'], any: ['¡Voy!', 'Entendido, jefe.', 'Leyendo el encargo.', 'Dalo por hecho. Probablemente.', 'Vale, vale, vale.', 'No digas más.', 'Ya estoy en ello.', 'Recibido.', 'Primero un café. Luego esto.'] },
+  pt: { tests: ['Rodando os testes, como sempre.', 'Testes? Sempre.', 'Vamos ver o que quebra.', 'Verde ou vermelho, eu aviso.'], review: ['Colocando meus óculos de revisor.', 'Lendo tudo duas vezes.', 'Vou ser legal. Talvez.', 'Auditando, já volto.'], explore: ['Vou explorar o código.', 'Dando grep como se não houvesse amanhã.', 'Hora de cavar.', 'Eu vou achar.'],
+    fix: ['Hora de caçar bugs.', 'Sinto cheiro de bug.', 'Modo depurador: ligado.', 'Quem quebrou isso?'], docs: ['Vou escrever isso.', 'Documentação, minha favorita.', 'Palavras a caminho.'], ui: ['Pixels, aí vou eu.', 'Vamos deixar bonito.', 'Deixa eu ver o layout.'], cleanup: ['Limpando a bagunça.', 'Hora de arrumar.', 'Apagando coisas. Com cuidado.'],
+    perf: ['Vamos deixar rápido.', 'Fazendo o profiling, um momento.', 'Caçando milissegundos.'], any: ['Deixa comigo!', 'Entendido, chefe.', 'Lendo o briefing.', 'Considere feito. Provavelmente.', 'Tá, tá, tá.', 'Nem precisa dizer mais.', 'Já estou indo.', 'Entendido.', 'Primeiro um café. Depois isso.'] },
 };
 const ACK_RE = [['tests', /test|qa\b|spec|jest|vitest|coverage/], ['review', /review|audit|check|inspect|lint|critique/], ['explore', /explor|search|research|find|investigat|look|map|scan/], ['fix', /fix|bug|debug|error|crash|broken/], ['docs', /\bdoc|readme|write|changelog|spec/], ['ui', /\bui\b|design|css|style|layout|front|page|component/], ['cleanup', /refactor|clean|tidy|dead code/], ['perf', /perf|speed|slow|optimi|latenc|profil/]];
 function ackLine(ev) {
   // classify on role and title only: the prompt text is too noisy
-  const R = ACK[FR() ? 'fr' : 'en'], text = `${ev.title || ''} ${(S.agents[ev.to] || {}).role || ''}`.toLowerCase(), cat = (ACK_RE.find(([, re]) => re.test(text)) || [])[0];
+  const R = ACK[CALL()], text = `${ev.title || ''} ${(S.agents[ev.to] || {}).role || ''}`.toLowerCase(), cat = (ACK_RE.find(([, re]) => re.test(text)) || [])[0];
   const pool = cat && hash(String(ev.ts)) % 4 ? R[cat] : R.any, seed = hash(String(ev.ts) + ev.to); let line = pool[seed % pool.length];
   if (line === S.lastAck) line = pool[(seed + 1) % pool.length]; S.lastAck = line; return line;
 }
@@ -1828,8 +1869,9 @@ function ackLine(ev) {
 //  conversation: short exchanges between agents at the right moments, built from what really happened in the session
 // =====================================================================
 const CHAT = { quiet: 0.45, normal: 1, lively: 1.8 }, chatMul = () => CHAT[prefs.chat] || 1;   // normal unless chosen otherwise
-const EXW = { en: { edit: ['edit', 'edits'], call: ['tool call', 'tool calls'], error: ['error', 'errors'], file: ['file', 'files'] }, fr: { edit: ['modification', 'modifications'], call: ['appel d’outil', 'appels d’outils'], error: ['erreur', 'erreurs'], file: ['fichier', 'fichiers'] } };
-const P = (k, n) => { const w = EXW[FR() ? 'fr' : 'en'][k]; return `${n} ${n === 1 ? w[0] : w[1]}`; };
+const EXW = { en: { edit: ['edit', 'edits'], call: ['tool call', 'tool calls'], error: ['error', 'errors'], file: ['file', 'files'] }, fr: { edit: ['modification', 'modifications'], call: ['appel d’outil', 'appels d’outils'], error: ['erreur', 'erreurs'], file: ['fichier', 'fichiers'] },
+  es: { edit: ['cambio', 'cambios'], call: ['llamada a herramienta', 'llamadas a herramientas'], error: ['error', 'errores'], file: ['archivo', 'archivos'] }, pt: { edit: ['alteração', 'alterações'], call: ['chamada de ferramenta', 'chamadas de ferramentas'], error: ['erro', 'erros'], file: ['arquivo', 'arquivos'] } };
+const P = (k, n) => { const w = EXW[CALL()][k]; return `${n} ${n === 1 ? w[0] : w[1]}`; };
 const EXCH = {
   en: { done: ['All done.', 'Finished.', 'Okay, that’s done.', 'Done on my side.', 'That’s wrapped up.'],
     ask: ['Quick question: is that the whole scope?', 'Anything else I should touch?', 'Any constraints I should know about?', 'Should I check with you before big changes?'],
@@ -1851,6 +1893,26 @@ const EXCH = {
     chime: [(b) => `Bon boulot, ${b}.`, () => 'Joli.', (b) => `Super, ${b}.`],
     trouble: [(b) => `${b}, ça va ? Ça fait beaucoup d’erreurs.`, (b) => `${b}, besoin d’un coup de main avec ces erreurs ?`], troubleBack: ['Je m’en occupe.', 'Oui, j’y suis presque.', 'Donne-moi une minute.', 'Je gère, merci.'],
     sync: ['Petit point rapide : où en est-on ?', 'Point d’étape, tout le monde ?', 'On fait un tour de table rapide.'], syncAns: [(a) => `Toujours dessus : ${a}.`, (a) => `${a}, ça avance bien.`, (a) => `En ce moment : ${a}.`] },
+  es: { done: ['Todo hecho.', 'Terminado.', 'Vale, ya está.', 'Listo por mi parte.', 'Eso ya está cerrado.'],
+    ask: ['Una pregunta rápida: ¿eso es todo el alcance?', '¿Algo más que deba tocar?', '¿Alguna restricción que deba conocer?', '¿Te aviso antes de los cambios grandes?'],
+    askBack: ['Solo eso, gracias.', 'No, céntrate en eso.', 'Usa tu criterio.', 'Nada especial, adelante.', 'Eso es todo, gracias.'],
+    ok: [(f) => `Bien, ${f.what} y sin errores.`, (f) => (f.file ? `Bien, ${f.file} tiene buena pinta.` : 'Bien, tiene buena pinta.'), (f, b) => `Perfecto${f.dur ? ', ha llevado ' + f.dur : ''}. Gracias, ${b}.`, (f) => `Genial, ${f.what}. Limpio.`],
+    err: [(f) => `He visto ${P('error', f.errs)} por el camino. ¿Todo bien ahora?`, (f) => `${P('error', f.errs)} por el camino, ¿es sólido?`],
+    errBack: ['Sí, solo eran reintentos.', 'Todo arreglado al final.', 'Sí, algún tropiezo, nada grave.', 'Ahora es sólido.'],
+    slow: [(f) => `Ha llevado ${f.dur}. ¿Algo te bloquea?`, (f) => `${f.dur}, ha sido largo. ¿Todo bien?`], slowBack: ['No, es que era grande.', 'Nada me bloquea, había mucho que leer.', 'Todo bien, era pesado.'],
+    chime: [(b) => `Buen trabajo, ${b}.`, () => 'Muy bien.', (b) => `Genial, ${b}.`],
+    trouble: [(b) => `${b}, ¿todo bien? Son muchos errores.`, (b) => `${b}, ¿te echo una mano con esos errores?`], troubleBack: ['Estoy en ello.', 'Sí, ya casi lo tengo.', 'Dame un minuto.', 'Me encargo, gracias.'],
+    sync: ['Repaso rápido: ¿cómo vamos?', '¿Estado, equipo?', 'Hagamos una ronda rápida.'], syncAns: [(a) => `Sigo con ello: ${a}.`, (a) => `${a}, va bien.`, (a) => `Ahora mismo: ${a}.`] },
+  pt: { done: ['Tudo feito.', 'Terminei.', 'Pronto, está feito.', 'Feito do meu lado.', 'Isso está fechado.'],
+    ask: ['Pergunta rápida: esse é o escopo todo?', 'Mais alguma coisa em que eu deva mexer?', 'Alguma restrição que eu deva saber?', 'Aviso você antes das mudanças grandes?'],
+    askBack: ['Só isso, valeu.', 'Não, mantenha o foco.', 'Use o seu critério.', 'Nada de especial, pode ir.', 'É só isso, valeu.'],
+    ok: [(f) => `Boa, ${f.what} e nenhum erro.`, (f) => (f.file ? `Bom, ${f.file} parece certo.` : 'Bom, parece certo.'), (f, b) => `Perfeito${f.dur ? ', levou ' + f.dur : ''}. Valeu, ${b}.`, (f) => `Ótimo, ${f.what}. Limpo.`],
+    err: [(f) => `Vi ${P('error', f.errs)} pelo caminho. Tudo certo agora?`, (f) => `${P('error', f.errs)} pelo caminho, está firme?`],
+    errBack: ['Sim, eram só novas tentativas.', 'Tudo resolvido no final.', 'Sim, uns tropeços, nada sério.', 'Agora está firme.'],
+    slow: [(f) => `Levou ${f.dur}. Alguma coisa travando você?`, (f) => `${f.dur}, foi demorado. Tudo bem?`], slowBack: ['Não, é que era grande.', 'Nada travando, só tinha muito para ler.', 'Tudo bem, era pesado.'],
+    chime: [(b) => `Bom trabalho, ${b}.`, () => 'Boa.', (b) => `Ótimo, ${b}.`],
+    trouble: [(b) => `${b}, tudo bem? É muito erro.`, (b) => `${b}, precisa de uma mão com esses erros?`], troubleBack: ['Estou cuidando disso.', 'Sim, estou quase lá.', 'Me dá um minuto.', 'Deixa comigo, valeu.'],
+    sync: ['Alinhamento rápido: como estamos?', 'Status, pessoal?', 'Vamos fazer uma rodada rápida.'], syncAns: [(a) => `Sigo nisso: ${a}.`, (a) => `${a}, indo bem.`, (a) => `No momento: ${a}.`] },
 };
 const exPick = (arr, seed, ...args) => { let k = seed % arr.length; if (arr[k] === S.lastX && arr.length > 1) k = (k + 1) % arr.length; S.lastX = arr[k]; return typeof arr[k] === 'function' ? arr[k](...args) : arr[k]; };
 function exchFacts(i, agent) {   // what this agent did since it received its order: edits, tool calls, errors, the files it changed, how long it took
@@ -1879,18 +1941,18 @@ function noteTrouble(agent, ok) {   // three errors in a row: someone asks if ev
 }
 function pickOther(not, prefer) { const ids = Object.keys(S.agents).filter((id) => id !== 'user' && !not.includes(id) && exVisible(id)); const pr = ids.filter(prefer || (() => false)); const a = pr.length ? pr : ids; return a.length ? a[Math.floor(Math.random() * a.length)] : null; }
 async function handoffX(g, seed, token) {   // an order: the new agent asks a question, the lead answers
-  const E = EXCH[FR() ? 'fr' : 'en'], b = g.to, a = g.agent; if (!exVisible(a) || !exVisible(b)) return false; exLog('handoff');
+  const E = EXCH[CALL()], b = g.to, a = g.agent; if (!exVisible(a) || !exVisible(b)) return false; exLog('handoff');
   return (await exSay(b, exPick(E.ask, seed), token)) && (await exSay(a, exPick(E.askBack, seed >>> 3), token));
 }
 async function reportX(g, i, seed, token) {   // a report: the receiver reacts to what really happened
-  const E = EXCH[FR() ? 'fr' : 'en'], b = g.agent, a = g.to; if (a === 'user' || !exVisible(a) || !exVisible(b)) return false; const f = exchFacts(i, b);
+  const E = EXCH[CALL()], b = g.agent, a = g.to; if (a === 'user' || !exVisible(a) || !exVisible(b)) return false; const f = exchFacts(i, b);
   if (f.errs > 0) { exLog('report-errors'); return (await exSay(a, exPick(E.err, seed, f), token)) && (await exSay(b, exPick(E.errBack, seed >>> 3), token)); }
   if (f.ms >= 120000) { exLog('report-slow'); return (await exSay(a, exPick(E.slow, seed, f), token)) && (await exSay(b, exPick(E.slowBack, seed >>> 3), token)); }
   exLog('report-ok'); if (!(await exSay(a, exPick(E.ok, seed, f, nameOf(b)), token))) return false;
   const c = (seed >>> 5) % 100 < 35 ? pickOther([a, b]) : null; if (c) await exSay(c, exPick(E.chime, seed >>> 7, nameOf(b)), token); return true;
 }
 async function troubleX(token) {   // someone keeps failing: a colleague checks in
-  const E = EXCH[FR() ? 'fr' : 'en']; while (S.exQ && S.exQ.length) {
+  const E = EXCH[CALL()]; while (S.exQ && S.exQ.length) {
     const x = S.exQ.shift(); if (!exVisible(x)) continue; const h = pickOther([x], (id) => id === 'main'); if (!h) continue; const seed = hash('t' + x + Date.now());
     exLog('trouble'); return (await exSay(h, exPick(E.trouble, seed, nameOf(x)), token)) && (await exSay(x, exPick(E.troubleBack, seed >>> 3), token));
   }
@@ -1899,7 +1961,7 @@ async function troubleX(token) {   // someone keeps failing: a colleague checks 
 async function syncX(g, token) {   // every few minutes of the session: the lead asks where everyone is, the busy agents answer
   if (chatMul() < 0.9 || !g.ts || g.ts - (S.syncTs || 0) < 180000 || !exVisible('main')) return false;
   const now = Date.now(), busy = Object.keys(S.agents).filter((id) => id !== 'user' && id !== 'main' && exVisible(id) && agentState(id, now).k === 'working').slice(0, 3); if (busy.length < 2) return false;
-  S.syncTs = g.ts; const E = EXCH[FR() ? 'fr' : 'en'], seed = hash('s' + g.ts); exLog('sync');
+  S.syncTs = g.ts; const E = EXCH[CALL()], seed = hash('s' + g.ts); exLog('sync');
   if (!(await exSay('main', exPick(E.sync, seed), token))) return false;
   for (const [n, id] of busy.entries()) { const act = (S.act[id] || '').replace(/^\S+\s/, '') || L('au travail', 'working'); if (!(await exSay(id, exPick(E.syncAns, seed >>> (n + 1), act.charAt(0).toLowerCase() + act.slice(1)), token))) return false; }
   return true;
@@ -1918,12 +1980,12 @@ async function converse(g, token) {   // after a line has been said: an exchange
 }
 // What is said out loud for an order or a report: a natural lead-in, then the text
 function talkLine(g) {
-  const E = EXCH[FR() ? 'fr' : 'en'], seed = hash('l' + g.ts + g.agent), t = spoken(g);
+  const E = EXCH[CALL()], seed = hash('l' + g.ts + g.agent), t = spoken(g);
   if (g.kind === 'report') return t.replace(/^(Terminé\.|Done\.)\s*/, E.done[seed % E.done.length] + ' ');
   return t;
 }
 async function react(ev, token) {
-  if ((!prefs.epi && !prefs.banter) || S.boost > 1 || S.hurry || !nearLive()) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[FR() ? 'fr' : 'en']; let who, line, thanks = false;
+  if ((!prefs.epi && !prefs.banter) || S.boost > 1 || S.hurry || !nearLive()) return; const seed = hash(String(ev.ts) + ev.agent), R = REACT[CALL()]; let who, line, thanks = false;
   if (ev.kind === 'order') { if (!prefs.banter && seed % 100 > 55) return; who = ev.to; line = prefs.banter ? ackLine(ev) : R.ack[seed % R.ack.length]; }
   else if (ev.kind === 'report') {
     const r = seed % 100, joke = prefs.epi ? 60 : prefs.chat === 'quiet' ? -1 : 35;   // a remark from someone else, or (a little less often) a word of thanks from whoever receives the report
@@ -1942,6 +2004,12 @@ const FILL = {
   fr: { share: ['Vous voyez bien mon écran ?', 'Deux secondes, ça charge.', 'Désolé, ma machine rame aujourd’hui.', 'C’est assez gros pour tout le monde ?', 'Une seconde… j’y suis presque.', 'Dites-moi si je vais trop vite.'],
     busy: ['Toujours là, je suis dessus.', 'Pardon, j’étais en muet.', 'Petit point : j’avance.', 'Pas de point bloquant de mon côté.', 'Vous m’entendez ?', 'C’est moi, ou c’est calme ?', 'Je vous fais un retour dans une minute.'],
     wait: ['Vous m’entendez ?', 'Vous êtes toujours là ?', 'Allô ? Je crois que ton micro est coupé.', 'On a perdu quelqu’un ?', 'C’est ma connexion ?', 'On en reparle en off ?', 'On refait un point quand tu veux.', 'Je vous rends une minute.', 'D’autres sujets ?', 'Pardon, vas-y. Non, toi d’abord.'] },
+  es: { share: ['¿Se ve bien mi pantalla?', 'Un momento, está cargando.', 'Perdón, mi máquina va lenta hoy.', '¿Se ve lo bastante grande?', 'Un segundo… ya casi.', 'Avisa si voy demasiado rápido.'],
+    busy: ['Sigo aquí, a lo mío.', 'Perdón, estaba en silencio.', 'Novedades: sigo con ello.', 'Sin bloqueos por mi parte.', '¿Se me oye?', '¿Soy yo, o está todo muy callado?', 'Tendré novedades en un minuto.'],
+    wait: ['¿Se me oye?', '¿Sigue alguien ahí?', '¿Hola? Creo que tienes el micro apagado.', '¿Hemos perdido a alguien?', '¿Es mi conexión?', '¿Lo hablamos fuera de la reunión?', 'Lo retomamos cuando quieras.', 'Un minuto libre para todos.', '¿Algún otro tema?', 'Perdón, sigue. No, tú primero.'] },
+  pt: { share: ['Todo mundo está vendo a minha tela?', 'Só um instante, está carregando.', 'Desculpa, minha máquina está lenta hoje.', 'Está grande o suficiente para todo mundo?', 'Um segundo… quase lá.', 'Me avisem se eu estiver indo rápido demais.'],
+    busy: ['Ainda estou aqui, focando no trabalho.', 'Desculpa, eu estava no mudo.', 'Atualização rápida: sigo nisso.', 'Sem bloqueios do meu lado.', 'Vocês estão me ouvindo?', 'É impressão minha, ou está tudo quieto?', 'Trago novidades em um minuto.'],
+    wait: ['Vocês estão me ouvindo?', 'Vocês ainda estão aí?', 'Alô? Acho que você está no mudo.', 'Perdemos alguém?', 'É a minha conexão?', 'Vamos falar disso depois da reunião?', 'A gente retoma quando você quiser.', 'Devolvo um minuto para todo mundo.', 'Mais algum assunto?', 'Desculpa, pode falar. Não, você primeiro.'] },
 };
 // A little more talk between agents: a word of thanks when a report comes in, a word from whoever has been thinking for a long time.
 const TALK = {
@@ -1949,8 +2017,12 @@ const TALK = {
     think: ['Hmm, let me think.', 'Give me a second, I’m thinking.', 'Interesting… let me think this through.', 'One moment, I’m working it out.', 'Hang on, I want to get this right.', 'Let me double-check something.', 'Still thinking… almost there.', 'That one needs a bit of thought.'] },
   fr: { thanks: ['Merci, ça m’aide.', 'Bien reçu, merci.', 'C’est noté. Je prends la suite.', 'Parfait, c’est ce qu’il me fallait.', 'Merci, bon boulot.', 'Bon à savoir, merci.', 'Compris, merci.', 'Super, un souci de moins.'],
     think: ['Hmm, laissez-moi réfléchir.', 'Une seconde, je réfléchis.', 'Intéressant… je creuse ça.', 'Un instant, je fais le point.', 'Attendez, je veux être sûr.', 'Je vérifie un truc.', 'Je réfléchis encore… j’y suis presque.', 'Ça demande un peu de réflexion.'] },
+  es: { thanks: ['Gracias, eso ayuda.', 'Entendido, gracias.', 'Anotado. Sigo yo desde aquí.', 'Perfecto, es lo que necesitaba.', 'Gracias, buen trabajo.', 'Bueno saberlo, gracias.', 'Comprendido, gracias.', 'Genial, una cosa menos de la que preocuparse.'],
+    think: ['Mmm, déjame pensar.', 'Dame un segundo, estoy pensando.', 'Interesante… déjame pensarlo bien.', 'Un momento, lo estoy resolviendo.', 'Espera, quiero hacerlo bien.', 'Déjame comprobar una cosa.', 'Sigo pensando… ya casi.', 'Esto requiere pensarlo un poco.'] },
+  pt: { thanks: ['Valeu, isso ajuda.', 'Entendi, valeu.', 'Anotado. Eu sigo daqui.', 'Perfeito, era o que eu precisava.', 'Valeu, bom trabalho.', 'Bom saber, valeu.', 'Entendido, agradeço.', 'Ótimo, uma preocupação a menos.'],
+    think: ['Hmm, deixa eu pensar.', 'Me dá um segundo, estou pensando.', 'Interessante… deixa eu pensar melhor.', 'Um momento, estou resolvendo isso.', 'Espera, quero fazer isso direito.', 'Deixa eu conferir uma coisa.', 'Ainda pensando… quase lá.', 'Essa pede um pouco de reflexão.'] },
 };
-function varied(kind, seed) { const P = TALK[FR() ? 'fr' : 'en'][kind]; let line = P[seed % P.length]; if (line === S.lastTalk) line = P[(seed + 1) % P.length]; return (S.lastTalk = line); }   // never the same line twice in a row
+function varied(kind, seed) { const P = TALK[CALL()][kind]; let line = P[seed % P.length]; if (line === S.lastTalk) line = P[(seed + 1) % P.length]; return (S.lastTalk = line); }   // never the same line twice in a row
 // Who is thinking once this event has happened: the agent whose tool just answered, the lead after your message or a report, a sub-agent that just got its order. After a line or a tool call, nobody is.
 const thinkerOf = (e) => (e.kind === 'results' ? e.agent : e.kind === 'user' ? 'main' : e.kind === 'report' || e.kind === 'finish' || e.kind === 'order' ? e.to : null);
 const before = (i) => { let k = i - 1; while (k >= 0 && (S.events[k].kind === 'usage' || S.events[k].kind === 'compact')) k--; return S.events[k]; };
@@ -1962,10 +2034,12 @@ async function ponder(i, token) {   // replay: an agent that really took a long 
 const LEAD = {
   en: { in: ['Got it.', 'Okay.', 'On it.', 'Sure.', 'Right.'], read: 'Let me look at ', edit: 'I’m editing ', write: 'I’m writing ', cmd: 'I’m running ', note: 'I’m running a command: ', grep: 'Let me search the code.', glob: 'Let me see which files we have.', todo: 'Let me lay out a plan.', web: 'Let me check the web.', question: 'I have a question for you.', any: 'Let me get started.', and: ' and ' },
   fr: { in: ['D’accord.', 'Compris.', 'Très bien.', 'Entendu.', 'Ça marche.'], read: 'Je regarde ', edit: 'Je modifie ', write: 'J’écris ', cmd: 'Je lance ', note: 'Je lance une commande : ', grep: 'Je cherche dans le code.', glob: 'Je regarde quels fichiers on a.', todo: 'Je fais mon plan.', web: 'Je vais voir sur le web.', question: 'J’ai une question pour vous.', any: 'Je m’y mets.', and: ' et ' },
+  es: { in: ['Entendido.', 'Vale.', 'Voy.', 'Claro.', 'De acuerdo.'], read: 'Voy a mirar ', edit: 'Estoy editando ', write: 'Estoy escribiendo ', cmd: 'Estoy ejecutando ', note: 'Ejecuto un comando: ', grep: 'Voy a buscar en el código.', glob: 'Voy a ver qué archivos tenemos.', todo: 'Voy a trazar un plan.', web: 'Voy a mirar en la web.', question: 'Tengo una pregunta para ti.', any: 'Me pongo a ello.', and: ' y ' },
+  pt: { in: ['Entendi.', 'Certo.', 'Deixa comigo.', 'Claro.', 'Tá bom.'], read: 'Vou dar uma olhada em ', edit: 'Estou editando ', write: 'Estou escrevendo ', cmd: 'Estou rodando ', note: 'Estou rodando um comando: ', grep: 'Vou procurar no código.', glob: 'Vou ver quais arquivos temos.', todo: 'Vou montar um plano.', web: 'Vou conferir na web.', question: 'Tenho uma pergunta para você.', any: 'Vou começar.', and: ' e ' },
 };
 async function leadAck(ev, token) {
   if (!prefs.banter || !S.agents.main) { S.owed = false; return; } if (S.hurry || S.boost > 1 || !nearLive() || S.speakers.size) return; S.owed = false;   // reading your order took a while: the first tool is rarely less than 6 s old; if now is a bad moment, the next tool will do
-  const W = LEAD[FR() ? 'fr' : 'en'], d = ev.tools[0].d || {}, k = d.kind === 'text' ? d.what : d.kind; let what = W[k] || W.any;
+  const W = LEAD[CALL()], d = ev.tools[0].d || {}, k = d.kind === 'text' ? d.what : d.kind; let what = W[k] || W.any;
   if (k === 'read' || k === 'edit' || k === 'write') { const files = [...new Set(ev.tools.filter((t) => (t.d || {}).kind === k).map((t) => base(t.d.file)).filter(Boolean))].slice(0, 2); what = files.length ? what + files.join(W.and) + '.' : W.any; }
   else if (k === 'cmd') { const note = (d.note || '').trim().replace(/[.\s]+$/, ''), cmd = String(d.text || '').trim().split(/\s+/).slice(0, 2).join(' ').slice(0, 26); what = note ? W.note + note + '.' : cmd ? what + cmd + '.' : W.any; }
   await sayLine('main', `${W.in[hash('k' + ev.ts) % W.in.length]} ${what}`, '💬', token);
@@ -1976,9 +2050,11 @@ async function leadAck(ev, token) {
 const CLOSE = {
   en: { edit: [(a) => `I changed ${a}.`, (a) => `I updated ${a}.`, (a) => `My changes are in ${a}.`], calls: [(w, d) => `That was ${w}${d ? ' in ' + d : ''}.`, (w, d) => `In total: ${w}${d ? ' in ' + d : ''}.`], said: ['That’s my answer.', 'That’s all from me.', 'Nothing more from me.'], ask: ['I’ll wait for your answer.', 'Your call.', 'Tell me what you prefer.'], you: ['Your turn.', 'Over to you.', 'Back to you.'], step: ['One step done.', 'That part is done.', 'So far so good.'], team: ['The team is back. I’ll go through the reports.', 'All the reports are in. Let me read them.', 'Everyone has reported. I’ll take it from here.'], and: ' and ' },
   fr: { edit: [(a) => `J’ai modifié ${a}.`, (a) => `J’ai mis à jour ${a}.`, (a) => `Mes changements sont dans ${a}.`], calls: [(w, d) => `Ça fait ${w}${d ? ' en ' + d : ''}.`, (w, d) => `Au total : ${w}${d ? ' en ' + d : ''}.`], said: ['Voilà ma réponse.', 'C’est tout pour moi.', 'Rien de plus de mon côté.'], ask: ['J’attends votre réponse.', 'À vous de décider.', 'Dites-moi ce que vous préférez.'], you: ['À vous.', 'C’est à vous.', 'Je vous rends la main.'], step: ['Une étape de faite.', 'Cette partie est faite.', 'Jusqu’ici, tout va bien.'], team: ['L’équipe est de retour. Je parcours les rapports.', 'Tous les rapports sont là. Je les lis.', 'Tout le monde a rendu son rapport. Je prends la suite.'], and: ' et ' },
+  es: { edit: [(a) => `He cambiado ${a}.`, (a) => `He actualizado ${a}.`, (a) => `Mis cambios están en ${a}.`], calls: [(w, d) => `Eso suma ${w}${d ? ' en ' + d : ''}.`, (w, d) => `En total: ${w}${d ? ' en ' + d : ''}.`], said: ['Esa es mi respuesta.', 'Eso es todo por mi parte.', 'Nada más por mi parte.'], ask: ['Espero tu respuesta.', 'Tú decides.', 'Dime qué prefieres.'], you: ['Tu turno.', 'Te toca.', 'Te devuelvo la palabra.'], step: ['Un paso hecho.', 'Esa parte está hecha.', 'Hasta aquí, todo bien.'], team: ['El equipo ha vuelto. Voy a repasar los informes.', 'Ya están todos los informes. Voy a leerlos.', 'Todos han informado. Sigo yo desde aquí.'], and: ' y ' },
+  pt: { edit: [(a) => `Alterei ${a}.`, (a) => `Atualizei ${a}.`, (a) => `Minhas alterações estão em ${a}.`], calls: [(w, d) => `Isso deu ${w}${d ? ' em ' + d : ''}.`, (w, d) => `No total: ${w}${d ? ' em ' + d : ''}.`], said: ['Essa é a minha resposta.', 'Isso é tudo da minha parte.', 'Nada mais da minha parte.'], ask: ['Aguardo sua resposta.', 'Você decide.', 'Me diga o que prefere.'], you: ['Sua vez.', 'É com você.', 'Passo a palavra para você.'], step: ['Uma etapa feita.', 'Essa parte está feita.', 'Até aqui, tudo certo.'], team: ['A equipe voltou. Vou passar pelos relatórios.', 'Todos os relatórios chegaram. Vou ler.', 'Todo mundo entregou. Eu sigo daqui.'], and: ' e ' },
 };
 function closeLine(e, tail) {   // e: the message that closed this stretch of work; none when there is no new one, and then the line is only how it ends
-  const W = CLOSE[FR() ? 'fr' : 'en'], f = e ? exchFacts(S.pos - 1, 'main') : null, n = f ? f.files.length : 0, ask = tail === 'you' && !!e && /[?？]$/.test(plain(e.text));   // it ends on a question: the floor is yours, to answer it
+  const W = CLOSE[CALL()], f = e ? exchFacts(S.pos - 1, 'main') : null, n = f ? f.files.length : 0, ask = tail === 'you' && !!e && /[?？]$/.test(plain(e.text));   // it ends on a question: the floor is yours, to answer it
   const make = (s) => { const end = W[tail][(s >>> 3) % W[tail].length]; if (!e) return end; if (ask) return W.ask[s % W.ask.length];
     const did = n ? W.edit[s % W.edit.length](n < 3 ? f.files.join(W.and) : P('file', n)) : f.tools ? W.calls[s % W.calls.length](P('call', f.tools), f.ms >= 20000 ? f.dur : '') : tail === 'you' ? W.said[s % W.said.length] : ''; return (did ? did + ' ' : '') + end; };
   const s = hash('c' + (e ? e.ts : Date.now())); let line = make(s); if (line === S.lastClose) line = make(s + 8); return (S.lastClose = line);   // never the same line twice in a row
@@ -2001,7 +2077,7 @@ async function smallTalk(token) {
   const p = before(S.events.length), muser = S.live && !n && !S.mused && p ? thinkerOf(p) : null, think = !!muser && here.includes(muser) && quiet > 6000 && Date.now() - p.ts > 20000 && Date.now() - p.ts < 180000;   // live: 20 s without a word from whoever is thinking, once per silence
   if (!think && (quiet < (S.live ? 45000 : 12000 / spd()) * [1, 2.5, 6][n] || (S.live && Date.now() - last.ts > 6e5))) return;   // live: a session untouched for ten minutes is a call that is over
   const busy = here.filter((id) => agentState(id, Date.now()).k === 'working'), who = think ? muser : S.present && here.includes(S.present) ? S.present : pick(busy.length ? busy : here); if (!who) return;   // whoever shares their screen speaks, so the screen stays up
-  const P = FILL[FR() ? 'fr' : 'en'][who === S.present ? 'share' : busy.length ? 'busy' : 'wait']; let line = think ? varied('think', Math.floor(Math.random() * 97)) : pick(P); if (!think && line === S.lastFill) line = P[(P.indexOf(line) + 1) % P.length]; if (!think) S.lastFill = line;
+  const P = FILL[CALL()][who === S.present ? 'share' : busy.length ? 'busy' : 'wait']; let line = think ? varied('think', Math.floor(Math.random() * 97)) : pick(P); if (!think && line === S.lastFill) line = P[(P.indexOf(line) + 1) % P.length]; if (!think) S.lastFill = line;
   startTalk(who, line, think ? '💭' : '💬'); if (think) S.mused = true; else S.fill = n + 1; await speakLine(line, S.agents[who], true, token); stopTalk(who);
 }
 async function card(text, sub, ms = 2500) {
@@ -2059,7 +2135,7 @@ async function run(i) {
         if (e2.kind !== 'order' && isSub(e2.agent) && !group.some((g) => g.agent === e2.agent)) { group.push(e2); j++; } else break;
       }
     }
-    if (FR() && !S.hurry) { prefetchTr(i); await Promise.race([ensureTr(group.map((g) => baseText(g))), sleep(S.live ? 7000 : 14000)]); if (token !== S.token) return; }
+    if (TRL() && !S.hurry) { prefetchTr(i); await Promise.race([ensureTr(group.map((g) => baseText(g))), sleep(S.live ? 7000 : 14000)]); if (token !== S.token) return; }
     prefetchQuips(i); warmTTS(i);
     const playOne = (g) => {
       applyStatus(g); if (g.end) paintStates(); g._as = g.kind; if (g.agent === 'user') S.owed = true; else if (g.agent === 'main') S.owed = false;   // your order waits for a word from the lead
@@ -2068,7 +2144,7 @@ async function run(i) {
       if (g.kind === 'order') { S.status[g.to] = 'working'; AUD.join(); setTimeout(() => { paintStatus(); fly(g.agent, g.to, '📨'); popTile(g.to); }, 30); }
       if (g.kind === 'report') { AUD.ding(); setTimeout(() => { fly(g.agent, g.to, '✅'); popTile(g.agent); }, 30); }
       const said = clipSpeech(line, S.pace); if (g.agent === 'main' && g.kind === 'say') { const full = plain(g.text), key = said.replace(/…$/, '').trim().slice(-30), pos = key ? full.indexOf(key) : -1, n = pos >= 0 ? pos + key.length : said.length; S.mainSaid = { ev: g, said: n, full: n >= full.length - 5 }; }
-      return speakLine(said, S.agents[g.agent], true, token, sessFr(said, g), g.kind === 'user').then(() => { if (token === S.token) stopTalk(g.agent); });
+      return speakLine(said, S.agents[g.agent], true, token, sessVoice(said, g), g.kind === 'user').then(() => { if (token === S.token) stopTalk(g.agent); });
     };
     let plays;
     if (ev.kind === 'order' && group.length > 1) {   // the first order in full, then "Also Remy on X, Iris on Y"
@@ -2120,7 +2196,7 @@ async function loadSession(proj, id) {
   S.term = {}; S.camFor = null; S.focus = null; S.agents = {}; for (const k in nameBook) delete nameBook[k]; [{ id: 'user' }, ...data.agents].forEach((a) => (S.agents[a.id] = persona(a)));
   clearThoughts(); Object.assign(TH, { since: {}, next: {}, said: {}, last: 0 }); S.events = data.events; stampT(0); S.byK = new Map(data.events.map((e) => [e.k, e])); S.seq = data.seq || 0; S.ep = data.ep || ''; S.sawEnd = !!data.marks || data.events.some((e) => e.end); S.late = []; S.pos = 0; S.joinAt = Date.now(); S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on'); S.fgone = new Set(); S.fmade = new Map(); S.artOk = new Map(); S.artPin = null;
   const opt = $('#sessions').selectedOptions[0]; S.title = (S.live ? niceProj(proj) : opt && opt.dataset.title) || '';
-  if (proj === '_demo') S.events.forEach((e) => { if (e.fr) trMem.set(baseText(e), e.fr); });   // the demo ships its own French
+  if (proj === '_demo') S.events.forEach((e) => { if (e.fr) trMem.set(baseText(e), e.fr, 'fr'); });   // the demo ships its own French
   $('#subtitle').textContent = S.title; recomputeStatus(0); buildStage(); renderHighlights(); setFocus('main'); renderLog(true); computeGantt(); layout(); paintStatus(); prefetchTr(0); return true;
 }
 const niceProj = (p) => (p === '_demo' ? '' : p === '_codex' ? 'Codex' : p === '_vibe' ? 'Mistral Vibe' : p === '_cowork' ? 'Cowork' : String(p).replace(/^-+/, '').replace(/-/g, '/').split('/').slice(-2).join('/'));
@@ -2298,6 +2374,8 @@ $('#tabs').onclick = (e) => {
 const VISIT = {
   en: { ask: [(t) => `Knock knock. They have a question for you in “${t}”.`, (t) => `Sorry to cut in: “${t}” has a question for you.`], ok: [(t) => `Knock knock. “${t}” is waiting for your go-ahead.`, (t) => `Excuse me, you are wanted in “${t}”: it waits for your approval.`], turn: [(t) => `Just passing by: “${t}” is done, it is your turn over there.`, (t) => `News from “${t}”: they are finished and wait for you.`] },
   fr: { ask: [(t) => `Toc toc. On a une question pour vous dans « ${t} ».`, (t) => `Pardon de vous couper : « ${t} » a une question pour vous.`], ok: [(t) => `Toc toc. « ${t} » attend votre feu vert.`, (t) => `Excusez-moi, on vous demande dans « ${t} » : on y attend votre accord.`], turn: [(t) => `Je ne fais que passer : « ${t} » a fini, c’est à vous là-bas.`, (t) => `Des nouvelles de « ${t} » : ils ont fini et vous attendent.`] },
+  es: { ask: [(t) => `Toc, toc. Tienen una pregunta para ti en “${t}”.`, (t) => `Perdona que interrumpa: “${t}” tiene una pregunta para ti.`], ok: [(t) => `Toc, toc. “${t}” espera tu visto bueno.`, (t) => `Disculpa, te buscan en “${t}”: esperan tu aprobación.`], turn: [(t) => `Solo pasaba por aquí: “${t}” ha terminado, te toca allí.`, (t) => `Noticias de “${t}”: han terminado y te esperan.`] },
+  pt: { ask: [(t) => `Toc, toc. Tem uma pergunta para você em “${t}”.`, (t) => `Desculpe interromper: “${t}” tem uma pergunta para você.`], ok: [(t) => `Toc, toc. “${t}” está esperando o seu sinal verde.`, (t) => `Com licença, estão chamando você em “${t}”: esperam a sua aprovação.`], turn: [(t) => `Só de passagem: “${t}” terminou, é a sua vez lá.`, (t) => `Notícias de “${t}”: terminaram e esperam por você.`] },
 };
 function knocks() {
   const now = Date.now(), first = !knocks.seen, seen = knocks.seen || (knocks.seen = {}), ck = S.cur ? sessKey(S.cur) : ''; let best = null;
@@ -2311,7 +2389,7 @@ function knocks() {
   if (best && prefs.visits !== false && !S.locked && !(S.visit && S.visit.kind !== 'turn' && best.kind === 'turn')) { S.knockAt[best.k] = now; showVisit(best); }
 }
 function showVisit(v) {   // the same face and name each time for a given session; with your own characters, one of them
-  const h = hash('visit' + v.k), p = persona0({ id: 'visit:' + v.k, name: NAMES[h % NAMES.length], role: '' }), W = VISIT[FR() ? 'fr' : 'en'][v.kind], t = tabName(v.r), el = $('#visit');
+  const h = hash('visit' + v.k), p = persona0({ id: 'visit:' + v.k, name: NAMES[h % NAMES.length], role: '' }), W = VISIT[CALL()][v.kind], t = tabName(v.r), el = $('#visit');
   p.custom = CHARS.pool.length ? CHARS.pool[h % CHARS.pool.length] : null; v.p = p; v.line = W[(h + (showVisit.n = (showVisit.n || 0) + 1)) % W.length](t.length > 46 ? t.slice(0, 44).replace(/\s+\S*$/, '') + '…' : t);
   el.className = 'on ' + (v.kind === 'turn' ? 'turn' : 'blocked');
   el.innerHTML = `<div class="vsay"><button class="vx" aria-label="${esc(L('Fermer', 'Close'))}">✕</button><small>${esc(p.name)} · ${esc(niceProj(v.r.proj))}</small>${esc(v.line)}<br><button class="vgo">${esc(L('Y aller', 'Go there'))} →</button></div><div class="vwho">${avatarSVG(p, undefined, 'v' + p.gid + '_')}</div>`;
@@ -2441,6 +2519,7 @@ function applyLang() {
   document.documentElement.lang = (LANGS.find((l) => l[0] === prefs.lang) || LANGS[0])[2];
   document.querySelectorAll('[data-fr]').forEach((el) => (el.textContent = FR() ? el.dataset.fr : tr(el.dataset.en)));
   document.querySelectorAll('#viewSeg button').forEach((b) => { b.title = b.textContent; });   // in a narrow window they are icons: the name stays as a tooltip
+  $('#callTrMi').style.display = CALL_LANG[prefs.lang] && !FR() ? '' : 'none';
   const sel = $('#langSel'); if (!sel.options.length) sel.innerHTML = LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join(''); sel.value = prefs.lang;
   [['#bPlay', L('Pause / Lecture (espace)', 'Pause / Play (space)')], ['#bLog', 'Transcript'], ['#bMute', L('Son (touche M)', 'Sound (M key)')], ['#bMenu', L('Réglages', 'Settings')], ['#dclose', L('Fermer', 'Close')], ['#officeVol', L('Volume de l’ambiance', 'Ambience volume')], ['#musicVol', L('Volume de la musique', 'Music volume')], ['#liveProj', L('Projet à suivre', 'Project to follow')], ['#reactBar', L('Réactions', 'Reactions')], ['#logQ', L('Rechercher dans la transcription', 'Search the transcript')], ['#roster', L('Agents', 'Agents')]].forEach(([q, t]) => { const el = $(q); if (!el) return; el.title = t; el.setAttribute('aria-label', t); }); $('#logQ').placeholder = L('Rechercher…', 'Search…'); $('#menuQ').placeholder = L('Chercher un réglage…', 'Search settings…'); document.querySelectorAll('#reactBar button').forEach((b) => b.setAttribute('aria-label', b.dataset.e));
   $('#gT').textContent = L('Rejoindre l’appel', 'Join the call'); $('#gP').textContent = L('Cliquez pour activer le son et suivre votre session Claude Code en direct.', 'Click to enable sound and follow your Claude Code session live.'); $('#gB').textContent = L('▶ Rejoindre', '▶ Join');
@@ -2486,29 +2565,46 @@ function menuInit() {
     $('#menuNone').style.display = q && !secs.some((sc) => sc.items.some((e) => !e.classList.contains('mhide'))) ? '' : 'none';
   };
 }
-$('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'customLaptop') { for (const k in imgCache) delete imgCache[k]; buildStage(); paintStatus(); } if (b.dataset.t === 'files') paintFiles(); if (b.dataset.t === 'artNet' && S.present) renderPresent(); if (b.dataset.t === 'ownNames') renameAll(); if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify') { prefs.notifyChosen = true; savePrefs(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
+$('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'callTr') setLang(prefs.lang); if (b.dataset.t === 'voice') voiceOffer(); if (b.dataset.t === 'customLaptop') { for (const k in imgCache) delete imgCache[k]; buildStage(); paintStatus(); } if (b.dataset.t === 'files') paintFiles(); if (b.dataset.t === 'artNet' && S.present) renderPresent(); if (b.dataset.t === 'ownNames') renameAll(); if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify') { prefs.notifyChosen = true; savePrefs(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
   if (b.dataset.t === 'music') { $('#musicBox').style.display = prefs.music ? '' : 'none'; if (prefs.music) { AUD.init(); AUD.apply(); } } };
 $('#station').innerHTML = STATIONS.map((s) => `<option value="${s.id}">📻 ${s.name}</option>`).join('');
 $('#station').value = prefs.station; $('#musicVol').value = prefs.musicVol; $('#musicBox').style.display = prefs.music ? '' : 'none';
 $('#station').onchange = (e) => { prefs.station = e.target.value; savePrefs(); AUD.init(); RADIO.sync(); };
 $('#chatSel').value = ['quiet', 'normal', 'lively'].includes(prefs.chat) ? prefs.chat : 'normal'; $('#chatSel').onchange = () => { prefs.chat = $('#chatSel').value; savePrefs(); };
-$('#vstyle').innerHTML = [['animal', 'Animal Crossing (babillage)', 'Animal Crossing (babble)'], ['sims', 'Simlish (babillage)', 'Simlish (babble)'], ['cartoon', 'Voix cartoon (voix réelle)', 'Cartoon voices (real voice)'], ['natural', 'Voix naturelles', 'Natural voices'], ['kokoro', 'Voix très naturelles (à installer)', 'Very natural voices (installs on demand)']].map(([v, fr, en]) => `<option value="${v}" data-fr="${fr}" data-en="${en}">${L(fr, en)}</option>`).join(''); $('#vstyle').value = prefs.vstyle; $('#vstyle').onchange = () => { prefs.vstyle = $('#vstyle').value; prefs.vstyleChosen = true; savePrefs(); TTS.init().then(kokoroUI); kokoroUI(); };
+$('#vstyle').innerHTML = [['animal', 'Animal Crossing (babillage)', 'Animal Crossing (babble)'], ['sims', 'Simlish (babillage)', 'Simlish (babble)'], ['cartoon', 'Voix cartoon (voix réelle)', 'Cartoon voices (real voice)'], ['kokoro', 'Voix très naturelles (à installer)', 'Very natural voices (installs on demand)']].map(([v, fr, en]) => `<option value="${v}" data-fr="${fr}" data-en="${en}">${L(fr, en)}</option>`).join(''); $('#vstyle').value = prefs.vstyle; $('#vstyle').onchange = () => { prefs.vstyle = $('#vstyle').value; prefs.vstyleChosen = true; savePrefs(); TTS.init().then(kokoroUI); kokoroUI(); };
 // ---- ⚙ → very natural voices (Kokoro): install box and status, polled while installing
 let kokoroTimer = null;
 async function kokoroUI() {
   const box = $('#kokoroBox'), on = prefs.vstyle === 'kokoro'; box.style.display = on ? '' : 'none'; $('#vstyleTip').style.display = on ? 'none' : ''; if (!on) { clearInterval(kokoroTimer); kokoroTimer = null; return; }
   let st; try { st = await (await fetch('/api/kokoro')).json(); } catch { return; }
-  const b = $('#kokoroInstall'), h = $('#kokoroHint'); b.style.display = st.installed ? 'none' : '';
-  b.disabled = st.installing || !st.npm; b.textContent = st.installing ? L('Installation…', 'Installing…') : L(`Installer (${st.sizeMb} Mo)`, `Install (${st.sizeMb} MB)`);
-  h.textContent = st.installing ? L('Téléchargement en cours, vous pouvez continuer : les voix du système servent en attendant.', 'Downloading, you can carry on: system voices are used meanwhile.')
+  const b = $('#kokoroInstall'), h = $('#kokoroHint'), addFr = st.installed && !st.g2p && !!CALL_LANG[prefs.lang]; b.style.display = st.installed && !addFr ? 'none' : '';   /* addFr: installed before French, Spanish and Portuguese were added, which is one small package more. Offered where one of them is the interface language: a session in that language is then read by these voices, translated or not */
+  b.disabled = st.installing || !st.npm; b.textContent = st.installing ? L('Installation…', 'Installing…') : addFr ? L('Ajouter les voix françaises', 'Add the voices of this language') + L(` (${st.g2pMb} Mo)`, ` (${st.g2pMb} MB)`) : L(`Installer (${st.sizeMb} Mo)`, `Install (${st.sizeMb} MB)`);
+  h.textContent = st.installing ? L('Téléchargement en cours, vous pouvez continuer : les agents babillent en attendant.', 'Downloading, you can carry on: the agents babble meanwhile.')
     : st.error ? st.error : !st.npm && !st.installed ? L('npm est introuvable : installez Node.js pour activer cette option.', 'npm not found: install Node.js to enable this option.')
-    : st.installed ? (st.gaveUp ? L('Le moteur s’est arrêté : les voix du système servent à la place.', 'The engine stopped: system voices are used instead.') : st.ready ? L('Voix prêtes.', 'Voices ready.') : L('Chargement du modèle (téléchargé au premier usage, environ 305 Mo)…', 'Loading the model (downloaded on first use, about 305 MB)…'))
-    : L('Voix locales de bonne qualité, en anglais. Gratuit, rien n’est envoyé nulle part.', 'Good-quality local voices, in English. Free, nothing leaves your machine.');
+    : st.installed ? (st.gaveUp ? L('Le moteur s’est arrêté : les agents babillent à la place.', 'The engine stopped: the agents babble instead.') : st.ready ? (addFr ? L('Voix prêtes en anglais. Le français est encore lu par les voix du système.', 'Voices ready in English. This language is still read by the system voices.') : L('Voix prêtes.', 'Voices ready.')) : L('Chargement du modèle (téléchargé au premier usage, environ 305 Mo)…', 'Loading the model (downloaded on first use, about 305 MB)…'))
+    : CALL_LANG[prefs.lang] ? L('Voix locales de bonne qualité, en français et en anglais. Gratuit, rien n’est envoyé nulle part.', 'Good-quality local voices, in this language and in English. Free, nothing leaves your machine.') : L('Voix locales de bonne qualité, en anglais. Gratuit, rien n’est envoyé nulle part.', 'Good-quality local voices, in English. Free, nothing leaves your machine.');
   if ((st.installing || (st.installed && !st.ready && !st.gaveUp)) && !kokoroTimer) kokoroTimer = setInterval(async () => { await kokoroUI(); }, 2500);
-  if (!st.installing && (st.ready || st.gaveUp || !st.installed) && kokoroTimer) { clearInterval(kokoroTimer); kokoroTimer = null; if (st.ready && TTS.engine !== 'kokoro') TTS.init(); }
+  if (!st.installing && (st.ready || st.gaveUp || !st.installed) && kokoroTimer) { clearInterval(kokoroTimer); kokoroTimer = null; if (st.ready && (TTS.engine !== 'kokoro' || (st.g2p && !TTS.pool.fr.some((v) => TTS.kv.has(v))))) TTS.init(); }   /* also when the voices of the other languages have just been added */
 }
-$('#kokoroInstall').onclick = async () => { try { await fetch('/api/kokoro/install', { method: 'POST' }); } catch {} kokoroUI(); };
+$('#kokoroInstall').onclick = async () => { try { await fetch('/api/kokoro/install', { method: 'POST' }); } catch {} kokoroUI(); voiceOffer(); };
 kokoroUI();
+// ---- on the call: one line that says the real voices exist, to whoever does not have them. Nothing outside ⚙ said so, and without them the agents babble. One click installs them (and the style changes
+// to them once they are ready, not before: cartoon voices go on reading meanwhile); ✕ and the line never comes back. Not in the scripted demo (?demo=1), which is what the pictures and videos are made from.
+let offerTimer = null;
+async function voiceOffer() {
+  const el = $('#vOffer'), hide = () => { el.style.display = 'none'; clearInterval(offerTimer); offerTimer = null; };
+  if (!prefs.voice || prefs.voiceOffer === 'no' || Q.get('demo')) return hide();
+  let st; try { st = await (await fetch('/api/kokoro')).json(); } catch { return; }
+  if (st.ready && prefs.voiceOffer === 'want') { prefs.voiceOffer = 'no'; prefs.vstyle = 'kokoro'; prefs.vstyleChosen = true; savePrefs(); $('#vstyle').value = 'kokoro'; hide(); await TTS.init(); kokoroUI(); toast(L('Voix prêtes.', 'Voices ready.')); return; }
+  const busy = st.installing || (st.installed && !st.ready && !st.gaveUp && prefs.voiceOffer === 'want');
+  if ((st.installed && !busy) || !st.npm) return hide();   // they have them; or cannot have them (no npm), which ⚙ explains
+  $('#vOfferT').textContent = busy ? L('Téléchargement des vraies voix… vous pouvez continuer.', 'Downloading the real voices… you can carry on.') : st.error || L('Vos agents peuvent parler avec de vraies voix.', 'Your agents can speak with real voices.');
+  $('#vOfferB').style.display = busy ? 'none' : ''; $('#vOfferB').textContent = L('Installer', 'Install') + L(` (${st.sizeMb} Mo)`, ` (${st.sizeMb} MB)`); el.style.display = '';
+  if (busy && !offerTimer) offerTimer = setInterval(voiceOffer, 2500); if (!busy && offerTimer) { clearInterval(offerTimer); offerTimer = null; }
+}
+$('#vOfferB').onclick = async () => { prefs.voiceOffer = 'want'; savePrefs(); try { await fetch('/api/kokoro/install', { method: 'POST' }); } catch {} voiceOffer(); kokoroUI(); };
+$('#vOfferX').onclick = () => { prefs.voiceOffer = 'no'; savePrefs(); voiceOffer(); };
+voiceOffer();
 $('#officeVol').value = prefs.officeVol; $('#officeBox').style.display = prefs.office ? '' : 'none';
 $('#officeVol').oninput = (e) => { prefs.officeVol = +e.target.value; savePrefs(); AUD.applyMusic(); };
 $('#musicVol').oninput = (e) => { prefs.musicVol = +e.target.value; savePrefs(); AUD.applyMusic(); };
@@ -2669,7 +2765,7 @@ if (EMBED) $('#mBrowser').style.display = $('#mFollowTab').style.display = '';
   loadHealth().then(() => {   // French by default only if translation can actually work; otherwise stay in English without a warning
     const h = S.health || {};
     if (!prefs.langChosen && FR() && h.claude === null && !h.apiKey) { prefs.lang = 'en'; applyLang(); }
-    if (FR()) fetch('/api/warm').catch(() => {});
+    if (TRL()) { fetch('/api/warm?lang=' + CALL()).catch(() => {}); prefetchTr(S.idx); }
   });
   if (Q.get('lang')) { await setLang(Q.get('lang'), false); }
   if (Q.get('demo')) {

@@ -10,13 +10,27 @@ class KokoroTTS {   // from_pretrained behaves like transformers.js: a file that
     if (fs.existsSync(f) && fs.statSync(f).size < 100) throw new Error('Load model from ' + f + ' failed: Protobuf parsing failed.');
     fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, Buffer.alloc(200)); return new KokoroTTS();
   }
-  constructor() { this.tokenizer = Object.assign((t, o) => ({ input_ids: { dims: [1, (o && o.truncation ? Math.min(t.length, 510) : t.length) + 2] } }), { model_max_length: 512 }); }   // one token per character and, like the real one, a silent cut at the model's limit when asked to truncate
+  constructor() { this.tokenizer = Object.assign((t, o) => ({ input_ids: { text: t, dims: [1, (o && o.truncation ? Math.min(t.length, 510) : t.length) + 2] } }), { model_max_length: 512 }); }   // one token per character and, like the real one, a silent cut at the model's limit when asked to truncate
+  async model({ input_ids, style, speed }) { fs.appendFileSync(process.env.STUB_LOG + '.model', JSON.stringify({ phonemes: input_ids.text.slice(0, input_ids.dims[1] - 2), style: [style.data[0], style.data[255]], dims: style.dims, speed: speed.data[0] }) + '\\n'); return { waveform: { data: new Float32Array(2400).fill(0.1) } }; }   // the model called directly, as the worker does for French: what it was given goes to a log
   async generate(text) { text = text.trim(); const kept = this.tokenizer(text, { truncation: true }).input_ids.dims[1] - 2; fs.appendFileSync(process.env.STUB_LOG + '.spoken', JSON.stringify(text.slice(0, kept)) + '\\n'); return { audio: new Float32Array(2400).fill(0.1), sampling_rate: 24000 }; }   // what was really "spoken" goes to a log
 }
 module.exports = { KokoroTTS };`;
-function install() {   // a fake install folder: the two packages the worker requires, nothing else
+// A stand-in for the eSpeak NG package, called the way the real one is (a text file in, a phoneme file out, one line per paragraph): it "phonemizes" a stretch into itself,
+// marks an English word the way eSpeak does, ties two sounds, puts a hyphen after an article, and has nothing to say for an arrow. Each run is logged.
+const ESPEAK_JS = `import fs from 'fs';
+export default async function (o) {
+  const files = {}, M = { FS: { writeFile: (n, t) => { files[n] = t; }, readFile: (n) => files[n] } }; for (const f of o.preRun) f(M);
+  const arg = (k) => o.arguments[o.arguments.indexOf(k) + 1], said = files['in.txt'].split('\\n\\n');
+  fs.appendFileSync(process.env.STUB_LOG + '.espeak', JSON.stringify({ lang: arg('-v'), b: arg('-b'), stretches: said.length }) + '\\n');
+  files[arg('--phonout')] = said.map((s) => s.trim().replace(/→/g, '').replace(/server/g, '(en)server(fr)').replace(/tch/g, 't^ʃ').replace(/\\ble /g, 'le- ')).filter(Boolean).join('\\n') + '\\n'; return M;
+}`;
+function install(french) {   // a fake install folder: the two packages the worker requires, nothing else; with `french`, the phonemizer and two voice files as well
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'as-kokoro-'));
-  for (const [m, src] of [['@huggingface/transformers', 'module.exports = { env: {} };'], ['kokoro-js', KOKORO_JS]]) { const d = path.join(dir, 'node_modules', m); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'package.json'), '{"main":"index.js"}'); fs.writeFileSync(path.join(d, 'index.js'), src); }
+  for (const [m, src] of [['@huggingface/transformers', 'module.exports = { env: {}, Tensor: class { constructor(type, data, dims) { this.data = data; this.dims = dims; } } };'], ['kokoro-js', KOKORO_JS]]) { const d = path.join(dir, 'node_modules', m); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'package.json'), '{"main":"index.js"}'); fs.writeFileSync(path.join(d, 'index.js'), src); }
+  if (french) {
+    const d = path.join(dir, 'node_modules', 'espeak-ng'); fs.mkdirSync(path.join(d, 'dist'), { recursive: true }); fs.writeFileSync(path.join(d, 'package.json'), '{"type":"module","main":"dist/espeak-ng.js"}'); fs.writeFileSync(path.join(d, 'dist', 'espeak-ng.js'), ESPEAK_JS);
+    const v = path.join(dir, 'node_modules', 'kokoro-js', 'voices'); fs.mkdirSync(v); for (const [n, x] of [['ff_siwis', 1], ['am_fenrir', 3]]) fs.writeFileSync(path.join(v, n + '.bin'), Buffer.from(new Float32Array(510 * 256).fill(x).buffer));   // a voice: 510 styles of 256 numbers
+  }
   return dir;
 }
 function run(dir, env = {}) {   // the worker as kokoro.js starts it; resolves with what it printed once it is ready or gone
@@ -62,4 +76,42 @@ test('a line longer than the model takes is made in parts and joined: nothing is
     const parts = spoken(); assert.ok(parts.length > 1 && parts.every((p) => p.trim() && p.length <= 510), 'several parts, each within the limit');
     assert.equal(squash(parts.join(' ')), squash(long), 'every character was spoken, in order'); assert.ok(r.seconds > 0.1 * parts.length - 0.01, 'the parts are all in the audio');
   } finally { w.p.kill(); }
+});
+
+test('French goes to the model as eSpeak phonemes, with the marks put back and the voice mixed as asked', async () => {
+  const dir = install(true), w = run(dir), read = (ext) => fs.readFileSync(path.join(dir, 'stub.log.' + ext), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  try {
+    await w.until(() => w.lines().some((l) => l.ready));
+    const fr = { voice: 'fr_fenrir', lang: 'fr-fr', mix: [['ff_siwis', 0.4], ['am_fenrir', 0.6]] };
+    let r = await w.ask({ id: 1, text: 'Bonjour, j’ai fini le test : server.js est « corrigé » ! Un match ?', speed: 1.1, out: path.join(dir, 'a.wav'), ...fr }); assert.equal(r.ok, true, r.error);
+    const m = read('model'); assert.equal(m.length, 1, 'one call to the model, none to the English generate');
+    assert.equal(m[0].phonemes, 'Bonjour, j\'ai fini le test: server.js est “corrigé”! Un maʧ?', 'marks kept, no space before them, the dot of a file name left alone, eSpeak’s ties, hyphens and language notes gone');
+    assert.deepEqual(m[0].dims, [1, 256]); assert.ok(m[0].style.every((x) => Math.abs(x - 2.2) < 1e-5), '0.4 of one voice and 0.6 of the other: ' + m[0].style); assert.ok(Math.abs(m[0].speed - 1.1) < 1e-6);
+    assert.deepEqual(read('espeak'), [{ lang: 'fr-fr', b: '1', stretches: 5 }], 'the whole line in one run of eSpeak'); assert.ok(fs.statSync(path.join(dir, 'a.wav')).size > 44);
+    fs.writeFileSync(path.join(dir, 'stub.log.espeak'), ''); fs.writeFileSync(path.join(dir, 'stub.log.model'), '');
+    r = await w.ask({ id: 2, text: 'D’accord, →, c’est fait.', speed: 1, out: path.join(dir, 'b.wav'), ...fr }); assert.equal(r.ok, true, r.error);
+    assert.equal(read('model')[0].phonemes, 'D\'accord, , c\'est fait.', 'a stretch with nothing to say stays empty: the next one is not given its place');
+    assert.deepEqual(read('espeak').map((e) => e.stretches), [3, 1, 1, 1], 'one run for all, then one each when a line is missing');
+    fs.writeFileSync(path.join(dir, 'stub.log.model'), ''); const long = Array.from({ length: 30 }, (_, i) => `La phrase numéro ${i} parle du build, puis elle se termine.`).join(' ');   // about 1,700 characters
+    r = await w.ask({ id: 3, text: long, speed: 1, out: path.join(dir, 'c.wav'), ...fr }); assert.equal(r.ok, true, r.error);
+    const parts = read('model').map((x) => x.phonemes), squash = (t) => t.replace(/\s+/g, ''); assert.ok(parts.length > 1 && parts.every((p) => p.length <= 510), 'several parts, each within the limit');
+    assert.equal(squash(parts.join(' ')), squash(long), 'every character was spoken, in order');
+    r = await w.ask({ id: 4, text: 'Hello.', voice: 'af_heart', speed: 1, out: path.join(dir, 'd.wav') }); assert.equal(r.ok, true); assert.equal(read('model').length, parts.length, 'English still goes through kokoro-js as before');
+  } finally { w.p.kill(); }
+});
+
+test('the French voices are listed once the phonemizer is installed, and reach the worker with their language and mix', async () => {
+  const dir = install(false); process.env.AGENT_STANDUP_KOKORO_DIR = dir; process.env.STUB_LOG = path.join(dir, 'stub.log'); fs.writeFileSync(process.env.STUB_LOG, '');
+  const kokoro = require('../kokoro.js'), names = () => kokoro.voices().map((v) => v.name);
+  try {
+    assert.equal(kokoro.status().g2p, false); assert.deepEqual([...new Set(kokoro.voices().map((v) => v.locale.slice(0, 2)))], ['en'], 'an install made before the other languages: English voices only, so the page keeps system voices for the rest');
+    assert.ok(kokoro.hasVoice('fr_fenrir')); assert.equal(kokoro.localeOf('fr_fenrir'), 'fr_FR'); assert.equal(kokoro.localeOf('af_heart'), 'en_US');
+    fs.rmSync(dir, { recursive: true }); fs.renameSync(install(true), dir);   // the same folder once the install has added the phonemizer
+    assert.equal(kokoro.status().g2p, true); const of = (l) => kokoro.voices().filter((v) => v.locale.startsWith(l + '_')), fr = of('fr'), en = of('en');
+    for (const l of ['fr', 'es', 'pt']) { assert.equal(of(l).length, en.length, 'as many ' + l + ' voices as English ones, so each character keeps its place in every language'); assert.equal(new Set(of(l).map((v) => v.name)).size, en.length); }
+    assert.equal(fr[0].name, 'ff_siwis'); assert.equal(of('es')[0].name, 'ef_dora'); assert.equal(of('pt')[0].name, 'pf_dora'); assert.equal(kokoro.localeOf('pt_george'), 'pt_BR'); assert.deepEqual(Object.keys(fr[1]), ['name', 'label', 'locale']);
+    const r = await kokoro.synth('Bonjour.', 'fr_fenrir', 1, path.join(dir, 'a.wav')); assert.ok(r.seconds > 0);
+    const m = JSON.parse(fs.readFileSync(path.join(dir, 'stub.log.model'), 'utf8').trim()); assert.equal(m.phonemes, 'Bonjour.'); assert.ok(Math.abs(m.style[0] - 2.2) < 1e-5, 'ff_siwis mixed with am_fenrir');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'stub.log.espeak'), 'utf8').trim()).lang, 'fr-fr');
+  } finally { kokoro.shutdown(); }
 });

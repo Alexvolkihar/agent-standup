@@ -696,17 +696,19 @@ function claudeMap(kind, instruction, texts) {
     p.stdin.end(prompt);
   })));
 }
-const translate = (texts) => translateFast(texts);
+const translate = (texts, lang) => translateFast(texts, lang);
 
 // Warm `claude` workers: after a slow first call each translation takes ~2-3 s (a cold `claude -p` costs ~6 s).
-const TR_INSTR = 'Translate each string of this JSON array into natural spoken French, as a teammate would say it in a meeting. Keep code identifiers, file paths, library names and numbers unchanged.';
-const TR_SYS = 'You are a translation engine. Translate the user message into natural spoken French, as a colleague would say it in a meeting. Keep code identifiers, file paths, library names and numbers unchanged. Reply with ONLY the translation, nothing else.';
+// The languages a call can be held in besides English (the page asks for one with `lang`; French when it says nothing, as it always was).
+const TR_LANG = { fr: 'French', es: 'Spanish', pt: 'Brazilian Portuguese' }, trLang = (l) => (Object.hasOwn(TR_LANG, l) ? l : 'fr');
+const trInstr = (lang) => `Translate each string of this JSON array into natural spoken ${TR_LANG[lang]}, as a teammate would say it in a meeting. Keep code identifiers, file paths, library names and numbers unchanged.`;
+const trSys = (lang) => `You are a translation engine. Translate the user message into natural spoken ${TR_LANG[lang]}, as a colleague would say it in a meeting. Keep code identifiers, file paths, library names and numbers unchanged. Reply with ONLY the translation, nothing else.`;
 class TrWorker {
-  constructor() { this.q = []; this.busy = false; this.n = 0; this.p = null; this.cur = null; this.buf = ''; }
-  start() {
-    const p = spawnClaude(['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--model', 'haiku', '--no-session-persistence', '--tools', '', '--system-prompt', TR_SYS], { cwd: os.tmpdir() });
+  constructor() { this.q = []; this.busy = false; this.n = 0; this.p = null; this.cur = null; this.buf = ''; this.lang = 'fr'; }
+  start(lang = this.lang) {   // the language is in the system prompt: a worker translates into one language, and is started again for another
+    const p = spawnClaude(['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--model', 'haiku', '--no-session-persistence', '--tools', '', '--system-prompt', trSys(lang)], { cwd: os.tmpdir() });
     if (!p) return;
-    this.p = p; this.buf = ''; this.n = 0;
+    this.p = p; this.buf = ''; this.n = 0; this.lang = lang;
     p.stderr.on('data', (d) => { lastTrError = String(d).slice(-300); });
     p.stdout.on('data', (d) => {
       this.buf += d; let i;
@@ -719,11 +721,11 @@ class TrWorker {
     p.on('close', dead); p.on('error', dead);
   }
   finish(res) { const c = this.cur; this.cur = null; this.busy = false; if (c) { clearTimeout(c.timer); c.res(res); } this.pump(); }
-  ask(text) { return new Promise((res) => { this.q.push({ text, res }); this.pump(); }); }
+  ask(text, lang = 'fr') { return new Promise((res) => { this.q.push({ text, lang, res }); this.pump(); }); }
   kill() { clearTimeout(this.idle); if (this.p) { const p = this.p; this.p = null; try { p.kill(); } catch {} } }
   pump() {
     if (this.busy || !this.q.length) return;
-    if (!this.p || this.n >= 30) { if (this.p) { const old = this.p; this.p = null; old.kill(); } this.start(); if (!this.p) { while (this.q.length) this.q.shift().res(null); return; } }   // restart now and then: the conversation context grows
+    if (!this.p || this.n >= 30 || this.lang !== this.q[0].lang) { if (this.p) { const old = this.p; this.p = null; old.kill(); } this.start(this.q[0].lang); if (!this.p) { while (this.q.length) this.q.shift().res(null); return; } }   // restart now and then: the conversation context grows
     clearTimeout(this.idle); this.idle = setTimeout(() => { if (!this.busy && !this.q.length) this.kill(); }, 10 * 60 * 1000);   // free the process when nothing was translated for 10 min
     const job = this.q.shift(); this.busy = true; this.n++; this.cur = job;
     job.timer = setTimeout(() => { if (this.cur === job && this.p) this.p.kill(); }, 45000);
@@ -734,15 +736,15 @@ const trWorkers = [new TrWorker(), new TrWorker()];
 const shutdown = () => { trWorkers.forEach((w) => w.kill()); kokoro.shutdown(); };
 process.on('exit', shutdown);
 const pickWorker = () => trWorkers.reduce((a, b) => (a.q.length + a.busy <= b.q.length + b.busy ? a : b));
-async function translateFast(texts) {
-  const need = [...new Set(texts.filter((t) => !cache.has('fr|' + t)))];
+async function translateFast(texts, lang = 'fr') {
+  const need = [...new Set(texts.filter((t) => !cache.has(lang + '|' + t)))];
   if (need.length && need.length <= 3 && !process.env.ANTHROPIC_API_KEY) {   // a few lines: warm workers in parallel; many lines: one batched call
-    await Promise.all(need.map(async (t) => { const r = await pickWorker().ask(t); if (r) cache.set('fr|' + t, r); }));
-    return { texts: texts.map((t) => cache.get('fr|' + t) || t), ok: texts.every((t) => cache.has('fr|' + t)) };
+    await Promise.all(need.map(async (t) => { const r = await pickWorker().ask(t, lang); if (r) cache.set(lang + '|' + t, r); }));
+    return { texts: texts.map((t) => cache.get(lang + '|' + t) || t), ok: texts.every((t) => cache.has(lang + '|' + t)) };
   }
-  return claudeMap('fr', TR_INSTR, texts);
+  return claudeMap(lang, trInstr(lang), texts);
 }
-const quips = (texts, lang) => claudeMap('q' + lang, `Each string is a work report from a software agent. For each, write ONE short, deadpan, funny reaction (max 12 words) from a grumpy teammate in a South Park-style cartoon meeting, in ${lang === 'fr' ? 'French' : 'English'}. No emojis.`, texts);
+const quips = (texts, lang) => claudeMap('q' + lang, `Each string is a work report from a software agent. For each, write ONE short, deadpan, funny reaction (max 12 words) from a grumpy teammate in a South Park-style cartoon meeting, in ${TR_LANG[lang] || 'English'}. No emojis.`, texts);
 
 // ---- text-to-speech, generated on the machine and cached as wav:
 //      macOS → `say`, Windows → System.Speech (SAPI voices) through PowerShell, Linux → espeak-ng.
@@ -792,7 +794,7 @@ function tts(text, voice, rate, engine, fb) {
   if (ttsJobs.has(key)) return ttsJobs.get(key);
   fs.mkdirSync(ttsDir, { recursive: true });
   const tmp = file + '.part.wav';
-  const job = (kk ? kokoro.synth(text, voice, kokoro.speedFor(rate), tmp).catch((e) => { const vs = listVoices(), v = vs.voices.find((x) => x.name === fb) || vs.voices.find((x) => x.locale.startsWith('en_')); if (!v) throw e; return synthesize(v.name, rate, text, tmp); }) : synthesize(voice, rate, text, tmp))   // a line Kokoro cannot make goes to a system voice instead of being dropped: the one the page names (fb, its best system voice for this character), or else the first English one
+  const job = (kk ? kokoro.synth(text, voice, kokoro.speedFor(rate), tmp).catch((e) => { const vs = listVoices(), v = vs.voices.find((x) => x.name === fb) || vs.voices.find((x) => x.locale.startsWith(kokoro.localeOf(voice).slice(0, 3))); if (!v) throw e; return synthesize(v.name, rate, text, tmp); }) : synthesize(voice, rate, text, tmp))   // a line Kokoro cannot make goes to a system voice instead of being dropped: the one the page names (fb, its best system voice for this character), or else the first one of the same language
     .then(() => { fs.renameSync(tmp, file); return file; }).finally(() => ttsJobs.delete(key));
   ttsJobs.set(key, job); return job;
 }
@@ -860,8 +862,8 @@ function start(port = PORT) {
   };
   const textList = (x) => (Array.isArray(x) ? x : []).slice(0, 200).map((t) => String(t).slice(0, 2000));
   try {
-    if (url.pathname === '/api/translate' && req.method === 'POST') return readBody(async (body) => { try { json(await translate(textList(JSON.parse(body).texts))); } catch (e) { json({ error: String(e) }, 400); } });
-    if (url.pathname === '/api/quips' && req.method === 'POST') return readBody(async (body) => { try { const b = JSON.parse(body); json(await quips(textList(b.texts), b.lang === 'fr' ? 'fr' : 'en')); } catch (e) { json({ error: String(e) }, 400); } });
+    if (url.pathname === '/api/translate' && req.method === 'POST') return readBody(async (body) => { try { const b = JSON.parse(body); json(await translate(textList(b.texts), trLang(b.lang))); } catch (e) { json({ error: String(e) }, 400); } });
+    if (url.pathname === '/api/quips' && req.method === 'POST') return readBody(async (body) => { try { const b = JSON.parse(body); json(await quips(textList(b.texts), Object.hasOwn(TR_LANG, b.lang) ? b.lang : 'en')); } catch (e) { json({ error: String(e) }, 400); } });
     if (url.pathname === '/api/sessions') return json(listSessions());
     if (url.pathname === '/api/projects') {   // projects (working folders) ordered by latest activity — lets the live view follow one of them
       const m = new Map(); for (const r of listSessions()) { const p = m.get(r.proj) || { proj: r.proj, mtime: 0, sessions: 0 }; p.mtime = Math.max(p.mtime, r.mtime); p.sessions++; m.set(r.proj, p); }
@@ -875,7 +877,7 @@ function start(port = PORT) {
       return json({ owner: audioOwner.id });
     }
     if (url.pathname === '/api/health') return json({ claude: findClaude(), apiKey: !!process.env.ANTHROPIC_API_KEY, trError: lastTrError, platform: process.platform });
-    if (url.pathname === '/api/warm') { trWorkers.forEach((w) => { if (!w.p) w.start(); }); return json({ ok: true }); }
+    if (url.pathname === '/api/warm') { const lang = trLang(url.searchParams.get('lang')); trWorkers.forEach((w) => { if (!w.p) w.start(lang); }); return json({ ok: true }); }
     if (url.pathname === '/api/voices') {
       if (url.searchParams.get('engine') === 'kokoro') { const st = kokoro.status(); if (st.installed && !st.gaveUp) kokoro.warm(); return json({ available: st.installed && !st.gaveUp, ready: st.ready, voices: kokoro.voices(), platform: process.platform, engine: 'kokoro' }); }
       return loadVoices().then((v) => json(v));

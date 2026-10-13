@@ -5,6 +5,13 @@ const test = require('node:test'), assert = require('node:assert'), fs = require
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'as-live-'));
 process.env.AGENT_STANDUP_PREFS = path.join(tmp, 'prefs.json'); process.env.AGENT_STANDUP_KOKORO_DIR = path.join(tmp, 'kokoro'); process.env.AGENT_STANDUP_PROJECTS = path.join(tmp, 'projects');
 fs.writeFileSync(process.env.AGENT_STANDUP_PREFS, JSON.stringify({ lang: 'en', voice: false, chat: 'normal', banter: true, _t: Date.now() }));   // no voice: a line lasts as long as its text, on every machine
+// A stand-in for Claude Code, so that no test starts the real one: asked for Spanish it answers a Spanish sentence with the text in brackets, for any other language the name of that language.
+process.env.AGENT_STANDUP_CLAUDE = path.join(tmp, 'claude'); delete process.env.ANTHROPIC_API_KEY;
+fs.writeFileSync(process.env.AGENT_STANDUP_CLAUDE, `#!/usr/bin/env node
+const a = process.argv.slice(2), sys = a[a.indexOf('--system-prompt') + 1] || '', lang = (s) => (/natural spoken ([A-Za-z ]+?),/.exec(s) || [])[1], tr = (l, t) => (l === 'Spanish' ? 'Ya está, todo listo y sin errores' : l) + ' [' + t + ']';
+if (a.includes('--input-format')) require('readline').createInterface({ input: process.stdin }).on('line', (l) => { const m = JSON.parse(l); console.log(JSON.stringify({ type: 'result', result: tr(lang(sys), m.message.content) })); });
+else { let s = ''; process.stdin.on('data', (d) => (s += d)).on('end', () => { const arr = JSON.parse(s.slice(s.indexOf('\\n') + 1)); console.log(JSON.stringify(arr.map((t) => tr(lang(s), t)))); }); }
+`, { mode: 0o755 });
 let puppeteer = null; for (const m of ['puppeteer-core', path.join(process.env.PUPPETEER_DIR || '/tmp/as/pp', 'node_modules/puppeteer-core')]) { try { puppeteer = require(m); break; } catch {} }
 const CHROME = [process.env.CHROME_PATH, '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium-browser', '/usr/bin/chromium', 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'].find((p) => p && fs.existsSync(p));
 const missing = !puppeteer ? 'puppeteer-core is not installed (npm i)' : !CHROME ? 'no Chrome found (set CHROME_PATH)' : '';
@@ -319,5 +326,31 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     assert.equal(await c.page.evaluate(() => [...document.querySelectorAll('.pnav .pnn')].map((x) => x.textContent).join()), 'v2');
     await c.page.keyboard.press('Escape'); await c.until(() => !document.querySelector('#present.on') && !S.artPin && !document.querySelector('#present iframe'));
     assert.deepEqual(out, [], 'nothing was fetched from outside'); await c.close();
+  });
+
+  await t.test('with a Spanish interface the call is held in Spanish: the session is translated into it, the built-in lines are Spanish, and a line gets the voice of its language', { skip: process.platform === 'win32' }, async () => {
+    const s = session(), old = Date.now() - 600000; s.user('OLD order', old); s.say('OLD answer, all done.', { at: old + 5000, end: true }); const c = await open(s, true, '&lang=es'); await c.quiet();
+    assert.deepEqual(await c.page.evaluate(() => [CALL(), getComputedStyle(document.querySelector('#callTrMi')).display !== 'none', voiceLang('He terminado la tarea y todo está listo.'), voiceLang('OK.')]), ['en', true, 'es', 'en'], 'Spanish as the interface language alone translates nothing: it is a switch, off until you turn it on; a Spanish line has a Spanish voice all the same');
+    await c.page.evaluate(() => { prefs.callTr = true; return setLang('es'); }); assert.equal(await c.page.evaluate(() => CALL()), 'es');
+    s.user('Please finish the work.'); await wait(1500); s.say('The work is done and the tests pass.', { end: true });
+    await c.heard('Ya está, todo listo y sin errores [The work is done and the tests pass.]'); await closed(c, 1);
+    assert.match((await closing(c))[0], /(Tu turno|Te toca|Te devuelvo la palabra)\.$/, 'the lead closes in Spanish'); assert.equal(count(await c.lines(), 'Ya está, todo listo y sin errores [Please finish the work.]'), 1, 'your own line is translated too');
+    assert.deepEqual(await c.page.evaluate(() => ['He terminado la tarea y todo está listo.', 'Un momento, está cargando.', 'The build is done and all the tests pass now.', 'OK.'].map(voiceLang)), ['es', 'es', 'en', 'es'], 'Spanish unless a line is plainly English');
+    await c.page.evaluate(() => setLang('pt-BR')); assert.deepEqual(await c.page.evaluate(() => [CALL(), voiceLang('Terminei a tarefa e está tudo pronto.'), LEAD[CALL()].any, trMem.has('The work is done and the tests pass.')]), ['pt', 'pt', 'Vou começar.', false], 'another language of the call: its own lines, and nothing kept from the Spanish one');
+    await c.page.evaluate(() => setLang('de')); assert.deepEqual(await c.page.evaluate(() => [CALL(), voiceLang('OK.'), voiceLang('Voici le rapport, il est dans le dossier.')]), ['en', 'en', 'fr'], 'an interface language the call is not held in: the session as it is');
+    assert.equal(await c.page.evaluate(() => getComputedStyle(document.querySelector('#callTrMi')).display), 'none', 'the switch is offered for Spanish and Portuguese only'); await c.page.evaluate(() => { prefs.callTr = false; return setLang('en'); }); await c.close();
+  });
+  await t.test('the real voices are the default and babble until they are installed; the call says they exist, once; cartoon voices stay a choice; a system voice reads a line of a language the model lacks', async () => {
+    const s = session(), old = Date.now() - 600000; s.user('OLD order', old); s.say('OLD answer, all done.', { at: old + 5000, end: true }); const c = await open(s); await c.quiet();
+    assert.deepEqual(await c.page.evaluate(() => [[...document.querySelectorAll('#vstyle option')].map((o) => o.value), prefs.vstyle, TTS.engine, babbles()]), [['animal', 'sims', 'cartoon', 'kokoro'], 'kokoro', 'system', true], 'nothing is installed here: the real voices are chosen, and babble');
+    assert.deepEqual(await c.page.evaluate(() => { const was = prefs.vstyle, r = []; for (const v of ['cartoon', 'animal', 'sims']) { prefs.vstyle = v; r.push(babbles()); } prefs.vstyle = was; return r; }), [false, true, true], 'the cartoon voices read the words with the system voices');
+    const offer = () => c.page.evaluate(() => (getComputedStyle(document.querySelector('#vOffer')).display === 'none' ? null : document.querySelector('#vOfferT').textContent + ' | ' + document.querySelector('#vOfferB').textContent));
+    assert.equal(await offer(), null, 'voices are off in these tests: nothing is offered'); const npm = await c.page.evaluate(async () => (await (await fetch('/api/kokoro')).json()).npm);
+    await c.page.evaluate(() => { prefs.voice = true; return voiceOffer(); }); assert.equal(await offer(), npm ? 'Your agents can speak with real voices. | Install (750 MB)' : null, 'voices on and the real ones not installed: the call says they exist');
+    if (npm) { await c.page.click('#vOfferX'); await c.until(() => getComputedStyle(document.querySelector('#vOffer')).display === 'none'); assert.equal(await c.page.evaluate(() => prefs.voiceOffer), 'no'); await c.page.evaluate(() => voiceOffer()); assert.equal(await offer(), null, 'closed once, it does not come back'); }
+    await c.page.evaluate(() => { prefs.voice = false; delete prefs.voiceOffer; savePrefs(); });
+    assert.deepEqual(await c.page.evaluate(() => ['Ich habe die Funktion korrigiert und die Tests laufen jetzt alle durch.', '関数を修正し、テストはすべて通りました。', '함수를 수정했고 테스트가 모두 통과합니다.', '我修复了函数，所有测试都通过了。', 'Jeg har rettet funktionen, og alle testene kører nu igennem.', 'I fixed the function and all the tests pass now.'].map(langOf)), ['de', 'ja', 'ko', 'zh', 'da', 'en']);
+    assert.deepEqual(await c.page.evaluate(() => { TTS.engine = 'kokoro'; TTS.pool.en = ['af_heart']; TTS.pool.de = ['Anna']; TTS.pool.ja = []; const p = { id: 'main', vi: 0 }; return [babbles(), TTS.voiceFor(p, 'de'), TTS.voiceFor(p, 'ja'), TTS.voiceFor(p, 'en')]; }), [false, 'Anna', 'af_heart', 'af_heart'], 'once the real voices are there: a German line to a German system voice, a language with no voice at all to the English one');
+    await c.close();
   });
 });
