@@ -336,3 +336,33 @@ test('an artifact a session published is shown from the session file alone: each
     assert.equal((await page('agent=main&tool=toolu_pub001', { 'sec-fetch-site': 'cross-site' })).status, 403); assert.equal((await page('agent=main&tool=toolu_pub001', { origin: 'null' })).status, 403);   // another site cannot have it; nor can the page itself, from inside its frame, ask the app for anything
   } finally { srv.close(); require('../server.js').shutdown(); }
 });
+test('the live call is in the session you last touched: the one you typed in, or the one you went to, until you type somewhere. What the agents write moves nothing', async () => {
+  const dir = path.join(tmp, 'projects', '-follow'), f = (id) => path.join(dir, id + '.jsonl'), put = (id, ...recs) => fs.appendFileSync(f(id), recs.map(line).join('')), aged = (id, s) => { const t = (Date.now() - s * 1000) / 1000; fs.utimesSync(f(id), t, t); }; fs.mkdirSync(dir, { recursive: true });
+  const { port, stop } = await serve(), cur = async (q = '') => { await wait(1300); return JSON.parse((await get(port, '/api/current?proj=-follow' + q)).body); }, from = (id) => '&sproj=-follow&sid=' + id, went = (id, since) => '&pproj=-follow&pid=' + id + (since == null ? '' : '&since=' + since);   // the list of sessions is worked out at most once every 1.2 s
+  const bash = (s, id) => used(s, id, 'Bash', { command: 'npm test' }), T = (s) => Date.parse(at(s));
+  try {
+    put('a', typed(0, 'Build the page'), bash(1, 'toolu_a1')); assert.equal((await cur()).id, 'a');
+    put('b', typed(10, 'Fix the test'), bash(11, 'toolu_b1')); assert.equal((await cur(from('a'))).id, 'b', 'a session is started: the call goes there');
+    put('a', result(20, 'toolu_a1', 'ok'), bash(21, 'toolu_a2')); assert.equal((await cur(from('b'))).id, 'b', 'the other session writes: the call does not move');   // it went to the session written to last, and back
+    assert.equal((await cur()).id, 'b', 'nor does a page that is just opened go to the one written to last');
+    put('a', result(29, 'toolu_a2', 'ok'), typed(30, 'And the footer'), bash(31, 'toolu_a3')); assert.equal((await cur(from('b'))).id, 'a', 'an order in the other session: the call goes there');
+    const there = await cur(went('b')); assert.deepEqual([there.id, there.pick, there.asked], ['b', 1, T(30)], 'a session you go to by hand: the call is kept there, and the answer says what the latest order was');
+    put('a', result(35, 'toolu_a3', 'ok'), bash(36, 'toolu_a4')); assert.deepEqual([(await cur(went('b', there.asked))).id, (await cur(went('b', there.asked) + from('b'))).pick], ['b', 1], 'kept there while the agents write');
+    put('a', result(39, 'toolu_a4', 'ok'), typed(40, 'One more thing'), bash(41, 'toolu_a5')); const back = await cur(went('b', there.asked) + from('b')); assert.deepEqual([back.id, back.pick, back.asked], ['a', undefined, T(40)], 'until you type somewhere');
+    put('b', result(50, 'toolu_b1', 'ok'), typed(51, '<task-notification>\n<task-id>x</task-id>\n<status>completed</status>\n</task-notification>'), typed(52, 'What a skill says', { isMeta: true }), typed(53, 'This session is being continued', { isCompactSummary: true }), typed(54, '[Request interrupted by user]'), typed(55, '<system-reminder>\nKeep going.\n</system-reminder>'));
+    assert.equal((await cur(from('a'))).id, 'a', 'what the harness writes as a user record is not an order: the result of a tool, a task that ended, a skill, a summary, Esc, a reminder');
+    put('b', typed(60, '<command-message>review</command-message>\n<command-name>/review</command-name>'), bash(61, 'toolu_b2')); assert.equal((await cur(from('a'))).id, 'b', 'a slash command is one');
+    put('a', { type: 'attachment', timestamp: at(70), attachment: { type: 'queued_command', prompt: [{ type: 'text', text: 'While you are at it' }], origin: { kind: 'human' }, commandMode: 'prompt' } }); assert.equal((await cur(from('b'))).id, 'a', 'and so is an order typed while the lead works');
+    put('a', { type: 'attachment', timestamp: at(71), attachment: { type: 'queued_command', prompt: '<task-notification>x</task-notification>', origin: { kind: 'task' }, commandMode: 'task-notification' } }, result(79, 'toolu_a5', 'ok'), said(80, 'All done.', { stop: 'end_turn' }));
+    await wait(1300); const rows = JSON.parse((await get(port, '/api/board')).body).filter((r) => r.proj === '-follow'); assert.deepEqual(rows.map((r) => [r.id, r.state, r.asked]).sort(), [['a', 'turn', T(70)], ['b', 'working', T(60)]]);
+    assert.equal((await cur(from('a'))).id, 'a', 'its turn is over: the call does not leave at once');
+    aged('a', 120); assert.equal((await cur(from('a'))).id, 'b', 'finished and quiet for a minute and a half while another session works: the call goes to that one');
+    assert.equal((await cur(went('a', T(70)) + from('a'))).id, 'a', 'not when you went there by hand');
+    put('b', result(90, 'toolu_b2', 'ok'), said(91, 'Reviewed.', { stop: 'end_turn' })); aged('b', 100); aged('a', 200);
+    assert.deepEqual([(await cur(from('a'))).id, (await cur(from('b'))).id, (await cur()).id], ['a', 'b', 'b'], 'nobody is at work: the call stays where it is, and a page that is just opened goes to the session written to last');
+    assert.equal((await cur(went('gone', 0) + from('a'))).id, 'a', 'a session that is gone keeps nothing');
+    const far = path.join(tmp, 'projects', '-follow2'); fs.mkdirSync(far, { recursive: true });
+    fs.writeFileSync(path.join(far, 's.jsonl'), [typed(5, 'Read the whole log'), bash(6, 'toolu_f1'), result(7, 'toolu_f1', 'x'.repeat(300 * 1024)), said(8, 'Still reading.')].map(line).join(''));   // the order is further back than the 192 KB the list reads
+    await wait(1300); assert.equal(JSON.parse((await get(port, '/api/board')).body).find((r) => r.proj === '-follow2').asked, T(5), 'an order far back in a long turn is found on the first look');
+  } finally { stop(); }
+});

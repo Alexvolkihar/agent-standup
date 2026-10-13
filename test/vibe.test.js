@@ -131,6 +131,7 @@ test('the live call follows a Vibe session: the newest session wins, a project f
     add([user('And the tax?'), asst('Checking the tax.', [['d1', 'bash', { command: 'grep tax -r .' }]]), tool('d1', 'bash', 'stdout: tax.js', { command: 'grep tax -r .', exit_code: 0, stdout: 'tax.js', stderr: '' }, { duration: 0.5 })]);
     await wait(2100);   // the lists are remembered for two seconds
     assert.deepEqual((await get(port, '/api/current')).json().id, S1); assert.equal((await get(port, '/api/current?proj=' + WORK.replace(/[^a-zA-Z0-9]/g, '-'))).json().proj, '_vibe');
+    const typedAt = (await get(port, '/api/board')).json().find((r) => r.id === S1).asked; assert.ok(Date.now() - typedAt < 60000, 'a message of this format carries no time: something typed since the last look is dated by the file');
     assert.equal((await get(port, '/api/board')).json().find((r) => r.id === S1).state, 'working');   // a tool result is the last thing written: the agent goes on
     const more = (await get(port, `/api/session?proj=_vibe&id=${S1}&after=${first.seq}&ep=${first.ep}`)).json(), fresh = more.events.filter((e) => !before.has(e.k) && e.kind !== 'usage');
     assert.deepEqual(fresh.map((e) => e.agent + ' ' + e.kind + ' ' + (e.text || (e.tools ? e.tools[0].name : e.items[0].out))), ['user user And the tax?', 'main say Checking the tax.', 'main tools Bash', 'main results tax.js']);
@@ -167,7 +168,7 @@ test('the current Vibe format: a snapshot, then the journal that follows it. Rea
     const all = (await get(port, `/api/session?proj=_vibe&id=${U1}`)).json(), u1 = all.events.filter((e) => e.kind === 'usage');
     assert.ok(!JSON.stringify(all.events).includes('NEVER SHOWN')); assert.deepEqual([u1.reduce((n, e) => n + e.u.i, 0), u1.reduce((n, e) => n + e.u.r, 0), u1.reduce((n, e) => n + e.u.o, 0)], [2500, 6500, 420]);   // the totals Vibe keeps: 9000 in, of which 6500 from the cache
     assert.deepEqual(u0.map((e) => [e.k, e.u]), u1.slice(0, u0.length).map((e) => [e.k, e.u]), 'a line of usage already given out does not change');
-    const b = (await get(port, '/api/board')).json().find((r) => r.id === U1); assert.deepEqual([b.state, b.subActive, b.subTotal], ['turn', 0, 1]); assert.equal((await get(port, '/api/current')).json().id, U1);
+    const b = (await get(port, '/api/board')).json().find((r) => r.id === U1); assert.deepEqual([b.state, b.subActive, b.subTotal, b.asked], ['turn', 0, 1, UT]); assert.equal((await get(port, '/api/current?pproj=_vibe&pid=' + U1)).json().id, U1);   // asked: when the person last typed there, which this format dates. The call itself is in the session typed in last, the one of the earlier format above
   } finally { stop(); }
 });
 

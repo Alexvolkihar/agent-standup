@@ -158,9 +158,10 @@ test('the live call follows a Codex session: the newest session wins, a project 
     assert.equal((await get(s.port, '/api/current?proj=' + q(key))).json().id, NEW);                                   // asked for by the folder it was started in, as the editor does
     assert.equal((await get(s.port, '/api/current?proj=' + q(key.replace(/-shop$/, '')))).json().id, NEW);             // or by a folder above it
     assert.equal((await get(s.port, '/api/current?proj=-p')).json().id, 'c1');                                         // a Claude Code project still gets its own session
-    assert.equal((await get(s.port, '/api/current?proj=_codex&id=' + OLD)).json().id, OLD);                            // pinned
+    assert.equal((await get(s.port, '/api/current?pproj=_codex&pid=' + OLD)).json().id, OLD);                          // the one you went to by hand
     const board = (await get(s.port, '/api/board')).json(), row = board.find((r) => r.id === NEW);
     assert.deepEqual([row.proj, row.state, row.title, row.dir], ['_codex', 'turn', 'Fix the cart total', key]); assert.ok(!board.some((r) => r.id === CHILD));
+    assert.equal(row.asked, T0 + 1000, 'when the person last typed there: what the live call goes by');
     const full = (await get(s.port, '/api/session?proj=_codex&id=' + NEW)).json(), keys = full.events.map((e) => e.k);
     at(20000); fs.appendFileSync(fileOf(NEW), [ev({ type: 'task_started', turn_id: 'turn2' }), item({ type: 'UserMessage', id: 'item-9', content: [{ type: 'text', text: '# Files mentioned by the user:\n\n## shot.png: /tmp/shot.png\n\n## My request:\n<send_user_message_question_reply>Yes, ship it</send_user_message_question_reply>' }] }), (at(21000), item({ type: 'AgentMessage', id: 'msg_9', content: [{ type: 'text', text: 'Shipping.' }], phase: 'commentary' }))].join('\n') + '\n');
     await new Promise((r) => setTimeout(r, 1300));   // past the pauses in which a scan and a board are reused

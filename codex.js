@@ -105,15 +105,16 @@ const tailCache = new Map();
 function boardRow(r, now) {
   const sig = r.mtime + ':' + r.size; let t = tailCache.get(r.file);
   if (!t || t.sig !== sig) {
-    t = { sig, turn: '' };
+    t = { sig, turn: '', asked: (t && t.asked) || 0 };   // asked: when the person last typed something there, which is what moves the live call (see currentSession in server.js)
     try {
       const fd = fs.openSync(r.file, 'r'); let text = ''; try { const n = Math.min(128 * 1024, r.size), buf = Buffer.alloc(n); fs.readSync(fd, buf, 0, n, r.size - n); text = buf.toString('utf8'); } finally { fs.closeSync(fd); }
-      for (const l of text.split('\n')) { const m = /"type":"(task_started|task_complete|turn_started|turn_complete|turn_aborted)"/.exec(l.slice(0, 400)); if (m && l.includes('"event_msg"')) t.turn = /started/.test(m[1]) ? 'open' : 'closed'; }
+      for (const l of text.split('\n')) { const m = /"type":"(task_started|task_complete|turn_started|turn_complete|turn_aborted)"/.exec(l.slice(0, 400)); if (m && l.includes('"event_msg"')) t.turn = /started/.test(m[1]) ? 'open' : 'closed';
+        if (l.includes('"UserMessage"') || l.includes('"user_message"')) { try { const j = JSON.parse(l), p = (j && j.payload) || {}; if (p.type === 'user_message' ? typed(p.message) : p.type === 'item_completed' && p.item && p.item.type === 'UserMessage' && typed(partsText(p.item.content))) t.asked = Math.max(t.asked, Date.parse(j.timestamp) || 0); } catch {} } }   // a first line cut in two does not parse
     } catch {}
     if (tailCache.size > 200) tailCache.delete(tailCache.keys().next().value); tailCache.set(r.file, t);
   }
   const age = now - r.mtime, state = age >= 30 * 60e3 ? 'idle' : t.turn === 'closed' ? 'turn' : age < 10 * 60e3 ? 'working' : 'idle';
-  return { proj: PROJ, id: r.id, title: title(r), mtime: r.mtime, state, tool: '', ageMs: age, subActive: 0, subTotal: 0, dir: r.dir, source: 'codex' };
+  return { proj: PROJ, id: r.id, title: title(r), mtime: r.mtime, state, tool: '', ageMs: age, subActive: 0, subTotal: 0, asked: t.asked, dir: r.dir, source: 'codex' };
 }
 
 // ---- one record of a rollout file → the events of the call

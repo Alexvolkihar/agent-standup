@@ -114,18 +114,22 @@ function boardRow(r, now) {
   if (r.uni) {   // the current format says it outright: idle, running, or blocked on an approval or a question
     const u = uniSummary(r), kind = u.status, age = now - r.mtime, live = u.live;
     const state = age >= 30 * 60e3 ? 'idle' : kind === 'blocked' ? 'blocked' : kind === 'running' ? (u.waiting ? 'waiting' : 'working') : kind === 'idle' || kind === 'failed' ? 'turn' : age < 10 * 60e3 ? 'working' : 'idle';
-    return { proj: PROJ, id: r.id, title: title(r), mtime: r.mtime, state, tool: '', ageMs: age, subActive: state === 'idle' || state === 'turn' ? 0 : live, subTotal: u.kids, dir: dirKey(meta(r.dir).cwd), source: SOURCE };
+    return { proj: PROJ, id: r.id, title: title(r), mtime: r.mtime, state, tool: '', ageMs: age, subActive: state === 'idle' || state === 'turn' ? 0 : live, subTotal: u.kids, asked: u.asked || 0, dir: dirKey(meta(r.dir).cwd), source: SOURCE };
   }
   const sig = r.mtime + ':' + r.size; let t = tailCache.get(r.file);
   if (!t || t.sig !== sig) {
-    t = { sig, turn: '' };
-    const n = Math.min(256 * 1024, r.size), lines = readPart(r.file, r.size - n, n).split('\n').filter(Boolean); let last = null; try { last = JSON.parse(lines[lines.length - 1] || ''); } catch {}
+    const was = t; let alone = false; t = { sig, turn: '', asked: (was && was.asked) || 0, at: -1 };
+    const n = Math.min(256 * 1024, r.size), text = readPart(r.file, r.size - n, n), lines = text.split('\n').filter(Boolean); let last = null; try { last = JSON.parse(lines[lines.length - 1] || ''); } catch {}
+    // A message carries no time. The last thing the person typed is known by its place in the file: when that place has moved since the last look, something was typed, about when the file was last written.
+    // On the first look it is the time of the file when nothing was written after it, and else the start of the session.
+    for (let end = text.length, i; end > 0 && t.at < 0; end = i) { i = text.lastIndexOf('\n', end - 1); const l = text.slice(i + 1, end); if (!l.includes('"user"')) continue; try { const j = JSON.parse(l); if (j && j.role === 'user' && !j.injected && ((j.manual_shell && typeof j.manual_shell.command === 'string') || typed(j))) { t.at = r.size - Buffer.byteLength(text.slice(end)); alone = !text.slice(end).trim(); } } catch {} }
+    if (t.at >= 0 && (was ? t.at !== was.at : alone)) t.asked = r.mtime;
     if (last && typeof last === 'object') t.turn = last.role === 'assistant' && !(Array.isArray(last.tool_calls) && last.tool_calls.length) ? 'closed' : 'open';   // a plain answer closes the turn; a tool call or a tool result means the agent goes on
     if (tailCache.size > 200) tailCache.delete(tailCache.keys().next().value); tailCache.set(r.file, t);
   }
   const m = meta(r.dir), subs = m.children.map((c) => stat(path.join(r.dir, c.rel, MESSAGES))).filter(Boolean), newest = Math.max(r.mtime, ...subs.map((s) => s.mtimeMs));
   const age = now - newest, state = age >= 30 * 60e3 ? 'idle' : t.turn === 'closed' ? 'turn' : age < 10 * 60e3 ? 'working' : 'idle';
-  return { proj: PROJ, id: r.id, title: title(r), mtime: newest, state, tool: '', ageMs: age, subActive: state === 'working' ? subs.filter((s) => now - s.mtimeMs < 240000).length : 0, subTotal: m.children.length, dir: dirKey(m.cwd), source: SOURCE };
+  return { proj: PROJ, id: r.id, title: title(r), mtime: newest, state, tool: '', ageMs: age, subActive: state === 'working' ? subs.filter((s) => now - s.mtimeMs < 240000).length : 0, subTotal: m.children.length, asked: t.asked || m.start || 0, dir: dirKey(m.cwd), source: SOURCE };
 }
 
 // ---- the current format: the history of a session, as Vibe would load it
@@ -224,8 +228,8 @@ function uniState(r) {
 const uniLight = new Map();   // session folder → what the lists need of a session (title, state, how many sub-agents), kept after its history has been let go
 function uniSummary(r) {
   const sig = uniSig(r), hit = uniLight.get(r.dir); if (hit && hit.sig === sig) return hit;
-  let v = { sig, title: '', status: '', kids: 0, live: 0, waiting: false }, read = false;
-  try { const u = uniLoad(r), st = uniState(r), se = (st.env && st.env.session) || {}; read = u.sig === sig; v = { sig, title: str(se.title).trim() || str(se.preview).replace(/\s+/g, ' ').trim().slice(0, 90), status: str(se.status && se.status.type), kids: st.kids.length, live: st.kids.filter((k) => !k.done).length, waiting: !!st.waiting }; } catch {}
+  let v = { sig, title: '', status: '', kids: 0, live: 0, waiting: false, asked: (hit && hit.asked) || 0 }, read = false;
+  try { const u = uniLoad(r), st = uniState(r), se = (st.env && st.env.session) || {}; read = u.sig === sig; v = { sig, title: str(se.title).trim() || str(se.preview).replace(/\s+/g, ' ').trim().slice(0, 90), status: str(se.status && se.status.type), kids: st.kids.length, live: st.kids.filter((k) => !k.done).length, waiting: !!st.waiting, asked: st.main.raw.reduce((m, e) => (e.kind === 'user' && e.ts > m ? e.ts : m), 0) }; } catch {}   // asked: when the person last typed something there, which is what moves the live call (see currentSession in server.js)
   if (read) { if (uniLight.size > 500) uniLight.delete(uniLight.keys().next().value); uniLight.set(r.dir, v); }   // not kept when the session could not be read (caught in the middle of a write): asked again next time
   return v;
 }

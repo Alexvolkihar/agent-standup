@@ -28,14 +28,14 @@ test('Cowork sessions are listed under Cowork with the name the app gave them, a
     assert.equal((await get(port, '/api/current')).json.id, S1);   // the most recent of anywhere
     assert.equal((await get(port, '/api/current?proj=-work-app')).json.id, CC);   // a window that follows a folder stays in it
     assert.equal((await get(port, '/api/current?proj=_cowork')).json.id, S1);
-    assert.equal((await get(port, `/api/current?proj=_cowork&id=${S2}`)).json.id, S2);   // pinned from the board
+    assert.equal((await get(port, `/api/current?pproj=_cowork&pid=${S2}`)).json.id, S2);   // the one you went to from the board
   } finally { srv.close(); core.shutdown(); }
 });
-test('Cowork sessions are left out when turned off, and when the app is pointed at one folder without being asked for them', () => {
-  const core = require('../server.js'), keep = process.env.AGENT_STANDUP_COWORK;
+test('Cowork sessions are left out when turned off, and when the app is pointed at one folder without being asked for them', async () => {
+  const core = require('../server.js'), keep = process.env.AGENT_STANDUP_COWORK, later = () => new Promise((r) => setTimeout(r, 1300));   // the call goes by the list of sessions, which is worked out at most once every 1.2 s
   try {
-    process.env.AGENT_STANDUP_COWORK = 'off'; assert.equal(core.currentSession('', '', {}).id, CC); assert.deepEqual(core.currentSession('_cowork', S2, {}), core.currentSession('_cowork', '', {}));
-    delete process.env.AGENT_STANDUP_COWORK; assert.equal(core.currentSession('', '', {}).id, CC);   // AGENT_STANDUP_PROJECTS is set (as in every other test file): the real folder of the desktop app is left alone
-    process.env.AGENT_STANDUP_COWORK = CW; assert.equal(core.currentSession('', '', {}).id, S1);
+    process.env.AGENT_STANDUP_COWORK = 'off'; await later(); assert.equal(core.currentSession('', null, null).id, CC); assert.deepEqual(core.currentSession('_cowork', { proj: '_cowork', id: S2 }, null), core.currentSession('_cowork', null, null));
+    delete process.env.AGENT_STANDUP_COWORK; await later(); assert.equal(core.currentSession('', null, null).id, CC);   // AGENT_STANDUP_PROJECTS is set (as in every other test file): the real folder of the desktop app is left alone
+    process.env.AGENT_STANDUP_COWORK = CW; await later(); assert.equal(core.currentSession('', null, null).id, S1);
   } finally { process.env.AGENT_STANDUP_COWORK = keep; }
 });

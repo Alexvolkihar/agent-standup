@@ -303,12 +303,28 @@ const boardCache = new Map();   // file → { sig, parsed, title }
 let boardMemo = { at: 0, rows: [] };
 const PR_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+$/;   // nothing else is given to the page as a link to open
 const askOf = (b) => { const q = b.name === 'AskUserQuestion' && b.input && Array.isArray(b.input.questions) && b.input.questions[0] && b.input.questions[0].question; return typeof q === 'string' ? clip(q.trim(), 200) : ''; };   // the question a session stopped on, for its card
+// When the person last did something in a session: an order, a slash command, a "!" command, an order typed while the lead was working. It is what moves the live call (see currentSession).
+// Not what the harness writes as a user record: the result of a tool, a reminder, the news that a background task ended, the summary of a compaction, an Esc.
+const NOT_TYPED = /<(system-reminder|browser_instruction|ide_selection|ide_opened_file|task-notification|local-command-stdout|local-command-caveat)>[\s\S]*?<\/\1>\s*/g;
+function typedAt(r) {
+  if (!r || r.isSidechain) return 0;
+  if (r.type === 'attachment') { const q = r.attachment; return q && q.type === 'queued_command' && (q.origin ? q.origin.kind === 'human' : q.commandMode === 'prompt') ? Date.parse(r.timestamp) || 0 : 0; }
+  if (r.type !== 'user' || r.isMeta || r.isCompactSummary) return 0; const bl = blocks(r); if (bl.some((b) => b && b.type === 'tool_result')) return 0;
+  const t = bl.filter((b) => b && b.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('\n').replace(NOT_TYPED, '').trim();
+  return (t ? !/^\[Request interrupted/i.test(t) : bl.some((b) => b && b.type === 'image')) ? Date.parse(r.timestamp) || 0 : 0;   // a picture sent alone is an order too
+}
+function typedBefore(file) {   // the first look at a session whose last order is further back than what the list reads (a long turn, large outputs): looked for once, in its last megabytes
+  const { text, cut } = readTail(file, 4 * 1024 * 1024), lines = text.split('\n');
+  for (let i = lines.length - 1; i >= (cut ? 1 : 0); i--) { if (!lines[i].includes('"type":"user"') && !lines[i].includes('"queued_command"')) continue; try { const a = typedAt(JSON.parse(lines[i])); if (a) return a; } catch {} }
+  return 0;
+}
 function parseTail(file, st) {
   const sig = st.mtimeMs + ':' + st.size, hit = boardCache.get(file); if (hit && hit.sig === sig) return hit;
   const { text, cut } = readTail(file, 192 * 1024), lines = text.split('\n'); if (cut) lines.shift();
-  const pend = new Map(); let lastType = null, lastTool = false, lastStop = null, stops = false, esc = false, lastTs = 0, custom = (hit && hit.custom) || null, ai = (hit && hit.ai) || null, first = hit ? hit.first : undefined, pr = (hit && hit.pr) || null;
+  const pend = new Map(); let lastType = null, lastTool = false, lastStop = null, stops = false, esc = false, lastTs = 0, custom = (hit && hit.custom) || null, ai = (hit && hit.ai) || null, first = hit ? hit.first : undefined, pr = (hit && hit.pr) || null, asked = (hit && hit.asked) || 0;
   for (const l of lines) {
     if (!l) continue; let r; try { r = JSON.parse(l); } catch { continue; }
+    const a = typedAt(r); if (a > asked) asked = a;
     if (r.type === 'custom-title' && typeof r.customTitle === 'string') custom = r.customTitle; else if (r.type === 'ai-title' && typeof r.aiTitle === 'string') ai = r.aiTitle;   // a session is renamed, or named, long after its row was first shown: the latest one read wins
     if (r.type === 'pr-link' && PR_URL.test(r.prUrl)) pr = { n: +r.prUrl.slice(r.prUrl.lastIndexOf('/') + 1), url: r.prUrl };   // the pull request Claude Code noted for the session: the latest one, shown on its card
     const t = Date.parse(r.timestamp) || 0, bl = blocks(r);
@@ -321,8 +337,9 @@ function parseTail(file, st) {
     custom = un([...big.matchAll(/"type":"custom-title","customTitle":"((?:[^"\\]|\\.)*)"/g)].pop()); if (!ai) ai = un([...big.matchAll(/"type":"ai-title","aiTitle":"((?:[^"\\]|\\.)*)"/g)].pop());
   }
   if (!custom && !ai && first == null) first = firstPrompt(file) || (st.size > 64 * 1024 ? '' : null);   // '' = looked for and not there; a file that has just been created is looked at again
+  if (!hit && !asked && cut) asked = typedBefore(file);
   const out = { sig, title: custom || ai || first || null, custom, ai, first, pr, lastType, lastTool, lastStop, stops, esc, lastTs, pending: [...pend.values()] };   // a title the person typed wins over the generated one, and both over the first prompt
-  boardCache.set(file, out); if (boardCache.size > 200) boardCache.delete(boardCache.keys().next().value); return out;
+  out.asked = asked; boardCache.set(file, out); if (boardCache.size > 200) boardCache.delete(boardCache.keys().next().value); return out;
 }
 function firstPrompt(file) {   // the first thing the person typed, read record by record: a pattern over the raw text ran from a user record into the assistant's first answer and took that as the title
   const ONE = (t) => t.replace(/\s+/g, ' ').trim().slice(0, 90);
@@ -359,7 +376,7 @@ function boardRows0() {
     }
     let subActive = 0, subTotal = 0;
     for (const x of subFiles(proj, id)) { subTotal++; if (now - mtimeOf(x.file) < 90e3) subActive++; }
-    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, ...(p.pr ? { pr: p.pr } : {}), ...(state === 'blocked' && lp && lp.q ? { ask: lp.q } : {}), ...(p.esc ? { cut: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
+    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, asked: p.asked || 0, ...(p.pr ? { pr: p.pr } : {}), ...(state === 'blocked' && lp && lp.q ? { ask: lp.q } : {}), ...(p.esc ? { cut: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
   }).filter(Boolean);
 }
 // Settings live in a file, not only in the page's localStorage: the port changes between VS Code windows and reloads, and localStorage is per origin (port included).
@@ -424,26 +441,36 @@ function errorReport() {   // what ⚙ › Report a problem shows: the app, the 
 // every other extension: there, only an error that went through this folder is ours. OWN: the process was started from this folder (node server.js, the command, the desktop app, a test).
 const OWN = (() => { try { const m = require.main && require.main.filename; return !!m && (m.startsWith(__dirname + path.sep) || path.dirname(__dirname) === path.dirname(m)); } catch { return false; } })();   // the second: the desktop app, whose main file sits one folder above core/
 process.on('uncaughtExceptionMonitor', (e, origin) => { try { if (OWN || String((e && e.stack) || '').includes(__dirname)) logError(origin === 'unhandledRejection' ? 'promise' : 'crash', e); } catch {} });
-// Most recently active session (optionally limited to one project dir) — drives the live feed.
-const STICK_MS = 90000;   // a session written to in the last 90 s keeps the call, so another session writing elsewhere does not steal it mid-line
+// The session the live call is in: the one you last touched. Typing in a session, or starting one, takes the call there. So does going to one by hand (pick: its tab, the visitor,
+// the list, the tab of the editor), and that holds until you type somewhere. What the agents write moves nothing: with two sessions at work the call went back and forth, and there was a pin to stop it.
+// One exception, so that the call is not left on an empty room: when the session you last typed in has finished and been quiet for STICK_MS while another one is at work, the call
+// goes to that one. A session you went to by hand is not left that way.
+const STICK_MS = 90000;
 function sessionMtime(proj, id) {
   const sx = sourceOf(proj), r = sx ? guard(() => sx.row(id), null) : null; if (sx && (!r || !sx.subFiles)) return r ? r.mtime : 0;
   let m = sx ? r.mtime : mtimeOf(path.join(projDir(proj, id), id + '.jsonl')); if (!m) return 0; const subs = subFilesOf(proj, id);
   for (const x of subs) m = Math.max(m, mtimeOf(x.file)); for (const d of subs.dirs) m = Math.max(m, mtimeOf(d)); return m;   // the folders too: a new file in them is activity, as when every file around the transcripts was looked at
 }
-function currentSession(projFilter, idFilter, stick) {
-  const safe = (x) => typeof x === 'string' && /^[\w.\-]+$/.test(x) && x !== '..';
-  if (stick && safe(stick.id) && safe(stick.proj) && (!projFilter || stick.proj === projFilter || stick.proj.startsWith(projFilter + '-') || (sourceOf(stick.proj) && guard(() => sourceOf(stick.proj).inProject(stick.id, projFilter), false))) && Date.now() - sessionMtime(stick.proj, stick.id) < STICK_MS) return { proj: stick.proj, id: stick.id, mtime: sessionMtime(stick.proj, stick.id) };
-  if (idFilter && projFilter && projFilter !== '..' && idFilter !== '..' && /^[\w.\-]+$/.test(idFilter) && /^[\w.\-]+$/.test(projFilter) && (sourceOf(projFilter) ? !!guard(() => sourceOf(projFilter).fileOf(idFilter), null) : fs.existsSync(path.join(projDir(projFilter, idFilter), idFilter + '.jsonl')))) return { proj: projFilter, id: idFilter, mtime: Date.now() };   // pinned from the board
+function currentSession(projFilter, pick, stick) {   // pick: { proj, id, since } the session you went to by hand, and the latest order there was then · stick: the session the call is in
+  const safe = (x) => typeof x === 'string' && /^[\w.\-]+$/.test(x) && x !== '..', now = Date.now();
+  const there = (c) => !!c && safe(c.id) && safe(c.proj) && (sourceOf(c.proj) ? !!guard(() => sourceOf(c.proj).fileOf(c.id), null) : fs.existsSync(path.join(projDir(c.proj, c.id), c.id + '.jsonl')));
+  const inScope = (c) => !projFilter || c.proj === projFilter || c.proj.startsWith(projFilter + '-') || !!(sourceOf(c.proj) && guard(() => sourceOf(c.proj).inProject(c.id, projFilter), false));   // a Codex or Vibe session counts for a project when it was started in that folder
+  const same = (a, b) => !!a && !!b && a.proj === b.proj && a.id === b.id, all = boardRows(), rows = all.filter(inScope), mine = there(pick) ? all.find((r) => same(r, pick)) : null;
+  const asked = Math.max(0, (mine && mine.asked) || 0, ...rows.map((r) => r.asked || 0));   // the latest order, in the folder the call follows or in the session you went to
+  if (there(pick) && !(asked > pick.since)) return { proj: pick.proj, id: pick.id, mtime: now, asked, pick: 1 };   // no "since" on the first question after a pick: the answer gives it (asked), and the page sends it back from then on
+  const live = rows.filter((r) => /^(working|waiting|blocked)$/.test(r.state) || r.subActive > 0 || now - r.mtime < STICK_MS), last = Math.max(0, ...live.map((r) => r.asked || 0)), top = live.filter((r) => (r.asked || 0) === last);
+  const to = top.find((r) => same(r, stick)) || top.sort((a, b) => b.mtime - a.mtime)[0];   // two sessions whose last order is not known (or of the same instant): the call stays where it is
+  if (to) return { proj: to.proj, id: to.id, mtime: to.mtime, asked };
+  if (there(stick) && inScope(stick)) return { proj: stick.proj, id: stick.id, mtime: sessionMtime(stick.proj, stick.id), asked };   // nobody is at work: the call stays where it is
   let best = null;
   const consider = (proj, id, m) => { if (!best || m > best.mtime) best = { proj, id, mtime: m }; };
-  for (const m of SOURCES) for (const r of guard(() => m.sessions(), [])) if (!projFilter || guard(() => m.inProject(r.id, projFilter), false)) consider(m.PROJ, r.id, r.mtime);   // a Codex or Vibe session counts for a project when it was started in that folder
+  for (const m of SOURCES) for (const r of guard(() => m.sessions(), [])) if (inScope({ proj: m.PROJ, id: r.id })) consider(m.PROJ, r.id, r.mtime);
   for (const proj of projects()) {
     if (projFilter && proj !== projFilter && !proj.startsWith(projFilter + '-')) continue;   // the folder itself, or a folder inside it (a Cowork session is in no folder of yours: it counts when the call looks everywhere, or at Cowork)
     for (const { id } of transcripts(proj)) { const m = sessionMtime(proj, id); if (m) consider(proj, id, m); }   // 0: a link to a transcript that is gone
   }
-  if (!best && projFilter) return { ...currentSession('', '', stick), wide: 1 };   // nothing in that folder (an editor open on another one than the sessions): the latest of anywhere, and the page is told, so its tabs follow the same rule
-  return best || {};
+  if (!best && projFilter) return { ...currentSession('', null, stick), wide: 1 };   // nothing in that folder (an editor open on another one than the sessions): the latest of anywhere, and the page is told, so its tabs follow the same rule
+  return best ? { ...best, asked } : {};   // a call that is opened while nobody is at work: the session that was written to last
 }
 
 // ---- Incremental transcript reader: each .jsonl is parsed once, then only the bytes appended since are read.
@@ -866,7 +893,7 @@ function start(port = PORT) {
     if (url.pathname === '/api/done' && req.method === 'POST') return readBody((body) => { try { const v = JSON.parse(body); json({ ok: setDone(String(v.proj || ''), String(v.id || ''), v.on !== false) }); } catch (e) { logError('done', e); json({ error: String(e.message || e) }, 400); } });
     if (url.pathname === '/api/errors' && req.method === 'POST') return readBody((body) => { try { const b = JSON.parse(body) || {}; logError('page' + (typeof b.where === 'string' && b.where ? ' ' + b.where.slice(0, 40) : ''), { message: String(b.msg || ''), stack: String(b.stack || '') }); json({ ok: true }); } catch (e) { json({ error: String(e.message || e) }, 400); } });   // an error of the page, written to the local log
     if (url.pathname === '/api/errors') return json(errorReport());
-    if (url.pathname === '/api/current') return json(currentSession(url.searchParams.get('proj') || '', url.searchParams.get('id') || '', { proj: url.searchParams.get('sproj') || '', id: url.searchParams.get('sid') || '' }));
+    if (url.pathname === '/api/current') { const q = (k) => url.searchParams.get(k) || ''; return json(currentSession(q('proj'), q('pid') ? { proj: q('pproj'), id: q('pid'), since: q('since') ? +q('since') : NaN } : null, { proj: q('sproj'), id: q('sid') })); }
     if (url.pathname === '/api/board') return json(boardRows());
     if (url.pathname === '/api/characters') return json(listCharacters(url.searchParams.get('pack') || ''));
     if (url.pathname === '/api/packs') return json(Object.keys(PACKS).map((name) => ({ name, n: listCharacters(name).chars.length })));

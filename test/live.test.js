@@ -203,17 +203,17 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     await c.close();
   });
 
-  await t.test('in VS Code the call goes to the Claude Code tab you go to, and a tab never pins it: nothing changes for the session it is in, it is kept a moment in another one, a pin moves along', async () => {
+  await t.test('in VS Code the call goes to the Claude Code tab you go to, and stays there until you type somewhere; what the agents write elsewhere does not take it back', async () => {
     const s = session(), old = path.join(tmp, 'projects', s.proj, 'old.jsonl'), ago = Date.now() - 45 * 60000; s.user('hello'); s.say('Ready.', { end: true });
     fs.writeFileSync(old, [{ type: 'user', message: { role: 'user', content: 'an older conversation' } }, { type: 'assistant', message: { id: 'o1', role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text: 'Done.' }] } }].map((r) => JSON.stringify({ timestamp: new Date(ago).toISOString(), ...r })).join('\n') + '\n'); fs.utimesSync(old, ago / 1000, ago / 1000);   // a second session of the same folder, quiet for long enough to have no tab of its own
     const c = await open(s, true, '&embed=1'), tab = (id) => c.page.evaluate((proj, id) => window.postMessage({ agentStandup: 'pin', id, proj, tab: true }, '*'), s.proj, id);   // what extension.js sends when you change tab
-    const at = () => c.page.evaluate(() => ({ id: S.cur && S.cur.id, pin: S.pin || '', row: !!document.querySelector('#tabs .stab') })), goes = (id) => c.until((k) => S.cur && S.cur.id === k, id);
-    await c.quiet(500); assert.deepEqual(await at(), { id: 's', pin: '', row: false });
-    await tab('s'); await wait(2500); assert.deepEqual(await at(), { id: 's', pin: '', row: false }, 'the tab of the session the call is in: no pin, no row of tabs');
-    await tab('old'); await goes('old'); await wait(4000); assert.deepEqual({ ...(await at()), row: 0 }, { id: 'old', pin: '', row: 0 }, 'another tab: the call goes there and is kept there, without a pin');
-    await c.page.evaluate(() => { S.hold.until = 0; }); await goes('s'); assert.equal((await at()).pin, '');   // the moment is over: the latest activity is followed again
-    await c.page.evaluate((proj) => goSession(proj, 's'), s.proj); await tab('old'); await goes('old'); assert.equal((await at()).pin, 'old', 'a pinned call takes its pin along');
-    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click()); await tab('s'); await wait(2500); assert.equal((await at()).id, 'old', '⚙: off');
+    const at = () => c.page.evaluate(() => ({ id: S.cur && S.cur.id, row: !!document.querySelector('#tabs .stab') })), goes = (id) => c.until((k) => S.cur && S.cur.id === k, id);
+    await c.quiet(500); assert.deepEqual(await at(), { id: 's', row: false });
+    await tab('s'); await wait(2500); assert.deepEqual(await at(), { id: 's', row: false }, 'the tab of the session the call is in: nothing moves, no row of tabs');
+    await tab('old'); await goes('old'); await wait(4000); assert.equal((await at()).id, 'old', 'another tab: the call goes there and is kept there');
+    s.say('One more thought.', { end: true }); await wait(4000); assert.equal((await at()).id, 'old', 'the other session writes: the call stays');   // it went back to the session written to last after a minute and a half
+    s.user('And now this'); await goes('s');   // you type in the other session: the call goes there, nothing was to be let go first
+    await tab('old'); await goes('old'); await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click()); await tab('s'); await wait(2500); assert.equal((await at()).id, 'old', '⚙: off');
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click());
     await c.close();
   });
@@ -233,36 +233,37 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     const s = session(), old = path.join(tmp, 'projects', s.proj, 'old.jsonl'), ago = Date.now() - 45 * 60000; s.user('hello'); s.say('Ready.', { end: true });
     fs.writeFileSync(old, [{ type: 'user', message: { role: 'user', content: 'an older conversation' } }, { type: 'assistant', message: { id: 'o1', role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text: 'Done.' }] } }].map((r) => JSON.stringify({ timestamp: new Date(ago).toISOString(), ...r })).join('\n') + '\n'); fs.utimesSync(old, ago / 1000, ago / 1000);
     const c = await open(s); await c.quiet(500); await c.page.evaluate((proj) => goSession(proj, 's'), s.proj); await wait(1000);
-    await c.page.evaluate((proj) => { const of = window.fetch; let held = false; window.fetch = function (u) { const p = of.apply(this, arguments); if (held || typeof u !== 'string' || !u.startsWith('/api/current') || !u.includes('id=s')) return p; held = true; setTimeout(() => goSession(proj, 'old'), 20); return p.then((r) => new Promise((res) => setTimeout(() => res(r), 600))); }; }, s.proj);   // the next answer about the pinned session takes 600 ms, and the click comes in the meantime
-    await c.until(() => S.cur && S.cur.id === 'old'); await wait(2500); assert.deepEqual(await c.page.evaluate(() => ({ id: S.cur && S.cur.id, pin: S.pin })), { id: 'old', pin: 'old' });   // it used to take the call back, and the pin with it
+    await c.page.evaluate((proj) => { const of = window.fetch; let held = false; window.fetch = function (u) { const p = of.apply(this, arguments); if (held || typeof u !== 'string' || !u.startsWith('/api/current') || !u.includes('pid=s')) return p; held = true; setTimeout(() => goSession(proj, 'old'), 20); return p.then((r) => new Promise((res) => setTimeout(() => res(r), 600))); }; }, s.proj);   // the next answer about the session the call is kept in takes 600 ms, and the click comes in the meantime
+    await c.until(() => S.cur && S.cur.id === 'old'); await wait(2500); assert.deepEqual(await c.page.evaluate(() => ({ id: S.cur && S.cur.id, to: S.pick && S.pick.id })), { id: 'old', to: 'old' });   // it used to take the call back
     await c.close();
   });
 
-  await t.test('several sessions at once: a row of tabs from the second one on, each with its state; a visitor when another one stops for you, who takes the call there; a click on a tab moves the call or pins it', async () => {
+  await t.test('several sessions at once: a row of tabs from the second one on, each with its state; a visitor when another one stops for you, who takes the call there. The call is in the session you last typed in, or in the one you went to until you type somewhere', async () => {
     const s = session(), dir = path.join(tmp, 'projects', s.proj); s.user('First session'); s.say('Ready.', { end: true });
     const other = (id) => { const f = path.join(dir, id + '.jsonl'), put = (r) => fs.appendFileSync(f, JSON.stringify({ timestamp: new Date().toISOString(), ...r }) + '\n'), msg = (content, stop) => put({ type: 'assistant', message: { id: 'm' + ++nId, role: 'assistant', stop_reason: stop, content } });   // another session of the same folder
       return { user: (text) => put({ type: 'user', message: { role: 'user', content: text } }), say: (text) => msg([{ type: 'text', text }], 'end_turn'), tool: (name, input) => { const tid = 'toolu_' + ++nId; msg([{ type: 'tool_use', id: tid, name, input }], 'tool_use'); return tid; }, result: (tid) => put({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: tid, content: 'ok' }] } }) }; };
     const c = await open(s), b = other('b'), q = other('q');
-    const row = () => c.page.evaluate(() => [...document.querySelectorAll('#tabs .stab:not(.all)')].map((x) => (x.classList.contains('on') ? '>' : '') + x.querySelector('span').textContent + ' ' + (['blocked', 'working', 'waiting', 'turn', 'idle'].find((k) => x.classList.contains(k)) || '?') + (x.textContent.includes('📌') ? ' 📌' : '')));
-    const rowIs = (tabs) => c.page.waitForFunction(`[...document.querySelectorAll('#tabs .stab:not(.all)')].map((x) => (x.classList.contains('on') ? '>' : '') + x.querySelector('span').textContent + ' ' + (['blocked', 'working', 'waiting', 'turn', 'idle'].find((k) => x.classList.contains(k)) || '?') + (x.textContent.includes('📌') ? ' 📌' : '')).join('|') === ${JSON.stringify(tabs.join('|'))}`, { timeout: 30000, polling: 100 });
+    const tabsNow = `[...document.querySelectorAll('#tabs .stab:not(.all)')].map((x) => (x.classList.contains('on') ? '>' : '') + x.querySelector('span').textContent + ' ' + (['blocked', 'working', 'waiting', 'turn', 'idle'].find((k) => x.classList.contains(k)) || '?'))`;
+    const row = () => c.page.evaluate(tabsNow), rowIs = (tabs) => c.page.waitForFunction(`${tabsNow}.join('|') === ${JSON.stringify(tabs.join('|'))}`, { timeout: 30000, polling: 100 }).catch(async () => assert.deepEqual(await row(), tabs));   // not there in time: the row as it is
     const visitor = () => c.page.evaluate(() => { const v = document.querySelector('#visit.on'); return v ? { kind: v.classList.contains('blocked') ? 'blocked' : 'turn', says: v.querySelector('.vsay').textContent } : null; }), comes = (kind) => c.page.waitForFunction((k) => { const v = document.querySelector('#visit.on'); return v && v.classList.contains(k); }, { timeout: 30000, polling: 100 }, kind);
-    const at = () => c.page.evaluate(() => ({ id: S.cur && S.cur.id, pin: S.pin || '' })), goes = (id) => c.until((k) => S.cur && S.cur.id === k, id);
+    const at = () => c.page.evaluate(() => S.cur && S.cur.id), goes = (id) => c.until((k) => S.cur && S.cur.id === k, id), tabOf = (name) => c.page.evaluate((n) => [...document.querySelectorAll('#tabs .stab:not(.all)')].find((x) => x.querySelector('span').textContent === n).click(), name);
     await c.quiet(500); assert.deepEqual(await row(), [], 'one session: no row');
-    b.user('Second session'); const cmd = b.tool('Bash', { command: 'npm test' }); await rowIs(['>First session turn', 'Second session working']); assert.equal(await visitor(), null);
+    b.user('Second session'); const cmd = b.tool('Bash', { command: 'npm test' }); await goes('b'); await rowIs(['First session turn', '>Second session working']);   // a session is started: the call goes there by itself. It stayed where it was, and went there only when that session wrote last
+    await tabOf('First session'); await goes('s'); await rowIs(['>First session turn', 'Second session working']); assert.ok(!(await c.page.evaluate(() => document.querySelector('#tabs').textContent)).includes('📌'), 'a click on a tab takes the call there, and nothing is pinned');
     b.result(cmd); b.say('The tests pass.'); await comes('turn'); let v = await visitor(); assert.match(v.says, /Second session/); assert.match(v.says, /done|finished/); assert.deepEqual(await row(), ['>First session turn', 'Second session turn']);   // its turn is over there
-    assert.deepEqual(await at(), { id: 's', pin: '' }, 'the call has not moved by itself');
-    await c.page.click('#visit .vgo'); await goes('b'); assert.deepEqual(await at(), { id: 'b', pin: 'b' }); assert.equal(await visitor(), null, 'the call went there: the visitor leaves'); await rowIs(['First session turn', '>Second session turn 📌']);
-    await c.page.click('#tabs .stab.on'); await rowIs(['First session turn', '>Second session turn']); assert.deepEqual(await at(), { id: 'b', pin: '' }, 'a click on the call’s own tab lets it go');
-    await c.page.click('#tabs .stab.on'); await rowIs(['First session turn', '>Second session turn 📌']); assert.equal((await at()).pin, 'b', 'and another one pins it');
-    await c.page.click('#tabs .stab:not(.on):not(.all)'); await goes('s'); await rowIs(['>First session turn 📌', 'Second session turn']); assert.deepEqual(await at(), { id: 's', pin: 's' }, 'a click on another tab takes the call there and keeps it there');
-    q.user('Third session'); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session working']);
+    assert.equal(await at(), 's', 'the other session writes and ends its turn: the call has not moved');
+    await c.page.click('#visit .vgo'); await goes('b'); assert.equal(await visitor(), null, 'the call went there: the visitor leaves'); await rowIs(['First session turn', '>Second session turn']);
+    await c.page.click('#tabs .stab.on'); await wait(1500); assert.equal(await at(), 'b', 'a click on the call’s own tab changes nothing to see');
+    q.user('Third session'); await goes('q'); await rowIs(['First session turn', 'Second session turn', '>Third session working']);   // a third one is started while the call was kept in the second: it goes there, nothing was to be let go first
+    await tabOf('First session'); await goes('s'); await rowIs(['>First session turn', 'Second session turn', 'Third session working']);
     const ask = () => q.tool('AskUserQuestion', { questions: [{ question: 'Which one?', header: 'Choice', options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], multiSelect: false }] }), first = ask();
-    await comes('blocked'); v = await visitor(); assert.match(v.says, /Third session/); assert.match(v.says, /question/); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session blocked']);   // a question: said as such, in red
-    await c.page.click('#visit .vx'); assert.equal(await visitor(), null, '✕ sends the visitor away'); assert.equal((await at()).id, 's'); const visited = Date.now();
-    q.result(first); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session working']); ask(); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session blocked']);   // answered there, and a second question at once
+    await comes('blocked'); v = await visitor(); assert.match(v.says, /Third session/); assert.match(v.says, /question/); await rowIs(['>First session turn', 'Second session turn', 'Third session blocked']);   // a question: said as such, in red
+    await c.page.click('#visit .vx'); assert.equal(await visitor(), null, '✕ sends the visitor away'); assert.equal(await at(), 's'); const visited = Date.now();
+    q.result(first); await rowIs(['>First session turn', 'Second session turn', 'Third session working']); ask(); await rowIs(['>First session turn', 'Second session turn', 'Third session blocked']);   // answered there, and a second question at once
     assert.equal(await visitor(), null, 'less than 20 s after the last visit: not yet'); await comes('blocked'); assert.ok(Date.now() - visited > 10000); await c.page.click('#visit .vx');   // told when the 20 s are over: it used to be lost
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=visits]').click());   // ⚙: no visitor
-    b.user('One more thing'); await rowIs(['>First session turn 📌', 'Second session working', 'Third session blocked']); b.say('Done as well.'); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session blocked']);
+    b.user('One more thing'); await goes('b'); await rowIs(['First session turn', '>Second session working', 'Third session blocked']);   // you type in the second one: the call is there again
+    await tabOf('First session'); await goes('s'); b.say('Done as well.'); await rowIs(['>First session turn', 'Second session turn', 'Third session blocked']);
     await wait(11000); assert.equal(await visitor(), null, 'off in the settings: the tab alone says it');
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=visits]').click());
     await c.close();
@@ -277,12 +278,12 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     await c.until(`(${tabs})() === '>Claude session|[Vibe] Review the diff'`, null, 30000); assert.equal(await role(), 'Lead', 'a Claude Code call: the lead as it always was');
     await c.page.click('#tabs .stab:not(.on):not(.all)'); await c.until((id) => S.cur && S.cur.id === id, vid); await c.until(`(${tabs})() === 'Claude session|>[Vibe] Review the diff'`); await c.until(() => { const r = document.querySelector('#roster .rr[data-id="main"] .ro'); return r && r.textContent === 'Lead · Vibe'; });
     const was = await c.page.evaluate(() => prefs.proj || ''); await c.page.evaluate((id) => openSession('_vibe', id), vid); await wait(1500);   // the same session opened from the Sessions view or from ⋯
-    assert.deepEqual(await c.page.evaluate(() => ({ id: S.cur && S.cur.id, pin: S.pin, proj: prefs.proj || '' })), { id: vid, pin: vid, proj: was }, 'the call is pinned there, and the project to follow is not “Mistral Vibe”: it used to be, and a window with no folder then never showed a Claude Code session again');
+    assert.deepEqual(await c.page.evaluate(() => ({ id: S.cur && S.cur.id, to: S.pick && S.pick.id, proj: prefs.proj || '' })), { id: vid, to: vid, proj: was }, 'the call is kept there, and the project to follow is not “Mistral Vibe”: it used to be, and a window with no folder then never showed a Claude Code session again');
     assert.notEqual(JSON.parse(fs.readFileSync(process.env.AGENT_STANDUP_PREFS, 'utf8')).proj, '_vibe', 'nor is it saved');
     await c.close();
-    const d = await open(s, true, `&pin=${vid}&pproj=_vibe`), both = `(${tabs})().split('|').sort().join('|')`;   // the call as the VS Code status bar opens it on the Vibe session: pinned there, in a window that still follows its folder
-    await d.until(`${both} === '>[Vibe] Review the diff|Claude session'`, null, 30000); assert.deepEqual(await d.page.evaluate(() => ({ id: S.cur.id, pin: S.pin, at: S.pinProj })), { id: vid, pin: vid, at: '_vibe' });
-    await d.page.click('#tabs .stab.on'); await d.until(() => S.cur && S.cur.id === 's' && !S.pin); await d.until(`${both} === '>Claude session|[Vibe] Review the diff'`);   // let go, the call goes to the latest session of the folder, the Claude Code one: it used to stay among the Vibe sessions
+    const d = await open(s, true, `&pin=${vid}&pproj=_vibe`), both = `(${tabs})().split('|').sort().join('|')`;   // the call as the VS Code status bar opens it on the Vibe session: kept there, in a window that still follows its folder
+    await d.until(`${both} === '>[Vibe] Review the diff|Claude session'`, null, 30000); assert.deepEqual(await d.page.evaluate(() => ({ id: S.cur.id, to: S.pick && S.pick.id, at: S.pick && S.pick.proj })), { id: vid, to: vid, at: '_vibe' });
+    s.user('Back to this one'); await d.until(() => S.cur && S.cur.id === 's' && !S.pick); await d.until(`${both} === '>Claude session|[Vibe] Review the diff'`);   // you type in the Claude Code session of the folder: the call goes there. Opened on a Vibe session, the window used to stay among the Vibe sessions
     await d.close(); delete process.env.AGENT_STANDUP_VIBE;
   });
 
@@ -293,7 +294,7 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     const ask = (proj) => c.page.evaluate(async (p) => (await fetch('/api/current?proj=' + p)).json(), proj); assert.equal((await ask('-no-session-here')).wide, 1); assert.equal((await ask(s.proj)).wide, undefined, 'a folder that has sessions: only those');
     await c.until(() => { const n = [...document.querySelectorAll('#tabs .stab:not(.all) span')].map((x) => x.textContent); return n.includes('Wide first') && n.includes('Wide second'); }, null, 30000);   // there used to be no row at all: one session on screen and nothing to say there was another
     assert.ok(['s', 'b'].includes(await c.page.evaluate(() => S.cur.id)), 'the call is in the latest session'); assert.ok((await names()).length >= 2);
-    await c.page.evaluate((proj) => goSession(proj, 's'), s.proj); await c.until(() => S.cur && S.cur.id === 's' && S.pin === 's'); await wait(3500); assert.ok((await names()).includes('Wide second'), 'a pinned call keeps the other tabs');
+    await c.page.evaluate((proj) => goSession(proj, 's'), s.proj); await c.until(() => S.cur && S.cur.id === 's' && S.pick && S.pick.id === 's'); await wait(3500); assert.ok((await names()).includes('Wide second'), 'a call kept in a session you went to keeps the other tabs');
     await c.close();
   });
 
