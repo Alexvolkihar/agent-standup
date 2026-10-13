@@ -49,7 +49,7 @@
  "Is it serious?": "这是认真的吗？",
  "Mostly for fun. A little for clarity: when eight sub-agents are working at once, seeing who’s doing what, and what’s on their screen, is easier than scrolling through a log.": "主要是为了好玩，也有一点是为了看得清楚：八个子代理同时开工时，直接看到谁在做什么、屏幕上是什么，比翻日志轻松。",
  "<b>Is my code sent anywhere?</b> No. Everything runs on your machine and reads the session files Claude Code, Codex and Mistral Vibe already write. (Only if you turn on French translation or the jokes, short lines go through your own Claude login.)": "<b>我的代码会被发送到别处吗？</b>不会。一切都在你的电脑上运行，读取的是 Claude Code、Codex 和 Mistral Vibe 本来就会写下的会话文件。（只有当你开启法语翻译或玩笑功能时，才会有简短的句子通过你自己的 Claude 登录发送。）",
- "Made by a bored dev and his robots. <br>This dev was replaced by his own agents. If this made you smile, spare a coffee for his career change? ☕": "由一位闲得发慌的开发者和他的机器人们制作。<br>这位开发者被自己的代理取代了。如果这让你会心一笑，请他喝杯咖啡，庆祝转行？☕",
+ "Made by a bored dev and his robots.": "由一位闲得发慌的开发者和他的机器人们制作。",
  "☕ Buy him a coffee": "☕ 请他喝杯咖啡",
  "MIT licensed. Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "采用 MIT 许可证。非官方项目：与 Anthropic、OpenAI 和 Mistral AI 均无关联。",
  "Built by <a href='https://github.com/Atoll92' target='_blank' rel='noopener'>Atoll92</a>, available for AI-agent and developer-tooling work.": "由 <a href='https://github.com/Atoll92' target='_blank' rel='noopener'>Atoll92</a> 打造，可承接 AI 代理和开发者工具相关的工作。",

@@ -45,7 +45,7 @@
  "Is it serious?": "Is it serious?",
  "Mostly for fun. A little for clarity: when eight sub-agents are working at once, seeing who’s doing what, and what’s on their screen, is easier than scrolling through a log.": "Mostly for fun. A little for clarity: when eight sub-agents are working at once, seeing who’s doing what, and what’s on their screen, is easier than scrolling through a log.",
  "<b>Is my code sent anywhere?</b> No. Everything runs on your machine and reads the session files Claude Code, Codex and Mistral Vibe already write. (Only if you turn on French translation or the jokes, short lines go through your own Claude login.)": "<b>Is my code sent anywhere?</b> No. Everything runs on your machine and reads the session files Claude Code, Codex and Mistral Vibe already write. (Only if you turn on French translation or the jokes, short lines go through your own Claude login.)",
- "Made by a bored dev and his robots. <br>This dev was replaced by his own agents. If this made you smile, spare a coffee for his career change? ☕": "Made by a bored dev and his robots. <br>This dev was replaced by his own agents. If this made you smile, spare a coffee for his career change? ☕",
+ "Made by a bored dev and his robots.": "Made by a bored dev and his robots.",
  "☕ Buy him a coffee": "☕ Buy him a coffee",
  "MIT licensed. Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "MIT licensed. Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.",
  "Built by <a href='https://github.com/Atoll92' target='_blank' rel='noopener'>Atoll92</a>, available for AI-agent and developer-tooling work.": "Built by <a href='https://github.com/Atoll92' target='_blank' rel='noopener'>Atoll92</a>, available for AI-agent and developer-tooling work.",

@@ -49,7 +49,7 @@
  "Is it serious?": "まじめなツールなの？",
  "Mostly for fun. A little for clarity: when eight sub-agents are working at once, seeing who’s doing what, and what’s on their screen, is easier than scrolling through a log.": "ほとんどは遊び心です。でも、少しは見通しをよくするためでもあります。8体のサブエージェントが同時に動いているとき、誰が何をしていて、画面に何が映っているのかを見るほうが、ログをスクロールするより楽です。",
  "<b>Is my code sent anywhere?</b> No. Everything runs on your machine and reads the session files Claude Code, Codex and Mistral Vibe already write. (Only if you turn on French translation or the jokes, short lines go through your own Claude login.)": "<b>コードはどこかに送信されますか？</b> いいえ。すべて手元のマシンで動き、Claude Code、Codex、Mistral Vibe がもともと書き出しているセッションファイルを読むだけです。（フランス語への翻訳またはジョークをオンにした場合に限り、短い文があなた自身の Claude ログインを通ります。）",
- "Made by a bored dev and his robots. <br>This dev was replaced by his own agents. If this made you smile, spare a coffee for his career change? ☕": "退屈した開発者とそのロボットたちが作りました。<br>この開発者は自分のエージェントに仕事を奪われました。くすっと笑えたら、転職祝いにコーヒーを一杯おごってあげませんか？ ☕",
+ "Made by a bored dev and his robots.": "退屈した開発者とそのロボットたちが作りました。",
  "☕ Buy him a coffee": "☕ コーヒーをおごる",
  "MIT licensed. Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "MIT ライセンス。非公式：Anthropic、OpenAI、Mistral AI とは関係ありません。",
  "Built by <a href='https://github.com/Atoll92' target='_blank' rel='noopener'>Atoll92</a>, available for AI-agent and developer-tooling work.": "制作：<a href='https://github.com/Atoll92' target='_blank' rel='noopener'>Atoll92</a>。AI エージェントや開発者向けツールのお仕事を承ります。",
