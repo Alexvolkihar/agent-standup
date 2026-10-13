@@ -66,7 +66,7 @@
  "A team edition is being considered: a shared board, cost per agent and per week, an alert in your chat when an agent is blocked. Leave your email to hear about it and to say what you would need. One message when it exists, nothing else.": "チーム版を検討中です。共有ボード、エージェントごと・週ごとのコスト、エージェントが止まったときにチャットへ届くアラートなど。メールアドレスを残しておくと、公開のお知らせを受け取り、欲しい機能を伝えることができます。お送りするのは公開時の1通だけで、それ以外は何も送りません。",
  "Tell me when it exists": "公開されたら知らせてほしい",
  "The code is MIT licensed; the name and the logo are not (see <a href='name-and-logo/'>Name and logo</a>). Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "コードは MIT ライセンスですが、名称とロゴは対象外です（<a href='name-and-logo/'>名称とロゴ</a>を参照）。非公式：Anthropic、OpenAI、Mistral AI とは関係ありません。",
- "This site sets no cookie, counts no visit and loads nothing from anyone else.": "このサイトは Cookie を使わず、アクセス数も数えず、外部からは何も読み込みません。",
+ "This site sets no cookie and loads nothing from any other site. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "このサイトは Cookie を使わず、他のサイトからは何も読み込みません。ホスティング元の Vercel が Cookie を使わずにアクセス数を数えています。詳しくは<a href='privacy/'>プライバシー</a>をご覧ください。",
  "Changelog": "更新履歴",
  "Logo and colours": "ロゴとカラー",
  "Name and logo": "名称とロゴ",
@@ -81,5 +81,9 @@
  "Eight of the characters: the lead with its headset, and seven sub-agents": "キャラクター8体：ヘッドセットを着けたメインエージェントと、サブエージェント7体",
  "Language": "言語",
  "copied": "コピーしました",
- "select the text": "テキストを選択してください"
+ "select the text": "テキストを選択してください",
+ "Support": "応援する",
+ "Free for you. A coffee for the dev?": "あなたは無料。開発者にはコーヒーを一杯？",
+ "Made by a bored dev and his robots. <br>This dev was replaced by his own agents. If this made you smile, spare a coffee for his career change? ☕": "退屈した開発者とそのロボットたちが作りました。<br>この開発者は自分のエージェントに仕事を奪われました。くすっと笑えたら、転職祝いにコーヒーを一杯おごってあげませんか？ ☕",
+ "☕ Buy him a coffee": "☕ コーヒーをおごる"
 }

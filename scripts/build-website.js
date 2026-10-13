@@ -13,6 +13,9 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const version = JSON.parse(read('package.json')).version, conf = JSON.parse(read('website/site.json'));
 const site = String(conf.url || '').replace(/\/?$/, '/'), waitlist = /^https:\/\//.test(conf.waitlist || '') ? conf.waitlist : '';
 if (!/^https:\/\/[^/]+\/$/.test(site)) throw new Error('website/site.json: "url" must be the https address of the site');
+// Visits are counted by the host (Vercel Web Analytics, switched on in the project's settings; no cookie, see PRIVACY.md). This is the tag Vercel gives for a plain HTML site,
+// which is all its npm package adds. Only on the site's own address, so not on a preview or a copy opened from a folder, and not for a browser that sends Do Not Track.
+const analytics = `<script>if (location.hostname === ${JSON.stringify(new URL(site).hostname)} && navigator.doNotTrack !== '1') { window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); }; const s = document.createElement('script'); s.defer = true; s.src = '/_vercel/insights/script.js'; document.head.appendChild(s); }</script>`;
 
 fs.rmSync(dist, { recursive: true, force: true });
 fs.cpSync(path.join(src, 'static'), dist, { recursive: true });
@@ -21,7 +24,7 @@ copy('media/icon.png', 'brand/icon.png'); copy('public/favicon.svg', 'brand/favi
 
 let home = read('website/src/home.html');
 home = waitlist ? home.replace(/<!--\/?WAITLIST-->\n?/g, '').replace(/__WAITLIST__/g, () => esc(waitlist)) : home.replace(/<!--WAITLIST-->[\s\S]*?<!--\/WAITLIST-->\n?/, '');
-home = home.replace(/__VERSION__/g, version).replace(/__SITE__/g, site);
+home = home.replace(/__VERSION__/g, version).replace(/__SITE__/g, site).replace('<!--ANALYTICS-->', () => analytics);
 // ---- one page per language, written here and not by the browser, so that each has its own address for search engines: / in English, /fr/, /de/…
 // English and French come from the page (data-en / data-fr), the others from website/locales/<code>.json (see scripts/site-locales.js); a missing text stays in English.
 const locales = load('website');
@@ -67,6 +70,7 @@ const page = (file, slug, title, about) => write(`${slug}/index.html`, `<!doctyp
 <link rel="canonical" href="${site}${slug}/">
 <link rel="icon" href="../brand/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../style.css">
+${analytics}
 </head>
 <body>
 <div class="wrap">

@@ -1,12 +1,12 @@
 # Privacy
 
-Last updated: 12 October 2026.
+Last updated: 13 October 2026.
 
 This page covers Agent Standup in all its forms (the VS Code extension, the `agent-standup` command, the desktop app, the Claude Code plugin) and its website. Agent Standup is published by Double Geste, an individual developer. It is an unofficial community project, not affiliated with Anthropic or OpenAI.
 
 ## The short version
 
-Agent Standup runs on your own computer. It reads files that are already there, shows them to you in a page served from your machine, and by default sends nothing anywhere. There are no accounts, no analytics and no advertising. The developer never receives your sessions, your code or your prompts.
+Agent Standup runs on your own computer. It reads files that are already there, shows them to you in a page served from your machine, and by default sends nothing anywhere. There are no accounts and no advertising, and the app itself has no analytics (the website counts its visits, see "The websites" below). The developer never receives your sessions, your code or your prompts.
 
 ## What it reads
 
@@ -39,13 +39,15 @@ Each of these services sees your IP address, as any website does, and applies it
 
 ## The websites
 
-The website at https://agent-standup.com is hosted by Vercel. It sets no cookie, counts no visit and loads nothing from any other service: its fonts, pictures and videos are served from the site itself. Vercel, as the host, sees your IP address.
+The website at https://agent-standup.com is hosted by Vercel. It sets no cookie and loads nothing from any other service: its fonts, pictures and videos are served from the site itself. Vercel, as the host, sees your IP address.
+
+Since 13 October 2026 its visits are counted with Vercel Web Analytics, the host's own counter. For each page viewed, Vercel records the page, the page the visit came from, the approximate location (country, region, city), and the kind of browser, system and device. It uses no cookie. According to Vercel, it tells visitors apart with a value computed from the request that is discarded after a day and is not kept as an identifier: https://vercel.com/docs/analytics/privacy-policy. A visit from a browser that sends "Do Not Track" is not counted.
 
 The earlier landing page at https://atoll92.github.io/agent-standup/ is hosted by GitHub Pages. Each visit there loads one tiny image from GitHub, named after where the visit came from (for example "reddit" or "direct"), so the project can count visits by source. It also asks GitHub's public API which release is the latest, to show its version number and download links. It sets no cookie and carries no identifier. GitHub, as the host, sees your IP address.
 
 ## What the developer can see
 
-Only totals that the stores and GitHub publish: download and install counts, stars, the number of daily "share usage" requests, and visit counts by source. None of it identifies a person.
+Only totals that the stores, GitHub and Vercel show: download and install counts, stars, the number of daily "share usage" requests, visit counts by source, and for the website the number of visits by page, by the page they came from, by country and by kind of browser and device. None of it identifies a person.
 
 ## Children
 

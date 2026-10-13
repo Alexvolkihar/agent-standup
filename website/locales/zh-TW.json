@@ -66,7 +66,7 @@
  "A team edition is being considered: a shared board, cost per agent and per week, an alert in your chat when an agent is blocked. Leave your email to hear about it and to say what you would need. One message when it exists, nothing else.": "團隊版正在評估中：共用看板、依代理和依週統計的費用、代理卡住時在你的聊天工具裡提醒。留下電子郵件，以便第一時間收到消息，也可以說說你需要什麼。推出時只寄一封信，僅此而已。",
  "Tell me when it exists": "推出時通知我",
  "The code is MIT licensed; the name and the logo are not (see <a href='name-and-logo/'>Name and logo</a>). Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "程式碼採用 MIT 授權；名稱和 Logo 不在此列（請見<a href='name-and-logo/'>名稱與 Logo</a>）。非官方專案：與 Anthropic、OpenAI 和 Mistral AI 皆無關聯。",
- "This site sets no cookie, counts no visit and loads nothing from anyone else.": "本站不設定 cookie，不統計造訪次數，也不從任何第三方載入內容。",
+ "This site sets no cookie and loads nothing from any other site. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "本站不設定 cookie，也不從任何其他網站載入內容。代管商 Vercel 會在不使用 cookie 的情況下統計造訪次數，詳見<a href='privacy/'>隱私權</a>。",
  "Changelog": "更新紀錄",
  "Logo and colours": "Logo 與配色",
  "Name and logo": "名稱與 Logo",
@@ -81,5 +81,9 @@
  "Eight of the characters: the lead with its headset, and seven sub-agents": "其中八個角色：戴著耳機麥克風的主代理，以及七個子代理",
  "Language": "語言",
  "copied": "已複製",
- "select the text": "請選取文字"
+ "select the text": "請選取文字",
+ "Support": "支持",
+ "Free for you. A coffee for the dev?": "對你免費。請開發者喝杯咖啡？",
+ "Made by a bored dev and his robots. <br>This dev was replaced by his own agents. If this made you smile, spare a coffee for his career change? ☕": "由一位閒得發慌的開發者和他的機器人們製作。<br>這位開發者被自己的代理取代了。如果這讓你會心一笑，請他喝杯咖啡，祝他轉職順利？☕",
+ "☕ Buy him a coffee": "☕ 請他喝杯咖啡"
 }

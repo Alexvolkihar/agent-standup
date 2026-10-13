@@ -66,7 +66,7 @@
  "A team edition is being considered: a shared board, cost per agent and per week, an alert in your chat when an agent is blocked. Leave your email to hear about it and to say what you would need. One message when it exists, nothing else.": "En teamudgave er under overvejelse: en fælles tavle, pris pr. agent og pr. uge, en besked i jeres chat, når en agent er blokeret. Efterlad din e-mail for at høre om den og fortælle, hvad du ville få brug for. Én besked, når den findes, intet andet.",
  "Tell me when it exists": "Giv mig besked",
  "The code is MIT licensed; the name and the logo are not (see <a href='name-and-logo/'>Name and logo</a>). Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "Koden er under MIT-licens; det er navnet og logoet ikke (se <a href='name-and-logo/'>Navn og logo</a>). Uofficielt: ikke tilknyttet Anthropic, OpenAI eller Mistral AI.",
- "This site sets no cookie, counts no visit and loads nothing from anyone else.": "Dette site sætter ingen cookies, tæller ingen besøg og indlæser intet fra andre.",
+ "This site sets no cookie and loads nothing from any other site. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "Dette site sætter ingen cookies og indlæser intet fra andre sites. Dets vært, Vercel, tæller besøg uden cookies: se <a href='privacy/'>Privatliv</a>.",
  "Changelog": "Ændringslog",
  "Logo and colours": "Logo og farver",
  "Name and logo": "Navn og logo",
@@ -81,5 +81,9 @@
  "Eight of the characters: the lead with its headset, and seven sub-agents": "Otte af figurerne: lederen med sit headset og syv underagenter",
  "Language": "Sprog",
  "copied": "kopieret",
- "select the text": "markér teksten"
+ "select the text": "markér teksten",
+ "Support": "Støt",
+ "Free for you. A coffee for the dev?": "Gratis for dig. En kop kaffe til udvikleren?",
+ "Made by a bored dev and his robots. <br>This dev was replaced by his own agents. If this made you smile, spare a coffee for his career change? ☕": "Lavet af en udvikler, der kedede sig, og hans robotter. <br>Denne udvikler blev erstattet af sine egne agenter. Hvis det fik dig til at smile, har du så en kop kaffe til hans karriereskift? ☕",
+ "☕ Buy him a coffee": "☕ Køb ham en kop kaffe"
 }

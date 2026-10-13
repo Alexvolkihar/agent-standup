@@ -66,7 +66,7 @@
  "A team edition is being considered: a shared board, cost per agent and per week, an alert in your chat when an agent is blocked. Leave your email to hear about it and to say what you would need. One message when it exists, nothing else.": "Se está estudiando una edición para equipos: un tablero compartido, el coste por agente y por semana, una alerta en tu chat cuando un agente se queda bloqueado. Deja tu correo para enterarte y contar qué necesitarías. Un solo mensaje cuando exista, nada más.",
  "Tell me when it exists": "Avísame cuando exista",
  "The code is MIT licensed; the name and the logo are not (see <a href='name-and-logo/'>Name and logo</a>). Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "El código tiene licencia MIT; el nombre y el logo, no (consulta <a href='name-and-logo/'>Nombre y logo</a>). No oficial: sin relación con Anthropic, OpenAI ni Mistral AI.",
- "This site sets no cookie, counts no visit and loads nothing from anyone else.": "Este sitio no usa cookies, no cuenta visitas y no carga nada de terceros.",
+ "This site sets no cookie and loads nothing from any other site. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "Este sitio no usa cookies y no carga nada de otros sitios. Su alojamiento, Vercel, cuenta las visitas sin cookies: consulta <a href='privacy/'>Privacidad</a>.",
  "Changelog": "Novedades",
  "Logo and colours": "Logo y colores",
  "Name and logo": "Nombre y logo",
@@ -81,5 +81,9 @@
  "Eight of the characters: the lead with its headset, and seven sub-agents": "Ocho de los personajes: el agente principal con sus auriculares y siete subagentes",
  "Language": "Idioma",
  "copied": "copiado",
- "select the text": "selecciona el texto"
+ "select the text": "selecciona el texto",
+ "Support": "Apoyar",
+ "Free for you. A coffee for the dev?": "Gratis para ti. ¿Un café para el dev?",
+ "Made by a bored dev and his robots. <br>This dev was replaced by his own agents. If this made you smile, spare a coffee for his career change? ☕": "Hecho por un dev aburrido y sus robots. <br>Este dev fue reemplazado por sus propios agentes. Si te ha sacado una sonrisa, ¿un café para su cambio de carrera? ☕",
+ "☕ Buy him a coffee": "☕ Invítalo a un café"
 }

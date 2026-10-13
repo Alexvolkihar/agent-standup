@@ -66,7 +66,7 @@
  "A team edition is being considered: a shared board, cost per agent and per week, an alert in your chat when an agent is blocked. Leave your email to hear about it and to say what you would need. One message when it exists, nothing else.": "Eine Team-Edition ist in Überlegung: ein gemeinsames Board, Kosten pro Agent und pro Woche, eine Meldung in eurem Chat, wenn ein Agent blockiert ist. Hinterlasse deine E-Mail-Adresse, um davon zu erfahren und zu sagen, was du bräuchtest. Eine einzige Nachricht, sobald es sie gibt, sonst nichts.",
  "Tell me when it exists": "Sag mir Bescheid",
  "The code is MIT licensed; the name and the logo are not (see <a href='name-and-logo/'>Name and logo</a>). Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "Der Code steht unter der MIT-Lizenz; der Name und das Logo nicht (siehe <a href='name-and-logo/'>Name und Logo</a>). Inoffiziell: keine Verbindung zu Anthropic, OpenAI oder Mistral AI.",
- "This site sets no cookie, counts no visit and loads nothing from anyone else.": "Diese Website setzt keine Cookies, zählt keine Besuche und lädt nichts von Dritten.",
+ "This site sets no cookie and loads nothing from any other site. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "Diese Website setzt keine Cookies und lädt nichts von anderen Websites. Ihr Hoster Vercel zählt die Besuche ohne Cookies: siehe <a href='privacy/'>Datenschutz</a>.",
  "Changelog": "Changelog",
  "Logo and colours": "Logo und Farben",
  "Name and logo": "Name und Logo",
@@ -81,5 +81,9 @@
  "Eight of the characters: the lead with its headset, and seven sub-agents": "Acht der Figuren: der Hauptagent mit Headset und sieben Subagenten",
  "Language": "Sprache",
  "copied": "kopiert",
- "select the text": "Text markieren"
+ "select the text": "Text markieren",
+ "Support": "Unterstützen",
+ "Free for you. A coffee for the dev?": "Kostenlos für dich. Ein Kaffee für den Dev?",
+ "Made by a bored dev and his robots. <br>This dev was replaced by his own agents. If this made you smile, spare a coffee for his career change? ☕": "Gemacht von einem gelangweilten Dev und seinen Robotern. <br>Dieser Dev wurde von seinen eigenen Agenten ersetzt. Wenn dich das zum Schmunzeln gebracht hat: einen Kaffee für seinen Karrierewechsel? ☕",
+ "☕ Buy him a coffee": "☕ Spendier ihm einen Kaffee"
 }
