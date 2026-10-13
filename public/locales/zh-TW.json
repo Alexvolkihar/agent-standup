@@ -249,5 +249,8 @@
  "No preview here: the page is on claude.ai": "此處無法預覽：頁面在 claude.ai 上",
  "Open on claude.ai": "在 claude.ai 上開啟",
  "Publishing ": "發布 ",
- "This page uses libraries kept on other servers: they are loaded only if you ask": "此頁面使用存放在其他伺服器上的函式庫：只有在你要求時才會載入"
+ "This page uses libraries kept on other servers: they are loaded only if you ask": "此頁面使用存放在其他伺服器上的函式庫：只有在你要求時才會載入",
+ "Mark as done": "標記為已處理",
+ "Open the pull request": "開啟拉取請求",
+ "Reopen": "重新開啟"
 }

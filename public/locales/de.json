@@ -249,5 +249,8 @@
  "No preview here: the page is on claude.ai": "Keine Vorschau hier: Die Seite liegt auf claude.ai",
  "Open on claude.ai": "Auf claude.ai öffnen",
  "Publishing ": "Veröffentliche ",
- "This page uses libraries kept on other servers: they are loaded only if you ask": "Diese Seite nutzt Bibliotheken von anderen Servern: Sie werden nur geladen, wenn Sie es verlangen"
+ "This page uses libraries kept on other servers: they are loaded only if you ask": "Diese Seite nutzt Bibliotheken von anderen Servern: Sie werden nur geladen, wenn Sie es verlangen",
+ "Mark as done": "Als erledigt markieren",
+ "Open the pull request": "Pull Request öffnen",
+ "Reopen": "Wieder öffnen"
 }

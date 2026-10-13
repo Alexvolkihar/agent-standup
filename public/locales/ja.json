@@ -249,5 +249,8 @@
  "No preview here: the page is on claude.ai": "ここではプレビューできません: ページは claude.ai にあります",
  "Open on claude.ai": "claude.ai で開く",
  "Publishing ": "公開中: ",
- "This page uses libraries kept on other servers: they are loaded only if you ask": "このページは他のサーバーにあるライブラリを使います: 求めたときだけ読み込まれます"
+ "This page uses libraries kept on other servers: they are loaded only if you ask": "このページは他のサーバーにあるライブラリを使います: 求めたときだけ読み込まれます",
+ "Mark as done": "完了にする",
+ "Open the pull request": "プルリクエストを開く",
+ "Reopen": "元に戻す"
 }

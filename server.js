@@ -301,24 +301,27 @@ const readHead = (file, bytes) => { const fd = fs.openSync(file, 'r'); try { con
 const APPROVAL = /^(Edit|Write|MultiEdit|NotebookEdit)/, ASKS = /^(AskUserQuestion|ExitPlanMode)/, SUBTOOL = /^(Task|Agent)$/;
 const boardCache = new Map();   // file → { sig, parsed, title }
 let boardMemo = { at: 0, rows: [] };
+const PR_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+$/;   // nothing else is given to the page as a link to open
+const askOf = (b) => { const q = b.name === 'AskUserQuestion' && b.input && Array.isArray(b.input.questions) && b.input.questions[0] && b.input.questions[0].question; return typeof q === 'string' ? clip(q.trim(), 200) : ''; };   // the question a session stopped on, for its card
 function parseTail(file, st) {
   const sig = st.mtimeMs + ':' + st.size, hit = boardCache.get(file); if (hit && hit.sig === sig) return hit;
   const { text, cut } = readTail(file, 192 * 1024), lines = text.split('\n'); if (cut) lines.shift();
-  const pend = new Map(); let lastType = null, lastTool = false, lastStop = null, stops = false, esc = false, lastTs = 0, custom = (hit && hit.custom) || null, ai = (hit && hit.ai) || null, first = hit ? hit.first : undefined;
+  const pend = new Map(); let lastType = null, lastTool = false, lastStop = null, stops = false, esc = false, lastTs = 0, custom = (hit && hit.custom) || null, ai = (hit && hit.ai) || null, first = hit ? hit.first : undefined, pr = (hit && hit.pr) || null;
   for (const l of lines) {
     if (!l) continue; let r; try { r = JSON.parse(l); } catch { continue; }
     if (r.type === 'custom-title' && typeof r.customTitle === 'string') custom = r.customTitle; else if (r.type === 'ai-title' && typeof r.aiTitle === 'string') ai = r.aiTitle;   // a session is renamed, or named, long after its row was first shown: the latest one read wins
+    if (r.type === 'pr-link' && PR_URL.test(r.prUrl)) pr = { n: +r.prUrl.slice(r.prUrl.lastIndexOf('/') + 1), url: r.prUrl };   // the pull request Claude Code noted for the session: the latest one, shown on its card
     const t = Date.parse(r.timestamp) || 0, bl = blocks(r);
     if (r.type === 'assistant' || r.type === 'user') { lastType = r.type; lastTool = bl.some((b) => b.type === 'tool_use'); lastStop = (r.type === 'assistant' && r.message && r.message.stop_reason) || null; if (lastStop) stops = true; if (t) lastTs = t;
       esc = r.type === 'user' && bl.some((b) => b.type === 'text' && /^\s*\[Request interrupted/i.test(b.text || '')); if (esc) pend.clear(); }   // Esc: the turn stops there, and no call is waited for any more
-    for (const b of bl) { if (b.type === 'tool_use') pend.set(b.id, { name: b.name, ts: t }); else if (b.type === 'tool_result') pend.delete(b.tool_use_id); }
+    for (const b of bl) { if (b.type === 'tool_use') pend.set(b.id, { name: b.name, ts: t, q: askOf(b) }); else if (b.type === 'tool_result') pend.delete(b.tool_use_id); }
   }
   if (!hit && !custom) {   // first look at this file: a little further back than the lines read above, and without needing whole lines
     const big = readTail(file, 256 * 1024).text, un = (m) => { try { return m ? JSON.parse('"' + m[1] + '"') : null; } catch { return null; } };
     custom = un([...big.matchAll(/"type":"custom-title","customTitle":"((?:[^"\\]|\\.)*)"/g)].pop()); if (!ai) ai = un([...big.matchAll(/"type":"ai-title","aiTitle":"((?:[^"\\]|\\.)*)"/g)].pop());
   }
   if (!custom && !ai && first == null) first = firstPrompt(file) || (st.size > 64 * 1024 ? '' : null);   // '' = looked for and not there; a file that has just been created is looked at again
-  const out = { sig, title: custom || ai || first || null, custom, ai, first, lastType, lastTool, lastStop, stops, esc, lastTs, pending: [...pend.values()] };   // a title the person typed wins over the generated one, and both over the first prompt
+  const out = { sig, title: custom || ai || first || null, custom, ai, first, pr, lastType, lastTool, lastStop, stops, esc, lastTs, pending: [...pend.values()] };   // a title the person typed wins over the generated one, and both over the first prompt
   boardCache.set(file, out); if (boardCache.size > 200) boardCache.delete(boardCache.keys().next().value); return out;
 }
 function firstPrompt(file) {   // the first thing the person typed, read record by record: a pattern over the raw text ran from a user record into the assistant's first answer and took that as the title
@@ -333,7 +336,7 @@ function firstPrompt(file) {   // the first thing the person typed, read record 
 }
 function boardRows() {
   if (Date.now() - boardMemo.at < 1200) return boardMemo.rows;   // several windows polling at once share one scan
-  const out = boardRows0(); boardMemo = { at: Date.now(), rows: out }; return out;
+  const out = withDone(boardRows0()); boardMemo = { at: Date.now(), rows: out }; return out;
 }
 function boardRows0() {
   const now = Date.now(), rows = [];
@@ -356,11 +359,28 @@ function boardRows0() {
     }
     let subActive = 0, subTotal = 0;
     for (const x of subFiles(proj, id)) { subTotal++; if (now - mtimeOf(x.file) < 90e3) subActive++; }
-    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, ...(p.esc ? { cut: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
+    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, ...(p.pr ? { pr: p.pr } : {}), ...(state === 'blocked' && lp && lp.q ? { ask: lp.q } : {}), ...(p.esc ? { cut: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
   }).filter(Boolean);
 }
 // Settings live in a file, not only in the page's localStorage: the port changes between VS Code windows and reloads, and localStorage is per origin (port included).
 const PREFS = process.env.AGENT_STANDUP_PREFS || (process.platform === 'win32' ? path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'agent-standup', 'prefs.json') : path.join(os.homedir(), '.config', 'agent-standup', 'prefs.json'));
+// The sessions you put away as done (✓ on a card of the Sessions view): "project/id" → when the session had last moved at that time. Kept in a file of its own beside the settings and read again when it changes,
+// so that every window agrees at once, whichever server it talks to. A session that moves again is no longer put away.
+const DONE = path.join(path.dirname(PREFS), 'done.json'); let doneMemo = { sig: null, map: new Map() };
+function doneMarks() {
+  let sig = ''; try { const st = fs.statSync(DONE); sig = st.mtimeMs + ':' + st.size; } catch {} if (sig === doneMemo.sig) return doneMemo.map;
+  const map = new Map(); try { for (const [k, v] of Object.entries(JSON.parse(fs.readFileSync(DONE, 'utf8')))) if (typeof v === 'number') map.set(k, v); } catch {}
+  doneMemo = { sig, map }; return map;
+}
+const canDone = (r) => r.state === 'turn' || r.state === 'idle';   // a session at work, or one that waits for you, is not put away
+function withDone(rows) { const m = doneMarks(); for (const r of rows) { if (canDone(r) && m.get(r.proj + '/' + r.id) >= r.mtime) r.done = 1; else if (r.done) delete r.done; } return rows; }
+function setDone(proj, id, on) {
+  const rows = boardRows0(), row = rows.find((r) => r.proj === proj && r.id === id); if (!row || (on && !canDone(row))) return false;
+  const m = new Map(doneMarks()), k = proj + '/' + id; if (on) m.set(k, row.mtime); else m.delete(k);
+  for (const [key, at] of m) { const r = rows.find((x) => x.proj + '/' + x.id === key); if (!r || r.mtime > at) m.delete(key); }   // the marks of sessions that moved again, or left the board, are forgotten
+  fs.mkdirSync(path.dirname(DONE), { recursive: true }); const tmp = DONE + '.' + process.pid + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(Object.fromEntries(m), null, 1)); fs.renameSync(tmp, DONE);
+  doneMemo = { sig: null, map: m }; boardMemo.at = 0; return true;
+}
 function readPrefs() { try { const v = JSON.parse(fs.readFileSync(PREFS, 'utf8')); return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch { return null; } }
 function writePrefs(v) { fs.mkdirSync(path.dirname(PREFS), { recursive: true }); const tmp = PREFS + '.' + process.pid + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(v, null, 1)); fs.renameSync(tmp, PREFS); }
 // The app's own errors, kept on this computer only, in errors.log beside the settings: what the page, a request, a reader or the process could not do. Nothing is sent anywhere:
@@ -843,6 +863,7 @@ function start(port = PORT) {
     if (url.pathname === '/api/prefs.js') { res.writeHead(200, { 'content-type': 'application/javascript', 'cache-control': 'no-store' }); return res.end('window.SAVED_PREFS = ' + JSON.stringify(readPrefs()).replace(/</g, '\\u003c') + ';'); }
     if (url.pathname === '/api/prefs' && req.method === 'PUT') return readBody((body) => { try { const v = JSON.parse(body); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('prefs must be an object'); writePrefs(v); json({ ok: true }); } catch (e) { json({ error: String(e.message || e) }, 400); } });
     if (url.pathname === '/api/prefs') return json(readPrefs() || {});
+    if (url.pathname === '/api/done' && req.method === 'POST') return readBody((body) => { try { const v = JSON.parse(body); json({ ok: setDone(String(v.proj || ''), String(v.id || ''), v.on !== false) }); } catch (e) { logError('done', e); json({ error: String(e.message || e) }, 400); } });
     if (url.pathname === '/api/errors' && req.method === 'POST') return readBody((body) => { try { const b = JSON.parse(body) || {}; logError('page' + (typeof b.where === 'string' && b.where ? ' ' + b.where.slice(0, 40) : ''), { message: String(b.msg || ''), stack: String(b.stack || '') }); json({ ok: true }); } catch (e) { json({ error: String(e.message || e) }, 400); } });   // an error of the page, written to the local log
     if (url.pathname === '/api/errors') return json(errorReport());
     if (url.pathname === '/api/current') return json(currentSession(url.searchParams.get('proj') || '', url.searchParams.get('id') || '', { proj: url.searchParams.get('sproj') || '', id: url.searchParams.get('sid') || '' }));
