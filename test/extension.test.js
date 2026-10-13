@@ -11,7 +11,7 @@ function titled(proj, id, title, minutesAgo) {
   fs.utimesSync(file, at / 1000, at / 1000);
 }
 titled('-work-app', 'long', 'Fix the login page and its tests', 5); titled('-work-app', 'short', 'Short title', 9); titled('-work-app', 'spaced', 'Two  spaces\tand a tab in the title', 12);
-titled('-other', 'twin', 'Fix the login page and its tests', 1); titled('-other', 'away', 'Only in another folder', 3);   // twin: the same title in another folder, and more recent. All of them are there before the extension first looks: it keeps what it read for a moment
+titled('-other', 'twin', 'Fix the login page and its tests', 1); titled('-other', 'away', 'Only in another folder', 3); titled('-work-app', 'lastweek', 'A conversation of last week', 6 * 24 * 60);   // twin: the same title in another folder, and more recent. All of them are there before the extension first looks: it keeps what it read for a moment
 // ---- VS Code, as much of it as the extension touches ----
 function standIn({ tabGroups = true } = {}) {
   const v = { cmds: {}, provider: null, sent: [], tabs: [], groups: [], panels: 0, errors: [], active: null };
@@ -65,6 +65,7 @@ test('the call is sent to the Claude Code tab you go to: found by its title, who
     assert.deepEqual(v.go(claude('Two spaces and a tab in …')), to('spaced', '-work-app'), 'spaces are told apart by neither side');
     assert.deepEqual(v.go(claude('Only in another folder')), to('away', '-other'), 'a session of another folder, when this workspace has none by that title');
     assert.deepEqual(v.go(claude('Short title'), 2), to('short', '-work-app'), 'the same title in another column is another tab');
+    assert.equal(require('../server.js').boardRows().some((r) => r.id === 'lastweek'), false); assert.deepEqual(v.go(claude('A conversation of last w…')), to('lastweek', '-work-app'), 'a conversation of another day is no longer among the sessions of the moment: it is found in the whole list');
     v.active = null; assert.doesNotThrow(() => v.groups[0]({}));
   } finally { await x.close(); }
 });

@@ -24,6 +24,22 @@ const blocks = (rec) => {
   return Array.isArray(c) ? c : [];
 };
 const clip = (x, n = 700) => String(x == null ? '' : x).slice(0, n);
+// The documents a command names, in its text or in what it printed: an export, a report, a picture, a package. The call shows one under it when the lead names it too
+// and it was written since (see sessionFile): a name is all that is taken here, nothing is read. cd: a command, where "cd dir &&" says from which folder the names that follow are given.
+const OUT_EXT = /\.(html?|md|markdown|txt|rtf|pdf|docx?|pptx?|xlsx?|csv|tsv|png|jpe?g|gif|webp|svg|zip|tgz|vsix|mp4|mov|webm|mp3|wav|epub)$/i, ROOTED = /^([~\/\\]|[A-Za-z]:[\\/])/;
+function docPaths(text, cd) {
+  const out = []; let dir = '';
+  const cmd = String(text || '').slice(0, 20000).replace(/(?<!<)<<(?!<)-?\s*(['"]?)(\w+)\1([^\n]*)\n[\s\S]*?\n[ \t]*\2[ \t]*(?=\n|$)/g, ' $3').replace(/(?<!<)<<(?!<)-?\s*['"]?\w+['"]?([^\n]*)\n[\s\S]*$/, ' $1');   // not what a here-document holds: that is a file's content, not the command (the rest of its first line is: "> list.txt")
+  for (const seg of cmd.split(cd ? /&&|\|\||;|\n/ : /\n/)) {
+    const m = cd && seg.match(/^\s*cd\s+(?:"([^"]+)"|'([^']+)'|(\S+))\s*$/); if (m) { const d = m[1] || m[2] || m[3]; dir = ROOTED.test(d) ? d : path.join(dir, d); continue; }
+    for (const t of seg.matchAll(/"([^"\n]+)"|'([^'\n]+)'|([^\s"'`|&;<>()=,]+)/g)) {
+      const f = (t[1] || t[2] || t[3]).replace(/[.:;!?)\]]+$/, ''); if (!OUT_EXT.test(f) || /:\/\/|[*?{}$\[]/.test(f) || f.length > 400) continue;   // not a link, a pattern or a variable
+      const full = dir && !ROOTED.test(f) ? path.join(dir, f) : f; if (!out.includes(full)) out.push(full); if (out.length >= 16) return out;
+    }
+  }
+  return out;
+}
+const absPath = (f, cwd) => (/^~([\\/]|$)/.test(f) ? path.join(os.homedir(), f.slice(1)) : path.isAbsolute(f) ? path.normalize(f) : cwd ? path.resolve(cwd, f) : f);   // cwd: the folder the session was in when it wrote that record
 // What each tool call looks like on a screen ("d"), plus its id/timestamp so the result can be matched later.
 const toolLabel = (b, ts) => {
   const i = b.input || {};
@@ -31,7 +47,7 @@ const toolLabel = (b, ts) => {
   const arg = i.file_path || i.notebook_path || i.path || i.pattern || i.command || i.url || i.query || i.skill || (q0 && q0.question) || i.description || firstStr || '';
   const out = { id: b.id, ts, name: b.name, arg: String(arg).slice(0, 90) };
   switch (b.name) {
-    case 'Bash': out.d = { kind: 'cmd', text: clip(i.command, 1200), note: clip(i.description, 140) }; break;
+    case 'Bash': { out.d = { kind: 'cmd', text: clip(i.command, 1200), note: clip(i.description, 140) }; const outs = docPaths(i.command, true); if (outs.length) out.d.outs = outs; break; }
     case 'Read': out.d = { kind: 'read', file: i.file_path, offset: i.offset, limit: i.limit }; break;
     case 'Edit': case 'MultiEdit': { const e = i.edits ? i.edits[0] || {} : i; out.d = { kind: 'edit', file: i.file_path, old: clip(e.old_string, 500), new: clip(e.new_string, 500) }; break; }
     case 'Write': out.d = { kind: 'write', file: i.file_path, text: clip(i.content, 800) }; break;
@@ -184,12 +200,13 @@ let boardMemo = { at: 0, rows: [] };
 function parseTail(file, st) {
   const sig = st.mtimeMs + ':' + st.size, hit = boardCache.get(file); if (hit && hit.sig === sig) return hit;
   const { text, cut } = readTail(file, 192 * 1024), lines = text.split('\n'); if (cut) lines.shift();
-  const pend = new Map(); let lastType = null, lastTool = false, lastStop = null, lastTs = 0, custom = (hit && hit.custom) || null, ai = (hit && hit.ai) || null, first = hit ? hit.first : undefined;
+  const pend = new Map(); let lastType = null, lastTool = false, lastStop = null, stops = false, esc = false, lastTs = 0, custom = (hit && hit.custom) || null, ai = (hit && hit.ai) || null, first = hit ? hit.first : undefined;
   for (const l of lines) {
     if (!l) continue; let r; try { r = JSON.parse(l); } catch { continue; }
     if (r.type === 'custom-title' && typeof r.customTitle === 'string') custom = r.customTitle; else if (r.type === 'ai-title' && typeof r.aiTitle === 'string') ai = r.aiTitle;   // a session is renamed, or named, long after its row was first shown: the latest one read wins
     const t = Date.parse(r.timestamp) || 0, bl = blocks(r);
-    if (r.type === 'assistant' || r.type === 'user') { lastType = r.type; lastTool = bl.some((b) => b.type === 'tool_use'); lastStop = (r.type === 'assistant' && r.message && r.message.stop_reason) || null; if (t) lastTs = t; }
+    if (r.type === 'assistant' || r.type === 'user') { lastType = r.type; lastTool = bl.some((b) => b.type === 'tool_use'); lastStop = (r.type === 'assistant' && r.message && r.message.stop_reason) || null; if (lastStop) stops = true; if (t) lastTs = t;
+      esc = r.type === 'user' && bl.some((b) => b.type === 'text' && /^\s*\[Request interrupted/i.test(b.text || '')); if (esc) pend.clear(); }   // Esc: the turn stops there, and no call is waited for any more
     for (const b of bl) { if (b.type === 'tool_use') pend.set(b.id, { name: b.name, ts: t }); else if (b.type === 'tool_result') pend.delete(b.tool_use_id); }
   }
   if (!hit && !custom) {   // first look at this file: a little further back than the lines read above, and without needing whole lines
@@ -197,7 +214,7 @@ function parseTail(file, st) {
     custom = un([...big.matchAll(/"type":"custom-title","customTitle":"((?:[^"\\]|\\.)*)"/g)].pop()); if (!ai) ai = un([...big.matchAll(/"type":"ai-title","aiTitle":"((?:[^"\\]|\\.)*)"/g)].pop());
   }
   if (!custom && !ai && first == null) first = firstPrompt(file) || (st.size > 64 * 1024 ? '' : null);   // '' = looked for and not there; a file that has just been created is looked at again
-  const out = { sig, title: custom || ai || first || null, custom, ai, first, lastType, lastTool, lastStop, lastTs, pending: [...pend.values()] };   // a title the person typed wins over the generated one, and both over the first prompt
+  const out = { sig, title: custom || ai || first || null, custom, ai, first, lastType, lastTool, lastStop, stops, esc, lastTs, pending: [...pend.values()] };   // a title the person typed wins over the generated one, and both over the first prompt
   boardCache.set(file, out); if (boardCache.size > 200) boardCache.delete(boardCache.keys().next().value); return out;
 }
 function firstPrompt(file) {   // the first thing the person typed, read record by record: a pattern over the raw text ran from a user record into the assistant's first answer and took that as the title
@@ -229,12 +246,14 @@ function boardRows0() {
     if (age < 30 * 60e3) {
       if (lp) { ageMs = now - (lp.ts || st.mtimeMs); tool = lp.name;
         state = SUBTOOL.test(lp.name) ? 'waiting' : (ASKS.test(lp.name) && ageMs > 4000) || (APPROVAL.test(lp.name) && ageMs > 15000) ? 'blocked' : 'working'; }
-      else if (p.lastType === 'assistant' && !p.lastTool && p.lastStop !== 'tool_use') state = 'turn';   // a line whose message goes on with a tool call is not the end of the turn: the call is written after it, a long one many seconds after
+      else if (p.esc) state = 'turn';   // you stopped it (Esc): it is your turn there, not "working" for the next ten minutes
+      else if (p.lastType === 'assistant' && !p.lastTool && p.lastStop !== 'tool_use' && !(p.lastStop == null && p.stops && age < 45000)) state = 'turn';   // a line whose message goes on with a tool call is not the end of the turn: the call is written after it, a long one many seconds after.
+      // Claude Code up to 2.1.87 writes that line without saying why it stopped: in a transcript that does say it elsewhere, such a line is given 45 s for its call to come (1 in 100 takes longer than 25 s)
       else state = age < 10 * 60e3 ? 'working' : 'idle';
     }
     let subActive = 0, subTotal = 0;
     for (const x of subFiles(proj, id)) { subTotal++; if (now - mtimeOf(x.file) < 90e3) subActive++; }
-    return { proj, id, title: p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal };
+    return { proj, id, title: p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, ...(p.esc ? { cut: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
   }).filter(Boolean);
 }
 // Settings live in a file, not only in the page's localStorage: the port changes between VS Code windows and reloads, and localStorage is per origin (port included).
@@ -319,8 +338,8 @@ function parseRecord(st, r) {
     for (const b of blocks(r)) if (b.type === 'tool_result' && wf) push({ ts, agent, kind: 'wfrun', toolId: b.tool_use_id, run: wf });   // the answer to a Workflow call names the run it started: its agents are in subagents/workflows/<run>/
     for (const b of blocks(r)) if (b.type === 'tool_result' && (st.toolName[b.tool_use_id] === 'Agent' || st.toolName[b.tool_use_id] === 'Task') && !(st.bg && st.bg[b.tool_use_id]) && !/^\s*Async agent launched/i.test(resultText(b.content))) push({ ts, agent, kind: 'agentdone', toolId: b.tool_use_id });   // a synchronous call: the lead got the sub-agent's answer back, so it has finished (async launches answer immediately and are not a completion)
     for (const b of blocks(r)) if (b.type === 'tool_result' && st.toolName[b.tool_use_id] && !NO_RESULT.has(st.toolName[b.tool_use_id])) {
-      const n = st.toolName[b.tool_use_id], img = resultImages(b.content).length;
-      items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || (/^mcp__/.test(n) ? 900 : 600)), ...(img ? { img } : {}) });   // img: how many pictures came back; the page fetches them from /api/media
+      const n = st.toolName[b.tool_use_id], img = resultImages(b.content).length, files = n === 'Bash' && !b.is_error ? docPaths(resultText(b.content), false).map((f) => absPath(f, r.cwd)) : [];
+      items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || (/^mcp__/.test(n) ? 900 : 600)), ...(img ? { img } : {}), ...(files.length ? { files } : {}) });   // img: how many pictures came back; the page fetches them from /api/media · files: the documents a command says it made
     }
     if (items.length) push({ ts, agent, kind: 'results', items });
     const typed = blocks(r).filter((b) => b.type === 'text').map((b) => b.text).join('\n').replace(HARNESS, ''), cut = /^\s*\[Request interrupted[^\]]*\]/i.test(typed);   // what the human typed, without the blocks the harness wraps around it
@@ -342,10 +361,10 @@ function parseRecord(st, r) {
       else if (b.type === 'tool_use') {
         st.toolName[b.id] = b.name; if (b.input && b.input.run_in_background) (st.bg = st.bg || {})[b.id] = true;
         if (b.name === 'Agent' || b.name === 'Task') push({ ts, agent, kind: 'agentcall', toolId: b.id, bg: !!(b.input && b.input.run_in_background), text: (b.input && b.input.prompt) || '', title: (b.input && b.input.description) || '', ...(b.input && typeof b.input.name === 'string' && b.input.name.trim() ? { nm: b.input.name.trim() } : {}) });
-        else { push({ ts, agent, kind: 'tool', tool: toolLabel(b, ts), ...th() }); st.act = st.raw.length - 1; }
+        else { const tool = toolLabel(b, ts); if (tool.d && tool.d.outs) tool.d.outs = tool.d.outs.map((f) => absPath(f, r.cwd)); push({ ts, agent, kind: 'tool', tool, ...th() }); st.act = st.raw.length - 1; }
       }
     }
-    if (agent === 'main' && m.stop_reason === 'end_turn') {   // the lead's turn is over: Claude Code writes one record per content block, each with the message's stop reason, so the mark goes on the line this record carries (a thinking block carries none)
+    if (agent === 'main' && (m.stop_reason === 'end_turn' || r.isApiErrorMessage || (m.model === '<synthetic>' && m.stop_reason === 'stop_sequence'))) {   // also a turn that ends on a message Claude Code writes itself, in the place of the model's: the API is down, the limit is reached, the request was refused, or there was nothing to answer. Nothing follows it. (A message of the model that a safety check cuts is not the end: Claude Code tells the model, which goes on.) The lead's turn is over: Claude Code writes one record per content block, each with the message's stop reason, so the mark goes on the line this record carries (a thinking block carries none)
       if (!said && m.id && st.sayOf === m.id) said = st.raw[st.sayAt];   // ...or on the line the same message brought in an earlier record
       if (said) said.end = 1;
     }
@@ -610,13 +629,20 @@ function listCharacters(pack) {
 }
 // ---- Shared files: a file the session created is shown in its folder (Finder, Explorer, the file manager) when the page asks. Only a file a Write call of that very session names, and only if it is still there:
 // the page cannot have any other path opened, nothing is read and nothing is run. A Codex or Vibe session may name a file from the folder it was started in.
-function writtenFile(proj, id, file) {
+// The same goes for a document one of its commands names (an export, a report made by a script), from the moment that command started: an older file by that name is not one of its files.
+function sessionFile(proj, id, file) {   // { fp: where it is, since: 0 for a file it wrote, else when the first command that names it started }
   const sx = sourceOf(proj); if (!(sx ? guard(() => sx.fileOf(id), null) : fs.existsSync(path.join(ROOT, proj, id + '.jsonl')))) return null;
-  if (!timeline(proj, id).events.some((e) => e.kind === 'tools' && e.tools.some((t) => t.d && t.d.kind === 'write' && t.d.file === file))) return null;
-  if (path.isAbsolute(file)) return path.normalize(file);
-  const cwd = sx && sx.cwd ? guard(() => sx.cwd(id), '') : ''; return cwd ? path.resolve(cwd, file) : null;
+  const ev = timeline(proj, id).events, said = new Set(); let since = ev.some((e) => e.kind === 'tools' && e.tools.some((t) => t.d && t.d.kind === 'write' && t.d.file === file)) ? 0 : null;
+  if (since == null) {
+    for (const e of ev) if (e.kind === 'results') for (const it of e.items) if (it.files && it.files.includes(file)) said.add(it.id);   // named in what a command printed: counted from when that command started
+    for (const e of ev) if (e.kind === 'tools' && e.tools.some((t) => said.has(t.id) || (t.d && t.d.kind === 'cmd' && t.d.outs && t.d.outs.includes(file)))) since = since == null ? e.ts || 1 : Math.min(since, e.ts || 1);
+  }
+  if (since == null || (since && ev.some((e) => e.kind === 'tools' && e.tools.some((t) => t.d && t.d.kind === 'edit' && t.d.file === file)))) return null;   // a file the session changed by hand is recent for that reason: a command that names it did not make it
+  if (path.isAbsolute(file)) return { fp: path.normalize(file), since };
+  const cwd = sx && sx.cwd ? guard(() => sx.cwd(id), '') : ''; return cwd ? { fp: path.resolve(cwd, file), since } : null;
 }
-const reveal = {   // run: replaced in the tests, which must not open a window
+const reveal = {   // run and stat: replaced in the tests, which must not open a window nor write a file outside their folder
+  stat: (f) => fs.statSync(f),
   cmds(file, platform = process.platform) {   // one or two commands: the second is tried when the first fails
     if (platform === 'darwin') return [['open', ['-R', file]]];
     if (platform === 'win32') return [['explorer.exe', ['/select,"' + file + '"'], { windowsVerbatimArguments: true }]];   // Explorer wants the quotes around the path only (no file name holds a quote on Windows)
@@ -685,9 +711,10 @@ function start(port = PORT) {
       try {
         let b = null; try { b = JSON.parse(body); } catch {} const SAFE = /^[\w.\-]+$/, ok = (v) => typeof v === 'string' && SAFE.test(v) && v !== '..' && v.length <= 200;
         if (!b || !ok(b.proj) || !ok(b.id) || typeof b.file !== 'string' || !b.file || b.file.length > 4096) return json({ error: 'bad request' }, 400);
-        const fp = writtenFile(b.proj, b.id, b.file); if (!fp) return json({ error: 'not a file of this session' }, 404);
-        let st = null; try { st = fs.statSync(fp); } catch {} if (!st || !st.isFile()) return json({ error: 'gone' }, 410);
-        reveal.run(fp); json({ ok: true });
+        const f = sessionFile(b.proj, b.id, b.file); if (!f) return json({ error: 'not a file of this session' }, 404);
+        let st = null; try { st = reveal.stat(f.fp); } catch {} if (!st || !st.isFile()) return json({ error: 'gone' }, 410);
+        if (f.since && st.mtimeMs < f.since - 2000) return json({ error: 'not a file of this session' }, 404);   // a command names it, and it was there before: read, listed or removed, not made
+        if (b.check !== true) reveal.run(f.fp); json({ ok: true });   // check: the page asks whether a document a command names is there, before it shows it
       } catch (e) { json({ error: String(e.message || e) }, 500); }
     });
     if (url.pathname === '/api/media') {
@@ -729,7 +756,7 @@ function start(port = PORT) {
   } catch (e) { if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });
 }
-module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, charactersDir, listCharacters, _reveal: reveal };
+module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, _reveal: reveal };
 if (require.main === module) {
   start().on('error', (e) => {
     console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use (maybe Agent Standup is already running, e.g. inside VS Code). Try: PORT=4790 node server.js` : String(e));

@@ -30,6 +30,7 @@
   .tile.slow { border-color:#ff9f1c !important; animation:slowp 1.6s ease-in-out infinite } @keyframes slowp { 50% { box-shadow:0 0 0 4px rgba(255,159,28,.35) } }
   .tile.quiet { opacity:.72 }
   .tag .tk { color:#aab2c5; font-size:10px } .tag .tk:empty { display:none }
+  .tile.focus .tag .tk, #pcam .tag .tk { font-size:11.5px; color:#cfd6e6 } body:not(.compact):not(.presenting) .tile.focus .tag .tk:not(:empty)::after { content:' ' attr(data-w) }   /* what an agent has used so far, readable where there is room: the large tile (with the word) and the camera of the one who shares a screen */
   .keys { padding:6px 10px 4px; color:var(--dim); font-size:10.5px; line-height:1.5 }
   /* the status of the session: a pill in the header of a wide window, a line of its own under the header from 1080 px down (#sline), where it stays readable in the narrowest side panel. Two lines at most, the whole text in the tooltip */
   #pill, #sline { font-weight:600; background:var(--panel2); color:var(--dim); cursor:default; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2 }
@@ -67,6 +68,7 @@
   .rr:hover { background:#2a2f45 } .rr.sel { outline:1px solid var(--accent) }
   .rr .n { display:flex; align-items:center; gap:7px; min-width:0 } .rr .dot { width:9px; height:9px; border-radius:50%; flex:none } .rr b { font-size:12.5px } .rr .ro { color:var(--dim); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0 }
   .rr .st { font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .rr .rt { margin-left:auto; flex:none; padding-left:6px; color:#aab2c5; font-size:10.5px; white-space:nowrap } .rr.left { opacity:.72; padding-top:4px; padding-bottom:4px } .rr.left:hover { opacity:1 }   /* what each agent has used so far; those who left the call keep their line, and their count with it */
   .rr.k-working { border-left-color:var(--gold) } .rr.k-working .st { color:var(--gold) } .rr.k-waiting { border-left-color:#8fd3ff } .rr.k-waiting .st { color:#8fd3ff }
   .rr.k-blocked { border-left-color:#ff5252; background:rgba(192,57,43,.28) } .rr.k-blocked .st { color:#fff; font-weight:700 } .rr.k-stalled { border-left-color:#ffb347 } .rr.k-stalled .st { color:#ffb347; font-weight:700 }
   .rr.k-done { opacity:.82 } .rr.k-done .st { color:var(--ok) } .rr.turn { opacity:1; border-left-color:var(--accent) } .rr.turn .st { color:var(--accent); font-weight:700 } .rr.k-idle .st { color:var(--dim) } .rr.speaking { box-shadow:0 0 0 2px rgba(124,156,255,.5) }
@@ -1023,7 +1025,7 @@ function addTile(p) {
 }
 function buildStage() {   // the tiles, and the presenter camera with them: a character change must never leave the old look in the corner of the shared screen
   $('#stage').innerHTML = ''; Object.values(S.agents).forEach(addTile); S.camFor = null;
-  const pr = S.present && S.agents[S.present]; if (pr) { $('#pcam').innerHTML = avatarSVG(pr, undefined, 'c' + pr.gid + '_') + `<div class="tag"><b>${esc(pr.name)}</b></div>`; S.camFor = pr.id; }
+  const pr = S.present && S.agents[S.present]; if (pr) { $('#pcam').innerHTML = avatarSVG(pr, undefined, 'c' + pr.gid + '_') + `<div class="tag"><b>${esc(pr.name)}</b><span class="tk"></span></div>`; S.camFor = pr.id; camTok(); }
 }
 const layout = () => {
   const st = $('#stage'), w = st.clientWidth - 28 || 600, nar = $('#center').clientWidth < 480, cols = nar ? (w >= 300 ? 2 : 1) : Math.max(1, Math.floor((w + 12) / 212)), colw = (w - 12 * (cols - 1)) / cols;
@@ -1080,7 +1082,7 @@ const applyStatus = (ev) => {
   if (ev.kind === 'user' || (ev.agent === 'main' && (ev.kind === 'say' || ev.kind === 'tools' || (ev.kind === 'order' && !ev.wf)))) S.turnOver = !!ev.end;   // Claude Code marks the message that closes the lead's turn; anything after it opens the next one (not the agents a workflow launches by itself)
 };
 function recomputeStatus(upTo) {
-  S.files = new Map(); S.turnN = 0; S.turnSaid = '';
+  S.files = new Map(); S.cands = new Map(); S.turnN = 0; S.turnSaid = '';
   S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.lastTool = {}; S.mainBusyAt = 0; S.turnOver = false; S.th = {}; S.ctx = {}; S.model = {}; S.cw = {}; S.compacts = {}; S.ctxWarned = {}; S.rep = {}; S.loops = {}; S.recomputing = true; document.querySelectorAll('.tile').forEach((t) => { clearTimeout(t._byeT); t.classList.remove('bye'); }); hidePresent();
   S.status = {}; S.tc = {}; S.doneAt = {}; S.gone.clear(); S.leaving.clear(); document.querySelectorAll('.tile.vanishing').forEach((t) => t.classList.remove('vanishing')); const doneIdx = {}; document.querySelectorAll('.ticker').forEach((x) => { x.classList.remove('on'); x.innerHTML = ''; });
   for (let i = 0; i < upTo; i++) {
@@ -1101,7 +1103,7 @@ function syncUI() {
 // ---------- tool ticker, shared screen, flying messages ----------
 // ---------- what each agent is doing: tool calls with their real outputs ----------
 S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.ctx = {}; S.model = {}; S.cw = {}; S.compacts = {}; S.ctxWarned = {}; S.rep = {}; S.loops = {}; S.present = null; S.camFor = null; let presentTimer = null;
-S.files = new Map(); S.turnN = 0; S.turnSaid = ''; S.fgone = new Set();   // files: path → the Write call that created it, in the order they were written · turnN: how many orders you gave so far · turnSaid: what you and the lead said in this turn · fgone: the files found missing on a click
+S.files = new Map(); S.cands = new Map(); S.turnN = 0; S.turnSaid = ''; S.fgone = new Set(); S.fmade = new Map();   // files: path → the Write call that created it, in the order they were written · cands: the documents the commands name (see candFile) · turnN: how many orders you gave so far · turnSaid: what you and the lead said in this turn · fgone: the files found missing on a click · fmade: what the server answered about a document a command names
 const later = (k, fn, ms = 160) => { later.p = later.p || {}; if (later.p[k]) return; later.p[k] = setTimeout(() => { later.p[k] = 0; fn(); }, ms); };   // coalesce bursts of repaints
 const fmtTok = (n) => (n < 1000 ? String(n) : n < 1e6 ? (n / 1000).toFixed(n < 1e4 ? 1 : 0) + 'k' : (n / 1e6).toFixed(n < 1e7 ? 2 : 1) + 'M');
 const tokTotal = (u) => (u ? u.i + u.o + u.w : 0);   // headline = input + output + cache writes; cache reads are cheap and shown separately
@@ -1120,7 +1122,7 @@ function tally(ev) {   // numbers that pile up over a session: token usage, erro
   noteFiles(ev);
   if (ev.kind === 'compact') { S.compacts[ev.agent] = (S.compacts[ev.agent] || 0) + 1; delete S.ctxWarned[ev.agent]; }
   const det = loopStep(S.rep, ev); if (det) { S.loops[ev.agent] = det; later('badges', renderBadges, 300); } else if (S.loops[ev.agent] && (ev.kind === 'results' ? (S.loops[ev.agent].kind === 'errors' && ev.items.every((it) => !it.err)) : (ev.kind === 'tools' && S.rep[ev.agent].n < 2))) { delete S.loops[ev.agent]; later('badges', renderBadges, 300); }
-  if (ev.kind === 'usage') { const c = ev.u.i + ev.u.r + ev.u.w; if (c > 0 && ev.model !== '<synthetic>') { S.ctx[ev.agent] = c; S.model[ev.agent] = ev.model; if (ev.cw) S.cw[ev.agent] = ev.cw; later('tok', renderCtx, 300); } const u = (S.usage[ev.agent] = S.usage[ev.agent] || { i: 0, o: 0, r: 0, w: 0 }); u.i += ev.u.i; u.o += ev.u.o; u.r += ev.u.r; u.w += ev.u.w; later('tok', renderTokens, 300); }
+  if (ev.kind === 'usage') { const c = ev.u.i + ev.u.r + ev.u.w; if (c > 0 && ev.model !== '<synthetic>') { S.ctx[ev.agent] = c; S.model[ev.agent] = ev.model; if (ev.cw) S.cw[ev.agent] = ev.cw; } const u = (S.usage[ev.agent] = S.usage[ev.agent] || { i: 0, o: 0, r: 0, w: 0 }); u.i += ev.u.i; u.o += ev.u.o; u.r += ev.u.r; u.w += ev.u.w; later('tok', renderTokens, 300); }   // which also redraws the context chips. Asking for those first, under the same name, left this one unasked: the counts on the tiles and in the header stood still during a live call
   else if (ev.kind === 'results') ev.items.forEach((it) => { if (it.err) { S.errs[ev.agent] = (S.errs[ev.agent] || 0) + 1; later('badges', renderBadges, 300); oops(ev.agent); noteTrouble(ev.agent, false); } else noteTrouble(ev.agent, true); });
   else if (ev.kind === 'tools' || ev.kind === 'say') S.lastAct[ev.agent] = ev.ts;
   if (ev.th) S.th[ev.agent] = { text: ev.th, ts: ev.ts }; else if (ev.kind === 'user') delete S.th.main;   // your order starts a new chain of thought: what the lead thought before is no longer what it is on
@@ -1139,8 +1141,12 @@ function renderTokens() {
   renderCtx();
   const all = { i: 0, o: 0, r: 0, w: 0 }; for (const id in S.usage) for (const k in all) all[k] += S.usage[id][k];
   const b = $('#tok'), tot = tokTotal(all); b.style.display = tot ? '' : 'none';
-  if (tot) { b.textContent = `⚡ ${fmtTok(tot)} ${L('jetons', 'tokens')}`; b.title = tokTip(all); }
-  for (const id in S.agents) { const t = $('#t-' + id); if (!t) continue; const u = S.usage[id], el = t.querySelector('.tk'); el.textContent = u && tokTotal(u) ? `⚡${fmtTok(tokTotal(u))}` : ''; if (u) t.title = tokTip(u); }
+  if (tot) { b.textContent = `⚡ ${fmtTok(tot)} ${L('jetons', 'tokens')}`; b.title = tokTip(all) + '\n' + Object.keys(S.usage).filter((id) => S.agents[id] && tokTotal(S.usage[id])).sort((x, y) => tokTotal(S.usage[y]) - tokTotal(S.usage[x])).slice(0, 14).map((id) => `\n${nameOf(id)} ⚡${fmtTok(tokTotal(S.usage[id]))}`).join(''); }   // and who used what, the biggest first
+  for (const id in S.agents) { const t = $('#t-' + id); if (!t) continue; const u = S.usage[id], el = t.querySelector('.tk'); el.textContent = u && tokTotal(u) ? `⚡${fmtTok(tokTotal(u))}` : ''; el.dataset.w = L('jetons', 'tokens'); if (u) t.title = tokTip(u); }
+  camTok(); if (S.events.length && document.body.classList.contains('rost')) paintStates();   // the list of agents carries the counts too
+}
+function camTok() {   // the one who shares a screen: what it has used so far, next to its name in the camera, as on its tile
+  const el = $('#pcam .tk'), u = S.present && S.usage[S.present]; if (!el) return; el.textContent = u && tokTotal(u) ? `⚡${fmtTok(tokTotal(u))}` : ''; $('#pcam').title = u ? tokTip(u) : '';
 }
 // One boring signal per tile: working · waiting on another agent · may need you · stalled · done. Stalled hand-offs are what really cost time.
 // file edits are instant, so one that stays pending is almost surely an approval prompt; a Bash command may legitimately run long (⏳ badge instead)
@@ -1192,15 +1198,18 @@ function fitBoard(force) {   // the chips lose their words when they do not all 
 }
 addEventListener('resize', () => fitBoard(true)); new ResizeObserver(() => requestAnimationFrame(() => fitBoard(true))).observe($('#board'));   /* the room the chips have also changes when the texts beside them do (a title, a longer status) */
 const RORDER = { blocked: 0, stalled: 1, working: 2, waiting: 3, idle: 4, done: 5 };
+const rosTok = (id) => { const u = S.usage[id]; return u && tokTotal(u) ? `<span class="rt" title="${esc(tokTip(u))}">⚡${fmtTok(tokTotal(u))}</span>` : ''; };
 function paintRoster(ros) {   // a fixed list beside the call: who is doing what, urgent first, readable even with dozens of agents
   const box = $('#roster'); if (!box || !document.body.classList.contains('rost')) return;
   ros.sort((a, b) => (a.p.id === 'main' ? -1 : b.p.id === 'main' ? 1 : (RORDER[a.st.k] - RORDER[b.st.k]) || (S.lastAct[b.p.id] || 0) - (S.lastAct[a.p.id] || 0)));
-  const rows = ros.slice(0, 60).map(({ p, st }) => `<div class="rr k-${st.k}${isTurn(p.id, st) ? ' turn' : ''}${S.focus === p.id ? ' sel' : ''}${S.speakers.has(p.id) ? ' speaking' : ''}" data-id="${esc(p.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}, ${esc(st.txt || '')}"><div class="n"><span class="dot" style="background:${p.shirt}"></span><b>${esc(p.name)}</b><span class="ro">${esc(p.role)}</span></div><div class="st">${esc(st.txt || L('en veille', 'standing by'))}${S.loops[p.id] ? ' 🔁' : ''}</div></div>`).join('');
-  const html = `<h3>${L('Agents', 'Agents')} · ${ros.length}</h3>${rows}${ros.length > 60 ? `<div class="ro" style="padding:4px 8px">+${ros.length - 60}</div>` : ''}`;
+  const rows = ros.slice(0, 60).map(({ p, st }) => `<div class="rr k-${st.k}${isTurn(p.id, st) ? ' turn' : ''}${S.focus === p.id ? ' sel' : ''}${S.speakers.has(p.id) ? ' speaking' : ''}" data-id="${esc(p.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}, ${esc(st.txt || '')}"><div class="n"><span class="dot" style="background:${p.shirt}"></span><b>${esc(p.name)}</b><span class="ro">${esc(p.role)}</span>${rosTok(p.id)}</div><div class="st">${esc(st.txt || L('en veille', 'standing by'))}${S.loops[p.id] ? ' 🔁' : ''}</div></div>`).join('');
+  const left = Object.values(S.agents).filter((p) => S.gone.has(p.id) && p.id !== 'main' && p.id !== 'user').sort((a, b) => (S.lastAct[b.id] || 0) - (S.lastAct[a.id] || 0));   // a finished agent's tile leaves the stage: its line stays here, with what it used
+  const gone = left.slice(0, 40).map((p) => `<div class="rr left" data-id="${esc(p.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}"><div class="n"><span class="dot" style="background:${p.shirt}"></span><b>${esc(p.name)}</b><span class="ro">${esc(p.role)}</span>${rosTok(p.id)}</div></div>`).join('');
+  const html = `<h3>${L('Agents', 'Agents')} · ${ros.length}</h3>${rows}${ros.length > 60 ? `<div class="ro" style="padding:4px 8px">+${ros.length - 60}</div>` : ''}${left.length ? `<h3 style="margin-top:8px">${L('terminés', 'done')} · ${left.length}</h3>${gone}` : ''}`;
   if (box.dataset.h !== html) { box.dataset.h = html; box.innerHTML = html; }
 }
-$('#roster').onclick = (e) => { const r = e.target.closest('.rr'); if (!r) return; S.focusLock = Date.now() + 25000; setFocus(r.dataset.id); paintStates(); };
-$('#roster').onkeydown = (e) => { const r = e.target.closest('.rr'); if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); S.focusLock = Date.now() + 25000; setFocus(r.dataset.id); paintStates(); } else if (r && e.key === 'i') openDetail(r.dataset.id); };
+$('#roster').onclick = (e) => { const r = e.target.closest('.rr'); if (!r) return; if (r.classList.contains('left')) { openDetail(r.dataset.id); return; } S.focusLock = Date.now() + 25000; setFocus(r.dataset.id); paintStates(); };
+$('#roster').onkeydown = (e) => { const r = e.target.closest('.rr'); if (r && r.classList.contains('left') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openDetail(r.dataset.id); } else if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); S.focusLock = Date.now() + 25000; setFocus(r.dataset.id); paintStates(); } else if (r && e.key === 'i') openDetail(r.dataset.id); };
 $('#roster').ondblclick = (e) => { const r = e.target.closest('.rr'); if (r) openDetail(r.dataset.id); };
 function renderBadges() {   // per tile: failed tool calls, a command that has been running a long time, an agent that went quiet
   const now = Date.now();
@@ -1340,7 +1349,8 @@ function renderPresent() {
   }
   el.dataset.k = tk;
   $('#pbadge').textContent = `🖥 ${p.name} ${L('partage son écran', 'is sharing their screen')}`;
-  if (S.camFor !== id) { $('#pcam').innerHTML = avatarSVG(p, undefined, 'c' + p.gid + '_') + `<div class="tag"><b>${esc(p.name)}</b></div>`; S.camFor = id; }
+  if (S.camFor !== id) { $('#pcam').innerHTML = avatarSVG(p, undefined, 'c' + p.gid + '_') + `<div class="tag"><b>${esc(p.name)}</b><span class="tk"></span></div>`; S.camFor = id; }
+  camTok();
   $('#pcam').classList.toggle('speaking', S.speakers.has(id));
 }
 function armPresent() {   // stays up while a command is still running, then ~4 s after the last action (~9 s when it shows a picture)
@@ -1360,6 +1370,7 @@ function hidePresent() {
 // (the server opens Finder, Explorer or the file manager, and only for a file this session wrote). Nothing shows while the team works.
 // The line names the files made for you, not everything that was written: those the lead names when it speaks to you in that turn (or that you asked for by name); in a turn where it names none, the ones that are documents by their type.
 // A session that writes fifteen source files shows none of them there. All of them are in the list, behind "+N". Off in ⚙ › Display.
+// A document made by a command (not by a Write call) shows too, when the lead names it: see candFile.
 const FSKIP = /^(\/private)?\/(tmp|var\/folders)\/|[\\/]AppData[\\/]Local[\\/]Temp[\\/]|[\\/]\.claude[\\/]projects[\\/]/i;   // not documents: scratch files in a temporary folder, and the notes an agent keeps for itself
 const FICON = [[/\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i, '🖼'], [/\.(csv|tsv|xlsx?|json|ya?ml|sql)$/i, '📊']], FMAX = 8;   // FMAX: how many files the line names; the others are in the list
 const FDOC = /\.(html?|md|markdown|txt|rtf|pdf|docx?|pptx?|xlsx?|csv|tsv|png|jpe?g|gif|webp|svg)$/i;   // read or looked at, not run
@@ -1368,14 +1379,26 @@ const filesForYou = (all) => { const named = new Set(all.filter((f) => f.named).
 const fileParts = (f) => { const p = String(f || '').split(/[\\/]/), name = p.pop() || ''; return { name, dir: p.slice(-3).join(' › '), icon: (FICON.find(([re]) => re.test(name)) || [0, '📄'])[1] }; };
 function noteFiles(ev) {   // a file written twice is one file, of the turn that wrote it last; a write that failed created nothing
   if (ev.kind === 'user') { S.turnN++; S.turnSaid = String(ev.text || ''); }
-  else if (ev.kind === 'say' && ev.agent === 'main') { const t = String(ev.text || ''); S.turnSaid = (S.turnSaid + '\n' + t).slice(-20000); for (const f of S.files.values()) if (!f.named && namesFile(t, f.name)) f.named = true; }   // named before it is written ("I will put it in plan.md") or after: both count
-  else if (ev.kind === 'tools') { for (const t of ev.tools) { const d = t.d || {}, was = S.files.get(d.file); if (d.kind !== 'write' || !d.file || FSKIP.test(d.file) || (was && was.id === t.id)) continue; const name = fileParts(d.file).name; S.files.delete(d.file); S.files.set(d.file, { file: d.file, name, id: t.id, agent: ev.agent, turn: S.turnN, named: !!(was && was.named) || namesFile(S.turnSaid, name), was }); } }
-  else if (ev.kind === 'results') { for (const it of ev.items) if (it.err) for (const [k, f] of S.files) if (f.id === it.id) { if (f.was) S.files.set(k, f.was); else S.files.delete(k); } }
+  else if (ev.kind === 'say' && ev.agent === 'main') { const t = String(ev.text || ''); S.turnSaid = (S.turnSaid + '\n' + t).slice(-20000); for (const f of S.files.values()) if (!f.named && namesFile(t, f.name)) f.named = true; for (const c of S.cands.values()) if (namesFile(t, c.name)) c.want = S.turnN; }   // named before it is written ("I will put it in plan.md") or after: both count
+  else if (ev.kind === 'tools') { for (const t of ev.tools) { const d = t.d || {}, was = S.files.get(d.file); if (d.kind === 'cmd' && d.outs) for (const f of d.outs) candFile(f, t.id, ev.agent); if (d.kind !== 'write' || !d.file || FSKIP.test(d.file) || (was && was.id === t.id)) continue; const name = fileParts(d.file).name; S.files.delete(d.file); S.files.set(d.file, { file: d.file, name, id: t.id, agent: ev.agent, turn: S.turnN, named: !!(was && was.named) || namesFile(S.turnSaid, name), was }); } }
+  else if (ev.kind === 'results') { for (const it of ev.items) { if (it.err) { for (const [k, f] of S.files) if (f.id === it.id) { if (f.was) S.files.set(k, f.was); else S.files.delete(k); } for (const [k, c] of S.cands) if (c.id === it.id) S.cands.delete(k); } else if (it.files) for (const f of it.files) candFile(f, it.id, ev.agent); } }
+}
+// A document a command made (an export, a report written by a script, a package) is one of the files made for you when the lead names it. The transcript only says that a command names it:
+// when the turn ends the server is asked whether it is there and was written since that command started. One that was only read, listed or removed is not shown.
+function candFile(file, id, agent) {
+  if (!file || FSKIP.test(file) || S.files.has(file) || S.cands.has(file)) return; if (S.cands.size >= 300) S.cands.delete(S.cands.keys().next().value);
+  const c = { file, name: fileParts(file).name, id, agent }; S.cands.set(file, c); if (namesFile(S.turnSaid, c.name)) c.want = S.turnN;
+}
+function askMade(c) {   // once per file and per turn in which it is named: a command that runs in the background may write it after the first time it is named
+  const key = c.want + '|' + c.file, ok = S.fmade.get(key), cur = S.cur; if (ok === true) { S.files.set(c.file, { file: c.file, name: c.name, id: c.id, agent: c.agent, turn: c.want, named: true, cmd: true }); return; }
+  if (ok !== undefined || S.demo || !cur) return; S.fmade.set(key, null);
+  fetch('/api/reveal', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ proj: cur.proj, id: cur.id, file: c.file, check: true }) }).then((r) => { if (S.cur !== cur) return; S.fmade.set(key, r.ok); if (r.ok) paintFiles(); }).catch(() => { if (S.cur === cur) S.fmade.delete(key); });
 }
 const turnDone = () => S.events.length > 0 && !S.locked && (S.live ? agentState('main', Date.now()).k === 'done' : !!S.turnOver || S.idx >= S.events.length - 1);   // replay: the mark that closes the lead's turn, or the end of a session that has none
 const fileTip = (f) => `${f.file}\n${f.agent !== 'main' && S.agents[f.agent] ? nameOf(f.agent) + ' · ' : ''}${S.fgone.has(f.file) ? L('Ce fichier n’existe plus', 'This file is no longer there') : L('Cliquer pour l’afficher dans son dossier', 'Click to show it in its folder')}`;
 const fileCls = (f) => (f.turn === S.turnN ? ' new' : '') + (S.fgone.has(f.file) ? ' gone' : '');
 function paintFiles() {   // called with every repaint of the states: touches the page only when the line would read differently
+  if (prefs.files !== false && S.cands.size && turnDone()) for (const c of S.cands.values()) if (c.want != null && !S.files.has(c.file)) askMade(c);   // the documents the commands made, among those the lead named
   const el = $('#files'), all = [...S.files.values()].reverse(), mine = prefs.files !== false ? filesForYou(all) : [], on = mine.length > 0 && turnDone(), rest = all.length - Math.min(mine.length, FMAX);
   const key = on ? prefs.lang + '|' + S.turnN + '|' + all.map((f) => f.file + (S.fgone.has(f.file) ? '!' : '')).join('|') + '||' + mine.map((f) => f.file).join('|') : ''; if (el.dataset.k === key) return;
   const open = on && !!$('#fpop'), ttl = L('Fichiers créés pendant cette session', 'Files created in this session'); el.dataset.k = key; filesPop(false); if (el.classList.contains('on') !== on) { el.classList.toggle('on', on); later('lay', layout); }
@@ -2015,7 +2038,7 @@ async function loadSession(proj, id) {
   const data = await (await fetch(`/api/session?proj=${encodeURIComponent(proj)}&id=${id}`)).json();
   if (mine !== S.loadN || data.error) return false;
   S.term = {}; S.camFor = null; S.focus = null; S.agents = {}; for (const k in nameBook) delete nameBook[k]; [{ id: 'user' }, ...data.agents].forEach((a) => (S.agents[a.id] = persona(a)));
-  clearThoughts(); Object.assign(TH, { since: {}, next: {}, said: {}, last: 0 }); S.events = data.events; stampT(0); S.byK = new Map(data.events.map((e) => [e.k, e])); S.seq = data.seq || 0; S.ep = data.ep || ''; S.sawEnd = !!data.marks || data.events.some((e) => e.end); S.late = []; S.pos = 0; S.joinAt = Date.now(); S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on'); S.fgone = new Set();
+  clearThoughts(); Object.assign(TH, { since: {}, next: {}, said: {}, last: 0 }); S.events = data.events; stampT(0); S.byK = new Map(data.events.map((e) => [e.k, e])); S.seq = data.seq || 0; S.ep = data.ep || ''; S.sawEnd = !!data.marks || data.events.some((e) => e.end); S.late = []; S.pos = 0; S.joinAt = Date.now(); S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on'); S.fgone = new Set(); S.fmade = new Map();
   const opt = $('#sessions').selectedOptions[0]; S.title = (S.live ? niceProj(proj) : opt && opt.dataset.title) || '';
   if (proj === '_demo') S.events.forEach((e) => { if (e.fr) trMem.set(baseText(e), e.fr); });   // the demo ships its own French
   $('#subtitle').textContent = S.title; recomputeStatus(0); buildStage(); renderHighlights(); setFocus('main'); renderLog(true); computeGantt(); layout(); paintStatus(); prefetchTr(0); return true;
@@ -2030,6 +2053,7 @@ $('#liveProj').onchange = () => { Q.delete('proj'); prefs.proj = $('#liveProj').
 async function followCurrent() {
   if (S.hold && (S.pin || Date.now() > S.hold.until)) S.hold = null; const at = S.pin ? { id: S.pin, proj: S.pinProj } : S.hold;   // the session the call is kept in: the pinned one, or for a moment the one of the tab you went to (see tabSession)
   const cur = await (await fetch('/api/current?proj=' + encodeURIComponent((at && at.proj) || Q.get('proj') || prefs.proj || '') + (at ? '&id=' + encodeURIComponent(at.id) : '') + (S.cur && !at ? '&sproj=' + encodeURIComponent(S.cur.proj) + '&sid=' + encodeURIComponent(S.cur.id) : ''))).json();
+  if ((S.pin || (S.hold && S.hold.id) || '') !== (at ? at.id : '')) return false;   // asked before a click or a tab sent the call elsewhere (or let it go): the answer to act on is the one asked since. This one undid the click
   if (!cur.id) { $('#empty').classList.add('on'); return false; } $('#empty').classList.remove('on');
   if (at && at === S.hold && cur.id !== at.id) S.hold = null; if (S.pin && cur.id !== S.pin) S.pin = S.pinProj = '';   // the pinned session is gone: follow the latest one instead of staying silently pinned
   if (S.cur && S.cur.id === cur.id && S.cur.proj === cur.proj) return false;
@@ -2187,10 +2211,10 @@ const VISIT = {
 function knocks() {
   const now = Date.now(), first = !knocks.seen, seen = knocks.seen || (knocks.seen = {}), ck = S.cur ? sessKey(S.cur) : ''; let best = null;
   for (const r of S.rows) {
-    const k = sessKey(r), was = seen[k], st = r.state === 'turn' && now - r.mtime < 6000 ? 'working' : r.state; seen[k] = st;   // a session that does not mark the end of its turns: a line less than 6 s old may only be a pause before the next call
-    if (first || !was || was === st || k === ck || !inWatch(r) || now - (S.knockAt[k] || 0) < 20000) continue;
-    const kind = st === 'blocked' ? (/^AskUserQuestion/.test(r.tool) ? 'ask' : 'ok') : st === 'turn' && /^(working|waiting|blocked)$/.test(was) ? 'turn' : '';
-    if (kind && (!best || (kind !== 'turn' && best.kind === 'turn'))) best = { r, kind, k };
+    const k = sessKey(r), was = seen[k], st = r.state === 'turn' && now - r.mtime < 6000 ? 'working' : r.state;   // a session that does not mark the end of its turns: a line less than 6 s old may only be a pause before the next call
+    const kind = first || !was || was === st || k === ck || !inWatch(r) ? '' : st === 'blocked' ? (/^AskUserQuestion/.test(r.tool) ? 'ask' : 'ok') : st === 'turn' && !r.cut && /^(working|waiting|blocked)$/.test(was) ? 'turn' : '';   // cut: you stopped that session yourself (Esc), which is no news
+    if (kind && now - (S.knockAt[k] || 0) < 20000) continue;   // a stop less than 20 s after the last visit for that session is not noted yet: it is told when the 20 s are over, if it still holds
+    seen[k] = st; if (kind && (!best || (kind !== 'turn' && best.kind === 'turn'))) best = { r, kind, k };
   }
   const v = S.visit, vr = v && S.rows.find((r) => sessKey(r) === v.k); if (v && (!vr || v.k === ck || (v.kind === 'turn' ? !/^(turn|idle)$/.test(vr.state) : vr.state !== 'blocked'))) hideVisit();   // answered there, or the call went there: the visitor leaves
   if (best && prefs.visits !== false && !S.locked && !(S.visit && S.visit.kind !== 'turn' && best.kind === 'turn')) { S.knockAt[best.k] = now; showVisit(best); }

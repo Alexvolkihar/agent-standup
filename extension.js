@@ -73,7 +73,7 @@ const sidebar = {
 
 // The call goes to the Claude Code tab you are on: the conversation on one side of a split screen, its call on the other (off in the page's ⚙).
 // VS Code tells a tab's label, not its session. Claude Code names a tab after the title of its session, cut after 24 characters: the label is looked up among the recent sessions,
-// this workspace's first, the most recent first. A tab that has no title yet ("Claude Code") or matches nothing changes nothing. The sidebar chat and a terminal are not tabs: nothing says which session they show.
+// this workspace's first, the most recent first (two conversations whose titles start with the same 24 characters cannot be told apart: the label is all there is). A tab that has no title yet ("Claude Code") or matches nothing changes nothing. The sidebar chat and a terminal are not tabs: nothing says which session they show.
 let tabKey = '';
 function followTab() {
   try {
@@ -82,7 +82,8 @@ function followTab() {
     const key = g.viewColumn + '|' + t.label; if (key === tabKey) return; tabKey = key;   // only when you change tab: the call may have been moved by hand since
     const one = (x) => String(x).replace(/\s+/g, ' ').trim(), cut = /…$/.test(t.label), label = one(t.label.replace(/…$/, '')); if (!label || t.label === 'Claude Code') return;
     const f = vscode.workspace.workspaceFolders, ws = f && f.length ? f[0].uri.fsPath.replace(/[^a-zA-Z0-9]/g, '-') : '';
-    const rows = require('./server.js').boardRows().filter((r) => typeof r.title === 'string' && (cut ? one(r.title).startsWith(label) : one(r.title) === label));
+    const srv = require('./server.js'), named = (list) => list.filter((r) => typeof r.title === 'string' && (cut ? one(r.title).startsWith(label) : one(r.title) === label));
+    let rows = named(srv.boardRows()); if (!rows.length) rows = named(srv.sessionRows());   // a conversation of another day is no longer among the sessions of the moment: it is looked up in the whole list
     const r = rows.find((x) => ws && (x.proj === ws || x.proj.startsWith(ws + '-'))) || rows[0]; if (!r) return;
     for (const w of [panel, side]) if (w) w.webview.postMessage({ agentStandup: 'pin', id: r.id, proj: r.proj, tab: true });
   } catch {}

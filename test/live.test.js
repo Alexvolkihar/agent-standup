@@ -195,6 +195,11 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     s.say('I added `test/login.test.js`, run it to check.', { end: true }); await shows(['login.test.js*', 'notes.md!', 'README.md']); assert.equal((await strip()).more, '+3');   // the one the lead names, and only that one of this turn
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=files]').click()); assert.equal((await strip()).on, false);   // ⚙ › Display: off
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=files]').click()); await shows(['login.test.js*', 'notes.md!', 'README.md']);
+    const stat = server._reveal.stat, there = { '/x/out/report.pdf': Date.now() + 60000, '/x/out/data.csv': Date.now() + 60000, '/x/old/brief.md': Date.now() - 3600000 }; server._reveal.stat = (f) => (f in there ? { isFile: () => true, mtimeMs: there[f] } : stat(f)); t.after(() => { server._reveal.stat = stat; });   // no file is written outside the test's folder: the server is told what is there, and since when
+    s.user('Export it as a PDF'); await c.page.waitForFunction(() => !document.querySelector('#files.on'), { timeout: 30000 });
+    s.result(s.tool('Bash', { command: 'cd /x && python3 make.py --out=out/report.pdf && cat old/brief.md && rm out/draft.pdf' }), 'Wrote 3 pages.\nAlso saved /x/out/data.csv');
+    s.say('The export is in `report.pdf`. I used brief.md, and draft.pdf is gone.', { end: true }); await shows(['report.pdf*', 'login.test.js', 'notes.md!', 'README.md']);   // a document a command made, which the lead names: not the one the command only read, nor the one it removed, nor the one nobody names
+    await c.page.click('#files .sfc[data-f="/x/out/report.pdf"]'); await wait(600); assert.deepEqual(shown, [real, '/x/out/report.pdf']);
     await c.close();
   });
 
@@ -210,6 +215,26 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     await c.page.evaluate((proj) => goSession(proj, 's'), s.proj); await tab('old'); await goes('old'); assert.equal((await at()).pin, 'old', 'a pinned call takes its pin along');
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click()); await tab('s'); await wait(2500); assert.equal((await at()).id, 'old', '⚙: off');
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click());
+    await c.close();
+  });
+
+  await t.test('what an agent has used so far shows next to its name: on its tile, in the camera when it shares its screen, in the list of agents, and it stays in that list once the agent has left', async () => {
+    const s = session(), sub = path.join(tmp, 'projects', s.proj, 's', 'subagents', 'agent-a1.jsonl'); s.user('hello', Date.now() - 600000); s.say('Ready.', { at: Date.now() - 590000, end: true }); const c = await open(s);
+    const chips = () => c.page.evaluate(() => { const txt = (q) => { const e = document.querySelector(q); return e ? e.textContent : null; }; return { tile: txt('#t-a1 .tk'), camera: document.querySelector('#present.on') ? txt('#pcam .tk') : null, list: txt('#roster .rr[data-id="a1"]:not(.left) .rt'), left: txt('#roster .rr.left[data-id="a1"] .rt') }; });
+    await c.quiet(500); s.user('Run the tests'); s.launch(1, 'Run the tests', 'Run the whole test suite.');
+    fs.appendFileSync(sub, JSON.stringify({ timestamp: new Date().toISOString(), type: 'assistant', message: { id: 'u1', role: 'assistant', model: 'claude-test', stop_reason: 'tool_use', usage: { input_tokens: 1200, output_tokens: 300, cache_read_input_tokens: 5000, cache_creation_input_tokens: 0 }, content: [{ type: 'tool_use', id: 'toolu_u1', name: 'Bash', input: { command: 'npm test' } }] } }) + '\n');   // 1,500 tokens: what it read from the cache is not in the headline
+    await c.until(() => document.querySelector('#present.on') && document.querySelector('#pcam .tk') && document.querySelector('#pcam .tk').textContent === '⚡1.5k', null, 30000);
+    assert.deepEqual(await chips(), { tile: '⚡1.5k', camera: '⚡1.5k', list: '⚡1.5k', left: null });
+    await c.page.evaluate(() => { S.gone.add('a1'); paintStates(); }); assert.deepEqual({ ...(await chips()), tile: 0, camera: 0 }, { tile: 0, camera: 0, list: null, left: '⚡1.5k' });   // its tile has left the stage: its line and its count have not
+    await c.close();
+  });
+
+  await t.test('a click that sends the call elsewhere is not undone by an answer that was already on its way', async () => {
+    const s = session(), old = path.join(tmp, 'projects', s.proj, 'old.jsonl'), ago = Date.now() - 45 * 60000; s.user('hello'); s.say('Ready.', { end: true });
+    fs.writeFileSync(old, [{ type: 'user', message: { role: 'user', content: 'an older conversation' } }, { type: 'assistant', message: { id: 'o1', role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text: 'Done.' }] } }].map((r) => JSON.stringify({ timestamp: new Date(ago).toISOString(), ...r })).join('\n') + '\n'); fs.utimesSync(old, ago / 1000, ago / 1000);
+    const c = await open(s); await c.quiet(500); await c.page.evaluate((proj) => goSession(proj, 's'), s.proj); await wait(1000);
+    await c.page.evaluate((proj) => { const of = window.fetch; let held = false; window.fetch = function (u) { const p = of.apply(this, arguments); if (held || typeof u !== 'string' || !u.startsWith('/api/current') || !u.includes('id=s')) return p; held = true; setTimeout(() => goSession(proj, 'old'), 20); return p.then((r) => new Promise((res) => setTimeout(() => res(r), 600))); }; }, s.proj);   // the next answer about the pinned session takes 600 ms, and the click comes in the meantime
+    await c.until(() => S.cur && S.cur.id === 'old'); await wait(2500); assert.deepEqual(await c.page.evaluate(() => ({ id: S.cur && S.cur.id, pin: S.pin })), { id: 'old', pin: 'old' });   // it used to take the call back, and the pin with it
     await c.close();
   });
 
@@ -231,9 +256,11 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     await c.page.click('#tabs .stab.on'); await rowIs(['First session turn', '>Second session turn 📌']); assert.equal((await at()).pin, 'b', 'and another one pins it');
     await c.page.click('#tabs .stab:not(.on):not(.all)'); await goes('s'); await rowIs(['>First session turn 📌', 'Second session turn']); assert.deepEqual(await at(), { id: 's', pin: 's' }, 'a click on another tab takes the call there and keeps it there');
     q.user('Third session'); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session working']);
-    q.tool('AskUserQuestion', { questions: [{ question: 'Which one?', header: 'Choice', options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], multiSelect: false }] });
+    const ask = () => q.tool('AskUserQuestion', { questions: [{ question: 'Which one?', header: 'Choice', options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], multiSelect: false }] }), first = ask();
     await comes('blocked'); v = await visitor(); assert.match(v.says, /Third session/); assert.match(v.says, /question/); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session blocked']);   // a question: said as such, in red
-    await c.page.click('#visit .vx'); assert.equal(await visitor(), null, '✕ sends the visitor away'); assert.equal((await at()).id, 's');
+    await c.page.click('#visit .vx'); assert.equal(await visitor(), null, '✕ sends the visitor away'); assert.equal((await at()).id, 's'); const visited = Date.now();
+    q.result(first); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session working']); ask(); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session blocked']);   // answered there, and a second question at once
+    assert.equal(await visitor(), null, 'less than 20 s after the last visit: not yet'); await comes('blocked'); assert.ok(Date.now() - visited > 10000); await c.page.click('#visit .vx');   // told when the 20 s are over: it used to be lost
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=visits]').click());   // ⚙: no visitor
     b.user('One more thing'); await rowIs(['>First session turn 📌', 'Second session working', 'Third session blocked']); b.say('Done as well.'); await rowIs(['>First session turn 📌', 'Second session turn', 'Third session blocked']);
     await wait(11000); assert.equal(await visitor(), null, 'off in the settings: the tab alone says it');

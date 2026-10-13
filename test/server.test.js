@@ -104,6 +104,20 @@ test('the lead\'s turn ends on end_turn or on an interruption, and only the lead
     assert.ok(ev.every((e) => e.end === undefined || e.end === 1));
   } finally { stop(); }
 });
+test('a turn that ends on a message Claude Code writes itself is over: the API is down, the limit is reached, a refusal, nothing to answer; a message of the model that is cut is not the end', async () => {
+  const dir = path.join(tmp, 'projects', '-x'); fs.mkdirSync(path.join(dir, 's', 'subagents'), { recursive: true });
+  const err = (s, text, stop = 'stop_sequence') => ({ ...said(s, text, { stop }), isApiErrorMessage: true });   // written by Claude Code itself, in the place of the model's answer
+  const own = (r) => ({ ...r, message: { ...r.message, model: '<synthetic>' } });
+  fs.writeFileSync(path.join(dir, 's.jsonl'), [typed(0, 'one'), said(1, 'Looking.'), err(2, 'API Error: 529 Overloaded.'), typed(3, 'two'), err(4, 'You have hit your limit'), typed(5, 'three'), err(6, 'API Error: the safeguards flagged this message', 'refusal'),
+    typed(7, 'four'), own(said(8, 'No response requested.', { stop: 'stop_sequence' })), typed(9, 'five'), said(10, 'A long answer that was cut', { stop: 'max_tokens' }), typed(11, 'six'), said(12, 'Stopped by a safety check in the middle', { stop: 'refusal' }), said(13, 'and it goes on.', { stop: 'tool_use' })].map(line).join(''));
+  fs.writeFileSync(path.join(dir, 's', 'subagents', 'agent-a1.jsonl'), [typed(1, 'sub order'), err(1.5, 'API Error: 500')].map(line).join(''));   // a sub-agent that fails does not end the lead's turn
+  const { port, stop } = await serve();
+  try {
+    const ev = (await load(port, 'proj=-x&id=s')).events.filter((e) => e.kind === 'say' || e.kind === 'user');
+    assert.deepEqual(ev.map((e) => e.agent + ' ' + e.text + (e.end ? ' END' : '')), ['user one', 'main Looking.', 'a1 API Error: 500', 'main API Error: 529 Overloaded. END', 'user two', 'main You have hit your limit END', 'user three', 'main API Error: the safeguards flagged this message END', 'user four', 'main No response requested. END', 'user five', 'main A long answer that was cut', 'user six', 'main Stopped by a safety check in the middle', 'main and it goes on.']);
+  } finally { stop(); }
+});
+
 test('compaction summaries, workflow agents, titles and a transcript rewritten in place', async () => {
   const dir = path.join(tmp, 'projects', '-w'), main = path.join(dir, 's.jsonl'), run = path.join(dir, 's', 'subagents', 'workflows', 'wf_run1'); fs.mkdirSync(run, { recursive: true });
   const wfAgent = (id, phase, recs) => { fs.writeFileSync(path.join(run, `agent-${id}.jsonl`), recs.map(line).join('')); fs.writeFileSync(path.join(run, `agent-${id}.meta.json`), JSON.stringify({ agentType: 'workflow-subagent', description: 'check ' + id, workflowPhase: phase })); };
@@ -186,13 +200,44 @@ test('a pack name that is not a pack is answered as such, whatever the word', as
 });
 test('the list of sessions: a line that goes on with a tool call is not the end of the turn', async () => {
   const dir = path.join(tmp, 'projects', '-b'), f = path.join(dir, 's.jsonl'); fs.mkdirSync(dir, { recursive: true });
-  const { port, stop } = await serve(), state = async () => { await wait(1300); return JSON.parse((await get(port, '/api/board')).body).find((r) => r.proj === '-b').state; };   // the list is worked out at most once every 1.2 s
+  const { port, stop } = await serve(), row = async (proj = '-b') => { await wait(1300); return JSON.parse((await get(port, '/api/board')).body).find((r) => r.proj === proj); }, state = async (proj) => (await row(proj)).state;   // the list is worked out at most once every 1.2 s
   try {
     fs.writeFileSync(f, [typed(0, 'Write the file'), said(1, 'I write it now.', { stop: 'tool_use' })].map(line).join('')); assert.equal(await state(), 'working');   // the call itself is written when it is whole, many seconds later for a long file
     fs.appendFileSync(f, line(used(2, 'toolu_w', 'Bash', { command: 'ls' })) + line(result(3, 'toolu_w', 'ok')) + line(said(4, 'It is written.', { stop: 'end_turn' }))); assert.equal(await state(), 'turn');
-    fs.appendFileSync(f, line(typed(5, 'Thanks')) + line(said(6, 'A session that does not say why its messages stop.'))); assert.equal(await state(), 'turn');   // as before
+    fs.appendFileSync(f, line(typed(5, 'Thanks')) + line(said(6, 'A line that does not say why it stopped, in a session that does.'))); assert.equal(await state(), 'working');   // Claude Code up to 2.1.87 before a tool call: the call may still come
+    const ago = (Date.now() - 60000) / 1000; fs.utimesSync(f, ago, ago); assert.equal(await state(), 'turn');   // none came for 45 s: that was its last word
+    fs.appendFileSync(f, line(typed(7, 'Go on')) + line(used(8, 'toolu_x', 'Bash', { command: 'sleep 60' }))); assert.equal(await state(), 'working');
+    fs.appendFileSync(f, line(typed(9, '[Request interrupted by user for tool use]'))); const cut = await row(); assert.equal(cut.state, 'turn'); assert.equal(cut.cut, 1);   // Esc: your turn there, and you know it
+    fs.appendFileSync(f, line(typed(10, 'Again')) + line(said(11, 'Done.', { stop: 'end_turn' }))); const done = await row(); assert.equal(done.state, 'turn'); assert.equal(done.cut, undefined);
+    fs.mkdirSync(path.join(tmp, 'projects', '-b2'), { recursive: true }); fs.writeFileSync(path.join(tmp, 'projects', '-b2', 's.jsonl'), [typed(0, 'Hello'), said(1, 'A session that never says why its messages stop.')].map(line).join('')); assert.equal(await state('-b2'), 'turn');   // as before
   } finally { stop(); }
 });
+test('a document a command names is a file of the session when it was written since that command: an export, a report a script made; not one it only read, listed or removed', async () => {
+  const dir = path.join(tmp, 'projects', '-c'), work = path.join(tmp, 'work'), out = path.join(work, 'out'); fs.mkdirSync(dir, { recursive: true }); fs.mkdirSync(out, { recursive: true });
+  const T = (s) => Date.parse(at(s)), touch = (f, s) => { fs.writeFileSync(f, 'x'); fs.utimesSync(f, T(s) / 1000, T(s) / 1000); }, here = (r) => ({ ...r, cwd: work });   // each record says in which folder the session was
+  const pdf = path.join(out, 'report.pdf'), csv = path.join(out, 'q3 export.csv'), zip = path.join(work, 'site.zip'), old = path.join(work, 'notes.md'), gone = path.join(out, 'draft.pdf'), late = path.join(work, 'video.mp4');
+  const page = path.join(work, 'index.html'); touch(pdf, 12); touch(csv, 12); touch(zip, 31); touch(old, -900); touch(late, 60); touch(page, 56);
+  fs.writeFileSync(path.join(dir, 's.jsonl'), [typed(0, 'Make the report'),
+    here(used(10, 'toolu_a', 'Bash', { command: 'cd out && python3 ../make.py --pdf=report.pdf --csv "q3 export.csv" && rm draft.pdf && cat ../notes.md && curl -o x https://example.org/a.pdf && ls *.png' })), here(result(13, 'toolu_a', 'done')),
+    here(used(30, 'toolu_b', 'Bash', { command: 'npm run pack' })), here(result(32, 'toolu_b', 'Packed 12 files.\nSaved to ' + zip + '.\nSee also notes.md')),
+    here(used(40, 'toolu_c', 'Bash', { command: 'node render.js video.mp4' })), here(result(41, 'toolu_c', 'failed', { })), here(used(50, 'toolu_d', 'Bash', { command: "cat <<'EOF' > list.txt\nother.pdf\nEOF" })), here(result(51, 'toolu_d', '')),
+    here(used(53, 'toolu_g', 'Bash', { command: 'grep -n title index.html' })), here(result(54, 'toolu_g', '3: title')), here(used(55, 'toolu_e', 'Edit', { file_path: page, old_string: 'a', new_string: 'b' })), here(result(56, 'toolu_e', 'ok')),
+    said(58, 'Done.', { stop: 'end_turn' })].map(line).join(''));
+  const { port, stop } = await serve(), server = require('../server.js'), run = server._reveal.run, shown = []; server._reveal.run = (f) => shown.push(f);
+  const ask = (file, check) => get(port, '/api/reveal', { 'content-type': 'application/json' }, 'POST', JSON.stringify({ proj: '-c', id: 's', file, ...(check ? { check: true } : {}) })).then((r) => r.status);
+  try {
+    const tools = (await load(port, 'proj=-c&id=s')).events.filter((e) => e.kind === 'tools').flatMap((e) => e.tools), res = (await load(port, 'proj=-c&id=s')).events.filter((e) => e.kind === 'results').flatMap((e) => e.items);
+    assert.deepEqual(tools[0].d.outs, [pdf, csv, gone, old]);   // named from the folder the command went to; not the link, nor the pattern
+    assert.deepEqual(res.map((i) => i.files), [undefined, [zip, old], undefined, undefined, undefined, undefined]); assert.deepEqual(tools[4].d.outs, [page]); assert.deepEqual(tools[2].d.outs, [late]); assert.deepEqual(tools[3].d.outs, [path.join(work, 'list.txt')]);   // what a here-document holds is not the command
+    assert.equal(await ask(pdf, true), 200); assert.equal(await ask(csv, true), 200); assert.equal(await ask(zip, true), 200); assert.deepEqual(shown, [], 'asking whether it is there opens nothing');
+    assert.equal(await ask(old, true), 404);    // read by a command, and written long before it
+    assert.equal(await ask(page, true), 404);   // looked at by a command, then changed by hand: recent for that reason, and not made by the command
+    assert.equal(await ask(gone, true), 410);   // removed by the command
+    assert.equal(await ask(path.join(work, 'make.py'), true), 404); assert.equal(await ask(path.join(work, 'other.pdf'), true), 404); assert.equal(await ask('/etc/hosts', true), 404);
+    assert.equal(await ask(pdf), 200); assert.deepEqual(shown, [pdf]); assert.equal(await ask(old), 404); assert.deepEqual(shown, [pdf]);
+  } finally { server._reveal.run = run; stop(); }
+});
+
 test('a file the session created is shown in its folder; no other path is, and nothing is opened from another site', async () => {
   const dir = path.join(tmp, 'projects', '-r'), made = path.join(tmp, 'made'), doc = path.join(made, 'report.md'), lost = path.join(made, 'lost.md'), other = path.join(made, 'other.md'); fs.mkdirSync(dir, { recursive: true }); fs.mkdirSync(made, { recursive: true });
   fs.writeFileSync(doc, '# report'); fs.writeFileSync(other, 'read, never written');
@@ -211,6 +256,7 @@ test('a file the session created is shown in its folder; no other path is, and n
     assert.equal((await ask({ proj: '-r', id: 's', file: doc }, { 'sec-fetch-site': 'cross-site' })).status, 403);
     assert.equal((await ask({ proj: '-r', id: 's', file: doc }, { origin: 'https://example.com' })).status, 403);
     assert.equal((await get(port, '/api/reveal?proj=-r&id=s&file=' + encodeURIComponent(doc))).status, 404);   // a link cannot do it: POST only
+    assert.deepEqual(shown, [doc]);
     assert.deepEqual(shown, [doc]);
     assert.deepEqual(server._reveal.cmds('/a/b c/report.md', 'darwin'), [['open', ['-R', '/a/b c/report.md']]]);
     assert.deepEqual(server._reveal.cmds('C:\\a b\\report.md', 'win32')[0].slice(0, 2), ['explorer.exe', ['/select,"C:\\a b\\report.md"']]);
