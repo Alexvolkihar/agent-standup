@@ -6,13 +6,16 @@ What exists today, what was investigated, and what is deliberately not built yet
 | Where | How |
 |---|---|
 | **VS Code** | Extension from the Marketplace (panel, side bar, status bar, localised commands). |
-| **Cursor, Windsurf, VSCodium, other VS Code forks** | Install `agent-standup-<version>.vsix` from the GitHub release with *Extensions → … → Install from VSIX*. (Open VSX publication is wired up in `.github/workflows/publish.yml` and only needs an account token.) |
+| **Cursor, Windsurf, VSCodium, other VS Code forks** | The same extension from [Open VSX](https://open-vsx.org/extension/DoubleGeste/agent-standup), published at each release by `.github/workflows/publish.yml`: search **Agent Standup** in the Extensions panel. The `agent-standup-<version>.vsix` of the GitHub release works too (*Extensions → … → Install from VSIX*). |
 | **Any terminal** | `agent-standup` (npm package `@double_geste/agent-standup`): the local page in your browser, plus `status` and `statusline` for status bars (Claude Code status line, tmux, Neovim…). |
+| **Inside Claude Code** | A plugin (`plugin/`) with two skills: `/agent-standup:open` opens the call, `/agent-standup:status` says in one line who is working and who needs you. |
 | **Desktop** | Small app for macOS (Apple Silicon and Intel, unsigned): window + menu bar indicator + notification when an agent may need you. Windows and Linux builds are set up in CI but untested. |
 | **JetBrains IDEs** | Not native yet. Recipe: *Settings → Tools → External Tools → +*, program `npx`, arguments `-y @double_geste/agent-standup --open`, working directory `$ProjectFileDir$`; the call opens in your browser. |
 
 ## Other agent tools
 **Codex is read** (`codex.js`): the desktop app and the command line, written and tested against real session files. Its sub-agents and pictures are not shown yet; a session with Codex sub-agents is needed to learn how they are recorded.
+
+**Mistral Vibe is read** (`vibe.js`): both of its engines, checked against real sessions of Vibe 2.26.1, with its sub-agents. Pictures are not shown.
 
 The rest is researched, not built. Reading another tool needs one adapter each. A web research pass found that **almost every format is undocumented or reverse-engineered and sources disagree**, and no real log of these tools was available to test against, so no adapter was written blind. Ranking if/when someone wants to take one (sources are third-party; verify against a real install first):
 

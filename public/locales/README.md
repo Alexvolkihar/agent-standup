@@ -13,7 +13,7 @@ The interface is translated with one small JSON file per language. French and En
 3. Translate the values. Rules:
    - Keep emojis and symbols where they are.
    - Some keys are **fragments** glued to other text at runtime (`"Reading "` + a file name, `"context "` + a number + `" full — compaction soon"`). Keep the same leading and trailing spaces and make the glued result read naturally.
-   - Do not translate product names: Agent Standup, Claude, Claude Code, VS Code, FIP, Markdown.
+   - Do not translate product names: Agent Standup, Claude, Claude Code, Codex, Mistral Vibe, VS Code, FIP, Markdown.
    - Keep labels about as short as the English: they sit in small chips.
 4. Add the language to `LANGS` in `public/index.html`.
 5. `npm run i18n` checks every file: missing or empty strings, unused keys, lost emojis, changed leading/trailing spaces. It must pass.

@@ -37,4 +37,4 @@ The conditions for the name, the logo and the characters are in [TRADEMARKS.md](
 
 - Keep the drawing as it is: no recolouring, no stretching, no added accessories.
 - Leave a quarter of the mark's width clear all round.
-- Agent Standup is an unofficial community project. Do not use the logo in a way that suggests it comes from Anthropic, or that Anthropic endorses something.
+- Agent Standup is an unofficial community project. Do not use the logo in a way that suggests it comes from Anthropic, OpenAI or Mistral AI, or that one of them endorses something.
