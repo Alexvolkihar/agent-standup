@@ -295,3 +295,44 @@ test('the errors of the app are kept in a file on this computer: each one once, 
     assert.equal(tidy('x'.repeat(299) + '😀', 300), 'x'.repeat(299)); assert.doesNotThrow(() => encodeURIComponent(tidy('x'.repeat(299) + '😀', 300)));   // a cut through an emoji leaves no half character: the link of the report could not carry it
   } finally { stop(); }
 });
+test('an artifact a session published is shown from the session file alone: each version as it was, in a frame that reaches neither the app nor the network', async () => {
+  const fp = '/tmp/scratch/report.html', v1 = '<title>Report</title>\n<h1>Totals: $& "quoted" é</h1>\n<p>one</p>\n<p>one</p>', url = 'https://claude.ai/artifact/AbCdEf123456';
+  let t = 0; const at = () => new Date(Date.UTC(2026, 0, 1, 0, 0, t++)).toISOString();
+  const use = (id, name, input) => ({ type: 'assistant', timestamp: at(), message: { content: [{ type: 'tool_use', id, name, input }] } });
+  const res = (id, content, extra = {}, err) => ({ type: 'user', timestamp: at(), message: { content: [{ type: 'tool_result', tool_use_id: id, content, ...(err ? { is_error: true } : {}) }] }, ...extra });
+  const lines = [
+    use('toolu_write1', 'Write', { file_path: fp, content: v1 }), res('toolu_write1', 'File created'),
+    use('toolu_pub001', 'Artifact', { file_path: fp, icon: 'chart', description: 'The totals of the quarter.' }), res('toolu_pub001', 'Published at ' + url, { toolUseResult: { url, title: 'Report', artifact_id: 'x' } }),
+    use('toolu_edit01', 'Edit', { file_path: fp, old_string: '<p>one</p>', new_string: '<p>two $1</p>' }), res('toolu_edit01', 'ok'),
+    use('toolu_edit02', 'Edit', { file_path: fp, old_string: 'Totals', new_string: 'REFUSED' }), res('toolu_edit02', 'File has been modified since read', {}, true),
+    use('toolu_edit03', 'MultiEdit', { file_path: fp, edits: [{ old_string: '<p>one</p>', new_string: '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>' }, { old_string: 'é', new_string: 'e', replace_all: true }] }), res('toolu_edit03', 'ok'),
+    use('toolu_other1', 'Write', { file_path: '/tmp/scratch/other.html', content: '<p>another page</p>' }), res('toolu_other1', 'File created'),
+    use('toolu_pub002', 'Artifact', { file_path: fp, url }), res('toolu_pub002', 'Updated', { toolUseResult: { url, title: 'Report', seq: 2, updated: true } }),
+    use('toolu_edit04', 'Edit', { file_path: fp, old_string: 'Totals', new_string: 'LATER' }), res('toolu_edit04', 'ok'),
+    use('toolu_typed1', 'Artifact', { type_url: 'https://claude.ai/artifact/TypeTypeType', title: 'Deck' }), res('toolu_typed1', 'Created', { toolUseResult: { created_from_type: true, url: 'https://claude.ai/artifact/DeckDeck1234', title: 'Deck' } }),
+    use('toolu_nopage', 'Artifact', { file_path: '/tmp/scratch/built.html' }), res('toolu_nopage', 'Published', { toolUseResult: { url: 'https://claude.ai/artifact/BuiltBuilt12', title: 'Built by a script' } }),
+    use('toolu_failed', 'Artifact', { file_path: '/tmp/scratch/other.html' }), res('toolu_failed', 'refused', { toolUseResult: 'Error: refused' }, true),
+    use('toolu_asset1', 'Artifact', { url, asset: true, file_path: '/tmp/scratch/logo.png' }), res('toolu_asset1', 'Uploaded', { toolUseResult: { written: 1, asset_uploads: [] } }),
+    use('toolu_read01', 'Artifact', { action: 'read', url }), res('toolu_read01', '<title>Report</title>', { toolUseResult: { file_read: true, url } }),
+    use('toolu_evil01', 'Artifact', { file_path: fp }), res('toolu_evil01', 'Published', { toolUseResult: { url: 'https://claude.ai.example.com/artifact/AbCdEf123456', title: 'Elsewhere' } }),
+  ];
+  const dir = path.join(tmp, 'projects', '-art'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 's1.jsonl'), lines.map((r) => JSON.stringify(r)).join('\n') + '\n');
+  const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;
+  const page = (q, headers = {}) => new Promise((ok, no) => http.get({ port, path: '/api/artifact?proj=-art&id=s1&' + q, headers }, (x) => { let b = ''; x.setEncoding('utf8'); x.on('data', (d) => { b += d; }); x.on('end', () => ok({ status: x.statusCode, body: b, csp: x.headers['content-security-policy'] || '', type: x.headers['content-type'] })); }).on('error', no));
+  try {
+    const ev = JSON.parse((await get(port, '/api/session?proj=-art&id=s1')).body).events, tools = ev.filter((e) => e.kind === 'tools').flatMap((e) => e.tools), items = ev.filter((e) => e.kind === 'results').flatMap((e) => e.items);
+    assert.deepEqual(tools.filter((x) => x.d.kind === 'artifact').map((x) => x.id), ['toolu_pub001', 'toolu_pub002', 'toolu_typed1', 'toolu_nopage', 'toolu_failed', 'toolu_evil01']);   // a publish; not an upload, not a read
+    assert.deepEqual(tools.find((x) => x.id === 'toolu_pub001').d, { kind: 'artifact', file: fp, title: '', note: 'The totals of the quarter.' });
+    assert.deepEqual(items.filter((it) => it.art).map((it) => [it.id, it.art]), [['toolu_pub001', { url, title: 'Report' }], ['toolu_pub002', { url, title: 'Report', v: 2 }], ['toolu_typed1', { url: 'https://claude.ai/artifact/DeckDeck1234', title: 'Deck', typed: 1 }], ['toolu_nopage', { url: 'https://claude.ai/artifact/BuiltBuilt12', title: 'Built by a script' }]]);   // a link that is not claude.ai's is not shown
+    const skel = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
+    const one = await page('agent=main&tool=toolu_pub001'); assert.equal(one.status, 200); assert.equal(one.type, 'text/html; charset=utf-8'); assert.equal(one.body, skel + v1);   // the first version, as it was published
+    const two = await page('agent=main&tool=toolu_pub002'); assert.equal(two.body, skel + '<title>Report</title>\n<h1>Totals: $& "quoted" e</h1>\n<p>two $1</p>\n<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>');   // the edits up to the second publish, one by one; not the one that was refused, nor the one that came after
+    assert.match(one.csp, /^sandbox allow-scripts; default-src 'none';/); assert.ok(!/https?:|allow-same-origin|allow-popups|allow-forms|allow-top/.test(two.csp)); assert.match(two.csp, /connect-src 'none'/);   // nothing from the network unless asked
+    const net = await page('agent=main&tool=toolu_pub002&net=1'); assert.match(net.csp, /script-src 'unsafe-inline' 'unsafe-eval' https:\/\/cdnjs\.cloudflare\.com https:\/\/cdn\.jsdelivr\.net /); assert.match(net.csp, /^sandbox allow-scripts;/); assert.match(net.csp, /connect-src 'none'; frame-src 'none'; form-action 'none'/); assert.ok(!/allow-same-origin/.test(net.csp));
+    assert.deepEqual(JSON.parse((await page('agent=main&tool=toolu_pub001&check=1')).body), { ok: true, net: false }); assert.deepEqual(JSON.parse((await page('agent=main&tool=toolu_pub002&check=1')).body), { ok: true, net: true });
+    for (const id of ['toolu_typed1', 'toolu_nopage', 'toolu_failed', 'toolu_asset1', 'toolu_read01', 'toolu_evil01', 'toolu_write1', 'toolu_nothere']) { assert.equal((await page('agent=main&tool=' + id)).status, 404, id); const c = await page('agent=main&tool=' + id + '&check=1'); assert.equal(c.status, 404); assert.deepEqual(JSON.parse(c.body), { ok: false }); }   // a template of claude.ai, a page no Write call made, a publish that failed, and what is not a publish
+    assert.equal((await page('agent=a1&tool=toolu_pub001')).status, 404); assert.equal((await page('agent=..&tool=toolu_pub001')).status, 400); assert.equal((await page('agent=main&tool=x')).status, 400);
+    assert.equal((await get(port, '/api/artifact?proj=..&id=s1&agent=main&tool=toolu_pub001')).status, 400); assert.equal((await get(port, '/api/artifact?proj=_codex&id=s1&agent=main&tool=toolu_pub001')).status, 404);
+    assert.equal((await page('agent=main&tool=toolu_pub001', { 'sec-fetch-site': 'cross-site' })).status, 403); assert.equal((await page('agent=main&tool=toolu_pub001', { origin: 'null' })).status, 403);   // another site cannot have it; nor can the page itself, from inside its frame, ask the app for anything
+  } finally { srv.close(); require('../server.js').shutdown(); }
+});

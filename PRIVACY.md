@@ -10,7 +10,7 @@ Agent Standup runs on your own computer. It reads files that are already there, 
 
 ## What it reads
 
-- **Your session files.** The ones Claude Code writes in `~/.claude/projects`, the ones Codex writes in `~/.codex/sessions` and the ones Mistral Vibe writes in `~/.vibe/logs/session`. They hold what you typed, what the agents answered and what they ran, so they can contain personal or confidential information. Agent Standup only reads them. It never changes or deletes them. Reading Codex sessions and reading Mistral Vibe sessions can each be turned off.
+- **Your session files.** The ones Claude Code writes in `~/.claude/projects`, the ones Codex writes in `~/.codex/sessions` and the ones Mistral Vibe writes in `~/.vibe/logs/session`. They hold what you typed, what the agents answered and what they ran, so they can contain personal or confidential information. Agent Standup only reads them. It never changes or deletes them. Reading Codex sessions and reading Mistral Vibe sessions can each be turned off. A page a session published on claude.ai (an artifact) is shown from what the session file holds of it; it is not read from your disk nor fetched from claude.ai.
 - **Your own character images**, if you put some in its characters folder.
 
 ## What it keeps on your computer
@@ -36,6 +36,7 @@ The following happen only if you turn them on or start them yourself:
 | You install the very natural voices | A download of the voice package and its model; no session content | The npm registry and Hugging Face |
 | You run the app with `npx`, or the Claude Code plugin does | A download of the app's package; no session content | The npm registry |
 | You choose "Report a problem" in the ⚙ menu, then send the draft that opens on GitHub | The text the app showed you first: its version, your system and browser, your language, and the last errors of the log above; plus what you write. Until you send it on GitHub, nothing is sent | GitHub, as a public issue under your GitHub account |
+| You press "Load its libraries" on an artifact shown in the call, or turn on "Artifacts: load their libraries" in the ⚙ menu (off by default) | Each time such a page is shown: requests for the scripts and fonts that page names. No session content: the page runs in a frame that can send nothing out | The servers claude.ai lets an artifact use: cdnjs (Cloudflare), jsDelivr, unpkg, cdn.tailwindcss.com, code.jquery.com and Google Fonts |
 
 Each of these services sees your IP address, as any website does, and applies its own privacy policy.
 

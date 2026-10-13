@@ -70,10 +70,15 @@ const toolLabel = (b, ts) => {
     case 'AskUserQuestion': out.d = { kind: 'text', what: 'question', text: clip((q0 ? q0.question + '\n' + (q0.options || []).map((o) => '• ' + (o.label || '')).join('\n') : ''), 500) }; break;
     case 'Skill': out.d = { kind: 'text', what: 'skill', v: i.skill, text: clip(i.skill + (i.args ? ' ' + i.args : ''), 200) }; break;
     case 'ToolSearch': out.d = { kind: 'text', what: 'toolsearch', text: clip(i.query, 200) }; break;
+    case 'Artifact': if ((!i.action || i.action === 'publish') && !i.asset) { out.d = { kind: 'artifact', file: typeof i.file_path === 'string' ? i.file_path : '', title: clip(i.title, 120), note: clip(i.description, 240) }; break; }   // a page published on claude.ai: the call shows it in a browser window (see artifactPage). Any other use of the tool (a read, a list, an upload) is a call like any other
+    // falls through
     default: out.d = mcp ? { kind: 'text', what: 'mcp', v: (mcp[1] || '') + ' · ' + (mcp.slice(2).join('__') || ''), text: clip(JSON.stringify(i), 400) } : { kind: 'text', text: clip(JSON.stringify(i), 300) };
   }
   return out;
 };
+// What a publish answered: the link of the page on claude.ai, its title and which version this is. typed: made from an Artifact type (a deck, a design, a document), whose page is the type's and not the file that was sent.
+const ART_URL = /^https:\/\/claude\.ai\/(code\/)?artifact\/[\w-]{6,80}$/;
+const artifactOf = (u) => (u && typeof u === 'object' && typeof u.url === 'string' && ART_URL.test(u.url) ? { url: u.url, title: clip(u.title, 120), ...(u.seq > 0 ? { v: +u.seq } : {}), ...(u.type || u.created_from_type ? { typed: 1 } : {}) } : null);
 const resultText = (c) => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => x.text || '').join('\n') : '');
 // Pictures a tool returned (a screenshot, an image file that was read). They are served from the transcript itself, so nothing outside the session files is ever read, and only bitmap types are sent.
 const IMG_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']), mediaMemo = new Map();
@@ -120,6 +125,59 @@ function toolImage(file, toolId, n) {   // looks for the tool's result line in t
   mediaMemo.delete(key); mediaMemo.set(key, found || { miss: size }); if (mediaMemo.size > 12) mediaMemo.delete(mediaMemo.keys().next().value);
   return found;
 }
+// ---- Artifacts: a page a session published on claude.ai is shown in the call, in a browser window on the shared screen. claude.ai lets no other page frame it, and the file that was published
+// is most often in a temporary folder that is emptied later: the page is put together again from the session file, which keeps in full the Write call that created it and the Edit calls that followed,
+// up to the publish that is asked for (so an old session shows each version as it was). Nothing outside the session files is read, as for the pictures. A page made another way (by a command,
+// or written by another agent) has no preview: the call shows its title and its link. The page is served to a frame that can reach neither this server nor, unless the person asked, the network (see /api/artifact).
+const artMemo = new Map(), ART_MAX = 8 * 1024 * 1024;
+const editOnce = (text, e) => { const a = e && typeof e.old_string === 'string' ? e.old_string : '', b = e && typeof e.new_string === 'string' ? e.new_string : ''; if (!a) return text; if (e.replace_all) return text.split(a).join(b); const i = text.indexOf(a); return i < 0 ? text : text.slice(0, i) + b + text.slice(i + a.length); };
+function artifactPage(file, toolId, fp) {   // the text of the page at fp as it was when the call toolId published it, or null
+  const key = file + '|' + toolId, memo = artMemo.get(key); if (memo && memo.html != null) return memo;
+  const pathMark = Buffer.from(JSON.stringify(fp).slice(1, -1)), errMark = Buffer.from('"is_error":true'), idMark = Buffer.from('"' + toolId + '"'), until = Date.now() + 2000;
+  const ops = [], failed = new Set(); let fd, carry = Buffer.alloc(0), pos = 0, size = 0, seen = false;
+  try {
+    fd = fs.openSync(file, 'r'); size = fs.fstatSync(fd).size; if (memo && memo.miss === size) return null;   // already looked for in vain, and nothing was written since
+    while (pos < size && Date.now() < until) {
+      const buf = Buffer.alloc(Math.min(8 * 1024 * 1024, size - pos)); fs.readSync(fd, buf, 0, buf.length, pos); pos += buf.length;
+      const all = carry.length ? Buffer.concat([carry, buf]) : buf; let a = 0;
+      for (let b; (b = all.indexOf(10, a)) >= 0; a = b + 1) {
+        const line = all.subarray(a, b), mine = !seen && (line.indexOf(pathMark) >= 0 || line.indexOf(idMark) >= 0); if (!mine && line.indexOf(errMark) < 0) continue;
+        let r; try { r = JSON.parse(line.toString('utf8')); } catch { continue; }
+        for (const blk of blocks(r)) {
+          if (blk.type === 'tool_result' && blk.is_error) failed.add(blk.tool_use_id);   // a write or an edit that was refused changed nothing (its answer may come after the publish, when both were asked at once)
+          if (blk.type !== 'tool_use' || seen) continue; const i = blk.input || {};
+          if (blk.id === toolId) seen = true;   // what was written after that publish belongs to the next one
+          else if (i.file_path === fp && (blk.name === 'Write' || blk.name === 'Edit' || blk.name === 'MultiEdit')) ops.push({ id: blk.id, name: blk.name, i });
+        }
+      }
+      carry = Buffer.from(all.subarray(a));
+    }
+  } catch {} finally { if (fd != null) fs.closeSync(fd); }
+  let html = null;
+  if (seen && pos >= size) for (const op of ops) {
+    if (failed.has(op.id)) continue;
+    if (op.name === 'Write') html = typeof op.i.content === 'string' ? op.i.content : null;
+    else if (html != null) for (const e of op.name === 'MultiEdit' ? (Array.isArray(op.i.edits) ? op.i.edits : []) : [op.i]) html = editOnce(html, e);
+  }
+  if (html != null && html.length > ART_MAX) html = null;
+  const found = html != null ? { html, net: /<script\b[^>]*\bsrc\s*=\s*["']?https?:/i.test(html) } : null;   // net: it names a library kept on another server, which the frame does not load unless asked
+  artMemo.delete(key); artMemo.set(key, found || { miss: size }); if (artMemo.size > 8) artMemo.delete(artMemo.keys().next().value);
+  return found;
+}
+function artifactCall(proj, id, agent, toolId) {   // the file a publish of that very session sent, when the call shows a page for it: a plain page, published without error
+  let fp = '', ok = false;
+  for (const e of timeline(proj, id).events) {
+    if (e.agent !== agent) continue;
+    if (e.kind === 'tools') { for (const t of e.tools) if (t.id === toolId && t.d && t.d.kind === 'artifact') fp = t.d.file; }
+    else if (e.kind === 'results') { for (const it of e.items) if (it.id === toolId && it.art && !it.art.typed) ok = true; }
+  }
+  return ok && /\.html?$/i.test(fp) ? fp : null;
+}
+// What the frame of an artifact may do: run the page's own scripts, and nothing else. "sandbox" without allow-same-origin gives the page an origin of its own, also when its address is opened in a tab:
+// it cannot read this server (which refuses what does not come from its own page), keep anything, open a window or send a form. Without net, nothing is fetched from anywhere. With net (the person
+// asked for the libraries of the pages, ⚙ or the button in the window), scripts and fonts come from the servers claude.ai itself lets an artifact use, and from nowhere else; the page still cannot send anything out.
+const ART_LIBS = 'https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com https://code.jquery.com';
+const artifactCsp = (net) => "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'" + (net ? ' ' + ART_LIBS : '') + "; style-src 'unsafe-inline'" + (net ? ' https://fonts.googleapis.com' : '') + '; font-src data:' + (net ? ' https://fonts.gstatic.com' : '') + "; img-src data: blob:; media-src data: blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'";
 const RESULT_MAX = { AskUserQuestion: 900, Skill: 300, ToolSearch: 500, Read: 1900, Bash: 1300, Grep: 900, Glob: 800, WebFetch: 800, WebSearch: 800, Edit: 200, MultiEdit: 200, Write: 200 };
 const NO_RESULT = new Set(['Agent', 'Task', 'SendMessage', 'TodoWrite']);   // internal bookkeeping, nothing to show
 const HARNESS = /<(system-reminder|browser_instruction|ide_selection|ide_opened_file|task-notification|command-name|command-message|command-args|local-command-stdout|local-command-caveat)>[\s\S]*?<\/\1>\s*/g;   // blocks the harness wraps around what the human typed
@@ -390,8 +448,8 @@ function parseRecord(st, r) {
     for (const b of blocks(r)) if (b.type === 'tool_result' && wf) push({ ts, agent, kind: 'wfrun', toolId: b.tool_use_id, run: wf });   // the answer to a Workflow call names the run it started: its agents are in subagents/workflows/<run>/
     for (const b of blocks(r)) if (b.type === 'tool_result' && (st.toolName[b.tool_use_id] === 'Agent' || st.toolName[b.tool_use_id] === 'Task') && !(st.bg && st.bg[b.tool_use_id]) && !/^\s*Async agent launched/i.test(resultText(b.content))) push({ ts, agent, kind: 'agentdone', toolId: b.tool_use_id });   // a synchronous call: the lead got the sub-agent's answer back, so it has finished (async launches answer immediately and are not a completion)
     for (const b of blocks(r)) if (b.type === 'tool_result' && st.toolName[b.tool_use_id] && !NO_RESULT.has(st.toolName[b.tool_use_id])) {
-      const n = st.toolName[b.tool_use_id], img = resultImages(b.content).length, files = n === 'Bash' && !b.is_error ? docPaths(resultText(b.content), false).map((f) => absPath(f, r.cwd)) : [];
-      items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || (/^mcp__/.test(n) ? 900 : 600)), ...(img ? { img } : {}), ...(files.length ? { files } : {}) });   // img: how many pictures came back; the page fetches them from /api/media · files: the documents a command says it made
+      const n = st.toolName[b.tool_use_id], img = resultImages(b.content).length, files = n === 'Bash' && !b.is_error ? docPaths(resultText(b.content), false).map((f) => absPath(f, r.cwd)) : [], art = !b.is_error && st.pubs && st.pubs.has(b.tool_use_id) ? artifactOf(r.toolUseResult) : null;
+      items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || (/^mcp__/.test(n) ? 900 : 600)), ...(img ? { img } : {}), ...(files.length ? { files } : {}), ...(art ? { art } : {}) });   // img: how many pictures came back; the page fetches them from /api/media · files: the documents a command says it made
     }
     if (items.length) push({ ts, agent, kind: 'results', items });
     const typed = blocks(r).filter((b) => b.type === 'text').map((b) => b.text).join('\n').replace(HARNESS, ''), cut = /^\s*\[Request interrupted[^\]]*\]/i.test(typed);   // what the human typed, without the blocks the harness wraps around it
@@ -413,7 +471,7 @@ function parseRecord(st, r) {
       else if (b.type === 'tool_use') {
         st.toolName[b.id] = b.name; (st.out = st.out || new Set()).add(b.id); if (b.input && b.input.run_in_background) (st.bg = st.bg || {})[b.id] = true;   // out: the calls that have no answer yet
         if (b.name === 'Agent' || b.name === 'Task') push({ ts, agent, kind: 'agentcall', toolId: b.id, bg: !!(b.input && b.input.run_in_background), text: (b.input && b.input.prompt) || '', title: (b.input && b.input.description) || '', ...(b.input && typeof b.input.name === 'string' && b.input.name.trim() ? { nm: b.input.name.trim() } : {}) });
-        else { const tool = toolLabel(b, ts); if (tool.d && tool.d.outs) tool.d.outs = tool.d.outs.map((f) => absPath(f, r.cwd)); push({ ts, agent, kind: 'tool', tool, ...th() }); st.act = st.raw.length - 1; }
+        else { const tool = toolLabel(b, ts); if (tool.d && tool.d.outs) tool.d.outs = tool.d.outs.map((f) => absPath(f, r.cwd)); if (tool.d && tool.d.kind === 'artifact') (st.pubs = st.pubs || new Set()).add(b.id); push({ ts, agent, kind: 'tool', tool, ...th() }); st.act = st.raw.length - 1; }
       }
     }
     if (agent === 'main' && (m.stop_reason === 'end_turn' || ((r.isApiErrorMessage || (m.model === '<synthetic>' && m.stop_reason === 'stop_sequence')) && !(st.out && st.out.size)))) {   // also a turn that ends on a message Claude Code writes itself, in the place of the model's: the API is down, the limit is reached, the request was refused, or there was nothing to answer. Nothing follows it, unless a call of the lead is still out: the connection dropped while its agents worked, and it goes on when they answer. (A message of the model that a safety check cuts is not the end either: Claude Code tells the model, which goes on.) The lead's turn is over: Claude Code writes one record per content block, each with the message's stop reason, so the mark goes on the line this record carries (a thinking block carries none)
@@ -716,7 +774,7 @@ function start(port = PORT) {
   const sendFile = (fp) => { const s = fs.createReadStream(fp); s.on('error', () => res.destroy()); s.pipe(res); };   // a file that vanished between the check and the read ends this answer, not the server
   // Endpoints with side effects (they spawn programs or claim the sound), and the one that serves pictures from a session, refuse requests that a browser marks as coming from another site, e.g. an <img> on a web page.
   const sfs = req.headers['sec-fetch-site'];
-  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && (req.method !== 'GET' || ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts', '/api/prefs', '/api/prefs.js', '/api/voices', '/api/kokoro', '/api/kokoro/install', '/api/media', '/api/errors'].includes(url.pathname))) { res.writeHead(403); return res.end('forbidden'); }
+  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && (req.method !== 'GET' || ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts', '/api/prefs', '/api/prefs.js', '/api/voices', '/api/kokoro', '/api/kokoro/install', '/api/media', '/api/artifact', '/api/errors'].includes(url.pathname))) { res.writeHead(403); return res.end('forbidden'); }
   const readBody = (cb) => {   // request bodies are small JSON: stop reading beyond 256 KB and give up after 10 s
     const chunks = []; let size = 0, over = false; req.setTimeout(10000, () => req.destroy());
     if (+req.headers['content-length'] > 262144) { res.writeHead(413); res.end('too large'); return req.destroy(); }
@@ -777,6 +835,15 @@ function start(port = PORT) {
       if (!im) { res.writeHead(bad ? 400 : 404); return res.end(bad ? 'bad request' : 'not found'); }
       res.writeHead(200, { 'content-type': im.type, 'content-length': im.buf.length, 'cache-control': 'private, max-age=3600', 'x-content-type-options': 'nosniff' }); return res.end(im.buf);
     }
+    if (url.pathname === '/api/artifact') {   // the page a publish of this session sent, for the frame of the shared screen · check=1: is there one, and does it name libraries (asked before the frame is drawn)
+      const q = (k) => url.searchParams.get(k) || '', SAFE = /^[\w.\-]+$/, bad = [q('proj'), q('id'), q('agent'), q('tool')].some((v) => !SAFE.test(v) || v === '..' || v.length > 200) || q('tool').length < 6;
+      if (bad) { res.writeHead(400); return res.end('bad request'); }
+      const file = sourceOf(q('proj')) ? null : mediaFile(q('proj'), q('id'), q('agent')), fp = file && fs.existsSync(file) && fs.existsSync(mediaFile(q('proj'), q('id'), 'main')) ? artifactCall(q('proj'), q('id'), q('agent'), q('tool')) : null, page = fp && artifactPage(file, q('tool'), fp);
+      if (q('check')) return json(page ? { ok: true, net: page.net } : { ok: false }, page ? 200 : 404);
+      if (!page) { res.writeHead(404); return res.end('not found'); }
+      const body = Buffer.from((/^\s*<!doctype/i.test(page.html) ? '' : '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">') + page.html, 'utf8');   // an artifact is published as the inside of a page: claude.ai adds the rest, and so does this
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-length': body.length, 'content-security-policy': artifactCsp(q('net') === '1'), 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'cache-control': 'private, no-store' }); return res.end(body);
+    }
     if (url.pathname === '/api/session') {
       const proj = url.searchParams.get('proj') || '', sid = url.searchParams.get('id') || '', SAFE = /^[\w.\-]+$/;
       if (!SAFE.test(proj) || !SAFE.test(sid) || proj === '..' || sid === '..' || proj.length > 200 || sid.length > 200) { res.writeHead(400); return res.end('bad request'); }
@@ -810,7 +877,7 @@ function start(port = PORT) {
   } catch (e) { logError(req.method + ' ' + url.pathname, e); if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });
 }
-module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, logError, _reveal: reveal, _scrub: { tidy, homeRe } };
+module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, logError, _reveal: reveal, _scrub: { tidy, homeRe }, _artifact: { page: artifactPage, csp: artifactCsp } };
 if (require.main === module) {
   start().on('error', (e) => {
     console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use (maybe Agent Standup is already running, e.g. inside VS Code). Try: PORT=4790 node server.js` : String(e));

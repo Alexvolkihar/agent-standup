@@ -117,6 +117,16 @@
   .pbar .r { background:#ff5f57 } .pbar .y { background:#febc2e } .pbar .g { background:#28c840 } #ptitle { margin:0 0 0 14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0 }
   #pbody { flex:1; overflow:hidden; padding:10px 14px; font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:#d6dae6 } .pwin.editor #pbody { background:#1a1b26; padding:0 }
   .pwin.image #pbody { display:flex; gap:8px; align-items:center; justify-content:center; background:#0b0c11; padding:8px } .pwin.image #pbody img { flex:0 1 auto; min-width:0; max-width:100%; max-height:100%; object-fit:contain; border-radius:4px } .pmore { color:#9aa0b4; font-size:12px } .dimg { display:block; max-width:100%; border-radius:6px; margin:4px 0 }
+  /* an artifact (a page the session published on claude.ai) on the shared screen: a browser window, with the page in a frame. Shared, it is shown whole and small, as a screen is; pinned (a click on it, or on its name in the line of files) it takes the room and can be read and used */
+  .pwin.web { flex-basis:1100px } .pwin.web #pbody { display:flex; flex-direction:column; padding:0; background:#0b0c11; font:12px -apple-system,system-ui,sans-serif }
+  .pnav { flex:none; display:flex; align-items:center; gap:6px; padding:5px 8px; background:#161925; border-bottom:1px solid #232637 } .pnn { flex:none; color:#8b95b0; font-size:11px }
+  .purl { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:#0d1117; border:1px solid #2a2d3d; border-radius:99px; padding:2px 12px; color:#9aa0b4; font-size:11.5px }
+  .pnb { flex:none; padding:2px 9px; border-radius:6px; border:1px solid #2a2d3d; background:#1c1f2b; color:#d6dae6; font-size:11.5px; white-space:nowrap } .pnb:hover { border-color:var(--accent) } .pnb.lib { border-color:rgba(240,160,32,.6); color:#ffd24a }
+  .pweb { flex:1; min-height:0; position:relative; overflow:hidden; background:#fff } .pweb iframe { position:absolute; left:0; top:0; border:0; width:calc(100% / var(--z,1)); height:calc(100% / var(--z,1)); transform:scale(var(--z,1)); transform-origin:0 0; background:#fff }
+  .pzoom { position:absolute; inset:0; width:100%; cursor:zoom-in }
+  .pcard { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; padding:14px; text-align:center; background:#0d1117; color:#d6dae6 } .pcard i { font-style:normal; font-size:30px } .pcard b { font-size:16px } .pcard p { margin:0; max-width:520px; color:#9aa0b4; font-size:12.5px } .pcard em { font-style:normal; color:#6b7089; font-size:11.5px }
+  #present.pin { height:clamp(240px,74vh,1000px) } #present.pin #pcam, #present.pin #pcap, #present.pin #pbadge { display:none } #present:has(.pwin.web) #pcam { width:110px; height:82px }
+  body.narrow #present.pin { height:clamp(220px,70vh,900px) } #present.pin:has(.pcard), body.narrow #present.pin:has(.pcard) { height:clamp(190px,34vh,300px) }   /* nothing to read there but a title and a link */
   .ptab { display:flex; align-items:center; gap:10px; background:#16161e; padding:5px 12px; border-bottom:1px solid #2a2b3d; font:11.5px -apple-system,system-ui,sans-serif } .ptab span { background:#1a1b26; padding:3px 10px; border-radius:6px 6px 0 0; color:#e9eaf0 } .ptab em { color:#6b7089; font-style:normal }
   .ln { display:flex; gap:10px; padding:0 12px; white-space:pre-wrap; word-break:break-all } .ln b { width:12px; flex:none; color:#7a7f98; font-weight:400 } .ln.add { background:rgba(63,185,80,.16); color:#9be9a8 } .ln.del { background:rgba(248,81,73,.16); color:#ffa198 }
   .tl { white-space:pre-wrap; word-break:break-word } .tl .ps { color:#7ee787 } .tl.cmd { color:#e6edf3 } .tl.tool { color:#8b95b0 } .dotg { color:#58a6ff }
@@ -311,6 +321,7 @@
   <button class="mi" data-t="vanish"><span data-fr="Retirer les agents terminés (2 min)" data-en="Remove finished agents (2 min)">Retirer les agents terminés (2 min)</span><i class="sw"></i></button>
   <button class="mi" data-t="epi"><span data-fr="Réactions et blagues" data-en="Reactions & jokes">Réactions et blagues</span><i class="sw"></i></button>
   <button class="mi" data-t="files"><span data-fr="Fichiers créés pour vous, à la fin d’un tour" data-en="Files made for you, when a turn ends">Fichiers créés pour vous, à la fin d’un tour</span><i class="sw"></i></button>
+  <button class="mi" data-t="artNet"><span data-fr="Artifacts : charger leurs bibliothèques (depuis Internet)" data-en="Artifacts: load their libraries (from the internet)">Artifacts : charger leurs bibliothèques (depuis Internet)</span><i class="sw"></i></button>
   <button class="mi" data-t="visits"><span data-fr="Un visiteur quand une autre session vous attend" data-en="A visitor when another session needs you">Un visiteur quand une autre session vous attend</span><i class="sw"></i></button>
   <button class="mi" data-t="followTab" id="mFollowTab" style="display:none"><span data-fr="Suivre l’onglet Claude Code affiché" data-en="Follow the Claude Code tab I am on">Suivre l’onglet Claude Code affiché</span><i class="sw"></i></button>
   <h4 data-fr="Source" data-en="Source">Source</h4>
@@ -1096,7 +1107,7 @@ const applyStatus = (ev) => {
   if (ev.kind === 'user' || (ev.agent === 'main' && (ev.kind === 'say' || ev.kind === 'tools' || (ev.kind === 'order' && !ev.wf)))) S.turnOver = !!ev.end;   // Claude Code marks the message that closes the lead's turn; anything after it opens the next one (not the agents a workflow launches by itself)
 };
 function recomputeStatus(upTo) {
-  S.files = new Map(); S.cands = new Map(); S.turnN = 0; S.turnSaid = '';
+  S.files = new Map(); S.cands = new Map(); S.turnN = 0; S.turnSaid = ''; S.arts = new Map(); S.artCalls = new Map();
   S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.lastTool = {}; S.mainBusyAt = 0; S.turnOver = false; S.th = {}; S.ctx = {}; S.model = {}; S.cw = {}; S.compacts = {}; S.ctxWarned = {}; S.rep = {}; S.loops = {}; S.recomputing = true; document.querySelectorAll('.tile').forEach((t) => { clearTimeout(t._byeT); t.classList.remove('bye'); }); hidePresent();
   S.status = {}; S.tc = {}; S.doneAt = {}; S.gone.clear(); S.leaving.clear(); document.querySelectorAll('.tile.vanishing').forEach((t) => t.classList.remove('vanishing')); const doneIdx = {}; document.querySelectorAll('.ticker').forEach((x) => { x.classList.remove('on'); x.innerHTML = ''; });
   for (let i = 0; i < upTo; i++) {
@@ -1117,7 +1128,7 @@ function syncUI() {
 // ---------- tool ticker, shared screen, flying messages ----------
 // ---------- what each agent is doing: tool calls with their real outputs ----------
 S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.ctx = {}; S.model = {}; S.cw = {}; S.compacts = {}; S.ctxWarned = {}; S.rep = {}; S.loops = {}; S.present = null; S.camFor = null; let presentTimer = null;
-S.files = new Map(); S.cands = new Map(); S.turnN = 0; S.turnSaid = ''; S.fgone = new Set(); S.fmade = new Map();   // files: path → the Write call that created it, in the order they were written · cands: the documents the commands name (see candFile) · turnN: how many orders you gave so far · turnSaid: what you and the lead said in this turn · fgone: the files found missing on a click · fmade: what the server answered about a document a command names
+S.files = new Map(); S.cands = new Map(); S.turnN = 0; S.turnSaid = ''; S.fgone = new Set(); S.fmade = new Map(); S.arts = new Map(); S.artCalls = new Map(); S.artOk = new Map(); S.artPin = null;   // files: path → the Write call that created it, in the order they were written · cands: the documents the commands name (see candFile) · turnN: how many orders you gave so far · turnSaid: what you and the lead said in this turn · fgone: the files found missing on a click · fmade: what the server answered about a document a command names
 const later = (k, fn, ms = 160) => { later.p = later.p || {}; if (later.p[k]) return; later.p[k] = setTimeout(() => { later.p[k] = 0; fn(); }, ms); };   // coalesce bursts of repaints
 const fmtTok = (n) => (n < 1000 ? String(n) : n < 1e6 ? (n / 1000).toFixed(n < 1e4 ? 1 : 0) + 'k' : (n / 1e6).toFixed(n < 1e7 ? 2 : 1) + 'M');
 const tokTotal = (u) => (u ? u.i + u.o + u.w : 0);   // headline = input + output + cache writes; cache reads are cheap and shown separately
@@ -1278,6 +1289,7 @@ function activityLabel(t) {   // the short "what is on their screen" tag
     case 'grep': return L('Cherche « ', 'Searching “') + String(d.pattern || '').slice(0, 22) + L(' »', '”');
     case 'glob': return L('Liste ', 'Listing ') + String(d.pattern || '').slice(0, 24);
     case 'todo': return L('Met à jour sa todo', 'Updating todo list');
+    case 'artifact': return L('Publie ', 'Publishing ') + (d.title || f).slice(0, 30);
     case 'web': return d.url ? L('Consulte ', 'Fetching ') + d.url.replace(/^https?:\/\//, '').slice(0, 26) : L('Recherche sur le web', 'Web search');
     case 'text': { const w = d.what; if (w === 'question') return L('Pose une question', 'Asking a question'); if (w === 'skill') return L('Utilise ', 'Using skill ') + (d.v || ''); if (w === 'mcp') return d.v || t.name; if (w === 'toolsearch') return L('Cherche un outil', 'Looking for a tool'); return t.name; }
     default: return t.name;
@@ -1292,7 +1304,7 @@ function pushTerm(id, tool) {
 }
 function applyResults(ev, silent) {   // the output of a tool call arrives
   const buf = S.term[ev.agent] || []; let last = null;
-  for (const it of ev.items) for (let i = buf.length - 1; i >= 0; i--) if (buf[i].id === it.id) { Object.assign(buf[i], { out: it.out, err: it.err, end: ev.ts, img: it.img || 0, picAt: it.img && !silent ? performance.now() : 0 }); last = buf[i]; break; }
+  for (const it of ev.items) for (let i = buf.length - 1; i >= 0; i--) if (buf[i].id === it.id) { Object.assign(buf[i], { out: it.out, err: it.err, end: ev.ts, img: it.img || 0, picAt: it.img && !silent ? performance.now() : 0, art: it.art || null }); last = buf[i]; break; }
   if (S.run[ev.agent] && ev.items.some((it) => it.id === S.run[ev.agent].id)) delete S.run[ev.agent];
   if (silent || !last) return;
   setTicker(ev.agent, last); if (S.present === ev.agent) { renderPresent(); armPresent(); }
@@ -1325,6 +1337,7 @@ const mediaUrl = (agent, tool, n) => `/api/media?proj=${encodeURIComponent(S.cur
 function termModel(id) {
   const buf = S.term[id] || [], last = buf[buf.length - 1], lines = [], more = (n) => ({ c: 'dim', t: `… +${n} ${L('lignes', 'lines')}` });
   const pic = S.cur && buf.slice(-12).reverse().find((e) => e.img), fresh = pic && performance.now() - pic.picAt < (S.live ? 8000 : 2500 / spd());   // a picture a tool returned (screenshot, image file) stays up for a few seconds whatever comes next, then for the next few calls: a screenshot is usually followed by a click or two
+  const web = last && last.k === 'artifact' && last.art ? S.arts.get(last.art.url) : null; if (web) return artModel(web, id);   // a page that was just published: the browser window, until the agent does something else
   if (pic && (fresh || (buf.length - buf.indexOf(pic) <= 4 && (pic === last || !/^(edit|write|read)$/.test(last.k))))) return { view: 'image', title: pic.k === 'read' ? base(pic.tool.d.file) : pic.tool.name.split('__').pop(), imgs: Array.from({ length: Math.min(pic.img, 3) }, (_, n) => mediaUrl(id, pic.id, n)), more: pic.img - 3, lines, stat: statOf(last, id) };
   if (last && (last.k === 'edit' || last.k === 'write' || last.k === 'read')) {
     const d = last.tool.d, rows = (txt, c) => String(txt || '').split('\n').slice(0, 14).map((t) => ({ c, t }));
@@ -1350,14 +1363,15 @@ const lineHtml = (l, view) => view === 'editor'
 
 // ---------- screen sharing: a real video-call presentation (window + presenter camera) ----------
 function renderPresent() {
-  const id = S.present, p = S.agents[id]; if (!p) return; const m = termModel(id);
-  $('#present .pwin').className = 'pwin ' + (m.view === 'term' ? 'term' : m.view); if ($('#present').classList.toggle('pic', m.view === 'image') !== S.picUp) { S.picUp = m.view === 'image'; layout(); }   // a picture gets a taller window
+  const id = S.present, p = S.agents[id]; if (!p) return; if (S.artPin && !S.arts.has(S.artPin)) { S.artPin = null; armPresent(); }
+  const pinned = S.artPin ? S.arts.get(S.artPin) : null, m = pinned ? artModel(pinned, id) : termModel(id), shape = m.view === 'web' && pinned ? 'pin' : m.view === 'web' || m.view === 'image' ? 'pic' : '';
+  $('#present .pwin').className = 'pwin ' + (m.view === 'term' ? 'term' : m.view); $('#present').classList.toggle('pic', shape === 'pic'); $('#present').classList.toggle('pin', shape === 'pin'); if (shape !== S.picUp) { S.picUp = shape; layout(); }   // a picture or a page gets a taller window, a pinned page the tallest
   $('#ptitle').textContent = m.view === 'term' ? `${p.name} — zsh — 96×24` : m.title;
-  const pb = $('#pbody'), shown = m.view === 'image' ? m.imgs.join(' ') : '';
-  if (shown) { if (pb.dataset.img !== shown) pb.innerHTML = m.imgs.map((u) => `<img src="${esc(u)}" alt="">`).join('') + (m.more > 0 ? `<span class="pmore">+${m.more}</span>` : ''); }   // the same pictures are left in place: redrawing them would make them blink
+  const pb = $('#pbody'), shown = m.view === 'image' ? m.imgs.join(' ') : m.view === 'web' ? m.key : ''; pb.dataset.art = m.view === 'web' ? m.a.url : '';
+  if (shown) { if (pb.dataset.img !== shown) pb.innerHTML = m.view === 'web' ? artHtml(m) : m.imgs.map((u) => `<img src="${esc(u)}" alt="">`).join('') + (m.more > 0 ? `<span class="pmore">+${m.more}</span>` : ''); }   // the same pictures are left in place: redrawing them would make them blink
   else pb.innerHTML = (m.view === 'editor' ? `<div class="ptab"><span>${esc(m.tab.file)}</span><em>${esc(m.tab.path)}</em></div>` : '') + m.lines.map((l) => lineHtml(l, m.view)).join('') + (m.view === 'term' ? '<div class="tl"><span class="ps">❯</span> <span class="cursor"></span></div>' : '');
-  pb.dataset.img = shown; pb.scrollTop = m.view === 'term' ? pb.scrollHeight : 0; $('#pstat').textContent = m.stat;
-  const td = S.todos[id], el = $('#ptodo'), tk = td && td.length ? prefs.lang + '\n' + td.map((x) => x.s + ' ' + x.c).join('\n') : ''; el.style.display = tk ? '' : 'none'; $('#present').classList.toggle('has-todo', !!tk);
+  pb.dataset.img = shown; pb.scrollTop = m.view === 'term' ? pb.scrollHeight : 0; $('#pstat').textContent = m.stat; if (m.view === 'web') fitArt();
+  const td = S.todos[id], el = $('#ptodo'), tk = m.view !== 'web' && td && td.length ? prefs.lang + '\n' + td.map((x) => x.s + ' ' + x.c).join('\n') : ''; el.style.display = tk ? '' : 'none'; $('#present').classList.toggle('has-todo', !!tk);
   if (tk && el.dataset.k !== tk) {   // redrawn only when it changes, so it stays where you scrolled it; the task in progress is brought into view
     el.innerHTML = `<h5>${L('Tâches', 'Tasks')} · ${td.filter((x) => x.s === 'completed').length}/${td.length}</h5>` + td.map((x) => `<div class="td ${x.s}"><i>${x.s === 'completed' ? '☑' : x.s === 'in_progress' ? '◐' : '☐'}</i>${esc(x.c)}</div>`).join('');
     const cur = el.querySelector('.in_progress'); el.scrollTop = cur ? Math.max(0, cur.offsetTop - el.clientHeight / 2) : 0;
@@ -1368,18 +1382,62 @@ function renderPresent() {
   camTok();
   $('#pcam').classList.toggle('speaking', S.speakers.has(id));
 }
-function armPresent() {   // stays up while a command is still running, then ~4 s after the last action (~9 s when it shows a picture)
-  clearTimeout(presentTimer); if (S.hold) return;
-  presentTimer = setTimeout(() => { if (S.present && S.run[S.present] && S.playing) armPresent(); else hidePresent(); }, ($('#present').classList.contains('pic') ? 9000 : 4200) / Math.max(1, spd() / 1.2));
+function armPresent() {   // stays up while a command is still running, then ~4 s after the last action (~9 s when it shows a picture, ~20 s for the page of an artifact; a pinned page stays until it is closed)
+  clearTimeout(presentTimer); if (S.hold || S.artPin) return;
+  presentTimer = setTimeout(() => { if (S.present && S.run[S.present] && S.playing) armPresent(); else hidePresent(); }, ($('#present .pwin').classList.contains('web') ? 20000 : $('#present').classList.contains('pic') ? 9000 : 4200) / Math.max(1, spd() / 1.2));
 }
 function showPresent(id) {
-  if (S.boost > 1 || (S.speakers.size && !S.speakers.has(id))) return;   // catching up, or someone else has the floor
+  if (S.artPin || S.boost > 1 || (S.speakers.size && !S.speakers.has(id))) return;   // a page you pinned stays up · catching up, or someone else has the floor
   const first = S.present !== id; S.present = id; $('#present').classList.add('on'); document.body.classList.add('presenting'); document.querySelectorAll('.tile.presenter').forEach((t) => t.classList.remove('presenter')); const pt = $('#t-' + id); if (pt) pt.classList.add('presenter'); renderPresent(); if (first) { layout(); AUD.tone(880, .12, 'sine', .05); }
   armPresent();
 }
 function hidePresent() {
-  clearTimeout(presentTimer); if (!S.present) return; S.present = null; $('#present').classList.remove('on'); document.body.classList.remove('presenting'); document.querySelectorAll('.tile.presenter').forEach((t) => t.classList.remove('presenter')); $('#pcap').textContent = ''; layout();
+  clearTimeout(presentTimer); if (!S.present || S.artPin) return; if ($('#pbody').dataset.art) { $('#pbody').innerHTML = ''; $('#pbody').dataset.img = $('#pbody').dataset.art = ''; }   /* the page of an artifact does not go on running behind a closed window */
+  S.present = null; $('#present').classList.remove('on'); document.body.classList.remove('presenting'); document.querySelectorAll('.tile.presenter').forEach((t) => t.classList.remove('presenter')); $('#pcap').textContent = ''; layout();
 }
+// ---------- artifacts: the pages the session published on claude.ai, shown the way a call shows a browser window someone shares ----------
+// When a publish succeeds its author shares the page for a moment; afterwards it is in the line of files, and a click there pins it: the window takes the room, stays until you close it (✕, Esc),
+// follows the next versions and steps through the other artifacts of the session (‹ ›). The page itself comes from the server, which puts it together from the session file (claude.ai lets nobody frame it):
+// a frame that can reach neither the app nor, unless you ask for the libraries, the network. Where there is no page to show (made from a claude.ai template, or written another way) the window says so and gives the link.
+const artSrc = (a) => `/api/artifact?proj=${encodeURIComponent(S.cur.proj)}&id=${encodeURIComponent(S.cur.id)}&agent=${encodeURIComponent(a.agent)}&tool=${encodeURIComponent(a.id)}`;
+function noteArts(ev) {   // one entry per artifact, the last publish of it: published again, it is the newest and shows its new version
+  if (ev.kind === 'tools') { for (const t of ev.tools) if (t.d && t.d.kind === 'artifact') S.artCalls.set(t.id, { agent: ev.agent, title: t.d.title || '', note: t.d.note || '' }); return; }
+  if (ev.kind !== 'results') return;
+  for (const it of ev.items) { const c = it.art && S.artCalls.get(it.id); if (!c) continue; const u = it.art.url, was = S.arts.get(u) || {}; S.arts.delete(u); S.arts.set(u, { url: u, title: it.art.title || c.title || was.title || 'Artifact', note: c.note || was.note || '', agent: c.agent, id: it.id, v: it.art.v || 0, typed: !!it.art.typed, turn: S.turnN }); if (S.artPin === u) later('art', renderPresent); }
+}
+function askArt(a) {   // is there a page to show for that publish? Asked once: null while the answer is on its way
+  if (S.artOk.has(a.id)) return S.artOk.get(a.id); if (a.typed || S.demo || !S.cur) { S.artOk.set(a.id, { ok: false }); return S.artOk.get(a.id); }
+  const cur = S.cur; S.artOk.set(a.id, null);
+  fetch(artSrc(a) + '&check=1').then((r) => r.json()).then((j) => { if (S.cur !== cur) return; S.artOk.set(a.id, { ok: !!j.ok, net: !!j.net }); if (S.present) renderPresent(); }).catch(() => { if (S.cur === cur) S.artOk.delete(a.id); });
+  return null;
+}
+function artModel(a, id) {
+  const st = askArt(a), all = [...S.arts.keys()], pinned = S.artPin === a.url, buf = S.term[id] || [];
+  return { view: 'web', title: a.title, lines: [], a, st, pinned, n: all.length, i: all.indexOf(a.url), stat: a.note || statOf(buf[buf.length - 1], id), key: [a.url, a.id, st ? (st.ok ? 'ok' : 'no') : '?', st && st.net ? 'n' : '', prefs.artNet ? 'N' : '', pinned ? 'p' + all.indexOf(a.url) + '/' + all.length : '', prefs.lang].join('|') };
+}
+function artHtml(m) {
+  const a = m.a, ok = m.st && m.st.ok, libs = ok && m.st.net && !prefs.artNet, open = esc(L('Ouvrir sur claude.ai', 'Open on claude.ai'));
+  const nav = m.pinned && m.n > 1 ? `<button class="pnb" data-go="-1">‹</button><span class="pnn">${m.i + 1}/${m.n}</span><button class="pnb" data-go="1">›</button>` : '';
+  const bar = `<div class="pnav">${nav}<span class="purl">🔒 ${esc(a.url.replace(/^https:\/\//, ''))}</span>${a.v > 1 ? `<span class="pnn">v${a.v}</span>` : ''}${libs ? `<button class="pnb lib" data-lib title="${esc(L('Cette page utilise des bibliothèques hébergées ailleurs : elles ne sont chargées que si vous le demandez', 'This page uses libraries kept on other servers: they are loaded only if you ask'))}">${esc(L('Charger ses bibliothèques', 'Load its libraries'))}</button>` : ''}<button class="pnb" data-open title="${open}" aria-label="${open}">↗</button>${m.pinned ? `<button class="pnb" data-x title="${esc(L('Fermer', 'Close'))}" aria-label="${esc(L('Fermer', 'Close'))}">✕</button>` : ''}</div>`;
+  const page = ok ? `<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="${esc(a.title)}" src="${esc(artSrc(a) + (prefs.artNet ? '&net=1' : ''))}"></iframe>` + (m.pinned ? '' : `<button class="pzoom" data-pin title="${esc(L('Cliquer pour agrandir', 'Click to enlarge'))}" aria-label="${esc(L('Cliquer pour agrandir', 'Click to enlarge'))}"></button>`)
+    : `<div class="pcard"><i>🌐</i><b>${esc(a.title)}</b>${a.note ? `<p>${esc(a.note)}</p>` : ''}${m.st ? `<em>${esc(L('Pas d’aperçu ici : la page est sur claude.ai', 'No preview here: the page is on claude.ai'))}</em><button class="pnb" data-open>${open} ↗</button>` : '<span class="spin"></span>'}</div>`;
+  return bar + `<div class="pweb">${page}</div>`;
+}
+function fitArt() { const w = $('#pbody .pweb'); if (w) w.style.setProperty('--z', (S.artPin ? 1 : Math.min(1, Math.max(.2, w.clientWidth / 1100))).toFixed(3)); }   // shared: the page is laid out 1100 px wide and shown smaller, as a screen is; pinned: at its real size
+function pinArt(url) {
+  const a = S.arts.get(url); if (!a) return; const id = S.agents[a.agent] ? a.agent : 'main', first = S.present !== id; filesPop(false); clearTimeout(presentTimer); S.artPin = url; S.present = id;
+  $('#present').classList.add('on'); document.body.classList.add('presenting'); document.querySelectorAll('.tile.presenter').forEach((t) => t.classList.remove('presenter')); const pt = $('#t-' + id); if (pt) pt.classList.add('presenter'); renderPresent(); if (first) layout();
+}
+function unpinArt() { if (!S.artPin) return; S.artPin = null; hidePresent(); }
+$('#present').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-open], [data-x], [data-go], [data-lib], [data-pin]'), a = b && S.arts.get($('#pbody').dataset.art || ''); if (!a) return; const d = b.dataset;
+  if ('open' in d) openExternal(a.url); else if ('x' in d) unpinArt(); else if ('pin' in d) pinArt(a.url);
+  else if ('lib' in d) { prefs.artNet = true; savePrefs(); const sw = document.querySelector('#menu .mi[data-t="artNet"] .sw'); if (sw) sw.classList.add('on'); renderPresent(); }
+  else if ('go' in d) { const all = [...S.arts.keys()]; pinArt(all[(all.indexOf(a.url) + +d.go + all.length) % all.length]); }
+});
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.artPin) unpinArt(); });
+new ResizeObserver(() => fitArt()).observe($('#pbody'));
+const artTip = (a) => `${a.url}\n${a.agent !== 'main' && S.agents[a.agent] ? nameOf(a.agent) + ' · ' : ''}${L('Cliquer pour la présenter dans l’appel', 'Click to present it in the call')}`;
 // ---------- shared files: the files the session created (its Write calls), the way a call shows what was shared in it ----------
 // They show when a turn ends, the moment you would go and look for them: one line under the call, the newest first, a dot on those of the turn that just ended. A click shows the file in its folder
 // (the server opens Finder, Explorer or the file manager, and only for a file this session wrote). Nothing shows while the team works.
@@ -1393,6 +1451,7 @@ const namesFile = (text, name) => { for (let i = name ? text.indexOf(name) : -1;
 const filesForYou = (all) => { const named = new Set(all.filter((f) => f.named).map((f) => f.turn)); return all.filter((f) => f.named || (!named.has(f.turn) && FDOC.test(f.name))); };
 const fileParts = (f) => { const p = String(f || '').split(/[\\/]/), name = p.pop() || ''; return { name, dir: p.slice(-3).join(' › '), icon: (FICON.find(([re]) => re.test(name)) || [0, '📄'])[1] }; };
 function noteFiles(ev) {   // a file written twice is one file, of the turn that wrote it last; a write that failed created nothing
+  noteArts(ev);
   if (ev.kind === 'user') { S.turnN++; S.turnSaid = String(ev.text || ''); }
   else if (ev.kind === 'say' && ev.agent === 'main') { const t = String(ev.text || ''); S.turnSaid = (S.turnSaid + '\n' + t).slice(-20000); for (const f of S.files.values()) if (!f.named && namesFile(t, f.name)) f.named = true; for (const c of S.cands.values()) if (namesFile(t, c.name)) c.want = S.turnN; }   // named before it is written ("I will put it in plan.md") or after: both count
   else if (ev.kind === 'tools') { for (const t of ev.tools) { const d = t.d || {}, was = S.files.get(d.file); if (d.kind === 'cmd' && d.outs) for (const f of d.outs) candFile(f, t.id, ev.agent); if (d.kind !== 'write' || !d.file || FSKIP.test(d.file) || (was && was.id === t.id)) continue; const name = fileParts(d.file).name; S.files.delete(d.file); S.files.set(d.file, { file: d.file, name, id: t.id, agent: ev.agent, turn: S.turnN, named: !!(was && was.named) || namesFile(S.turnSaid, name), was }); } }
@@ -1414,16 +1473,17 @@ const fileTip = (f) => `${f.file}\n${f.agent !== 'main' && S.agents[f.agent] ? n
 const fileCls = (f) => (f.turn === S.turnN ? ' new' : '') + (S.fgone.has(f.file) ? ' gone' : '');
 function paintFiles() {   // called with every repaint of the states: touches the page only when the line would read differently
   if (prefs.files !== false && S.cands.size && turnDone()) for (const c of S.cands.values()) if (c.want != null && !S.files.has(c.file)) askMade(c);   // the documents the commands made, among those the lead named
-  const el = $('#files'), all = [...S.files.values()].reverse(), mine = prefs.files !== false ? filesForYou(all) : [], on = mine.length > 0 && turnDone(), rest = all.length - Math.min(mine.length, FMAX);
-  const key = on ? prefs.lang + '|' + S.turnN + '|' + all.map((f) => f.file + (S.fgone.has(f.file) ? '!' : '')).join('|') + '||' + mine.map((f) => f.file).join('|') : ''; if (el.dataset.k === key) return;
+  if (S.artPin && !S.arts.has(S.artPin)) unpinArt();   // the call went back to before that page was published
+  const el = $('#files'), all = [...S.files.values()].reverse(), mine = prefs.files !== false ? filesForYou(all) : [], arts = prefs.files !== false ? [...S.arts.values()].reverse() : [], on = mine.length + arts.length > 0 && turnDone(), rest = all.length - Math.min(mine.length, FMAX);
+  const key = on ? prefs.lang + '|' + S.turnN + '|' + all.map((f) => f.file + (S.fgone.has(f.file) ? '!' : '')).join('|') + '||' + mine.map((f) => f.file).join('|') + '||' + arts.map((a) => a.id + a.title).join('|') : ''; if (el.dataset.k === key) return;
   const open = on && !!$('#fpop'), ttl = L('Fichiers créés pendant cette session', 'Files created in this session'); el.dataset.k = key; filesPop(false); if (el.classList.contains('on') !== on) { el.classList.toggle('on', on); later('lay', layout); }
-  el.innerHTML = !on ? '' : `<button class="sfh" id="fAll" aria-expanded="false" title="${esc(ttl)}">📎 ${esc(L('Fichiers', 'Files'))}</button>` + mine.slice(0, FMAX).map((f) => `<button class="sfc${fileCls(f)}" data-f="${esc(f.file)}" title="${esc(fileTip(f))}"><i>${fileParts(f.file).icon}</i><span>${esc(f.name)}</span></button>`).join('') + (rest > 0 ? `<button class="sfc more" title="${esc(ttl)}" aria-label="${esc(ttl)}">+${rest}</button>` : '');
+  el.innerHTML = !on ? '' : `<button class="sfh" id="fAll" aria-expanded="false" title="${esc(ttl)}">📎 ${esc(L('Fichiers', 'Files'))}</button>` + arts.slice(0, 4).map((a) => `<button class="sfc${a.turn === S.turnN ? ' new' : ''}" data-a="${esc(a.url)}" title="${esc(artTip(a))}"><i>🌐</i><span>${esc(a.title)}</span></button>`).join('') + mine.slice(0, FMAX).map((f) => `<button class="sfc${fileCls(f)}" data-f="${esc(f.file)}" title="${esc(fileTip(f))}"><i>${fileParts(f.file).icon}</i><span>${esc(f.name)}</span></button>`).join('') + (rest > 0 ? `<button class="sfc more" title="${esc(ttl)}" aria-label="${esc(ttl)}">+${rest}</button>` : '');
   el.scrollLeft = 0; if (open) filesPop(true);
 }
 function filesPop(open) {   // the whole list, above the line: every file with the folder it is in and who created it
   const old = $('#fpop'), b = $('#fAll'); if (old) old.remove(); if (b) b.setAttribute('aria-expanded', String(!!open)); if (!open) return;
   const all = [...S.files.values()].reverse(), p = document.createElement('div'), ttl = L('Fichiers créés pendant cette session', 'Files created in this session'); p.id = 'fpop'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', ttl);
-  p.innerHTML = `<h4>${esc(ttl)} · ${all.length}</h4>` + all.map((f) => { const x = fileParts(f.file), who = f.agent !== 'main' && S.agents[f.agent] ? nameOf(f.agent) : ''; return `<button class="sfr${fileCls(f)}" data-f="${esc(f.file)}" title="${esc(fileTip(f))}"><i>${x.icon}</i><b>${esc(x.name)}</b><em>${esc([x.dir, who].filter(Boolean).join(' · '))}</em></button>`; }).join('');
+  p.innerHTML = `<h4>${esc(ttl)} · ${all.length + S.arts.size}</h4>` + [...S.arts.values()].reverse().map((a) => `<button class="sfr${a.turn === S.turnN ? ' new' : ''}" data-a="${esc(a.url)}" title="${esc(artTip(a))}"><i>🌐</i><b>${esc(a.title)}</b><em>${esc(['claude.ai', a.v > 1 ? 'v' + a.v : '', a.agent !== 'main' && S.agents[a.agent] ? nameOf(a.agent) : ''].filter(Boolean).join(' · '))}</em></button>`).join('') + all.map((f) => { const x = fileParts(f.file), who = f.agent !== 'main' && S.agents[f.agent] ? nameOf(f.agent) : ''; return `<button class="sfr${fileCls(f)}" data-f="${esc(f.file)}" title="${esc(fileTip(f))}"><i>${x.icon}</i><b>${esc(x.name)}</b><em>${esc([x.dir, who].filter(Boolean).join(' · '))}</em></button>`; }).join('');
   p.style.bottom = Math.round($('#center').getBoundingClientRect().bottom - $('#files').getBoundingClientRect().top) + 6 + 'px'; p.onclick = filesClick; $('#center').appendChild(p);
 }
 async function revealFile(file) {
@@ -1432,7 +1492,7 @@ async function revealFile(file) {
   if (r && r.ok) { if (S.fgone.delete(file)) paintFiles(); return; }
   if (r && r.status === 410) { S.fgone.add(file); paintFiles(); toast(L('Ce fichier n’existe plus', 'This file is no longer there')); } else toast(L('Impossible d’ouvrir le dossier', 'Could not open the folder'));
 }
-function filesClick(e) { const f = e.target.closest('[data-f]'); if (f) revealFile(f.dataset.f); else if (e.target.closest('.sfh, .more')) filesPop(!$('#fpop')); }
+function filesClick(e) { const a = e.target.closest('[data-a]'), f = e.target.closest('[data-f]'); if (a) pinArt(a.dataset.a); else if (f) revealFile(f.dataset.f); else if (e.target.closest('.sfh, .more')) filesPop(!$('#fpop')); }
 $('#files').onclick = filesClick;
 addEventListener('click', (e) => { if ($('#fpop') && !e.target.closest('#fpop, #files')) filesPop(false); });
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#fpop')) { filesPop(false); const b = $('#fAll'); if (b) b.focus(); } });
@@ -2053,7 +2113,7 @@ async function loadSession(proj, id) {
   const data = await (await fetch(`/api/session?proj=${encodeURIComponent(proj)}&id=${id}`)).json();
   if (mine !== S.loadN || data.error) return false;
   S.term = {}; S.camFor = null; S.focus = null; S.agents = {}; for (const k in nameBook) delete nameBook[k]; [{ id: 'user' }, ...data.agents].forEach((a) => (S.agents[a.id] = persona(a)));
-  clearThoughts(); Object.assign(TH, { since: {}, next: {}, said: {}, last: 0 }); S.events = data.events; stampT(0); S.byK = new Map(data.events.map((e) => [e.k, e])); S.seq = data.seq || 0; S.ep = data.ep || ''; S.sawEnd = !!data.marks || data.events.some((e) => e.end); S.late = []; S.pos = 0; S.joinAt = Date.now(); S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on'); S.fgone = new Set(); S.fmade = new Map();
+  clearThoughts(); Object.assign(TH, { since: {}, next: {}, said: {}, last: 0 }); S.events = data.events; stampT(0); S.byK = new Map(data.events.map((e) => [e.k, e])); S.seq = data.seq || 0; S.ep = data.ep || ''; S.sawEnd = !!data.marks || data.events.some((e) => e.end); S.late = []; S.pos = 0; S.joinAt = Date.now(); S.idx = 0; S.status = {}; S.tc = {}; S.cur = { proj, id }; S.logTo = 0; S.detail = null; $('#detail').classList.remove('on'); S.fgone = new Set(); S.fmade = new Map(); S.artOk = new Map(); S.artPin = null;
   const opt = $('#sessions').selectedOptions[0]; S.title = (S.live ? niceProj(proj) : opt && opt.dataset.title) || '';
   if (proj === '_demo') S.events.forEach((e) => { if (e.fr) trMem.set(baseText(e), e.fr); });   // the demo ships its own French
   $('#subtitle').textContent = S.title; recomputeStatus(0); buildStage(); renderHighlights(); setFocus('main'); renderLog(true); computeGantt(); layout(); paintStatus(); prefetchTr(0); return true;
@@ -2311,11 +2371,11 @@ function drawFrame(cv, mark = 0) {   // mark: 1 = a clip to share (site address 
     const x = 20, y = 50, w = W - 40, ed = m.view === 'editor', col = { cmd: '#e6edf3', out: '#aab2c5', err: '#ff7b72', tool: '#8b95b0', dim: '#6b7089', run: '#ffd24a', add: '#9be9a8', del: '#ffa198', ctx: '#d6dae6' };
     c.fillStyle = ed ? '#1a1b26' : '#0d1117'; c.beginPath(); c.roundRect(x, y, w, bh, 12); c.fill(); c.fillStyle = '#1c1f2b'; c.fillRect(x, y, w, 28);
     ['#ff5f57', '#febc2e', '#28c840'].forEach((cl, i) => { c.fillStyle = cl; c.beginPath(); c.arc(x + 16 + i * 18, y + 14, 5, 0, 7); c.fill(); });
-    c.font = '13px sans-serif'; c.fillStyle = '#9aa0b4'; c.fillText(ed ? (hide ? m.title.split(' — ').pop() : m.title) : m.view === 'image' ? (hide ? '' : m.title) : S.agents[S.present].name + ' — zsh', x + 90, y + 19); c.font = '14px monospace';
-    if (m.view === 'image') {   // masked like the code: a picture from the session is replaced by an empty frame
-      const im = hide ? null : mediaImg(m.imgs[0]), ax = x + 14, ay = y + 38, aw = w - 238, ah = bh - 82, k = im && im.complete && im.naturalWidth ? Math.min(aw / im.naturalWidth, ah / im.naturalHeight, 1.5) : 0;
+    c.font = '13px sans-serif'; c.fillStyle = '#9aa0b4'; c.fillText(ed ? (hide ? m.title.split(' — ').pop() : m.title) : m.view === 'image' || m.view === 'web' ? (hide ? '' : m.title) : S.agents[S.present].name + ' — zsh', x + 90, y + 19); c.font = '14px monospace';
+    if (m.view === 'image' || m.view === 'web') {   // masked like the code: a picture from the session is replaced by an empty frame. The page of an artifact always is: a video cannot draw what is in a frame
+      const im = hide || m.view === 'web' ? null : mediaImg(m.imgs[0]), ax = x + 14, ay = y + 38, aw = w - 238, ah = bh - 82, k = im && im.complete && im.naturalWidth ? Math.min(aw / im.naturalWidth, ah / im.naturalHeight, 1.5) : 0;
       if (k) c.drawImage(im, ax + (aw - im.naturalWidth * k) / 2, ay + (ah - im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k);
-      else { c.fillStyle = 'rgba(255,255,255,.07)'; c.beginPath(); c.roundRect(ax + aw / 2 - 170, ay + 10, 340, ah - 20, 10); c.fill(); c.font = '64px sans-serif'; c.textAlign = 'center'; c.fillStyle = '#6b7089'; c.fillText('🖼', ax + aw / 2, ay + ah / 2 + 22); c.textAlign = 'start'; }
+      else { c.fillStyle = 'rgba(255,255,255,.07)'; c.beginPath(); c.roundRect(ax + aw / 2 - 170, ay + 10, 340, ah - 20, 10); c.fill(); c.font = '64px sans-serif'; c.textAlign = 'center'; c.fillStyle = '#6b7089'; c.fillText(m.view === 'web' ? '🌐' : '🖼', ax + aw / 2, ay + ah / 2 + 22); c.textAlign = 'start'; }
       c.font = '14px monospace';
     }
     const rows = ed ? m.lines.slice(0, 13) : m.lines.slice(-13), cw = c.measureText('M').width;
@@ -2411,7 +2471,7 @@ function menuInit() {
     $('#menuNone').style.display = q && !secs.some((sc) => sc.items.some((e) => !e.classList.contains('mhide'))) ? '' : 'none';
   };
 }
-$('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'customLaptop') { for (const k in imgCache) delete imgCache[k]; buildStage(); paintStatus(); } if (b.dataset.t === 'files') paintFiles(); if (b.dataset.t === 'ownNames') renameAll(); if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify') { prefs.notifyChosen = true; savePrefs(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
+$('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'customLaptop') { for (const k in imgCache) delete imgCache[k]; buildStage(); paintStatus(); } if (b.dataset.t === 'files') paintFiles(); if (b.dataset.t === 'artNet' && S.present) renderPresent(); if (b.dataset.t === 'ownNames') renameAll(); if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify') { prefs.notifyChosen = true; savePrefs(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
   if (b.dataset.t === 'music') { $('#musicBox').style.display = prefs.music ? '' : 'none'; if (prefs.music) { AUD.init(); AUD.apply(); } } };
 $('#station').innerHTML = STATIONS.map((s) => `<option value="${s.id}">📻 ${s.name}</option>`).join('');
 $('#station').value = prefs.station; $('#musicVol').value = prefs.musicVol; $('#musicBox').style.display = prefs.music ? '' : 'none';

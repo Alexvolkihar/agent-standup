@@ -296,4 +296,27 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     await c.page.evaluate((proj) => goSession(proj, 's'), s.proj); await c.until(() => S.cur && S.cur.id === 's' && S.pin === 's'); await wait(3500); assert.ok((await names()).includes('Wide second'), 'a pinned call keeps the other tabs');
     await c.close();
   });
+
+  await t.test('an artifact the session publishes is shared in a browser window, kept in the line of files and pinned on a click; its page reaches neither the app nor the network', async () => {
+    const s = session(), fp = '/tmp/scratch/report.html', url = 'https://claude.ai/artifact/AbCdEf123456', main = path.join(tmp, 'projects', s.proj, 's.jsonl');
+    const published = (id, seq) => fs.appendFileSync(main, JSON.stringify({ timestamp: new Date().toISOString(), type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'Published at ' + url }] }, toolUseResult: { url, title: 'Report', ...(seq ? { seq } : {}) } }) + '\n');   // what Claude Code notes beside the answer of a publish
+    s.user('Publish the report.'); s.say('I write the report, then I publish it.');
+    const c = await open(s), out = []; c.page.on('response', (r) => { if (!/^(http:\/\/localhost|data:|blob:)/.test(r.url())) out.push(r.url()); });
+    const frame = () => c.page.frames().find((x) => x.url().includes('/api/artifact')), inFrame = async (fn) => { for (let i = 0; i < 80; i++) { try { const v = frame() && await frame().evaluate(fn); if (v) return v; } catch {} await wait(100); } return null; };   // the frame is there before its page is
+    await wait(1000); s.result(s.tool('Write', { file_path: fp, content: '<title>Report</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter"><h1 id="h">Totals</h1>' }), 'File created'); await wait(500);
+    const p1 = s.tool('Artifact', { file_path: fp, description: 'The totals of the quarter.' }); await wait(700); published(p1);
+    await c.until(() => !!document.querySelector('#present.on .pwin.web iframe[sandbox="allow-scripts"]'));
+    assert.equal(await inFrame(() => document.querySelector('#h') && document.querySelector('#h').textContent + '|' + window.origin), 'Totals|null');   // the page the session wrote, in an origin of its own
+    assert.equal(await inFrame(() => fetch('/api/sessions').then(() => 'answered', () => 'refused')), 'refused'); assert.equal(await inFrame(() => fetch('https://example.com/').then(() => 'answered', () => 'refused')), 'refused');
+    assert.equal(await c.page.evaluate(() => document.querySelector('#ptitle').textContent + '|' + document.querySelector('.purl').textContent + '|' + document.querySelector('#pstat').textContent), 'Report|🔒 claude.ai/artifact/AbCdEf123456|The totals of the quarter.');
+    s.say('The report is published.', { end: true }); await c.until(() => !!document.querySelector('#files.on [data-a]'), null, 40000);
+    await c.until(() => !document.querySelector('#present.on'), null, 40000); assert.equal(await c.page.evaluate(() => document.querySelectorAll('iframe').length), 0);   // the window closes by itself, and its page does not go on running behind it
+    await c.page.click('#files [data-a]'); await c.until(() => !!document.querySelector('#present.on.pin .pwin.web iframe')); assert.equal(await c.page.evaluate(() => document.querySelector('.pweb').style.getPropertyValue('--z')), '1.000');   // pinned: at its real size
+    s.user('A shorter title.'); await wait(500); s.result(s.tool('Bash', { command: 'npm test' }), 'ok'); await wait(700); assert.ok(await c.page.evaluate(() => !!document.querySelector('#present.on.pin .pwin.web iframe')), 'pinned, it stays up while the team works');
+    s.result(s.tool('Edit', { file_path: fp, old_string: 'Totals', new_string: 'Sum' }), 'ok'); await wait(400); const p2 = s.tool('Artifact', { file_path: fp, url }); await wait(500); published(p2, 2);
+    await c.until((id) => { const x = document.querySelector('#present.pin .pweb iframe'); return !!x && x.src.includes(id); }, p2); assert.equal(await inFrame(() => document.querySelector('#h') && document.querySelector('#h').textContent === 'Sum' && 'Sum'), 'Sum');   // published again: the pinned window shows the new version
+    assert.equal(await c.page.evaluate(() => [...document.querySelectorAll('.pnav .pnn')].map((x) => x.textContent).join()), 'v2');
+    await c.page.keyboard.press('Escape'); await c.until(() => !document.querySelector('#present.on') && !S.artPin && !document.querySelector('#present iframe'));
+    assert.deepEqual(out, [], 'nothing was fetched from outside'); await c.close();
+  });
 });

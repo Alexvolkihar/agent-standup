@@ -241,5 +241,13 @@
  "Nothing is sent from here. The button opens a draft on GitHub with the text below: read it, say what happened, then send it yourself.": "여기서는 아무것도 전송되지 않습니다. 버튼을 누르면 아래 텍스트가 담긴 초안이 GitHub에서 열립니다. 내용을 읽고 무슨 일이 있었는지 적은 뒤 직접 보내 주세요.",
  "The app’s errors are kept in a file on this computer:": "앱의 오류는 이 컴퓨터의 파일에 보관됩니다:",
  "Copy": "복사",
- "Open the draft on GitHub": "GitHub에서 초안 열기"
+ "Open the draft on GitHub": "GitHub에서 초안 열기",
+ "Artifacts: load their libraries (from the internet)": "Artifacts: 라이브러리 불러오기(인터넷에서)",
+ "Click to enlarge": "클릭하면 확대합니다",
+ "Click to present it in the call": "클릭하면 통화에서 보여 줍니다",
+ "Load its libraries": "라이브러리 불러오기",
+ "No preview here: the page is on claude.ai": "여기서는 미리 볼 수 없습니다: 페이지는 claude.ai에 있습니다",
+ "Open on claude.ai": "claude.ai에서 열기",
+ "Publishing ": "게시 중: ",
+ "This page uses libraries kept on other servers: they are loaded only if you ask": "이 페이지는 다른 서버에 있는 라이브러리를 사용합니다: 요청할 때만 불러옵니다"
 }

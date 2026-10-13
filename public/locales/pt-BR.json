@@ -241,5 +241,13 @@
  "Nothing is sent from here. The button opens a draft on GitHub with the text below: read it, say what happened, then send it yourself.": "Nada é enviado daqui. O botão abre um rascunho no GitHub com o texto abaixo: leia, conte o que aconteceu e envie você mesmo.",
  "The app’s errors are kept in a file on this computer:": "Os erros do app ficam guardados em um arquivo neste computador:",
  "Copy": "Copiar",
- "Open the draft on GitHub": "Abrir o rascunho no GitHub"
+ "Open the draft on GitHub": "Abrir o rascunho no GitHub",
+ "Artifacts: load their libraries (from the internet)": "Artifacts: carregar suas bibliotecas (da internet)",
+ "Click to enlarge": "Clique para ampliar",
+ "Click to present it in the call": "Clique para apresentá-lo na chamada",
+ "Load its libraries": "Carregar as bibliotecas",
+ "No preview here: the page is on claude.ai": "Sem prévia aqui: a página está em claude.ai",
+ "Open on claude.ai": "Abrir em claude.ai",
+ "Publishing ": "Publicando ",
+ "This page uses libraries kept on other servers: they are loaded only if you ask": "Esta página usa bibliotecas hospedadas em outros servidores: elas só são carregadas se você pedir"
 }

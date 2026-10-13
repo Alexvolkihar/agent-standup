@@ -241,5 +241,13 @@
  "Nothing is sent from here. The button opens a draft on GitHub with the text below: read it, say what happened, then send it yourself.": "ここからは何も送信されません。ボタンを押すと、下のテキストが入った下書きが GitHub で開きます。内容を確認し、何が起きたかを書いてから、ご自身で送信してください。",
  "The app’s errors are kept in a file on this computer:": "アプリのエラーは、このコンピューター上のファイルに保存されます：",
  "Copy": "コピー",
- "Open the draft on GitHub": "GitHub で下書きを開く"
+ "Open the draft on GitHub": "GitHub で下書きを開く",
+ "Artifacts: load their libraries (from the internet)": "Artifacts: ライブラリを読み込む（インターネットから）",
+ "Click to enlarge": "クリックして拡大",
+ "Click to present it in the call": "クリックするとビデオ通話内で表示します",
+ "Load its libraries": "ライブラリを読み込む",
+ "No preview here: the page is on claude.ai": "ここではプレビューできません: ページは claude.ai にあります",
+ "Open on claude.ai": "claude.ai で開く",
+ "Publishing ": "公開中: ",
+ "This page uses libraries kept on other servers: they are loaded only if you ask": "このページは他のサーバーにあるライブラリを使います: 求めたときだけ読み込まれます"
 }
