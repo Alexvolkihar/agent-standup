@@ -276,6 +276,9 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     const tabs = () => [...document.querySelectorAll('#tabs .stab:not(.all)')].map((x) => (x.classList.contains('on') ? '>' : '') + (x.querySelector('i') ? '[' + x.querySelector('i').textContent + '] ' : '') + x.querySelector('span').textContent).join('|'), role = () => c.page.evaluate(() => document.querySelector('#roster .rr[data-id="main"] .ro').textContent);
     await c.until(`(${tabs})() === '>Claude session|[Vibe] Review the diff'`, null, 30000); assert.equal(await role(), 'Lead', 'a Claude Code call: the lead as it always was');
     await c.page.click('#tabs .stab:not(.on):not(.all)'); await c.until((id) => S.cur && S.cur.id === id, vid); await c.until(`(${tabs})() === 'Claude session|>[Vibe] Review the diff'`); await c.until(() => { const r = document.querySelector('#roster .rr[data-id="main"] .ro'); return r && r.textContent === 'Lead · Vibe'; });
+    const was = await c.page.evaluate(() => prefs.proj || ''); await c.page.evaluate((id) => openSession('_vibe', id), vid); await wait(1500);   // the same session opened from the Sessions view or from ⋯
+    assert.deepEqual(await c.page.evaluate(() => ({ id: S.cur && S.cur.id, pin: S.pin, proj: prefs.proj || '' })), { id: vid, pin: vid, proj: was }, 'the call is pinned there, and the project to follow is not “Mistral Vibe”: it used to be, and a window with no folder then never showed a Claude Code session again');
+    assert.notEqual(JSON.parse(fs.readFileSync(process.env.AGENT_STANDUP_PREFS, 'utf8')).proj, '_vibe', 'nor is it saved');
     await c.close(); delete process.env.AGENT_STANDUP_VIBE;
   });
 

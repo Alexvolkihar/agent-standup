@@ -2122,7 +2122,7 @@ setInterval(async () => {
 window.addEventListener('message', (e) => {   // the VS Code status bar asks to follow a given session
   const d = e.data; if (!EMBED || e.source !== window.parent || !d || d.agentStandup !== 'pin' || typeof d.id !== 'string') return;
   if (d.tab) { if (prefs.followTab !== false && S.live && !S.demo && typeof d.proj === 'string') tabSession(d.proj, d.id); return; }   // the Claude Code tab you went to: the call goes with you (see tabSession, and followTab in extension.js)
-  prefs.proj = typeof d.proj === 'string' ? d.proj : ''; S.pin = d.id; S.pinProj = prefs.proj; S.cur = null; setView('call'); if (S.live) { fillProjects(); followCurrent(); } else setMode('live');
+  const dp = typeof d.proj === 'string' ? d.proj : ''; if (!TOOL[dp]) prefs.proj = dp; S.pin = d.id; S.pinProj = dp; S.cur = null; setView('call'); if (S.live) { fillProjects(); followCurrent(); } else setMode('live');
 });
 // ---------- meeting chrome: participants and a clock ----------
 function renderMeet() {
@@ -2160,7 +2160,7 @@ async function renderBoardView() {
 }
 $('#boardv').onkeydown = (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('bcard')) { e.preventDefault(); e.target.click(); } };
 async function openSession(proj, id) {
-  prefs.proj = proj; S.pin = id; S.pinProj = proj; savePrefs(); setView('call');
+  if (!TOOL[proj]) prefs.proj = proj; S.pin = id; S.pinProj = proj; savePrefs(); setView('call');   // a Vibe or Codex session is listed under its tool, which is not a folder to follow: kept as the project, it left a window with no folder showing that tool's sessions only, for good
   if (S.live || S.demo) { if (S.demo) await setMode('live'); S.cur = null; fillProjects(); await followCurrent(); } else await setMode('live');
 }
 $('#boardv').onclick = (e) => { const c = e.target.closest('.bcard'); if (c) openSession(c.dataset.p, c.dataset.i); };
