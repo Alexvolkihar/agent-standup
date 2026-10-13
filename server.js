@@ -334,7 +334,7 @@ function currentSession(projFilter, idFilter, stick) {
       const m = sessionMtime(proj, f.slice(0, -6)); if (m) consider(proj, f.slice(0, -6), m);   // 0: a link to a transcript that is gone
     }
   }
-  if (!best && projFilter) return currentSession('', '', stick);
+  if (!best && projFilter) return { ...currentSession('', '', stick), wide: 1 };   // nothing in that folder (an editor open on another one than the sessions): the latest of anywhere, and the page is told, so its tabs follow the same rule
   return best || {};
 }
 

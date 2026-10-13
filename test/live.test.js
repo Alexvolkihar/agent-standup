@@ -267,4 +267,26 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=visits]').click());
     await c.close();
   });
+
+  await t.test('a session of another tool in the same folder has its tab, which names the tool; in its call the lead says it too', async () => {
+    const s = session(), VB = path.join(tmp, 'vibe'), vid = 'session_20261013_100000_abcd1234', vd = path.join(VB, 'logs', 'session', vid), ago = Date.now() - 60000; process.env.AGENT_STANDUP_VIBE = VB; fs.mkdirSync(vd, { recursive: true });
+    fs.writeFileSync(path.join(vd, 'meta.json'), JSON.stringify({ start_time: new Date(ago - 60000).toISOString(), environment: { working_directory: '/' + s.proj.slice(1) }, child_sessions: [], title: 'Review the diff' }));   // a Mistral Vibe session started in the folder of the Claude Code one, in a terminal
+    fs.writeFileSync(path.join(vd, 'messages.jsonl'), [{ role: 'user', content: 'Review the diff' }, { role: 'assistant', content: 'Nothing to change.' }].map((l) => JSON.stringify(l)).join('\n') + '\n'); fs.utimesSync(path.join(vd, 'messages.jsonl'), ago / 1000, ago / 1000);
+    s.user('Claude session'); s.say('Ready.', { end: true }); const c = await open(s);
+    const tabs = () => [...document.querySelectorAll('#tabs .stab:not(.all)')].map((x) => (x.classList.contains('on') ? '>' : '') + (x.querySelector('i') ? '[' + x.querySelector('i').textContent + '] ' : '') + x.querySelector('span').textContent).join('|'), role = () => c.page.evaluate(() => document.querySelector('#roster .rr[data-id="main"] .ro').textContent);
+    await c.until(`(${tabs})() === '>Claude session|[Vibe] Review the diff'`, null, 30000); assert.equal(await role(), 'Lead', 'a Claude Code call: the lead as it always was');
+    await c.page.click('#tabs .stab:not(.on):not(.all)'); await c.until((id) => S.cur && S.cur.id === id, vid); await c.until(`(${tabs})() === 'Claude session|>[Vibe] Review the diff'`); await c.until(() => { const r = document.querySelector('#roster .rr[data-id="main"] .ro'); return r && r.textContent === 'Lead · Vibe'; });
+    await c.close(); delete process.env.AGENT_STANDUP_VIBE;
+  });
+
+  await t.test('an editor open on another folder than the sessions: the call goes to the latest session of anywhere, and the tabs show the others too', async () => {
+    const s = session(), dir = path.join(tmp, 'projects', s.proj), line = (r) => JSON.stringify({ timestamp: new Date().toISOString(), ...r }) + '\n'; s.user('Wide first'); s.say('Ready.', { end: true });
+    fs.writeFileSync(path.join(dir, 'b.jsonl'), line({ type: 'user', message: { role: 'user', content: 'Wide second' } }) + line({ type: 'assistant', message: { id: 'w1', role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text: 'Done.' }] } }));
+    await wait(1300); const c = await open({ proj: '-no-session-here' }), names = () => c.page.evaluate(() => [...document.querySelectorAll('#tabs .stab:not(.all) span')].map((x) => x.textContent));   // 1.3 s: the list of sessions is shared for 1.2 s, and the row shows the first eight sessions it saw; these two must be in the first list this page gets
+    const ask = (proj) => c.page.evaluate(async (p) => (await fetch('/api/current?proj=' + p)).json(), proj); assert.equal((await ask('-no-session-here')).wide, 1); assert.equal((await ask(s.proj)).wide, undefined, 'a folder that has sessions: only those');
+    await c.until(() => { const n = [...document.querySelectorAll('#tabs .stab:not(.all) span')].map((x) => x.textContent); return n.includes('Wide first') && n.includes('Wide second'); }, null, 30000);   // there used to be no row at all: one session on screen and nothing to say there was another
+    assert.ok(['s', 'b'].includes(await c.page.evaluate(() => S.cur.id)), 'the call is in the latest session'); assert.ok((await names()).length >= 2);
+    await c.page.evaluate((proj) => goSession(proj, 's'), s.proj); await c.until(() => S.cur && S.cur.id === 's' && S.pin === 's'); await wait(3500); assert.ok((await names()).includes('Wide second'), 'a pinned call keeps the other tabs');
+    await c.close();
+  });
 });

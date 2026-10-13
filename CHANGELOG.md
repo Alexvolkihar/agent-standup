@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.31.1
+- **A second session no longer goes unseen when your editor is open on another folder.** When the folder the live call follows has no session (VS Code open on one folder, your agents started in a terminal in another), the call already went to the latest session of anywhere, but there was no row of tabs: one session on screen and nothing to say there was another. The tabs now show the other active sessions too, as they do when no folder is followed.
+- **Tabs say which tool runs a session.** A Mistral Vibe or Codex session has a small “Vibe” or “Codex” mark on its tab, and in its call the lead reads “Lead · Vibe”. The lead has the same name in every call, so two sessions of one folder looked alike. Claude Code sessions are as before.
+
 ## 1.31.0
 - **Several sessions at once.** When a second session is active, a row of tabs appears under the header of the live call: the session the call is in and the others, each with its state (working, needs you?, waiting on sub-agents, your turn). Click a tab to move the call there; it stays there (📌) until you click its own tab again, which lets the call follow the latest activity. With a single session there is no row.
 - **A visitor when another session stops for you.** A question, an edit that waits for your go-ahead, or a turn that is over in another session: someone from there leans in at the edge of the call and says which one, between two lines and never over one. A click takes the call there. ⚙ → Display → **A visitor when another session needs you** turns it off.
