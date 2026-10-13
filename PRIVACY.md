@@ -10,7 +10,7 @@ Agent Standup runs on your own computer. It reads files that are already there, 
 
 ## What it reads
 
-- **Your session files.** The ones Claude Code writes in `~/.claude/projects`, the ones Codex writes in `~/.codex/sessions` and the ones Mistral Vibe writes in `~/.vibe/logs/session`. They hold what you typed, what the agents answered and what they ran, so they can contain personal or confidential information. Agent Standup only reads them. It never changes or deletes them. Reading Codex sessions and reading Mistral Vibe sessions can each be turned off. A page a session published on claude.ai (an artifact) is shown from what the session file holds of it; it is not read from your disk nor fetched from claude.ai.
+- **Your session files.** The ones Claude Code writes in `~/.claude/projects`, the ones Codex writes in `~/.codex/sessions` the ones Mistral Vibe writes in `~/.vibe/logs/session`, and the ones Cowork (a tab of the Claude desktop app) writes in that app's own folder (`local-agent-mode-sessions`), with the title the app noted beside each of them. They hold what you typed, what the agents answered and what they ran, so they can contain personal or confidential information. Agent Standup only reads them. It never changes or deletes them. Reading Codex sessions, reading Mistral Vibe sessions and reading Cowork sessions can each be turned off. A page a session published on claude.ai (an artifact) is shown from what the session file holds of it; it is not read from your disk nor fetched from claude.ai.
 - **Your own character images**, if you put some in its characters folder.
 
 ## What it keeps on your computer

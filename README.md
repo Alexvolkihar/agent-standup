@@ -72,6 +72,17 @@ Sessions of [Mistral Vibe](https://github.com/mistralai/mistral-vibe) (Mistral's
 
 Checked against real sessions of Vibe 2.26.1, in both formats. [Watch the 45-second video](https://atoll92.github.io/agent-standup/media/promo-vibe.mp4) ([en français](https://atoll92.github.io/agent-standup/media/promo-vibe-fr.mp4)).
 
+## Cowork sessions too
+
+Sessions of Cowork (a tab of the Claude desktop app) appear next to your Claude Code sessions: in the session list (project “Cowork”), on the board, and in the live call when one of them is the most recent. Nothing to set up: Cowork records its sessions in the format of Claude Code, in the desktop app's own folder (`local-agent-mode-sessions`). Agent Standup reads them there and never writes there.
+
+- **What is shown:** all that a Claude Code session shows, sub-agents included. A session has the name the desktop app gave it, its tab has a small “Cowork” mark, and in its call the lead reads “Lead · Cowork”.
+- **Scheduled tasks are sessions too.** A task Cowork runs on a schedule appears when it runs, and the live call goes to it when it is the latest activity.
+- **Not the Chat tab.** A conversation in the Chat tab of the desktop app is kept on Anthropic's servers, not on your computer: there is nothing for Agent Standup to read. The Code tab is Claude Code, and has always been shown.
+- **A window that follows one folder** (VS Code open on a project) leaves Cowork sessions out of its call: a Cowork session is in no folder of yours. The Sessions view lists them everywhere.
+- **Where it looks:** `~/Library/Application Support/Claude` on macOS, `%APPDATA%\Claude` on Windows (and the app's own folder under `%LOCALAPPDATA%\Packages` when it is installed as a Windows package), `~/.config/Claude` on Linux. Checked against real sessions on macOS; the Windows and Linux places are not tested yet.
+- **Turn it off or point it elsewhere:** `AGENT_STANDUP_COWORK=off`, or `AGENT_STANDUP_COWORK=/path/to/local-agent-mode-sessions` (command line: `--cowork off` or `--cowork DIR`). With `--projects DIR`, Cowork sessions are only read if you also pass `--cowork`. There is no VS Code setting for it yet.
+
 ## What you see for each agent
 
 **On its tile**
@@ -124,7 +135,7 @@ The header shows how full the lead's context is (`ctx 62%`, orange then red, wit
 | **Neovim** *(not tested here)* | call `vim.fn.system('agent-standup status --here')` from a timer and show the result in your statusline plugin; `agent-standup status --json` gives machine-readable output. |
 | **JetBrains IDEs** *(not native yet)* | *Settings → Tools → External Tools → +*: program `npx`, arguments `-y @double_geste/agent-standup --open`, working directory `$ProjectFileDir$`. |
 
-Codex and Mistral Vibe sessions are read as well (see [Codex sessions too](#codex-sessions-too) and [Mistral Vibe sessions too](#mistral-vibe-sessions-too)). Other agent tools (Gemini CLI, OpenCode…) are researched in [ROADMAP.md](ROADMAP.md): their log formats are mostly undocumented, so no adapter is shipped for them yet.
+Codex and Mistral Vibe sessions are read as well (see [Codex sessions too](#codex-sessions-too) and [Mistral Vibe sessions too](#mistral-vibe-sessions-too)), and so are the Cowork sessions of the Claude desktop app (see [Cowork sessions too](#cowork-sessions-too)). Other agent tools (Gemini CLI, OpenCode…) are researched in [ROADMAP.md](ROADMAP.md): their log formats are mostly undocumented, so no adapter is shipped for them yet.
 
 ## Languages
 Pick one in ⚙ → Language: **English, Français, 繁體中文, 简体中文, Español, Deutsch, Dansk, Português (Brasil), 日本語, 한국어**. The interface (menus, chips, tooltips, recap) is translated; VS Code's command titles, setting descriptions and status bar follow VS Code's own display language. English and French are written by hand; the other languages are **AI-drafted and not yet reviewed by native speakers**, so corrections are very welcome: each language is one small JSON file (`public/locales/<code>.json`), see [public/locales/README.md](public/locales/README.md) to fix or add one (`npm run i18n` checks the files). The [website](https://agent-standup.com) and the landing page exist in the same ten languages, with the same caveat; their files are in `website/locales/` and `landing/locales/`. The words the agents say stay in the language of your session (French translation of their lines is optional); the little banter lines and the demo exist in English and French.
@@ -333,7 +344,7 @@ The code is MIT licensed: use it, change it, fork it. The name, the logo and the
 ## Security and what it reads
 The full [privacy policy](PRIVACY.md) says what is read, what is kept on your computer and what can leave it.
 
-- **It reads local files and sends nothing by default.** Agent Standup reads the session files Claude Code already writes (`~/.claude/projects`, or `CLAUDE_CONFIG_DIR`) and the ones Codex and Mistral Vibe write (`~/.codex/sessions`, or `CODEX_HOME`; `~/.vibe/logs/session`, or `VIBE_HOME`; each can be turned off) and draws them in a page. It never writes to your sessions; the only time it starts Claude Code is the optional translation helper described below.
+- **It reads local files and sends nothing by default.** Agent Standup reads the session files Claude Code already writes (`~/.claude/projects`, or `CLAUDE_CONFIG_DIR`) and the ones Codex, Mistral Vibe and Cowork write (`~/.codex/sessions`, or `CODEX_HOME`; `~/.vibe/logs/session`, or `VIBE_HOME`; the `local-agent-mode-sessions` folder of the Claude desktop app; each can be turned off) and draws them in a page. It never writes to your sessions; the only time it starts Claude Code is the optional translation helper described below.
 - **Local only.** The server listens on `127.0.0.1` (never on the network), refuses requests whose Host or Origin is not local, and refuses cross-site requests on every endpoint that does something (translation, jokes, sound, settings).
 - **The only things that call out** are optional and off by default: French translation and jokes (your own Claude login, the small Haiku model, with all tools disabled; when one of them is on, the lines of a Codex session are sent the same way, to Anthropic), the FIP radio stream, and the usage counter (one empty request a day to a 1-pixel file, only if you turn it on).
 - **No dependencies**: the code is plain Node.js and one HTML file, so there is nothing hidden in `node_modules`. The optional Kokoro voices install a third-party package only when you click Install.

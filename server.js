@@ -17,6 +17,46 @@ const PORT = process.env.PORT || 4747;
 // Same place Claude Code writes to: honours CLAUDE_CONFIG_DIR (custom config dirs are common on Linux); AGENT_STANDUP_PROJECTS overrides it.
 const ROOT = process.env.AGENT_STANDUP_PROJECTS || path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');
 const PUBLIC = path.join(__dirname, 'public');
+// Cowork, a tab of the Claude desktop app, keeps each of its sessions in the app's own folder, in the format of Claude Code: <folder>/<account>/<organisation>/<session>/.claude/projects/<project>/<id>.jsonl.
+// They are listed under one made-up project, as the sessions of the other tools are, and read like any Claude Code session from there on.
+// Where: AGENT_STANDUP_COWORK (a folder; "0" or "off" turns them off), else where the desktop app keeps its files on this system. When AGENT_STANDUP_PROJECTS points the app at one folder (--projects, the tests), only if asked for.
+const COWORK = '_cowork';
+function coworkHomes() {
+  const v = process.env.AGENT_STANDUP_COWORK, home = os.homedir(), sub = 'local-agent-mode-sessions';
+  if (v != null) return /^(0|off|no|false)?$/i.test(v.trim()) ? [] : [v];
+  if (process.env.AGENT_STANDUP_PROJECTS) return [];
+  if (process.platform === 'darwin') return [path.join(home, 'Library', 'Application Support', 'Claude', sub)];
+  if (process.platform !== 'win32') return [path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), 'Claude', sub)];
+  const local = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local'), out = [path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), 'Claude', sub)];
+  try { for (const p of fs.readdirSync(path.join(local, 'Packages'))) if (/claude/i.test(p)) out.push(path.join(local, 'Packages', p, 'LocalCache', 'Roaming', 'Claude', sub)); } catch {}   // installed as a Windows package, the app has its folder there
+  return out;
+}
+let coworkMemo = { at: 0, key: null, map: new Map() };
+function coworkMap() {   // session id → the folder its transcript is in; looked up again every 3 s, and at once when the place to look changes
+  const homes = coworkHomes(), key = homes.join('\n'), now = Date.now(); if (coworkMemo.key === key && now - coworkMemo.at < 3000) return coworkMemo.map;
+  const map = new Map(), ls = (d) => { try { return fs.readdirSync(d); } catch { return []; } };
+  for (const h of homes) for (const a of ls(h)) for (const o of ls(path.join(h, a))) for (const s of ls(path.join(h, a, o))) {
+    if (s.endsWith('.json')) continue;   // what the app notes about a session, next to its folder
+    const pd = path.join(h, a, o, s, '.claude', 'projects');
+    for (const p of ls(pd)) for (const f of ls(path.join(pd, p))) if (/^[\w.\-]+\.jsonl$/.test(f) && !map.has(f.slice(0, -6))) map.set(f.slice(0, -6), path.join(pd, p));
+  }
+  coworkMemo = { at: now, key, map }; return map;
+}
+const coworkNotes = new Map();   // note file → { sig, title }
+function coworkTitle(proj, id) {   // the name the desktop app gave the session, the one its own list shows: kept in a note beside the session's folder, of which the title alone is taken
+  const dir = proj === COWORK && coworkMap().get(id); if (!dir) return '';
+  const f = path.resolve(dir, '..', '..', '..') + '.json'; let st; try { st = fs.statSync(f); } catch { return ''; }
+  const sig = st.mtimeMs + ':' + st.size, c = coworkNotes.get(f); if (c && c.sig === sig) return c.title;
+  let title = ''; try { const j = JSON.parse(fs.readFileSync(f, 'utf8')); if (typeof j.title === 'string') title = j.title.trim().slice(0, 200); } catch {}
+  coworkNotes.set(f, { sig, title }); return title;
+}
+const projDir = (proj, id) => (proj === COWORK && coworkMap().get(id)) || path.join(ROOT, proj);   // the folder that holds <id>.jsonl and the sub-agents of that session
+const projects = () => { let names = []; try { names = fs.readdirSync(ROOT); } catch {} return coworkMap().size ? names.concat(COWORK) : names; };
+function transcripts(proj) {   // the sessions of a project: { id, file }
+  const cw = proj === COWORK ? coworkMap() : null; if (cw && cw.size) return [...cw].map(([id, dir]) => ({ id, file: path.join(dir, id + '.jsonl') }));
+  const dir = path.join(ROOT, proj); let files; try { files = fs.readdirSync(dir); } catch { return []; }
+  return files.filter((f) => f.endsWith('.jsonl')).map((f) => ({ id: f.slice(0, -6), file: path.join(dir, f) }));
+}
 
 const blocks = (rec) => {
   const c = rec.message && rec.message.content;
@@ -87,7 +127,7 @@ const resultImages = (c) => (Array.isArray(c) ? c.filter(isImg) : []);
 const mtimeOf = (f) => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } };   // 0 for a file that is gone, or a symlink that points nowhere: never an exception
 // Every sub-agent transcript of a session: <id>/subagents/*.jsonl, plus the ones a workflow launched, one folder deeper in <id>/subagents/workflows/<run>/agent-*.jsonl (each run also keeps a journal.jsonl, which is not an agent).
 function subFiles(proj, id) {
-  const sd = path.join(ROOT, proj, id, 'subagents'), out = [], seen = new Set(['main', 'user']); out.dirs = [sd]; out.journals = [];
+  const sd = path.join(projDir(proj, id), id, 'subagents'), out = [], seen = new Set(['main', 'user']); out.dirs = [sd]; out.journals = [];
   const add = (dir, f, run) => { let aid = f.replace(/^agent-/, '').replace(/\.jsonl$/, '').replace(/[^\w.-]/g, '_'); const id0 = aid; if (seen.has(aid)) aid = (run || 'agent').replace(/[^\w.-]/g, '_') + '.' + aid; seen.add(aid); out.push({ file: path.join(dir, f), aid, id0, run }); };   // an id is the file name; the same name in two folders gets its run in front
   let names; try { names = fs.readdirSync(sd); } catch { return out; }
   for (const f of names) if (f.endsWith('.jsonl')) add(sd, f, '');
@@ -101,7 +141,7 @@ function subFiles(proj, id) {
 }
 const subFilesOf = (proj, id) => { const sx = sourceOf(proj); return sx && sx.subFiles ? guard(() => sx.subFiles(id), Object.assign([], { dirs: [], journals: [] })) : subFiles(proj, id); };   // Mistral Vibe keeps its sub-agents its own way
 function mediaFile(proj, sid, agent) {
-  if (agent === 'main') return path.join(ROOT, proj, sid + '.jsonl');
+  if (agent === 'main') return path.join(projDir(proj, sid), sid + '.jsonl');
   const hit = subFiles(proj, sid).find((x) => x.aid === agent);
   return hit ? hit.file : null;
 }
@@ -191,13 +231,9 @@ function listSessions() {
 function listSessions0() {
   const rows = [];
   for (const m of SOURCES) for (const r of guard(() => m.sessions(30), [])) rows.push({ proj: m.PROJ, id: r.id, mtime: r.mtime, size: r.size, agents: guard(() => (m.subCount ? m.subCount(r.id) : m.subFiles ? m.subFiles(r.id).length : 0), 0), cx: r, src: m });
-  for (const proj of fs.existsSync(ROOT) ? fs.readdirSync(ROOT) : []) {
-    const dir = path.join(ROOT, proj);
-    let files;
-    try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.jsonl')); } catch { continue; }
-    for (const f of files) {
-      const id = f.replace(/\.jsonl$/, '');
-      let st; try { st = fs.statSync(path.join(dir, f)); } catch { continue; }   // a link to a transcript that is gone
+  for (const proj of projects()) {
+    for (const { id, file } of transcripts(proj)) {
+      let st; try { st = fs.statSync(file); } catch { continue; }   // a link to a transcript that is gone
       rows.push({ proj, id, mtime: st.mtimeMs, size: st.size, agents: subFiles(proj, id).length });
     }
   }
@@ -206,14 +242,14 @@ function listSessions0() {
   for (const r of top) {
     if (r.cx) { const c = r.cx, m = r.src; delete r.cx; delete r.src; r.title = guard(() => m.title(c), '') || r.id; r.project = guard(() => m.projectLabel(c.cwd), '') || m.SOURCE; r.source = m.SOURCE; continue; }
     // titles come from the cached tail read (custom title, then AI title, then first prompt): no whole-file reads
-    let t = null; try { const f = path.join(ROOT, r.proj, r.id + '.jsonl'); t = parseTail(f, fs.statSync(f)).title; } catch {}
-    r.title = t || r.id; r.project = r.proj.replace(/^-Users-[^-]+-/, '').replace(/-/g, '/');
+    let t = null; try { const f = path.join(projDir(r.proj, r.id), r.id + '.jsonl'); t = parseTail(f, fs.statSync(f)).title; } catch {}
+    r.title = coworkTitle(r.proj, r.id) || t || r.id; r.project = r.proj === COWORK ? 'Cowork' : r.proj.replace(/^-Users-[^-]+-/, '').replace(/-/g, '/');
   }
   return top;
 }
 
 function stamp(proj, id) {
-  const base = path.join(ROOT, proj); let n = 0;
+  const base = projDir(proj, id); let n = 0;
   const add = (f) => { try { const s = fs.statSync(f); n += s.mtimeMs + s.size; } catch {} };
   const sx = sourceOf(proj); add(sx ? guard(() => sx.fileOf(id), '') || '' : path.join(base, id + '.jsonl')); if (sx && sx.watch) for (const f of guard(() => sx.watch(id), [])) add(f);
   const subs = subFilesOf(proj, id);   // the transcripts and the folders they are in (a folder changes when a file appears in it, e.g. an agent's meta file), not every file around them
@@ -302,14 +338,13 @@ function boardRows() {
 function boardRows0() {
   const now = Date.now(), rows = [];
   for (const m of SOURCES) for (const r of guard(() => m.sessions(), [])) if (now - r.mtime < 12 * 3600e3) rows.push({ proj: m.PROJ, id: r.id, st: { mtimeMs: r.mtime, size: r.size }, cx: r, src: m });
-  for (const proj of fs.existsSync(ROOT) ? fs.readdirSync(ROOT) : []) {
-    const dir = path.join(ROOT, proj); let files; try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.jsonl')); } catch { continue; }
-    for (const f of files) { try { const st = fs.statSync(path.join(dir, f)); if (now - st.mtimeMs < 12 * 3600e3) rows.push({ proj, id: f.slice(0, -6), st }); } catch {} }
+  for (const proj of projects()) {
+    for (const { id, file } of transcripts(proj)) { try { const st = fs.statSync(file); if (now - st.mtimeMs < 12 * 3600e3) rows.push({ proj, id, st }); } catch {} }
   }
   rows.sort((a, b) => b.st.mtimeMs - a.st.mtimeMs);
   return rows.filter((r) => !r.cx).slice(0, 40).concat(...SOURCES.map((m) => rows.filter((r) => r.src === m).slice(0, 20))).sort((a, b) => b.st.mtimeMs - a.st.mtimeMs).map(({ proj, id, st, cx, src }) => {
     if (cx) return guard(() => src.boardRow(cx, now), null);
-    const file = path.join(ROOT, proj, id + '.jsonl'); let p; try { p = parseTail(file, st); } catch { p = { pending: [] }; }
+    const file = path.join(projDir(proj, id), id + '.jsonl'); let p; try { p = parseTail(file, st); } catch { p = { pending: [] }; }
     const age = now - st.mtimeMs, lp = (p.pending || [])[(p.pending || []).length - 1]; let state = 'idle', tool = '', ageMs = age;
     if (age < 30 * 60e3) {
       if (lp) { ageMs = now - (lp.ts || st.mtimeMs); tool = lp.name;
@@ -321,7 +356,7 @@ function boardRows0() {
     }
     let subActive = 0, subTotal = 0;
     for (const x of subFiles(proj, id)) { subTotal++; if (now - mtimeOf(x.file) < 90e3) subActive++; }
-    return { proj, id, title: p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, ...(p.esc ? { cut: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
+    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, ...(p.esc ? { cut: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
   }).filter(Boolean);
 }
 // Settings live in a file, not only in the page's localStorage: the port changes between VS Code windows and reloads, and localStorage is per origin (port included).
@@ -373,24 +408,19 @@ process.on('uncaughtExceptionMonitor', (e, origin) => { try { if (OWN || String(
 const STICK_MS = 90000;   // a session written to in the last 90 s keeps the call, so another session writing elsewhere does not steal it mid-line
 function sessionMtime(proj, id) {
   const sx = sourceOf(proj), r = sx ? guard(() => sx.row(id), null) : null; if (sx && (!r || !sx.subFiles)) return r ? r.mtime : 0;
-  let m = sx ? r.mtime : mtimeOf(path.join(ROOT, proj, id + '.jsonl')); if (!m) return 0; const subs = subFilesOf(proj, id);
+  let m = sx ? r.mtime : mtimeOf(path.join(projDir(proj, id), id + '.jsonl')); if (!m) return 0; const subs = subFilesOf(proj, id);
   for (const x of subs) m = Math.max(m, mtimeOf(x.file)); for (const d of subs.dirs) m = Math.max(m, mtimeOf(d)); return m;   // the folders too: a new file in them is activity, as when every file around the transcripts was looked at
 }
 function currentSession(projFilter, idFilter, stick) {
   const safe = (x) => typeof x === 'string' && /^[\w.\-]+$/.test(x) && x !== '..';
   if (stick && safe(stick.id) && safe(stick.proj) && (!projFilter || stick.proj === projFilter || stick.proj.startsWith(projFilter + '-') || (sourceOf(stick.proj) && guard(() => sourceOf(stick.proj).inProject(stick.id, projFilter), false))) && Date.now() - sessionMtime(stick.proj, stick.id) < STICK_MS) return { proj: stick.proj, id: stick.id, mtime: sessionMtime(stick.proj, stick.id) };
-  if (idFilter && projFilter && projFilter !== '..' && idFilter !== '..' && /^[\w.\-]+$/.test(idFilter) && /^[\w.\-]+$/.test(projFilter) && (sourceOf(projFilter) ? !!guard(() => sourceOf(projFilter).fileOf(idFilter), null) : fs.existsSync(path.join(ROOT, projFilter, idFilter + '.jsonl')))) return { proj: projFilter, id: idFilter, mtime: Date.now() };   // pinned from the board
+  if (idFilter && projFilter && projFilter !== '..' && idFilter !== '..' && /^[\w.\-]+$/.test(idFilter) && /^[\w.\-]+$/.test(projFilter) && (sourceOf(projFilter) ? !!guard(() => sourceOf(projFilter).fileOf(idFilter), null) : fs.existsSync(path.join(projDir(projFilter, idFilter), idFilter + '.jsonl')))) return { proj: projFilter, id: idFilter, mtime: Date.now() };   // pinned from the board
   let best = null;
   const consider = (proj, id, m) => { if (!best || m > best.mtime) best = { proj, id, mtime: m }; };
   for (const m of SOURCES) for (const r of guard(() => m.sessions(), [])) if (!projFilter || guard(() => m.inProject(r.id, projFilter), false)) consider(m.PROJ, r.id, r.mtime);   // a Codex or Vibe session counts for a project when it was started in that folder
-  for (const proj of fs.existsSync(ROOT) ? fs.readdirSync(ROOT) : []) {
-    if (projFilter && proj !== projFilter && !proj.startsWith(projFilter + '-')) continue;   // the folder itself, or a folder inside it
-    const dir = path.join(ROOT, proj); let files;
-    try { files = fs.readdirSync(dir); } catch { continue; }
-    for (const f of files) {
-      if (!f.endsWith('.jsonl')) continue;
-      const m = sessionMtime(proj, f.slice(0, -6)); if (m) consider(proj, f.slice(0, -6), m);   // 0: a link to a transcript that is gone
-    }
+  for (const proj of projects()) {
+    if (projFilter && proj !== projFilter && !proj.startsWith(projFilter + '-')) continue;   // the folder itself, or a folder inside it (a Cowork session is in no folder of yours: it counts when the call looks everywhere, or at Cowork)
+    for (const { id } of transcripts(proj)) { const m = sessionMtime(proj, id); if (m) consider(proj, id, m); }   // 0: a link to a transcript that is gone
   }
   if (!best && projFilter) return { ...currentSession('', '', stick), wide: 1 };   // nothing in that folder (an editor open on another one than the sessions): the latest of anywhere, and the page is told, so its tabs follow the same rule
   return best || {};
@@ -497,7 +527,7 @@ function readMeta(f) {
 }
 
 function buildTimeline(proj, id, files = []) {
-  const sx = sourceOf(proj), rec = recordOf(sx), base = path.join(ROOT, proj), mainFile = sx ? sx.fileOf(id) || '' : path.join(base, id + '.jsonl');   // a Codex or Vibe session is kept somewhere else, in another format (rec); from here on it is a session like any other (Codex without sub-agents)
+  const sx = sourceOf(proj), rec = recordOf(sx), base = projDir(proj, id), mainFile = sx ? sx.fileOf(id) || '' : path.join(base, id + '.jsonl');   // a Codex or Vibe session is kept somewhere else, in another format (rec); from here on it is a session like any other (Codex without sub-agents)
   if (!fs.existsSync(mainFile)) throw new Error('session not found');
   const agents = { main: { id: 'main', role: 'Lead', type: 'main' } };   // the lead has the same name whatever tool runs the session: the page gives it
   const states = [(sx && sx.state && guard(() => sx.state(id), null)) || readNew(mainFile, 'main', false, rec)], subs = subFilesOf(proj, id), runs = {}; files.push(mainFile);   // sx.state: a format that is not read line by line hands over the events of the session whole   // runs: workflow run → { agents (file name → agent id), by (who launched it), toolId, done }
@@ -741,7 +771,7 @@ function listCharacters(pack) {
 // the page cannot have any other path opened, nothing is read and nothing is run. A Codex or Vibe session may name a file from the folder it was started in.
 // The same goes for a document one of its commands names (an export, a report made by a script), from the moment that command started: an older file by that name is not one of its files.
 function sessionFile(proj, id, file) {   // { fp: where it is, since: 0 for a file it wrote, else when the first command that names it started }
-  const sx = sourceOf(proj); if (!(sx ? guard(() => sx.fileOf(id), null) : fs.existsSync(path.join(ROOT, proj, id + '.jsonl')))) return null;
+  const sx = sourceOf(proj); if (!(sx ? guard(() => sx.fileOf(id), null) : fs.existsSync(path.join(projDir(proj, id), id + '.jsonl')))) return null;
   const ev = timeline(proj, id).events, said = new Set(); let since = ev.some((e) => e.kind === 'tools' && e.tools.some((t) => t.d && t.d.kind === 'write' && t.d.file === file)) ? 0 : null;
   if (since == null) {
     for (const e of ev) if (e.kind === 'results') for (const it of e.items) if (it.files && it.files.includes(file)) said.add(it.id);   // named in what a command printed: counted from when that command started
@@ -847,7 +877,7 @@ function start(port = PORT) {
     if (url.pathname === '/api/session') {
       const proj = url.searchParams.get('proj') || '', sid = url.searchParams.get('id') || '', SAFE = /^[\w.\-]+$/;
       if (!SAFE.test(proj) || !SAFE.test(sid) || proj === '..' || sid === '..' || proj.length > 200 || sid.length > 200) { res.writeHead(400); return res.end('bad request'); }
-      if (proj !== '_demo' && !(sourceOf(proj) ? sourceOf(proj).fileOf(sid) : fs.existsSync(path.join(ROOT, proj, sid + '.jsonl')))) return json({ error: 'session not found' }, 404);
+      if (proj !== '_demo' && !(sourceOf(proj) ? sourceOf(proj).fileOf(sid) : fs.existsSync(path.join(projDir(proj, sid), sid + '.jsonl')))) return json({ error: 'session not found' }, 404);
       const entry = proj === '_demo' ? demoEntry() : timelineEntry(proj, sid), tl = entry.tl;   // built-in fictional session
       const after = url.searchParams.get('after'), ep = url.searchParams.get('ep');
       if (after == null) {   // the whole timeline: serialize once per version, send gzip-compressed when the browser allows it (12 MB → ~1.5 MB)

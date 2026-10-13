@@ -1223,7 +1223,7 @@ function fitBoard(force) {   // the chips lose their words when they do not all 
 }
 addEventListener('resize', () => fitBoard(true)); new ResizeObserver(() => requestAnimationFrame(() => fitBoard(true))).observe($('#board'));   /* the room the chips have also changes when the texts beside them do (a title, a longer status) */
 const RORDER = { blocked: 0, stalled: 1, working: 2, waiting: 3, idle: 4, done: 5 };
-const TOOL = { _codex: 'Codex', _vibe: 'Vibe' }, leadTool = (p) => (p.id === 'main' && S.cur && TOOL[S.cur.proj] ? ' · ' + TOOL[S.cur.proj] : '');   // a session that is not a Claude Code one says which tool runs it: on its tab, and next to its lead, who has the same name in every call
+const TOOL = { _codex: 'Codex', _vibe: 'Vibe', _cowork: 'Cowork' }, leadTool = (p) => (p.id === 'main' && S.cur && TOOL[S.cur.proj] ? ' · ' + TOOL[S.cur.proj] : '');   // a session that is not a Claude Code one says which tool runs it: on its tab, and next to its lead, who has the same name in every call
 const rosTok = (id) => { const u = S.usage[id]; return u && tokTotal(u) ? `<span class="rt" title="${esc(tokTip(u))}">⚡${fmtTok(tokTotal(u))}</span>` : ''; };
 function paintRoster(ros) {   // a fixed list beside the call: who is doing what, urgent first, readable even with dozens of agents
   const box = $('#roster'); if (!box || !document.body.classList.contains('rost')) return;
@@ -2118,7 +2118,7 @@ async function loadSession(proj, id) {
   if (proj === '_demo') S.events.forEach((e) => { if (e.fr) trMem.set(baseText(e), e.fr); });   // the demo ships its own French
   $('#subtitle').textContent = S.title; recomputeStatus(0); buildStage(); renderHighlights(); setFocus('main'); renderLog(true); computeGantt(); layout(); paintStatus(); prefetchTr(0); return true;
 }
-const niceProj = (p) => (p === '_demo' ? '' : p === '_codex' ? 'Codex' : p === '_vibe' ? 'Mistral Vibe' : String(p).replace(/^-+/, '').replace(/-/g, '/').split('/').slice(-2).join('/'));
+const niceProj = (p) => (p === '_demo' ? '' : p === '_codex' ? 'Codex' : p === '_vibe' ? 'Mistral Vibe' : p === '_cowork' ? 'Cowork' : String(p).replace(/^-+/, '').replace(/-/g, '/').split('/').slice(-2).join('/'));
 async function fillProjects() {   // live view: follow the latest activity anywhere, or pin one project
   const sel = $('#liveProj'); let rows = []; try { rows = await (await fetch('/api/projects')).json(); } catch {}
   sel.innerHTML = `<option value="">${L('Tous les projets (le plus récent)', 'All projects (most recent)')}</option>` + rows.map((r) => `<option value="${esc(r.proj)}">${esc(niceProj(r.proj))}</option>`).join('');
