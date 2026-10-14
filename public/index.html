@@ -318,7 +318,7 @@
   <button class="mi" data-t="notify"><span data-fr="Me prévenir quand les agents ont fini" data-en="Notify me when agents finish">Me prévenir quand les agents ont fini</span><i class="sw"></i></button>
   <button class="mi" data-t="music"><span data-fr="Musique d’ambiance (radio FIP)" data-en="Office music (FIP radio)">Musique d’ambiance (radio FIP)</span><i class="sw"></i></button>
   <div class="box" id="musicBox" style="display:none"><select id="station"></select><input id="musicVol" type="range" min="0" max="1" step="0.05" style="width:100%" aria-label="Music volume"></div>
-  <div class="box" id="vstyleBox"><label class="lbl" for="vstyle" data-fr="Style des voix" data-en="Voice style">Style des voix</label><select id="vstyle"></select><div class="hint" id="vstyleTip" style="padding:6px 0 0;display:none" data-fr="Pour la meilleure expérience, choisissez les voix très naturelles." data-en="For the best experience, pick the very natural voices.">Pour la meilleure expérience, choisissez les voix très naturelles.</div></div>
+  <div class="box" id="vstyleBox"><label class="lbl" for="vstyle" data-fr="Style des voix" data-en="Voice style">Style des voix</label><select id="vstyle"></select><div class="hint" id="vstyleTip" style="padding:6px 0 0;display:none" data-fr="Pour la meilleure expérience, choisissez les voix naturelles." data-en="For the best experience, pick the natural voices.">Pour la meilleure expérience, choisissez les voix naturelles.</div></div>
   <div class="box" id="kokoroBox" style="display:none"><button class="btn" id="kokoroInstall" style="width:100%"></button><div class="hint" id="kokoroHint" style="padding:2px 0 6px"></div></div>
   <h4 data-fr="Affichage" data-en="Display">Affichage</h4>
   <button class="mi" data-t="roster"><span data-fr="Liste des agents (à gauche)" data-en="Agents list (left)">Liste des agents (à gauche)</span><i class="sw"></i></button>
@@ -406,7 +406,11 @@ let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: fa
 { let loc = {}; try { loc = JSON.parse(localStorage.getItem('cc.prefs') || '{}') || {}; } catch {}   // the settings file (shared by every window) and this origin's copy: the more recent one wins
   const sv = window.SAVED_PREFS && typeof window.SAVED_PREFS === 'object' ? window.SAVED_PREFS : {}; Object.assign(prefs, (sv._t || 0) > (loc._t || 0) ? sv : loc); }
 if (prefs.vstyle === 'babble') prefs.vstyle = 'animal', prefs.vstyleChosen = true;
-if (!['animal', 'sims', 'cartoon', 'kokoro'].includes(prefs.vstyle) || (!prefs.vstyleChosen && prefs.vstyle !== 'cartoon')) prefs.vstyle = 'kokoro';   // the real voices of the model are the default, and babble until they are installed. Whoever has the cartoon voices keeps them (they were the default up to 1.31.0, and still read the words with no install); the plain system voices ("natural") are gone
+// Two styles since 1.32.0: the natural voices (the model, the default, which babble until they are installed) and the Animal Crossing babble. The cartoon voices, Simlish and the plain system voices are no longer offered:
+// whoever had Simlish is on the other babble, everyone else on the natural voices. The cartoon voices read the words with no install, so the call offers the real ones once more to who had closed that line.
+if (prefs.vstyle === 'cartoon' && prefs.voiceOffer === 'no') delete prefs.voiceOffer;
+if (prefs.vstyle === 'sims' && prefs.vstyleChosen) prefs.vstyle = 'animal';
+if (prefs.vstyle !== 'animal' || !prefs.vstyleChosen) prefs.vstyle = 'kokoro';
 if (!prefs.notifyChosen) prefs.notify = true;   // “tell me when the agents are done” is on unless the person chose otherwise
 let prefsTimer = null;
 const savePrefs = () => { prefs._t = Date.now(); try { localStorage.setItem('cc.prefs', JSON.stringify(prefs)); } catch {} clearTimeout(prefsTimer); prefsTimer = setTimeout(() => { fetch('/api/prefs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(prefs) }).catch(() => {}); }, 400); };
@@ -890,7 +894,7 @@ const TTS = {
     const end = () => { this.busy = false; this.pump(); }; this.buf(j.text, j.voice, j.rate, true).then(end, end);
   },
 };
-const babbles = () => prefs.vstyle !== 'cartoon' && (prefs.vstyle !== 'kokoro' || TTS.engine !== 'kokoro');   // babble: by choice (Animal Crossing, Simlish), or because the real voices are not there yet (not installed, downloading, loading, stopped). The system voices read the words in the cartoon style only
+const babbles = () => prefs.vstyle !== 'kokoro' || TTS.engine !== 'kokoro';   // babble: by choice (Animal Crossing), or because the real voices are not there yet (not installed, downloading, loading, stopped). A system voice only reads a line of a language the model lacks
 // The lines to come are synthesized ahead of time, so that a voice starts with its line and not a second later. What is made must be what will be asked for: the same text (the lead-in, the part
 // that is read when the call is behind), the same voice and the same rate. So this follows what run() will do with the next events if nothing else arrives before then: how it groups them
 // (sub-agents back to back, orders in a row) and how it sets the pace. Keep the two in step: a difference costs nothing but the benefit (the line is then made when it is said).
@@ -2572,7 +2576,7 @@ $('#station').innerHTML = STATIONS.map((s) => `<option value="${s.id}">📻 ${s.
 $('#station').value = prefs.station; $('#musicVol').value = prefs.musicVol; $('#musicBox').style.display = prefs.music ? '' : 'none';
 $('#station').onchange = (e) => { prefs.station = e.target.value; savePrefs(); AUD.init(); RADIO.sync(); };
 $('#chatSel').value = ['quiet', 'normal', 'lively'].includes(prefs.chat) ? prefs.chat : 'normal'; $('#chatSel').onchange = () => { prefs.chat = $('#chatSel').value; savePrefs(); };
-$('#vstyle').innerHTML = [['animal', 'Animal Crossing (babillage)', 'Animal Crossing (babble)'], ['sims', 'Simlish (babillage)', 'Simlish (babble)'], ['cartoon', 'Voix cartoon (voix réelle)', 'Cartoon voices (real voice)'], ['kokoro', 'Voix très naturelles (à installer)', 'Very natural voices (installs on demand)']].map(([v, fr, en]) => `<option value="${v}" data-fr="${fr}" data-en="${en}">${L(fr, en)}</option>`).join(''); $('#vstyle').value = prefs.vstyle; $('#vstyle').onchange = () => { prefs.vstyle = $('#vstyle').value; prefs.vstyleChosen = true; savePrefs(); TTS.init().then(kokoroUI); kokoroUI(); };
+$('#vstyle').innerHTML = [['animal', 'Animal Crossing (babillage)', 'Animal Crossing (babble)'], ['kokoro', 'Voix naturelles (à installer)', 'Natural voices (installs on demand)']].map(([v, fr, en]) => `<option value="${v}" data-fr="${fr}" data-en="${en}">${L(fr, en)}</option>`).join(''); $('#vstyle').value = prefs.vstyle; $('#vstyle').onchange = () => { prefs.vstyle = $('#vstyle').value; prefs.vstyleChosen = true; savePrefs(); TTS.init().then(kokoroUI); kokoroUI(); };
 // ---- ⚙ → very natural voices (Kokoro): install box and status, polled while installing
 let kokoroTimer = null;
 async function kokoroUI() {
@@ -2590,7 +2594,7 @@ async function kokoroUI() {
 $('#kokoroInstall').onclick = async () => { try { await fetch('/api/kokoro/install', { method: 'POST' }); } catch {} kokoroUI(); voiceOffer(); };
 kokoroUI();
 // ---- on the call: one line that says the real voices exist, to whoever does not have them. Nothing outside ⚙ said so, and without them the agents babble. One click installs them (and the style changes
-// to them once they are ready, not before: cartoon voices go on reading meanwhile); ✕ and the line never comes back. Not in the scripted demo (?demo=1), which is what the pictures and videos are made from.
+// to them once they are ready, not before); ✕ and the line never comes back. Not in the scripted demo (?demo=1), which is what the pictures and videos are made from.
 let offerTimer = null;
 async function voiceOffer() {
   const el = $('#vOffer'), hide = () => { el.style.display = 'none'; clearInterval(offerTimer); offerTimer = null; };

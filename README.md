@@ -175,15 +175,13 @@ Every tile carries one status: **working** (with what it is doing), **waiting on
 ## Voices
 With the real voices, each line is read with a voice of its own language (English, French, Spanish or Portuguese), whatever language the interface is in. A line in a language the model does not speak (German, Danish, Japanese, Korean, Chinese) is read by a system voice of that language when your computer has one.
 
-Four choices in ⚙ → Voice style (default: **Very natural voices**):
+Two choices in ⚙ → Voice style (default: **Natural voices**):
 - **Animal Crossing** — every agent "talks" in gibberish, one blip per letter, with a sentence melody (up for questions, down for statements) and a register of its own.
-- **Simlish** — the same idea with flowing syllables, vowels and little consonant noises.
-- **Cartoon voices** — the real words read by your system voice, with a character per agent (chipmunk, deep, robot, wobbly, radio, monster, squeaky). Nothing to install.
-- **Very natural voices** — [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M), a small open speech model that runs on your machine. The real words, and the default: click Install in ⚙ (about 750 MB, one folder in your user cache, installed with npm; the model is fetched on first use, and one download covers every language). Until it is ready the agents babble, Animal Crossing style, and a line at the bottom of the call offers the install in one click (close it and it does not come back). It speaks English, French, Spanish and Brazilian Portuguese with eight voices each. The model has few voices outside English (one French, three Spanish, three Portuguese): the lead takes one as it is, and the other characters get one of them mixed with their English voice, so each agent sounds like itself in every language. These three languages need a phonemizer the install adds ([eSpeak NG](https://github.com/espeak-ng/espeak-ng), 18 MB, GPL-3.0, fetched by npm like the rest and not shipped with the app); if you installed the voices before 1.31.1, ⚙ → Voice style offers to add them when the interface is in one of these languages, and until then their lines are read by your system voices.
+- **Natural voices** — [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M), a small open speech model that runs on your machine. The real words, and the default: click Install in ⚙ (about 750 MB, one folder in your user cache, installed with npm; the model is fetched on first use, and one download covers every language). Until it is ready the agents babble, Animal Crossing style, and a line at the bottom of the call offers the install in one click (close it and it does not come back). It speaks English, French, Spanish and Brazilian Portuguese with eight voices each. The model has few voices outside English (one French, three Spanish, three Portuguese): the lead takes one as it is, and the other characters get one of them mixed with their English voice, so each agent sounds like itself in every language. These three languages need a phonemizer the install adds ([eSpeak NG](https://github.com/espeak-ng/espeak-ng), 18 MB, GPL-3.0, fetched by npm like the rest and not shipped with the app); if you installed the voices before 1.32.0, ⚙ → Voice style offers to add them when the interface is in one of these languages, and until then their lines are read by your system voices.
 
-**Our tip:** install the very natural voices once you are set up. The agents then sound like real people, which is the nicest way to follow a call.
+**Our tip:** install the natural voices once you are set up. The agents then sound like real people, which is the nicest way to follow a call.
 
-Up to 1.31.0 the cartoon voices were the default; if you have them, you keep them. The *Natural* style (plain system voices) is gone: if you had it you are now on the very natural voices.
+Up to 1.31.0 there were five styles, and the natural voices were called *Very natural voices*. The *Cartoon voices* (your system voices with an effect, the default then), the plain system voices and *Simlish* are gone. If you had Simlish you are now on Animal Crossing; otherwise you are on the natural voices, which babble until they are installed.
 
 Long lines are subtitled one sentence at a time, in step with the voice.
 
@@ -272,7 +270,7 @@ If several Agent Standup windows are open on the same machine (sidebar, editor p
 
 ## System voices (per OS)
 
-The system voices read the cartoon style. With the very natural voices they are only a fallback: for a line in a language the model does not speak, and for a line it could not make. They are generated on your machine:
+The system voices are only a fallback for the natural voices: for a line in a language the model does not speak, and for a line it could not make. They are generated on your machine:
 
 | OS | Engine | Notes |
 |---|---|---|
@@ -327,7 +325,7 @@ The website at agent-standup.com counts its visits with Vercel Web Analytics, th
 
 - Tool outputs are trimmed (about 1–2 KB each); the shared screen shows the beginning of long outputs.
 - Output only exists once a tool call has finished: a running command shows a spinner and its live timer, not partial output.
-- The very natural voices need about 750 MB and npm; without them the agents babble, or read with your system voices in the cartoon style, whose quality depends on the system.
+- The natural voices need about 750 MB and npm; without them the agents babble.
 - Very large sessions (10 MB+ of transcript) take a second or two to load the first time (about 1.9 s for a 12 MB, 168-sub-agent session on a recent Mac); after that updates take milliseconds.
 - Video export and the clip record in real time and need a Chromium-based browser/VS Code. MP4 recording was checked in Chrome; it has not been tested inside VS Code's own panel, which may still produce a `.webm`.
 - "Hide code & file names in videos" does not mask what the agents say (speech bubbles, subtitles, voices).
