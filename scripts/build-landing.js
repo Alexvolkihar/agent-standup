@@ -5,10 +5,11 @@ const { LANGS, load } = require('./site-locales.js');
 const root = path.join(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'public/index.html'), 'utf8');
 const sep = '// =====================================================================\n';
-const js = app.slice(app.indexOf(sep + '//  cast: soft mascots'), app.indexOf(sep + '//  state'));
-const cssStart = app.indexOf('/* character animation'), cssEndMark = '@media (prefers-reduced-motion:reduce) { .tile *, .tile { animation:none !important } }';
-const css = app.slice(cssStart, app.indexOf(cssEndMark) + cssEndMark.length);
-if (!js || cssStart < 0) throw new Error('art markers not found in public/index.html');
+const jsStart = app.indexOf(sep + '//  cast: soft mascots'), jsEnd = app.indexOf(sep + '//  state'), js = app.slice(jsStart, jsEnd);
+// the styles of the characters: from their comment to the end of the reduced-motion line that closes them, whatever that line says (its wording changed in 1.19.3, and the landing page was built without these styles until 1.31.0)
+const cssStart = app.indexOf('/* character animation'), cssLast = app.indexOf('@media (prefers-reduced-motion:reduce)', cssStart), cssEnd = app.indexOf('\n', cssLast);
+const css = app.slice(cssStart, cssEnd);
+if (jsStart < 0 || jsEnd <= jsStart || cssStart < 0 || cssLast < 0 || cssEnd < 0 || !css.includes('.tile .laptop')) throw new Error('art markers not found in public/index.html');
 const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 const out = fs.readFileSync(path.join(root, 'landing/template.html'), 'utf8')
   .replace('/*ART_CSS*/', () => css).replace('/*ART_JS*/', () => js).replace(/__VERSION__/g, version)
