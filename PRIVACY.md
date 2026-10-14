@@ -20,6 +20,7 @@ Agent Standup runs on your own computer. It reads files that are already there, 
 - **The natural voice model**, only if you install it.
 - **The sessions you put away as done**, in a file named `done.json` beside your settings: for each one, the name of its project folder, its id and a time. Nothing of what was said in it.
 - **A log of the app's own errors**, in a file named `errors.log` beside your settings. Each line holds the date, the app's version, where the error happened, its message and the first lines of its stack trace. The path of your home folder is replaced by `~`, and the address of the page (which names the project) by the word `page`. An error message can still name a file or a project of yours, or hold a few characters of what the app was reading when it failed. The file is cut down when it passes 256 KB, and it is never sent anywhere by the app.
+- **A character pack you bought**, in a `packs` folder beside your characters folder (`~/.agent-standup/packs`): its pictures, and in a file named `codes.json` the code of the purchase, which is the reference Stripe gave it. The code is kept so that the app can show it to you: it is what installs the pack on another computer.
 
 Nothing else is written. Uninstalling the app and deleting those folders removes everything.
 
@@ -36,6 +37,7 @@ The following happen only if you turn them on or start them yourself:
 | You turn on "share usage" in VS Code (off by default, and never when VS Code telemetry is off) | One empty request a day for a 1-pixel file. No identifier, no content | GitHub |
 | You install the natural voices | A download of the voice package and its model; no session content | The npm registry and Hugging Face |
 | You run the app with `npx`, or the Claude Code plugin does | A download of the app's package; no session content | The npm registry |
+| You press "Buy" on a character pack in the ⚙ menu, or install one with a purchase code | To the website: the name of the pack, then the code of the purchase, asked again every few seconds until the payment is done (for a quarter of an hour at most). No session content, and nothing once the pack is installed, unless you press "Update the pack", which asks for it again with the same code. To Stripe: what you type on its payment page, which opens in your browser | agent-standup.com (hosted by Vercel), which asks Stripe whether that purchase is paid and then sends the pack; Stripe, for the payment |
 | You choose "Report a problem" in the ⚙ menu, then send the draft that opens on GitHub | The text the app showed you first: its version, your system and browser, your language, and the last errors of the log above; plus what you write. Until you send it on GitHub, nothing is sent | GitHub, as a public issue under your GitHub account |
 | You press "Load its libraries" on an artifact shown in the call, or turn on "Artifacts: load their libraries" in the ⚙ menu (off by default) | Each time such a page is shown: requests for the scripts and fonts that page names. No session content: the page runs in a frame that can send nothing out | The servers claude.ai lets an artifact use: cdnjs (Cloudflare), jsDelivr, unpkg, cdn.tailwindcss.com, code.jquery.com and Google Fonts |
 
@@ -47,6 +49,8 @@ The website at https://agent-standup.com is hosted by Vercel. It sets no cookie 
 
 Since 13 October 2026 its visits are counted with Vercel Web Analytics, the host's own counter. For each page viewed, Vercel records the page, the page the visit came from, the approximate location (country, region, city), and the kind of browser, system and device. It uses no cookie. According to Vercel, it tells visitors apart with a value computed from the request that is discarded after a day and is not kept as an identifier: https://vercel.com/docs/analytics/privacy-policy. A visit from a browser that sends "Do Not Track" is not counted.
 
+The website is also the shop for the character packs that are sold (https://agent-standup.com/shop/). Paying happens on a page of Stripe, the payment company: your card and your email are typed there and never pass through the app or the website. Stripe emails you a receipt and an invoice, which carry your purchase code. The website keeps no account and no list of buyers. When the app, or the download on the shop, asks for a pack, the website asks Stripe whether the purchase with that code is paid and not refunded, and sends the pack if it is. The shop page and the page you land on after paying set no cookie, load nothing from another site (except the shop's YouTube video once you play it) and are not counted; the latter shows the code from its own address and sends it nowhere. Stripe's privacy policy: https://stripe.com/privacy.
+
 The earlier landing page at https://atoll92.github.io/agent-standup/ is hosted by GitHub Pages. Each visit there loads one tiny image from GitHub, named after where the visit came from (for example "reddit" or "direct"), so the project can count visits by source. It also asks GitHub's public API which release is the latest, to show its version number and download links. It sets no cookie and carries no identifier. GitHub, as the host, sees your IP address.
 
 Both pages show one video from YouTube. Until you press play it is a picture and a link served by the page itself, and nothing is asked of YouTube. When you press play, the player is loaded from YouTube (Google), in the mode YouTube calls privacy-enhanced (youtube-nocookie.com): Google then sees your IP address and that you play this video, may keep data in your browser, and applies its own privacy policy: https://policies.google.com/privacy. The links to the channel open YouTube itself.
@@ -54,6 +58,8 @@ Both pages show one video from YouTube. Until you press play it is a picture and
 ## What the developer can see
 
 Only totals that the stores, GitHub and Vercel show: download and install counts, stars, the number of daily "share usage" requests, visit counts by source, and for the website the number of visits by page, by the page they came from, by country and by kind of browser and device. None of it identifies a person.
+
+If you buy a character pack, the developer also sees what Stripe shows a seller about a payment: the email and the name you gave on the payment page, your country, the amount and the date, and the last four digits and the brand of the card. This is used to answer you about that purchase, to refund it, and for the accounts the law requires, and for nothing else.
 
 ## Children
 

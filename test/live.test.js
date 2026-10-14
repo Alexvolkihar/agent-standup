@@ -224,8 +224,8 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     s.user('Now a test for the login'); await c.page.waitForFunction(() => !document.querySelector('#files.on'), { timeout: 30000 });   // the next turn: the line goes away until it ends
     write('/x/docs/second.md'); write('/x/test/login.test.js'); write('/x/test/old-login.test.js');
     s.say('I added `test/login.test.js`, run it to check.', { end: true }); await shows(['login.test.js*', 'notes.md!', 'README.md']); assert.equal((await strip()).more, '+3');   // the one the lead names, and only that one of this turn
-    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=files]').click()); assert.equal((await strip()).on, false);   // ⚙ › Display: off
-    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=files]').click()); await shows(['login.test.js*', 'notes.md!', 'README.md']);
+    await c.page.evaluate(() => document.querySelector('#prefs .mi[data-t=files]').click()); assert.equal((await strip()).on, false);   // ⚙ › All settings › Display: off
+    await c.page.evaluate(() => document.querySelector('#prefs .mi[data-t=files]').click()); await shows(['login.test.js*', 'notes.md!', 'README.md']);
     const stat = server._reveal.stat, there = { '/x/out/report.pdf': Date.now() + 60000, '/x/out/data.csv': Date.now() + 60000, '/x/old/brief.md': Date.now() - 3600000 }; server._reveal.stat = (f) => (f in there ? { isFile: () => true, mtimeMs: there[f] } : stat(f)); t.after(() => { server._reveal.stat = stat; });   // no file is written outside the test's folder: the server is told what is there, and since when
     s.user('Export it as a PDF'); await c.page.waitForFunction(() => !document.querySelector('#files.on'), { timeout: 30000 });
     s.result(s.tool('Bash', { command: 'cd /x && python3 make.py --out=out/report.pdf && cat old/brief.md && rm out/draft.pdf' }), 'Wrote 3 pages.\nAlso saved /x/out/data.csv');
@@ -244,8 +244,8 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     await tab('old'); await goes('old'); await wait(4000); assert.equal((await at()).id, 'old', 'another tab: the call goes there and is kept there');
     s.say('One more thought.', { end: true }); await wait(4000); assert.equal((await at()).id, 'old', 'the other session writes: the call stays');   // it went back to the session written to last after a minute and a half
     s.user('And now this'); await goes('s');   // you type in the other session: the call goes there, nothing was to be let go first
-    await tab('old'); await goes('old'); await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click()); await tab('s'); await wait(2500); assert.equal((await at()).id, 'old', '⚙: off');
-    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click());
+    await tab('old'); await goes('old'); await c.page.evaluate(() => document.querySelector('#prefs .mi[data-t=followTab]').click()); await tab('s'); await wait(2500); assert.equal((await at()).id, 'old', '⚙: off');
+    await c.page.evaluate(() => document.querySelector('#prefs .mi[data-t=followTab]').click());
     await c.page.evaluate((proj) => goSession(proj, 'old', true), s.proj); await tab('s'); await wait(2500); assert.deepEqual([(await at()).id, await c.page.evaluate(() => !!(S.pick && S.pick.pin))], ['old', true], 'pinned (a click on its tab): the Claude Code tabs you go through do not take the call');
     s.user('One last thing'); await goes('s'); await c.until(() => !S.pick); assert.equal(await c.page.evaluate(() => S.pick), null, 'until you ask something in another session: the call goes there, and nothing is pinned any more');
     await c.close();
@@ -294,11 +294,11 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     await c.page.click('#visit .vx'); assert.equal(await visitor(), null, '✕ sends the visitor away'); assert.equal(await at(), 's'); const visited = Date.now();
     q.result(first); await rowIs(['>First session turn', 'Second session turn', 'Third session working']); ask(); await rowIs(['>First session turn', 'Second session turn', 'Third session blocked']);   // answered there, and a second question at once
     assert.equal(await visitor(), null, 'less than 20 s after the last visit: not yet'); await comes('blocked'); assert.ok(Date.now() - visited > 10000); await c.page.click('#visit .vx');   // told when the 20 s are over: it used to be lost
-    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=visits]').click());   // ⚙: no visitor
+    await c.page.evaluate(() => document.querySelector('#prefs .mi[data-t=visits]').click());   // ⚙: no visitor
     b.user('One more thing'); await goes('b'); await rowIs(['First session turn', '>Second session working', 'Third session blocked']);   // you type in the second one: the call is there again
     await tabOf('First session'); await goes('s'); b.say('Done as well.'); await rowIs(['>First session turn', 'Second session turn', 'Third session blocked']);
     await wait(11000); assert.equal(await visitor(), null, 'off in the settings: the tab alone says it');
-    await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=visits]').click());
+    await c.page.evaluate(() => document.querySelector('#prefs .mi[data-t=visits]').click());
     await c.close();
   });
 

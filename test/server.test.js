@@ -203,7 +203,9 @@ test('a pack name that is not a pack is answered as such, whatever the word', as
       assert.equal((await get(port, '/packs/' + name + '/a.png')).status, 404, name);
     }
     assert.ok(JSON.parse((await get(port, '/api/characters?pack=cats')).body).chars.length > 0);
-    assert.deepEqual(JSON.parse((await get(port, '/api/packs')).body).map((p) => p.name), ['cats']);
+    assert.deepEqual(JSON.parse((await get(port, '/api/packs')).body).map((p) => p.name + (p.shop ? ' (shop)' : '')), ['cats', 'vampire', 'halloween (shop)']);
+    const vamp = JSON.parse((await get(port, '/api/characters?pack=vampire')).body).chars;   // the free vampire ships with the app: the human, with its open mouth and its room
+    assert.deepEqual(vamp.map((c) => [c.role, c.head, c.talk, c.bg, c.desks, c.hands]), [['you', 'you-head.png', 'you-talk.png', 'you-bg.png', ['you-desk-dark.png', 'you-desk.png'], 'you-hands.png']]);
   } finally { stop(); }
 });
 test('the list of sessions: a line that goes on with a tool call is not the end of the turn', async () => {
@@ -301,6 +303,69 @@ test('the errors of the app are kept in a file on this computer: each one once, 
     assert.equal(tidy('Failed to load "http://localhost:4747/?live=1&proj=x" then http://[::1]:5000/?a=1:3:4', 300), 'Failed to load "page" then page:3:4');
     assert.equal(tidy('x'.repeat(299) + '😀', 300), 'x'.repeat(299)); assert.doesNotThrow(() => encodeURIComponent(tidy('x'.repeat(299) + '😀', 300)));   // a cut through an emoji leaves no half character: the link of the report could not carry it
   } finally { stop(); }
+});
+
+// ---- the shop: a pack is bought through the website (api/), which asks Stripe. Here the website and Stripe are both played by scripts/shop-dev.js, on this machine
+const zipOf = (files) => {   // a zip as any tool writes it: one deflated entry per file, then the directory
+  const zlib = require('zlib'), locals = [], dir = []; let at = 0;
+  for (const [name, data] of files) { const n = Buffer.from(name), raw = Buffer.from(data), z = zlib.deflateRawSync(raw), crc = zlib.crc32 ? zlib.crc32(raw) : 0, h = Buffer.alloc(30), c = Buffer.alloc(46);
+    h.writeUInt32LE(0x04034b50, 0); h.writeUInt16LE(20, 4); h.writeUInt16LE(8, 8); h.writeUInt32LE(crc, 14); h.writeUInt32LE(z.length, 18); h.writeUInt32LE(raw.length, 22); h.writeUInt16LE(n.length, 26);
+    c.writeUInt32LE(0x02014b50, 0); c.writeUInt16LE(20, 4); c.writeUInt16LE(20, 6); c.writeUInt16LE(8, 10); c.writeUInt32LE(crc, 16); c.writeUInt32LE(z.length, 20); c.writeUInt32LE(raw.length, 24); c.writeUInt16LE(n.length, 28); c.writeUInt32LE(at, 42);
+    locals.push(h, n, z); dir.push(c, n); at += 30 + n.length + z.length; }
+  const d = Buffer.concat(dir), end = Buffer.alloc(22); end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10); end.writeUInt32LE(d.length, 12); end.writeUInt32LE(at, 16);
+  return Buffer.concat([...locals, d, end]);
+};
+test('a pack of the shop: nothing before it is paid, the whole pack once it is, by the code of the purchase', async () => {
+  const packs = path.join(tmp, 'packs'); process.env.AGENT_STANDUP_PACKS = packs;
+  const zip = zipOf([['lead.png', 'PNG-lead'], ['lead-talk.png', 'PNG-talk'], ['lead-bg.png', 'PNG-room'], ['lead-desk.png', 'PNG-desk'], ['lead-desk-dark.png', 'PNG-dark'], ['lead-hands.png', 'PNG-hands'], ['lead+hat-1.png', 'PNG-hat1'], ['lead+hat-2.png', 'PNG-hat2'], ['lead+eyes-1.png', 'PNG-eyes'], ['nobody+hat-1.png', 'PNG-lost'], ['LICENCE.txt', 'terms'], ['../../evil.png', 'PNG-evil'], ['run.sh', 'echo no'], ['sub/.hidden.png', 'x']]);
+  const shop = require('../scripts/shop-dev.js').start({ zip }); process.env.AGENT_STANDUP_STORE = await shop.ready;
+  const { port, stop } = await serve(), post = async (p, b, h = {}) => { const r = await get(port, p, { 'content-type': 'application/json', ...h }, 'POST', JSON.stringify(b)); let j = {}; try { j = JSON.parse(r.body || '{}'); } catch {} return { status: r.status, ...j }; };
+  const listed = async () => JSON.parse((await get(port, '/api/packs')).body).find((p) => p.name === 'halloween');
+  try {
+    assert.deepEqual(await listed(), { name: 'halloween', n: 0, shop: true, price: '2 €', artist: 'Fabien Coupas', artistUrl: 'https://www.instagram.com/fabien_coupas/', code: '', waiting: false });
+    assert.equal((await get(port, '/packs/halloween/lead.png')).status, 404);
+    assert.equal((await post('/api/packs/claim', { pack: 'halloween' })).error, 'code');   // nothing was bought here
+    assert.equal((await post('/api/packs/buy', { pack: 'cats' })).status, 404); assert.equal((await post('/api/packs/buy', { pack: 'halloween' }, { 'sec-fetch-site': 'cross-site' })).status, 403);
+    const first = await post('/api/packs/buy', { pack: 'halloween' }), second = await post('/api/packs/buy', { pack: 'halloween' });   // the button pressed twice: two payment pages, either may be the one that is paid
+    assert.equal(first.status, 200); assert.match(first.url, /^http:\/\/localhost:\d+\/pay\/cs_test_/); assert.equal(shop.sessions.size, 2);
+    const [code1] = [...shop.sessions.keys()]; assert.ok(first.url.endsWith(code1)); assert.equal(second.status, 200);
+    assert.deepEqual({ ...(await post('/api/packs/claim', { pack: 'halloween' })) }, { status: 402, error: 'unpaid' }); assert.equal((await listed()).waiting, true); assert.ok(!fs.existsSync(path.join(packs, 'halloween')));
+    shop.pay(code1);   // the first page is the one paid
+    assert.deepEqual(await post('/api/packs/claim', { pack: 'halloween' }), { status: 200, ok: true, n: 2 });   // lead, and the picture whose name tried to leave the folder, kept under its bare name
+    assert.deepEqual(fs.readdirSync(path.join(packs, 'halloween')).sort(), ['LICENCE.txt', 'evil.png', 'lead+eyes-1.png', 'lead+hat-1.png', 'lead+hat-2.png', 'lead-bg.png', 'lead-desk-dark.png', 'lead-desk.png', 'lead-hands.png', 'lead-talk.png', 'lead.png', 'nobody+hat-1.png']);   // bare names only, pictures and the notes only
+    assert.ok(!fs.existsSync(path.join(tmp, 'evil.png')) && !fs.existsSync(path.join(packs, 'evil.png')));
+    const chars = JSON.parse((await get(port, '/api/characters?pack=halloween')).body).chars, lead = chars.find((c) => c.stem === 'lead');   // a room and an open mouth belong to their character: neither is a character of its own
+    assert.deepEqual([lead.role, lead.talk, lead.bg, lead.desks, lead.hands], ['lead', 'lead-talk.png', 'lead-bg.png', ['lead-desk-dark.png', 'lead-desk.png'], 'lead-hands.png']);   // its laptops (light, dark) and its hands are its own too assert.deepEqual(chars.map((c) => c.stem), ['evil', 'lead']);
+    assert.deepEqual(lead.extras, { eyes: ['lead+eyes-1.png'], hat: ['lead+hat-1.png', 'lead+hat-2.png'] }); assert.equal(chars[0].extras, null);   // what a character may wear, by kind: not characters either, and those of nobody are left out
+    assert.equal((await get(port, '/packs/halloween/' + encodeURIComponent('lead+hat-2.png'))).body, 'PNG-hat2');
+    assert.equal((await get(port, '/packs/halloween/lead-bg.png')).body, 'PNG-room'); assert.equal((await get(port, '/packs/halloween/LICENCE.txt')).status, 404);
+    assert.deepEqual(await listed(), { name: 'halloween', n: 2, shop: true, price: '2 €', artist: 'Fabien Coupas', artistUrl: 'https://www.instagram.com/fabien_coupas/', code: shop.sessions.get(code1).metadata.code, waiting: false });   // the code shown is the one for people
+    assert.match(shop.sessions.get(code1).metadata.code, /^HW-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$/); assert.equal(shop.sessions.get(code1).form.get('payment_intent_data[description]'), 'Agent Standup: Halloween character pack. Purchase code ' + shop.sessions.get(code1).metadata.code);   // on the receipt Stripe emails
+    assert.equal(shop.sessions.get(code1).form.get('invoice_creation[invoice_data][custom_fields][0][value]'), shop.sessions.get(code1).metadata.code); assert.match(shop.sessions.get(code1).form.get('custom_text[submit][message]'), /right of withdrawal/);
+    assert.equal((await get(port, '/api/packs', { 'sec-fetch-site': 'cross-site' })).status, 403);   // the list carries the code of the purchase: not for another site
+    // on another computer: the code is typed. A wrong one, the payment's own id (what the Stripe dashboard shows), then a refunded purchase
+    fs.rmSync(packs, { recursive: true, force: true });
+    assert.equal((await post('/api/packs/claim', { pack: 'halloween', code: 'cs_test_' + 'a'.repeat(30) })).error, 'code'); assert.equal((await post('/api/packs/claim', { pack: 'halloween', code: 'not a code' })).error, 'code');
+    assert.equal((await post('/api/packs/claim', { pack: 'halloween', code: shop.sessions.get(code1).pi })).ok, true); assert.equal((await listed()).n, 2);
+    fs.rmSync(packs, { recursive: true, force: true }); assert.equal((await post('/api/packs/claim', { pack: 'halloween', code: shop.sessions.get(code1).metadata.code.toLowerCase() })).ok, true);   // the code for people, typed as it comes
+    assert.equal((await post('/api/packs/claim', { pack: 'halloween', code: 'HW-2222-2222' })).error, 'code');
+    const dl = (q) => new Promise((ok) => http.get(process.env.AGENT_STANDUP_STORE + '/api/download?' + q, (r) => { const c = []; r.on('data', (d) => c.push(d)); r.on('end', () => ok({ status: r.statusCode, type: r.headers['content-type'], where: r.headers.location, disp: r.headers['content-disposition'], size: Buffer.concat(c).length })); }));   // the download, for a person
+    const good = await dl('pack=halloween&code=' + shop.sessions.get(code1).metadata.code); assert.deepEqual([good.status, good.type, good.disp, good.size], [200, 'application/zip', 'attachment; filename="agent-standup-halloween.zip"', zip.length]);
+    assert.deepEqual([(await dl('pack=halloween&code=HW-2222-2222')).status, (await dl('pack=halloween&code=HW-2222-2222')).where], [303, '/shop/?download=code#download']);
+    shop.refund(code1); fs.rmSync(packs, { recursive: true, force: true });
+    assert.deepEqual(await post('/api/packs/claim', { pack: 'halloween', code: code1 }), { status: 403, error: 'refunded' }); assert.equal((await listed()).n, 0);
+    process.env.AGENT_STANDUP_STORE = 'http://localhost:9';   // the shop cannot be reached
+    assert.deepEqual(await post('/api/packs/buy', { pack: 'halloween' }), { status: 502, error: 'offline' });
+  } finally { stop(); shop.stop(); delete process.env.AGENT_STANDUP_STORE; delete process.env.AGENT_STANDUP_PACKS; }
+});
+test('a zip that is not a pack is refused whole', () => {
+  const { installPack } = require('../server.js'); process.env.AGENT_STANDUP_PACKS = path.join(tmp, 'packs2');
+  try {
+    assert.throws(() => installPack('halloween', Buffer.from('not a zip at all, just some text that is long enough')), /not a zip/);
+    assert.throws(() => installPack('halloween', zipOf([['notes.txt', 'x'], ['run.sh', 'y']])), /no picture/);
+    assert.throws(() => installPack('halloween', zipOf([['big.png', Buffer.alloc(400 * 1024, 1)]])), /bad entry/);
+    assert.ok(!fs.existsSync(path.join(tmp, 'packs2', 'halloween')));
+  } finally { delete process.env.AGENT_STANDUP_PACKS; }
 });
 test('an artifact a session published is shown from the session file alone: each version as it was, in a frame that reaches neither the app nor the network', async () => {
   const fp = '/tmp/scratch/report.html', v1 = '<title>Report</title>\n<h1>Totals: $& "quoted" é</h1>\n<p>one</p>\n<p>one</p>', url = 'https://claude.ai/artifact/AbCdEf123456';
@@ -427,4 +492,26 @@ test('the call is translated into the language the page asks for: French when it
     const many = ['One.', 'Two.', 'Three.', 'Four.', line]; assert.deepEqual(await post('/api/translate', { texts: many, lang: 'es' }), { texts: many.map((t) => 'Spanish|' + t), ok: true }, 'more than three lines go in one batch, in the same language');
     assert.deepEqual((await post('/api/quips', { texts: ['Report A.'], lang: 'pt' })).texts, ['Brazilian Portuguese|Report A.']); assert.deepEqual((await post('/api/quips', { texts: ['Report A.'], lang: 'ja' })).texts, ['English|Report A.']);
   } finally { srv.close(); require('../server.js').shutdown(); if (key) process.env.ANTHROPIC_API_KEY = key; }
+});
+
+test('pictures added from the page: under the name of their role, the one replaced moved aside, nothing but images', async () => {
+  const dir = path.join(tmp, 'mine'); process.env.AGENT_STANDUP_CHARACTERS = dir;
+  const { port, stop } = await serve(), post = async (p, b, h = {}) => { const r = await get(port, p, { 'content-type': 'application/json', ...h }, 'POST', JSON.stringify(b)); let j = {}; try { j = JSON.parse(r.body || '{}'); } catch {} return { status: r.status, ...j }; };
+  const png = (tag) => Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from(tag)]).toString('base64'), gif = Buffer.from('GIF89a-one').toString('base64');
+  try {
+    assert.deepEqual(await post('/api/characters/add', { role: 'you', name: 'me.png', data: png('first') }), { status: 200, file: 'you.png' });
+    assert.deepEqual(await post('/api/characters/add', { role: 'you', name: 'me again.gif', data: gif }), { status: 200, file: 'you.gif' });   // a new picture of you: the old one, of another type, is put aside
+    assert.ok(!fs.existsSync(path.join(dir, 'you.png'))); assert.equal(fs.readdirSync(path.join(dir, 'replaced')).filter((f) => f.endsWith(' you.png')).length, 1);
+    assert.deepEqual(await post('/api/characters/add', { role: 'agent', name: '../../Ghost Writer!.png', data: png('g') }), { status: 200, file: 'Ghost Writer.png' });
+    assert.deepEqual(await post('/api/characters/add', { role: 'agent', name: 'Ghost Writer.png', data: png('g2') }), { status: 200, file: 'Ghost Writer 2.png' });   // never over another sub-agent
+    assert.deepEqual(await post('/api/characters/add', { role: 'agent', name: 'lead.png', data: png('l') }), { status: 200, file: 'lead 2.png' });   // a sub-agent never takes the name of a role
+    assert.equal((await post('/api/characters/add', { role: 'agent', name: 'x.png', data: Buffer.from('<svg onload=alert(1)>').toString('base64') })).error, 'type');
+    assert.equal((await post('/api/characters/add', { role: 'agent', name: 'big.png', data: png('x'.repeat(310 * 1024)) })).error, 'size');
+    assert.equal((await post('/api/characters/add', { role: 'you', data: png('x') }, { 'sec-fetch-site': 'cross-site' })).status, 403);
+    const roles = JSON.parse((await get(port, '/api/characters')).body).chars.map((c) => c.stem + ':' + c.role).sort();
+    assert.deepEqual(roles, ['Ghost Writer 2:agent', 'Ghost Writer:agent', 'lead 2:agent', 'you:you']);
+    assert.deepEqual(await post('/api/characters/remove', { file: 'Ghost Writer.png' }), { status: 200, ok: true }); assert.ok(!fs.existsSync(path.join(dir, 'Ghost Writer.png')));
+    assert.equal((await post('/api/characters/remove', { file: '../server.js' })).error, 'file'); assert.equal((await post('/api/characters/remove', { file: 'replaced' })).error, 'file');
+    assert.equal(fs.readdirSync(path.join(dir, 'replaced')).length, 2);   // nothing deleted: you.png and Ghost Writer.png wait there
+  } finally { stop(); delete process.env.AGENT_STANDUP_CHARACTERS; }
 });

@@ -203,7 +203,8 @@
   .ticker.on { display:block } .ticker i { font-style:normal; color:#ffd24a } .ticker.flash { animation:flash .25s } @keyframes flash { from { background:#3b5bdb } }
   /* character animation: all state-driven from the tile's classes */
   .fig { transform-origin:50px 76px; animation:bob 4.4s ease-in-out infinite; animation-delay:var(--d,0s) } @keyframes bob { 50% { transform:translateY(-.9px) } }
-  .tile.speaking .fig { animation:talk .46s ease-in-out infinite } @keyframes talk { 50% { transform:scale(1.025,.985) translateY(-.5px) } }
+  .tile.speaking .fig { animation:talk .46s ease-in-out infinite } .tile.speaking .fig.still { animation:bob 4.4s ease-in-out infinite; animation-delay:var(--d,0s) }   /* a character with a head of its own: the body does not squash, the head nods */
+  .chead { transform-origin:50px 44px } .tile.speaking .chead, #pcam.speaking .chead { animation:nod .6s ease-in-out infinite } @keyframes nod { 35% { transform:rotate(-.25deg) translateY(-.18px) } 75% { transform:rotate(.15deg) } }   /* very light: the mouth does the talking */ @keyframes talk { 50% { transform:scale(1.025,.985) translateY(-.5px) } }
   .tile.vanishing { pointer-events:none; z-index:3; animation:vanish 1.2s cubic-bezier(.45,0,.75,.35) forwards }
   @keyframes vanish { 0% { filter:none; transform:none; opacity:1 } 16% { filter:brightness(1.7) saturate(1.5); transform:scale(1.05) } 55% { filter:brightness(2.3) blur(1.5px); transform:scale(.88) rotate(-3deg); opacity:.85 } 100% { filter:brightness(3.4) blur(11px); transform:scale(.12) rotate(11deg); opacity:0 } }
   .tile.vanishing::after { content:''; position:absolute; inset:0; background:radial-gradient(circle,#fff 0,rgba(255,255,255,0) 68%); opacity:0; animation:flash2 .7s ease-out .15s }
@@ -219,7 +220,9 @@
   .tile.working .arm { display:none } .tile .laptop, .tile .hands, .tile .sparks, .tile .grin, .tile .eyes-happy, .tile .mouth { display:none }
   .tile.working .laptop, .tile.working .hands, .tile.done .sparks, .tile.done .eyes-happy { display:inline } .tile.done .eyes-open { display:none }
   .tile.speaking .mouth { display:inline } .tile.speaking .smile, .tile.speaking .grin { display:none } .tile.done:not(.speaking) .smile { display:none } .tile.done:not(.speaking) .grin { display:inline }
-  .hand { animation:type .34s ease-in-out infinite } .hand.r { animation-delay:-.17s } @keyframes type { 50% { transform:translateY(-1.3px) } }
+  .hand { animation:type .34s ease-in-out infinite } .hand.r { animation-delay:-.17s } .tile.working .chand { animation:type .34s ease-in-out infinite } .tile.working .chand.r { animation-delay:-.17s }
+  .claptop { display:none } .claptop.on, .tile.lap .claptop { display:inline } .tile.lap .claptop { animation:lapin .5s cubic-bezier(.2,.8,.3,1) } .tile.lapout .claptop { animation:lapout .45s ease-in forwards }   /* a laptop pulled out from under the desk, and put away */
+  @keyframes lapin { from { transform:translateY(16px) } } @keyframes lapout { to { transform:translateY(18px) } } @keyframes type { 50% { transform:translateY(-1.3px) } }
   .tw { animation:tw 3.2s ease-in-out infinite } .pulse { animation:tw 1.7s ease-in-out infinite } @keyframes tw { 50% { opacity:.25 } }
   .drift { animation:drift 24s ease-in-out infinite alternate } @keyframes drift { to { transform:translateX(9px) } }
   .steam { animation:steam 2.6s ease-in-out infinite } @keyframes steam { 50% { transform:translateY(-1.4px); opacity:.25 } }
@@ -256,14 +259,14 @@
   body.compact #stage .tile .prop { top:2px; left:34px; right:auto; font-size:16px }
   body.compact #stage .tile .status:empty { display:none }
   body.compact #stage .tile .tag { order:1 } body.compact #stage .tile .status { order:2 } body.compact #stage .tile .prop { order:3 }
-  @media (max-width:899px) { #menu .mi[data-t=roster] { display:none } }   /* the agents list only exists from 900 px: no switch for it under that */
+  @media (max-width:899px) { :is(#menu,#prefs) .mi[data-t=roster] { display:none } }   /* the agents list only exists from 900 px: no switch for it under that */
   body.tiny #present { display:none !important } body.tiny #hl { display:none } body.tiny #gantt { display:none }   /* under 300 px: the rows only */
-  #menu.on { display:block } #menu h4 { margin:8px 10px 4px; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); font-weight:600 }
+  #menu.on { display:block } :is(#menu,#prefs) h4 { margin:8px 10px 4px; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); font-weight:600 }
   .mi { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:8px 10px; border-radius:8px } .mi:hover { background:var(--panel2) }
   .sw { width:30px; height:17px; border-radius:99px; background:#3a3e50; position:relative; flex:none; transition:background .15s } .sw::after { content:''; position:absolute; top:2px; left:2px; width:13px; height:13px; border-radius:50%; background:#fff; transition:transform .15s }
   .sw.on { background:var(--accent) } .sw.on::after { transform:translateX(13px) }
-  #menu select { width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 8px; margin:2px 0 6px } #menu .box { padding:0 10px }
-  #menu .hint { font-size:11.5px; color:#ffb347; padding:0 10px 6px }
+  :is(#menu,#prefs) select { width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 8px; margin:2px 0 6px } :is(#menu,#prefs) .box { padding:0 10px }
+  :is(#menu,#prefs) .hint { font-size:11.5px; color:#ffb347; padding:0 10px 6px }
   #card { position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center; text-align:center; background:radial-gradient(circle at 50% 40%,#2a3a66,#05060c); color:#fff }
   #card.on { display:flex; animation:fadein .4s } @keyframes fadein { from { opacity:0 } }
   #card h1 { font:900 clamp(34px,8vw,90px)/1 "Comic Sans MS","Chalkboard SE",sans-serif; margin:0; text-shadow:4px 4px 0 #d8372b, 8px 8px 0 #111 } #card p { font-size:clamp(14px,2.2vw,24px); color:#cdd6f4; max-width:70vw; margin:16px auto 0 }
@@ -271,8 +274,20 @@
   #detail.on { display:flex } #detail .hd { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line) }
   #dbody { overflow:auto; padding:6px 14px 14px } #dbody h3 { margin:14px 0 4px; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim) }
   #dbody pre { white-space:pre-wrap; word-break:break-word; background:var(--bg); padding:8px; border-radius:6px; margin:0; font:11.5px/1.4 ui-monospace,Menlo,monospace }
+  #prefs { position:fixed; inset:0; z-index:16; display:none; align-items:flex-start; justify-content:center; padding:7vh 14px 14px; background:rgba(5,6,12,.72) } #prefs.on { display:flex }   /* ⚙ → All settings: what is not changed every day */
+  #prefs .pbox { width:min(780px,100%); max-height:86vh; overflow:auto; overscroll-behavior:contain; background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.6); padding:14px 12px 16px }
+  #prefs .phead { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:2px 10px 6px } #prefs h2 { margin:0; font:900 22px "Comic Sans MS","Chalkboard SE",sans-serif }
+  #prefs .pcols { display:grid; grid-template-columns:1fr 1fr; gap:4px 18px } @media (max-width:640px) { #prefs .pcols { grid-template-columns:1fr } }
+  #prefs .flash { animation:flash 1.6s ease } @keyframes flash { 0%, 40% { background:rgba(124,156,255,.28) } }
+  #prefs .pfoot { display:flex; justify-content:flex-end; padding:12px 10px 0; margin-top:8px; border-top:1px solid var(--line) } #prefsReset.sure { border-color:#ff7a6b; color:#ffb4a8 }
+  #menuTip { position:fixed; z-index:13; max-width:260px; padding:10px 12px; border-radius:10px; background:#2b3352; border:1px solid var(--accent); box-shadow:0 10px 30px rgba(0,0,0,.5); font-size:12.5px; line-height:1.45; color:var(--text) } #menuTip::before { content:''; position:absolute; top:-7px; right:var(--ax,14px); width:12px; height:12px; background:#2b3352; border-left:1px solid var(--accent); border-top:1px solid var(--accent); transform:rotate(45deg) } #menuTip .btn { display:block; margin:8px 0 0 auto }   /* once, after the menu moved */
+  a.artist { color:#f5c04a; text-underline-offset:2px } #menuShop:empty { display:none } #menuShop { margin:2px 0 8px; font-size:12px; line-height:1.5; color:#c3c6d4 }   /* the Halloween pack, for those who do not have it */
   #recap { position:fixed; inset:0; z-index:15; background:rgba(5,6,12,.88); display:none; overflow:auto; padding:28px 16px } #recap.on { display:block }
   #recap .box { max-width:860px; margin:0 auto; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px 26px }
+  .cgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px } .ccard { display:block; padding:0; text-align:left; background:var(--bg); border:2px solid var(--line); border-radius:12px; overflow:hidden; color:inherit; font:inherit; cursor:pointer } .ccard:hover { border-color:#4a5070 } .ccard.on { border-color:var(--accent); box-shadow:0 0 0 3px rgba(124,156,255,.18) }   /* ⚙ → Characters: the window */
+  .ccard .pv { position:relative; display:block; aspect-ratio:4/3; background:#1b1e2a; overflow:hidden } .ccard .pv > svg, .ccard .pv > img { display:block; width:100%; height:100%; object-fit:cover } .ccard .pics { display:flex; height:100%; align-items:flex-end; justify-content:center; gap:4px; padding:10px 10px 6px } .ccard .pics img { height:72%; max-width:33%; object-fit:contain } .ccard .pvx { display:grid; place-items:center; height:100%; font-size:38px }
+  .ccard b { display:block; padding:8px 10px 0; font-size:13.5px } .ccard .sub { display:block; padding:2px 10px 10px; font-size:11.5px; color:var(--dim) } .ccard .ptag { position:absolute; top:7px; right:7px; padding:2px 9px; border-radius:999px; background:#f5c04a; color:#10131c; font:700 12px system-ui,sans-serif }
+  .cmore { margin-top:12px; font-size:12.5px; line-height:1.55; color:#c3c6d4 } .cmore > img { max-width:440px } .cmore:empty { display:none } .slots { display:grid; gap:8px; margin:10px 0 } .slot { display:flex; flex-wrap:wrap; align-items:center; gap:6px } .slot b { min-width:86px } .mine { display:flex; flex-wrap:wrap; gap:6px } .mine .chip { display:inline-flex; align-items:center; gap:6px; padding:3px 4px; background:var(--panel2); border:1px solid var(--line); border-radius:8px } .mine .chip img { width:26px; height:26px; object-fit:contain } .mine .ic { padding:0 4px }
   #recap h1 { margin:0 0 14px; font:900 26px "Comic Sans MS","Chalkboard SE",sans-serif; text-shadow:2px 2px 0 #d8372b } #recap h3 { margin:20px 0 6px; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim) }
   .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px } .kpi { background:var(--bg); border-radius:10px; padding:10px 12px } .kpi b { display:block; font-size:22px } .kpi span { color:var(--dim); font-size:11.5px }
   .coffee { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:20px; padding:12px 14px; background:var(--bg); border:1px dashed #4a4f66; border-radius:10px; font-size:13px; color:#c3c6d4 }
@@ -308,19 +323,48 @@
 <div id="menu">
   <input id="menuQ" type="search" placeholder="Search settings…" aria-label="Search settings" style="margin:4px 8px 2px;width:calc(100% - 16px)">
   <div class="hint" id="menuNone" style="display:none;padding-top:6px;color:var(--dim)" data-fr="Aucun réglage trouvé" data-en="No setting found">Aucun réglage trouvé</div>
+  <div id="menuFound"></div>
   <h4 data-fr="Langue" data-en="Language">Langue</h4>
   <div class="box"><select id="langSel" aria-label="Language"></select></div>
   <button class="mi" data-t="callTr" id="callTrMi" style="display:none"><span data-fr="Appel dans cette langue (traduit avec votre Claude Code)" data-en="Call in this language (translated with your Claude Code)">Appel dans cette langue (traduit avec votre Claude Code)</span><i class="sw"></i></button>
   <div class="hint" id="trHint" style="display:none"></div>
   <h4 data-fr="Son" data-en="Sound">Son</h4>
   <button class="mi" data-t="voice"><span data-fr="Voix des agents" data-en="Agent voices">Voix des agents</span><i class="sw"></i></button>
-  <button class="mi" data-t="office"><span data-fr="Ambiance de bureau (clavier, café…)" data-en="Office ambience (keys, coffee…)">Ambiance de bureau (clavier, café…)</span><i class="sw"></i></button>
-  <div class="box" id="officeBox" style="display:none"><input id="officeVol" type="range" min="0.1" max="1" step="0.05" style="width:100%" aria-label="Ambience volume"></div>
-  <button class="mi" data-t="notify"><span data-fr="Me prévenir quand les agents ont fini" data-en="Notify me when agents finish">Me prévenir quand les agents ont fini</span><i class="sw"></i></button>
-  <button class="mi" data-t="music"><span data-fr="Musique d’ambiance (radio FIP)" data-en="Office music (FIP radio)">Musique d’ambiance (radio FIP)</span><i class="sw"></i></button>
-  <div class="box" id="musicBox" style="display:none"><select id="station"></select><input id="musicVol" type="range" min="0" max="1" step="0.05" style="width:100%" aria-label="Music volume"></div>
   <div class="box" id="vstyleBox"><label class="lbl" for="vstyle" data-fr="Style des voix" data-en="Voice style">Style des voix</label><select id="vstyle"></select><div class="hint" id="vstyleTip" style="padding:6px 0 0;display:none" data-fr="Pour la meilleure expérience, choisissez les voix naturelles." data-en="For the best experience, pick the natural voices.">Pour la meilleure expérience, choisissez les voix naturelles.</div></div>
   <div class="box" id="kokoroBox" style="display:none"><button class="btn" id="kokoroInstall" style="width:100%"></button><div class="hint" id="kokoroHint" style="padding:2px 0 6px"></div></div>
+  <h4 data-fr="Personnages" data-en="Characters">Personnages</h4>
+  <div class="box"><button class="btn" id="charPick" style="width:100%;display:flex;align-items:center;gap:8px;text-align:left"><span id="charNow" style="flex:1;min-width:0"></span><span class="dim" aria-hidden="true">›</span></button></div>
+  <div class="box" id="menuShop"></div>
+  <h4 data-fr="Source" data-en="Source">Source</h4>
+  <div class="box"><div class="seg" style="width:100%" id="modeSeg"><button data-m="live" style="flex:1" data-fr="Live" data-en="Live">Live</button><button data-m="replay" style="flex:1" data-fr="Replay" data-en="Replay">Replay</button><button data-m="demo" style="flex:1" data-fr="Démo" data-en="Demo">Demo</button></div>
+    <select id="liveProj" style="display:none;margin-top:6px" title="Project to follow"></select>
+    <select id="sessions" style="display:none"></select></div>
+  <h4 data-fr="Plus" data-en="More">Plus</h4>
+  <button class="mi" id="mPrefs"><span data-fr="⚙ Tous les réglages (affichage, alertes…)" data-en="⚙ All settings (display, alerts…)">⚙ Tous les réglages (affichage, alertes…)</span><span class="dim" aria-hidden="true">›</span></button>
+  <h4 data-fr="Outils" data-en="Tools">Outils</h4>
+  <button class="mi" id="mCoffee" style="display:none"><span id="mCoffeeT"></span></button>
+  <button class="mi" id="mKeys"><span data-fr="⌨ Raccourcis clavier (?)" data-en="⌨ Keyboard shortcuts (?)">⌨ Raccourcis clavier (?)</span></button>
+  <button class="mi" id="mRecap"><span data-fr="📋 Récapitulatif" data-en="📋 Recap">📋 Récapitulatif</span></button>
+  <button class="mi" id="mExport"><span data-fr="🎞 Exporter la vidéo" data-en="🎞 Export video">🎞 Exporter la vidéo</span></button>
+  <button class="mi" id="mClip"><span data-fr="🎬 Clip à partager (25 s)" data-en="🎬 Clip to share (25 s)">🎬 Clip à partager (25 s)</span></button>
+  <button class="mi" data-t="hideCode"><span data-fr="Masquer code et fichiers dans les vidéos" data-en="Hide code & file names in videos">Masquer code et fichiers dans les vidéos</span><i class="sw"></i></button>
+  <button class="mi" id="mBrowser" style="display:none"><span data-fr="↗ Ouvrir dans le navigateur" data-en="↗ Open in browser">↗ Ouvrir dans le navigateur</span></button>
+  <button class="mi" id="mReport"><span data-fr="🐞 Signaler un problème" data-en="🐞 Report a problem">🐞 Signaler un problème</span></button>
+</div>
+<div id="menuTip" role="status" style="display:none"><span id="menuTipT"></span><button class="btn" id="menuTipOk"></button></div>
+<div id="prefs" role="dialog" aria-modal="true" aria-labelledby="prefsT"><div class="pbox">
+  <div class="phead"><h2 id="prefsT" data-fr="Réglages" data-en="Settings">Réglages</h2><button class="btn" id="prefsX" data-fr="Fermer" data-en="Close">Fermer</button></div>
+  <div class="pcols"><div class="pcol">
+  <h4 data-fr="Son et alertes" data-en="Sound and alerts">Son et alertes</h4>
+  <button class="mi" data-t="office"><span data-fr="Ambiance de bureau (clavier, café…)" data-en="Office ambience (keys, coffee…)">Ambiance de bureau (clavier, café…)</span><i class="sw"></i></button>
+  <div class="box" id="officeBox" style="display:none"><input id="officeVol" type="range" min="0.1" max="1" step="0.05" style="width:100%" aria-label="Ambience volume"></div>
+  <button class="mi" data-t="music"><span data-fr="Musique d’ambiance (radio FIP)" data-en="Office music (FIP radio)">Musique d’ambiance (radio FIP)</span><i class="sw"></i></button>
+  <div class="box" id="musicBox" style="display:none"><select id="station"></select><input id="musicVol" type="range" min="0" max="1" step="0.05" style="width:100%" aria-label="Music volume"></div>
+  <button class="mi" data-t="notify"><span data-fr="Me prévenir quand les agents ont fini" data-en="Notify me when agents finish">Me prévenir quand les agents ont fini</span><i class="sw"></i></button>
+  <h4 data-fr="Personnages" data-en="Characters">Personnages</h4>
+  <button class="mi" data-t="customLaptop"><span data-fr="Ordinateur devant vos personnages" data-en="Laptop in front of your own characters">Ordinateur devant vos personnages</span><i class="sw"></i></button>
+  <button class="mi" data-t="ownNames"><span data-fr="Garder les noms de mes agents" data-en="Keep my agents’ own names">Garder les noms de mes agents</span><i class="sw"></i></button>
+  </div><div class="pcol">
   <h4 data-fr="Affichage" data-en="Display">Affichage</h4>
   <button class="mi" data-t="roster"><span data-fr="Liste des agents (à gauche)" data-en="Agents list (left)">Liste des agents (à gauche)</span><i class="sw"></i></button>
   <button class="mi" data-t="reactions"><span data-fr="Barre de réactions (👍 👏 ☕)" data-en="Reactions bar (👍 👏 ☕)">Barre de réactions (👍 👏 ☕)</span><i class="sw"></i></button>
@@ -332,26 +376,9 @@
   <button class="mi" data-t="artNet"><span data-fr="Artifacts : charger leurs bibliothèques (depuis Internet)" data-en="Artifacts: load their libraries (from the internet)">Artifacts : charger leurs bibliothèques (depuis Internet)</span><i class="sw"></i></button>
   <button class="mi" data-t="visits"><span data-fr="Un visiteur quand une autre session vous attend" data-en="A visitor when another session needs you">Un visiteur quand une autre session vous attend</span><i class="sw"></i></button>
   <button class="mi" data-t="followTab" id="mFollowTab" style="display:none"><span data-fr="Suivre l’onglet Claude Code affiché" data-en="Follow the Claude Code tab I am on">Suivre l’onglet Claude Code affiché</span><i class="sw"></i></button>
-  <h4 data-fr="Source" data-en="Source">Source</h4>
-  <div class="box"><div class="seg" style="width:100%" id="modeSeg"><button data-m="live" style="flex:1" data-fr="Live" data-en="Live">Live</button><button data-m="replay" style="flex:1" data-fr="Replay" data-en="Replay">Replay</button><button data-m="demo" style="flex:1" data-fr="Démo" data-en="Demo">Demo</button></div>
-    <select id="liveProj" style="display:none;margin-top:6px" title="Project to follow"></select>
-    <select id="sessions" style="display:none"></select></div>
-  <h4 data-fr="Personnages" data-en="Characters">Personnages</h4>
-  <div class="box"><select id="charPack" aria-label="Characters"><option value="none" data-fr="Personnages dessinés" data-en="Drawn characters">Personnages dessinés</option><option value="folder" data-fr="Mon dossier" data-en="My folder">Mon dossier</option><option value="cats" data-fr="Pack de chats" data-en="Cat pack">Pack de chats</option></select></div>
-  <div class="box"><div id="charInfo" class="dim" style="font-size:11.5px;line-height:1.5"></div><div style="display:flex;gap:6px;margin-top:6px"><button class="btn" id="charReload" data-fr="Recharger" data-en="Reload">Recharger</button><button class="btn" id="charOpen" style="display:none" data-fr="Ouvrir le dossier" data-en="Open folder">Ouvrir le dossier</button></div></div>
-  <button class="mi" data-t="customLaptop"><span data-fr="Ordinateur devant vos personnages" data-en="Laptop in front of your own characters">Ordinateur devant vos personnages</span><i class="sw"></i></button>
-  <button class="mi" data-t="ownNames"><span data-fr="Garder les noms de mes agents" data-en="Keep my agents’ own names">Garder les noms de mes agents</span><i class="sw"></i></button>
-  <h4 data-fr="Outils" data-en="Tools">Outils</h4>
-  <button class="mi" id="mCoffee" style="display:none"><span id="mCoffeeT"></span></button>
-  <button class="mi" id="mKeys"><span data-fr="⌨ Raccourcis clavier (?)" data-en="⌨ Keyboard shortcuts (?)">⌨ Raccourcis clavier (?)</span></button>
-  <button class="mi" id="mRecap"><span data-fr="📋 Récapitulatif" data-en="📋 Recap">📋 Récapitulatif</span></button>
-  <button class="mi" id="mExport"><span data-fr="🎞 Exporter la vidéo" data-en="🎞 Export video">🎞 Exporter la vidéo</span></button>
-  <button class="mi" id="mClip"><span data-fr="🎬 Clip à partager (25 s)" data-en="🎬 Clip to share (25 s)">🎬 Clip à partager (25 s)</span></button>
-  <button class="mi" data-t="hideCode"><span data-fr="Masquer code et fichiers dans les vidéos" data-en="Hide code & file names in videos">Masquer code et fichiers dans les vidéos</span><i class="sw"></i></button>
-  <div class="keys">Space ⏯ · M 🔇 · T tree · R recap · L log · Esc ✕</div>
-  <button class="mi" id="mBrowser" style="display:none"><span data-fr="↗ Ouvrir dans le navigateur" data-en="↗ Open in browser">↗ Ouvrir dans le navigateur</span></button>
-  <button class="mi" id="mReport"><span data-fr="🐞 Signaler un problème" data-en="🐞 Report a problem">🐞 Signaler un problème</span></button>
-</div>
+  </div></div>
+  <div class="pfoot"><button class="btn" id="prefsReset" data-fr="Réglages par défaut" data-en="Reset to defaults">Réglages par défaut</button></div>
+</div></div>
 
 <main>
   <nav id="roster" aria-label="Agents"></nav>
@@ -362,7 +389,7 @@
     <div id="files"></div>
     <div id="hl"></div>
     <canvas id="gantt" height="90"></canvas>
-    <div id="toasts" role="status" aria-live="polite"><div class="toast offer" id="vOffer" style="display:none"><span id="vOfferT"></span><button class="btn" id="vOfferB"></button><button class="ic" id="vOfferX" aria-label="Close">✕</button></div><div class="toast offer" id="trNote" style="display:none"><span id="trNoteT"></span><button class="btn" id="trNoteOk"></button><button class="btn" id="trNoteOff"></button></div></div><div id="visit" role="status" aria-live="polite"></div>
+    <div id="toasts" role="status" aria-live="polite"><div class="toast offer" id="vOffer" style="display:none"><span id="vOfferT"></span><button class="btn" id="vOfferB"></button><button class="ic" id="vOfferX" aria-label="Close">✕</button></div><div class="toast offer" id="packNote" style="display:none"><span id="packNoteT"></span><button class="btn" id="packNoteB"></button><button class="ic" id="packNoteX" aria-label="Close">✕</button></div><div class="toast offer" id="trNote" style="display:none"><span id="trNoteT"></span><button class="btn" id="trNoteOk"></button><button class="btn" id="trNoteOff"></button></div></div><div id="visit" role="status" aria-live="polite"></div>
     <div id="empty"><h2 id="eT"></h2><p id="eP"></p><button class="cta" id="eDemo"></button></div>
     <div id="gate"><h2 id="gT"></h2><p id="gP"></p><button class="cta" id="gB"></button></div>
     <div id="detail"><div class="hd"><b id="dname"></b><button class="ic" id="dclose">✕</button></div><div id="dbody"></div></div>
@@ -404,8 +431,10 @@ const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
 
 let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'kokoro', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call', hideCode: false, ownNames: true, visits: true, followTab: true, files: true, callTr: true };
+const PREF_DEFAULTS = { ...prefs };   // for ⚙ → All settings → Reset to defaults
 { let loc = {}; try { loc = JSON.parse(localStorage.getItem('cc.prefs') || '{}') || {}; } catch {}   // the settings file (shared by every window) and this origin's copy: the more recent one wins
   const sv = window.SAVED_PREFS && typeof window.SAVED_PREFS === 'object' ? window.SAVED_PREFS : {}; Object.assign(prefs, (sv._t || 0) > (loc._t || 0) ? sv : loc); }
+const HAD_PREFS = !!prefs._t;   // someone who used the app before this page: shown once where the settings went
 if (prefs.vstyle === 'babble') prefs.vstyle = 'animal', prefs.vstyleChosen = true;
 // Two styles since 1.32.0: the natural voices (the model, the default, which babble until they are installed) and the Animal Crossing babble. The cartoon voices, Simlish and the plain system voices are no longer offered:
 // whoever had Simlish is on the other babble, everyone else on the natural voices. The cartoon voices read the words with no install, so the call offers the real ones once more to who had closed that line.
@@ -466,30 +495,128 @@ const hexRGB = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const mix = (a, b, t) => { const A = hexRGB(a), B = hexRGB(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
 // ---- custom characters: the person's own pixel art (folder served by /api/characters) replaces the drawn figure, scene and desk stay ----
 let CHARS = { lead: null, you: null, pool: [], dir: '', n: 0 };
+const CHAR_CHOICES = ['none', 'folder', 'cats', 'halloween'];   // what ⚙ → Characters offers: the drawn characters, one's own folder, the built-in packs and the packs of the shop
+let SHOP = {};   // the packs of the shop, by name, as the server knows them: how many characters are here (none until it is bought), its price, the code of the purchase
 const toData = (url) => fetch(url).then((r) => r.blob()).then((b) => new Promise((res) => { const f = new FileReader(); f.onload = () => res(f.result); f.readAsDataURL(b); }));
+const imgSize = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res([i.naturalWidth, i.naturalHeight]); i.onerror = () => res([0, 0]); i.src = src; }), isDrawing = (wh) => Math.max(wh[0], wh[1]) > 128;   // a large image is a drawing, shown smooth; pixel art (32 or 64 px) keeps its hard pixels
+const youMode = () => prefs.charYou || (prefs.charPack === 'none' ? 'vampire' : 'cast');   // who you are: the cast's own human, or the vampire of the Halloween pack, everyone's and free (the default with the drawn characters, so that everyone meets the pack)
+let VAMP = null;   // the free vampire (examples/vampire), loaded once
+async function charEntry(base, c) {   // one character of a folder or a pack, ready to draw: its pictures as data, their sizes, what it may wear
+  const e = { name: c.stem, idle: await toData(base + encodeURIComponent(c.file)), talk: c.talk ? await toData(base + encodeURIComponent(c.talk)) : null, bg: c.bg ? await toData(base + encodeURIComponent(c.bg)) : null, desks: await Promise.all((c.desks || []).map((f) => toData(base + encodeURIComponent(f)))), hands: c.hands ? await toData(base + encodeURIComponent(c.hands)) : null, head: c.head ? await toData(base + encodeURIComponent(c.head)) : null };
+  const wh = await imgSize(e.idle), rm = e.bg ? await imgSize(e.bg) : [0, 0]; e.smooth = isDrawing(wh); e.bgSmooth = isDrawing(rm);
+  e.full = !!(wh[1] && rm[1] && Math.abs(wh[0] / wh[1] - rm[0] / rm[1]) < .01);   // a character drawn on a sheet of the same shape as its room is laid over the room as it is: its artist placed it, and it may be wider or taller than the usual place of a character
+  e.extras = null; if (c.extras) { e.extras = {}; for (const k of Object.keys(c.extras).sort()) e.extras[k] = await Promise.all(c.extras[k].map((f) => toData(base + encodeURIComponent(f)))); }
+  return e;
+}
+const vampEntry = async () => { const c = ((await (await fetch('/api/characters?pack=vampire')).json()).chars || []).find((x) => x.role === 'you'); return c ? charEntry('/packs/vampire/', c) : null; };
 async function loadChars() {
-  if (!['none', 'folder', 'cats'].includes(prefs.charPack)) {   // drawn characters by default; someone who already had images in their folder keeps them (this is also where a choice of the starter pack, no longer shipped, ends up)
-    let n = 0; try { n = ((await (await fetch('/api/characters')).json()).chars || []).length; } catch {} prefs.charPack = n ? 'folder' : 'none'; savePrefs(); const sel = $('#charPack'); if (sel) sel.value = prefs.charPack;
+  if (!CHAR_CHOICES.includes(prefs.charPack)) {   // drawn characters by default; someone who already had images in their folder keeps them (this is also where a choice of the starter pack, no longer shipped, ends up)
+    let n = 0; try { n = ((await (await fetch('/api/characters')).json()).chars || []).length; } catch {} prefs.charPack = n ? 'folder' : 'none'; savePrefs();
   }
-  const pack = prefs.charPack, next = { lead: null, you: null, pool: [], dir: '', n: 0, pack };
-  if (pack === 'none') { try { next.dir = (await (await fetch('/api/characters')).json()).dir || ''; } catch {} CHARS = next; return; }   // the drawn characters, whatever is in the folder
+  const pack = prefs.charPack, next = { lead: null, you: null, pool: [], dir: '', n: 0, pack, youFrom: '', castYou: null };   // castYou: the cast's own human, for the window
+  try { SHOP = Object.fromEntries((await (await fetch('/api/packs')).json()).filter((p) => p.shop).map((p) => [p.name, p])); } catch {}
   try {
-    const base = pack === 'folder' ? '/characters/' : '/packs/' + pack + '/', d = await (await fetch('/api/characters?pack=' + (pack === 'folder' ? '' : pack))).json(); next.dir = d.dir || '';
-    for (const c of d.chars || []) { try { const e = { name: c.stem, idle: await toData(base + encodeURIComponent(c.file)), talk: c.talk ? await toData(base + encodeURIComponent(c.talk)) : null };
-      if (c.role === 'lead') next.lead = e; else if (c.role === 'you') next.you = e; else next.pool.push(e); next.n++; } catch {} }
+    const base = pack === 'folder' ? '/characters/' : '/packs/' + pack + '/', d = await (await fetch('/api/characters?pack=' + (pack === 'folder' || pack === 'none' ? '' : pack))).json(); next.dir = d.dir || '';   // with the drawn characters, only where the folder is
+    if (pack !== 'none') for (const c of d.chars || []) { try { const e = await charEntry(base, c); if (c.role === 'lead') next.lead = e; else if (c.role === 'you') { next.you = e; next.castYou = e; } else next.pool.push(e); next.n++; } catch {} }
   } catch {}
+  if (youMode() === 'vampire') { try { VAMP = VAMP || (await vampEntry()); if (VAMP) { next.you = VAMP; next.youFrom = 'vampire'; } } catch {} }
   CHARS = next;
 }
 const customFor = (id) => {   // sub-agents: the best-hashed image no other agent holds; the whole pool again only once every image is taken
   if (id === 'main') return CHARS.lead; if (id === 'user') return CHARS.you; if (!CHARS.pool.length) return null;
   const used = new Set(Object.keys(S.agents).filter((k) => k !== id && S.agents[k].custom).map((k) => S.agents[k].custom.name));
-  const free = CHARS.pool.filter((c) => !used.has(c.name)), from = free.length ? free : CHARS.pool;
-  return from.reduce((b, c) => (hash(id + '|' + (c.idle || '')) > hash(id + '|' + (b.idle || '')) ? c : b));
+  const free = CHARS.pool.filter((c) => !used.has(c.name)), varied = CHARS.pool.filter((c) => c.extras && Object.keys(c.extras).some((k) => !/^sticker/.test(k))), from = free.length ? free : varied.length ? varied : CHARS.pool;   // varied: what the character itself wears (a hat, glasses), not the stickers of its laptop   // every image taken: one that has extras (a hat, glasses…) is given again, since it does not look the same twice
+  return from.reduce((b, c) => (hash(id + '|' + c.name) > hash(id + '|' + b.name) ? c : b));   // by the character's name, not its picture: a pack drawn again gives each agent the same character
 };
-function renderCharInfo() {
-  const el = $('#charInfo'); if (!el) return;
-  el.innerHTML = CHARS.pack === 'none' ? esc(L('Les personnages dessinés par l’application. Choisissez « Mon dossier » pour vos propres images, ou un pack.', 'The characters drawn by the app. Pick “My folder” for your own images, or a pack.')) : CHARS.pack !== 'folder' ? `✓ ${CHARS.n} ${esc(L('personnages du pack', 'characters from the pack'))} · ${esc(L('Pour les modifier, copiez-les dans votre dossier et choisissez « Mon dossier ».', 'To tweak them, copy them into your folder and pick “My folder”.'))}` : CHARS.n ? `✓ ${CHARS.n} ${esc(L('personnage(s) personnalisé(s) chargé(s)', 'custom character(s) loaded'))}` : `${esc(L('Déposez vos images (PNG) dans ce dossier pour remplacer les personnages :', 'Drop your pixel art (PNG) in this folder to replace the characters:'))}<br><code style="word-break:break-all">${esc(CHARS.dir)}</code><br>${esc(L('lead.png = le chef · you.png = vous · les autres = les sous-agents · nom-talk.png = bouche ouverte', 'lead.png = the lead · you.png = you · others = the sub-agents · name-talk.png = open mouth'))}`;
-  $('#charOpen').style.display = EMBED ? '' : 'none';
+// ---- the shop: a pack that is sold. The page never sees a card: the button asks the app's server for a payment page (Stripe's, through the website), opens it, and then asks for the pack until it is paid
+const shopSay = (t) => { const m = $('#shopMsg'); if (m) m.textContent = t; };
+const shopWhy = (e) => ({ code: L('Ce code n’est pas valide.', 'This code is not valid.'), refunded: L('Cet achat a été remboursé.', 'This purchase was refunded.'), unpaid: L('Ce paiement n’est pas encore terminé.', 'This payment is not complete yet.'), closed: L('La boutique n’est pas encore ouverte.', 'The shop is not open yet.') }[e] || L('La boutique est injoignable. Vérifiez votre connexion et réessayez.', 'The shop cannot be reached. Check your connection and try again.'));
+const shopAsk = async (what, body) => { try { return await (await fetch('/api/packs/' + what, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json(); } catch { return { error: 'offline' }; } };
+let shopPoll = 0;
+const shopDone = (name) => { prefs.charPack = name; savePrefs(); reloadChars(); };   // a pack just bought is the cast at once
+function shopWait(name) {   // after the payment page was opened: every few seconds for a quarter of an hour, or until it is there
+  clearInterval(shopPoll); const until = Date.now() + 15 * 60e3;
+  shopPoll = setInterval(async () => { if (Date.now() > until) return clearInterval(shopPoll); const r = await shopAsk('claim', { pack: name }); if (r.ok) { clearInterval(shopPoll); shopDone(name); } }, 4000);
+}
+function renderShop(el, name, shop) {
+  el.innerHTML = `<img src="pack-${esc(name)}.jpg" alt="" style="display:block;width:100%;border-radius:8px;margin-bottom:8px">${esc(L('Des personnages d’Halloween dessinés à la main, chacun dans sa pièce.', 'Hand-drawn Halloween characters, each in its own room.'))}<br>${esc(L('Un seul paiement, par carte, sur une page Stripe. Sans compte.', 'One payment, by card, on a Stripe page. No account.'))}<br>${esc(L('2 € minimum : vous pouvez donner plus sur la page de paiement, si vous le souhaitez.', '2 € minimum: you can pay more on the payment page if you like.'))}${shop.artist ? `<br>${esc(L('Dessinés par', 'Drawn by'))} <a href="#" class="artist">${esc(shop.artist)}</a>` : ''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn" id="shopBuy" style="background:var(--accent);border-color:transparent;color:#10131c;font-weight:600">${esc(L('Acheter', 'Buy'))} · ${esc(shop.price)}</button><button class="btn" id="shopHave">${esc(L('Je l’ai déjà acheté', 'I already bought it'))}</button></div>
+    <div id="shopCode" style="display:none;gap:6px;margin-top:8px"><input id="shopKey" aria-label="${esc(L('Code d’achat', 'Purchase code'))}" placeholder="${esc(L('Code d’achat', 'Purchase code'))}" autocomplete="off" spellcheck="false" style="flex:1;min-width:0;font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px"><button class="btn" id="shopGo">${esc(L('Installer', 'Install'))}</button></div>
+    <div id="shopMsg" role="status" style="margin-top:8px"></div>`;
+  $('#shopBuy').onclick = async () => {
+    const w = EMBED ? null : window.open('', '_blank');   // opened in the click itself: a browser blocks a window that opens later, once the shop has answered
+    shopSay(L('Ouverture de la page de paiement…', 'Opening the payment page…')); const r = await shopAsk('buy', { pack: name });
+    if (!r.url) { if (w) w.close(); return shopSay(shopWhy(r.error)); }
+    if (w && !w.closed) { w.opener = null; w.location.href = r.url; } else openExternal(r.url);
+    shopSay(L('En attente du paiement. Le pack s’installe tout seul une fois payé.', 'Waiting for the payment. The pack installs by itself once it is paid.')); shopWait(name);
+  };
+  el.querySelectorAll('.artist').forEach((a) => (a.onclick = (e) => { e.preventDefault(); openExternal(shop.artistUrl); }));
+  $('#shopHave').onclick = () => { $('#shopCode').style.display = 'flex'; $('#shopKey').focus(); };
+  $('#shopGo').onclick = async () => { const code = $('#shopKey').value.trim(); if (!code) return; shopSay('…'); const r = await shopAsk('claim', { pack: name, code }); if (r.ok) shopDone(name); else shopSay(shopWhy(r.error)); };
+  if (shop.waiting && !renderShop.tried) { renderShop.tried = true; shopAsk('claim', { pack: name }).then((r) => { if (r.ok) shopDone(name); }); }   // a payment page was opened earlier (the app was closed meanwhile, say): asked once, in case it was paid since
+}
+const packLabel = (name) => ({ none: L('Personnages dessinés', 'Drawn characters'), folder: L('Mon dossier', 'My folder'), cats: L('Pack de chats', 'Cat pack'), halloween: L('Pack Halloween', 'Halloween pack') }[name] || String(name).replace(/^./, (c) => c.toUpperCase()));
+function renderCharInfo() {   // the line of ⚙ → Characters, and the window when it is open
+  if (!$('#recap.on #chdlg')) renderMenuShop(); const el = $('#charNow'); if (el) el.textContent = packLabel(CHARS.pack || prefs.charPack || 'none') + ' · ' + (youMode() === 'vampire' ? L('Vous : le vampire', 'You: the vampire') : L('Vous : comme l’équipe', 'You: like the cast'));
+  return $('#recap.on #chdlg') ? openChars() : Promise.resolve();
+}
+const CHPICK = { more: '' };   // what the window shows under the cast: the folder, a pack, or the shop of a pack not bought yet (by default, the cast chosen)
+async function openChars() {   // ⚙ → Characters: the whole cast (drawn, a pack, a pack of the shop, one's own pictures), then who you are
+  let packs = [], mine = { chars: [], dir: CHARS.dir }; try { packs = await (await fetch('/api/packs')).json(); } catch {} try { mine = await (await fetch('/api/characters')).json(); } catch {}
+  if (!VAMP) { try { VAMP = await vampEntry(); } catch {} }
+  const files = {}; for (const p of packs.filter((x) => !x.shop && x.name !== 'vampire')) { try { files[p.name] = ((await (await fetch('/api/characters?pack=' + p.name)).json()).chars || []).map((c) => c.file); } catch { files[p.name] = []; } }
+  const cast = CHARS.pack || prefs.charPack, more = CHPICK.more || cast, ym = youMode(); let k = 0;
+  const tile = (id, custom) => avatarSVG({ ...persona0({ id, role: '' }), custom: custom || null }, undefined, 'cp' + k++ + '_');   // the very drawing of a tile
+  const pics = (base, list, px) => `<span class="pics">${list.slice(0, 3).map((f) => `<img src="${base + encodeURIComponent(f)}" alt=""${px ? ' style="image-rendering:pixelated"' : ''}>`).join('')}</span>`;
+  const many = (n) => `${n} ${n === 1 ? L('personnage', 'character') : L('personnages', 'characters')}`;
+  const card = (on, pv, title, sub, tag, data) => `<button class="ccard${on ? ' on' : ''}" ${data}><span class="pv">${pv}${tag ? `<i class="ptag">${esc(tag)}</i>` : ''}</span><b>${esc(title)}</b><span class="sub">${esc(sub)}</span></button>`;
+  const castCards = [card(cast === 'none', tile('main'), packLabel('none'), L('Ceux de l’app', 'The app’s own'), '', 'data-cast="none"'),
+    ...packs.filter((p) => p.shop).map((p) => card(cast === p.name && p.n, `<img src="pack-${esc(p.name)}.jpg" alt="">`, packLabel(p.name), p.n ? `✓ ${L('Le vôtre', 'Yours')} · ${many(p.n)}` : p.artist ? `${L('Dessinés par', 'Drawn by')} ${p.artist}` : L('Dessinés à la main, chacun dans sa pièce', 'Hand-drawn, each in its own room'), p.n ? '' : p.price, `data-cast="${esc(p.name)}"`)),
+    ...packs.filter((p) => !p.shop && p.name !== 'vampire').map((p) => card(cast === p.name, pics('/packs/' + p.name + '/', files[p.name], true), packLabel(p.name), `${many(p.n)}`, '', `data-cast="${esc(p.name)}"`)),
+    card(cast === 'folder', mine.chars.length ? pics('/characters/', mine.chars.map((c) => c.file)) : '<span class="pvx">🖼️</span>', packLabel('folder'), mine.chars.length ? many(mine.chars.length) : L('Vos propres images', 'Your own pictures'), '', 'data-cast="folder"')];
+  const youCards = [card(ym === 'vampire', VAMP ? tile('user', VAMP) : '', L('Le vampire', 'The vampire'), L('Offert, du pack Halloween', 'Free, from the Halloween pack'), '', 'data-you="vampire"'),
+    card(ym === 'cast', CHARS.castYou ? tile('user', CHARS.castYou) : tile('user'), L('Comme l’équipe', 'Like the cast'), cast === 'none' || !CHARS.castYou ? L('Le personnage dessiné', 'The drawn character') : packLabel(cast), '', 'data-you="cast"')];
+  const box = $('#recap .box'), top = $('#recap').scrollTop; $('#menuShop').innerHTML = '';
+  box.innerHTML = `<div id="chdlg"><h1>${esc(L('Personnages', 'Characters'))}</h1>
+    <h3>${esc(L('L’équipe', 'The cast'))}</h3><div class="cgrid">${castCards.join('')}</div><div id="castMore" class="cmore"></div>
+    <h3>${esc(L('Vous', 'You'))}</h3><div class="cgrid">${youCards.join('')}</div>
+    <p style="text-align:right;margin:18px 0 0"><button class="btn" id="recapx">${esc(L('Fermer', 'Close'))}</button></p></div>`;
+  box.querySelectorAll('[data-cast]').forEach((b) => (b.onclick = async () => { const v = b.dataset.cast, sp = SHOP[v]; CHPICK.more = v; if (sp && !sp.n) return openChars(); prefs.charPack = v; savePrefs(); await reloadChars(); }));   // a pack not bought yet: its shop, and the cast stays as it is
+  box.querySelectorAll('[data-you]').forEach((b) => (b.onclick = async () => { prefs.charYou = b.dataset.you; savePrefs(); await reloadChars(); }));
+  $('#recapx').onclick = () => $('#recap').classList.remove('on');
+  const el = $('#castMore'), sp = SHOP[more];
+  if (sp && !sp.n) renderShop(el, more, sp);
+  else if (more === 'folder') renderFolder(el, mine);
+  else if (more === cast && more === 'none') el.textContent = L('Les personnages dessinés par l’application. Choisissez « Mon dossier » pour vos propres images, ou un pack.', 'The characters drawn by the app. Pick “My folder” for your own images, or a pack.');
+  else if (more === cast) {
+    el.innerHTML = `✓ ${CHARS.n} ${esc(L('personnages du pack', 'characters from the pack'))} · ${esc(L('Pour les modifier, copiez-les dans votre dossier et choisissez « Mon dossier ».', 'To tweak them, copy them into your folder and pick “My folder”.'))}${sp && sp.artist ? `<br>${esc(L('Dessinés par', 'Drawn by'))} <a href="#" class="artist">${esc(sp.artist)}</a>` : ''}`;
+    el.querySelectorAll('.artist').forEach((a) => (a.onclick = (e) => { e.preventDefault(); openExternal(sp.artistUrl); }));
+    if (sp && sp.code) { el.innerHTML += `<br>${esc(L('Votre code d’achat, pour installer le pack sur un autre ordinateur :', 'Your purchase code, to install the pack on another computer:'))} <code style="word-break:break-all;user-select:all">${esc(sp.code)}</code><br><button class="btn" id="shopUpdate" style="margin-top:6px">${esc(L('Mettre à jour le pack', 'Update the pack'))}</button> <span id="shopMsg" role="status"></span>`;
+      $('#shopUpdate').onclick = async () => { shopSay('…'); const r = await shopAsk('claim', { pack: more }); if (r.ok) reloadChars(); else shopSay(shopWhy(r.error)); }; }   // the pack as the shop has it now (characters added since): fetched again with the code kept here, only when asked
+  }
+  $('#recap').classList.add('on'); $('#recap').scrollTop = top;
+}
+function renderFolder(el, mine) {   // one's own pictures: where they are, a button per role to add one, and the ones there, each with a way to take it out (moved aside, never deleted)
+  const role = (c) => (c.role === 'lead' ? L('Chef', 'Lead') : c.role === 'you' ? L('Vous', 'You') : L('Sous-agent', 'Sub-agent'));
+  el.innerHTML = `${esc(L('Vos images sont dans ce dossier :', 'Your pictures are in this folder:'))} <code style="word-break:break-all">${esc(mine.dir || CHARS.dir || '')}</code>
+    <div class="slots">${[['you', L('Vous', 'You')], ['lead', L('Chef', 'Lead')], ['agent', L('Sous-agents', 'Sub-agents')]].map(([r, t]) => `<div class="slot"><b>${esc(t)}</b><button class="btn" data-add="${r}">${esc(r === 'agent' ? L('Ajouter des images', 'Add pictures') : L('Choisir une image', 'Choose a picture'))}</button>${r !== 'agent' ? `<button class="btn" data-add="${r}-talk">${esc(L('Bouche ouverte (facultatif)', 'Open mouth (optional)'))}</button>` : ''}</div>`).join('')}</div>
+    <div class="mine">${mine.chars.length ? mine.chars.map((c) => `<span class="chip"><img src="/characters/${encodeURIComponent(c.file)}" alt="">${esc(c.stem)} · ${esc(role(c))}<button class="ic" data-rm="${esc(c.file)}" aria-label="${esc(L('Retirer', 'Remove'))}" title="${esc(L('Retirer', 'Remove'))}">✕</button></span>`).join('') : esc(L('Aucune image pour l’instant.', 'No picture yet.'))}</div>
+    <p class="dim" style="margin:8px 0 0;font-size:11.5px">${esc(L('lead.png = le chef · you.png = vous · les autres = les sous-agents · nom-talk.png = bouche ouverte', 'lead.png = the lead · you.png = you · others = the sub-agents · name-talk.png = open mouth'))}</p>
+    <div style="display:flex;gap:6px;margin-top:8px"><button class="btn" id="charReload">${esc(L('Recharger', 'Reload'))}</button>${EMBED ? `<button class="btn" id="charOpen">${esc(L('Ouvrir le dossier', 'Open folder'))}</button>` : ''}</div>
+    <div id="shopMsg" role="status" style="margin-top:6px"></div><input type="file" id="charFile" accept="image/png,image/gif,image/webp,image/jpeg" hidden>`;
+  const inp = $('#charFile'), post = (p, b) => fetch(p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }).then((r) => r.json()).catch(() => ({ error: 'write' }));
+  el.querySelectorAll('[data-add]').forEach((b) => (b.onclick = () => { inp.multiple = b.dataset.add === 'agent'; inp.dataset.role = b.dataset.add; inp.value = ''; inp.click(); }));
+  inp.onchange = async () => {
+    let bad = 0; for (const f of [...inp.files].slice(0, 20)) { const data = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => res(''); r.readAsDataURL(f); }); if (!(await post('/api/characters/add', { role: inp.dataset.role, name: f.name, data })).file) bad++; }
+    prefs.charPack = 'folder'; if (/^you/.test(inp.dataset.role)) prefs.charYou = 'cast'; savePrefs(); CHPICK.more = 'folder'; await reloadChars();   // a picture added is meant to be seen: the folder becomes the cast, and a picture of you is you
+    if (bad) shopSay(L('Image refusée : PNG, GIF, WebP ou JPEG, 300 Ko au plus.', 'This picture could not be added: PNG, GIF, WebP or JPEG, up to 300 KB.'));
+  };
+  el.querySelectorAll('[data-rm]').forEach((b) => (b.onclick = async () => { await post('/api/characters/remove', { file: b.dataset.rm }); await reloadChars(); }));
+  $('#charReload').onclick = () => reloadChars(); if ($('#charOpen')) $('#charOpen').onclick = () => window.parent.postMessage({ agentStandup: 'openCharacters' }, '*');
+}
+function packNote() {   // once, to someone who is the vampire without the pack: where the rest of the cast is
+  const on = CHARS.youFrom === 'vampire' && !prefs.vampSeen && !Q.get('demo') && !(SHOP.halloween && SHOP.halloween.n), el = $('#packNote'); if (!el) return; el.style.display = on ? '' : 'none'; if (!on) return;
+  $('#packNoteT').textContent = L('Pour Halloween, vous êtes le vampire. Le reste de l’équipe est dans le pack Halloween.', 'This Halloween, you are the vampire. The rest of the cast is in the Halloween pack.'); $('#packNoteB').textContent = L('Voir le pack', 'See the pack');
 }
 function persona(a) { const p = persona0(a); p.custom = customFor(a.id); return p; }
 const subName = (a, h) => (a.own && prefs.ownNames ? (nameBook[a.id] = a.own) : a.given || uniqueName(a.id, h));   // own: the name the person gave this agent (see ownName in server.js); otherwise a first name from the list. a.own is tested first: the landing page reuses this section and has no settings
@@ -588,19 +715,30 @@ function avatarSVG(p, o, uid = '') {   // uid keeps SVG ids unique per instance:
   const lapDark = `<rect x="33" y="46" width="34" height="18" rx="2.8" fill="#3b4152"/><rect x="33" y="46" width="34" height="18" rx="2.8" fill="url(#${uid}lg)" opacity=".18"/><circle cx="50" cy="55" r="2.3" fill="${c1}"/><rect x="29.5" y="63.4" width="41" height="3" rx="1.5" fill="#262a36"/>`;   // for custom characters: darker, so it still shows under a white or cream sprite
   const hands = `<circle class="hand l" cx="38" cy="65.6" r="3.1" fill="${c2}"/><circle class="hand r" cx="62" cy="65.6" r="3.1" fill="${c2}"/>`;
   const sparks = star(22, 28, 3) + star(78, 22, 2.6, '#ff9bb8') + star(70, 40, 1.9, '#9be7ff') + star(30, 46, 1.6, '#ffe58a');
-  const custFig = (c, talking) => { const base = 'x="20" y="6" width="60" height="58" preserveAspectRatio="xMidYMax meet"', px = 'image-rendering:pixelated;';
-    return `<image class="cimg" href="${c.idle}" ${base} style="${px}${talking && c.talk ? 'display:none' : ''}"/>` + (c.talk ? `<image class="cimg cimg-talk" href="${c.talk}" ${base} style="${px}${talking ? '' : 'display:none'}"/>` : ''); };
-  const fig = p.custom ? custFig(p.custom, st && o.m === 2) : `${arm('l')}${bodyShape(p.shape, `url(#${gid})`, c2)}${arm('r')}${face}${acc}`;
+  const custFig = (c, talking, who) => { const base = c.full ? 'width="100" height="75" preserveAspectRatio="xMidYMid slice"' : 'x="20" y="6" width="60" height="58" preserveAspectRatio="xMidYMax meet"', px = c.smooth ? '' : 'image-rendering:pixelated;';
+    const worn = c.extras ? Object.keys(c.extras).filter((k) => !/^sticker/.test(k)).map((k) => { const n = c.extras[k].length, i = hash(who + '+' + k) % (2 * n); return i < n ? `<image href="${c.extras[k][i]}" ${base} style="${px}"/>` : ''; }).join('') : '';   // one of each kind, or none, half of the time: always the same for a given agent
+    const face = c.head || c.idle;   // a character drawn with its head apart: the body stays, the head (and what it wears) nods while it speaks, its two mouths swap on it
+    const mouths = `<image class="cimg" href="${face}" ${base} style="${px}${talking && c.talk ? 'display:none' : ''}"/>` + (c.talk ? `<image class="cimg cimg-talk" href="${c.talk}" ${base} style="${px}${talking ? '' : 'display:none'}"/>` : '');
+    return c.head ? `<image href="${c.idle}" ${base} style="${px}"/><g class="chead">${mouths}${worn}</g>` : mouths + worn; };
+  const custFront = (c, hid, who) => { const base = c.full ? 'width="100" height="75" preserveAspectRatio="xMidYMid slice"' : 'x="20" y="6" width="60" height="58" preserveAspectRatio="xMidYMax meet"', px = c.smooth ? '' : 'image-rendering:pixelated;';   // in front of the character, outside its group so that they stay still while it breathes
+    const hands = c.hands ? `<clipPath id="${hid}l"><rect width="50" height="75"/></clipPath><clipPath id="${hid}r"><rect x="50" width="50" height="75"/></clipPath><g clip-path="url(#${hid}l)"><image class="chand" href="${c.hands}" ${base} style="${px}"/></g><g clip-path="url(#${hid}r)"><image class="chand r" href="${c.hands}" ${base} style="${px}"/></g>` : '';
+    if (!c.desks || !c.desks.length || (st && !prefs.customLaptop)) return hands;   // a picture for a video has a laptop only when ⚙ asks for one all the time
+    const lid = c.desks[hash(who + '+desk') % c.desks.length], stuck = c.extras ? Object.keys(c.extras).filter((k) => /^sticker/.test(k)).map((k) => { const n = c.extras[k].length, i = hash(who + '+' + k) % (2 * n); return i < n ? `<image href="${c.extras[k][i]}" ${base} style="${px}"/>` : ''; }).join('') : '';   // its laptop, light or dark, and its stickers: one of each design or none, half of the time, always the same for a given agent
+    return hands + `<g class="claptop${prefs.customLaptop ? ' on' : ''}"><image href="${lid}" ${base} style="${px}"/>${stuck}</g>`;   // over the hands: only the outer fingers show. Hidden unless ⚙ asks for it, or for the few seconds this character pulls it out (see LAP)
+  };
+  const room = p.custom && p.custom.bg ? uid + 'rm' + p.gid : '';   // a custom character that brings its own room: one picture, desk included; the part below the desk line is drawn again over the character, so it sits behind its desk
+  const fig = p.custom ? custFig(p.custom, st && o.m === 2, p.id || p.gid) : `${arm('l')}${bodyShape(p.shape, `url(#${gid})`, c2)}${arm('r')}${face}${acc}`;
   return `<svg viewBox="0 0 100 75" preserveAspectRatio="xMidYMid slice"${st ? ' xmlns="http://www.w3.org/2000/svg" width="400" height="300"' : ''}>
     <defs><linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="0" y1="12" x2="0" y2="72"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c}"/></linearGradient>
       <linearGradient id="${uid}dk${p.scene}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sc.desk[0]}"/><stop offset="1" stop-color="${sc.desk[1]}"/></linearGradient>
       <linearGradient id="${uid}lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
-    ${sc.svg().replace(/id="(g[a-z]\d)"/g, `id="${uid}$1"`).replace(/url\(#(g[a-z]\d)\)/g, `url(#${uid}$1)`)}
-    <g class="fig" style="--d:${d0}s">
+    ${room ? `<clipPath id="${room}c"><rect y="62" width="100" height="13"/></clipPath><image id="${room}" href="${p.custom.bg}" width="100" height="75" preserveAspectRatio="xMidYMid slice"${p.custom.bgSmooth ? '' : ' style="image-rendering:pixelated"'}/>` : sc.svg().replace(/id="(g[a-z]\d)"/g, `id="${uid}$1"`).replace(/url\(#(g[a-z]\d)\)/g, `url(#${uid}$1)`)}
+    <g class="fig${p.custom && p.custom.head ? ' still' : ''}" style="--d:${d0}s">
       ${fig}
     </g>
-    <rect y="62" width="100" height="13" fill="url(#${uid}dk${p.scene})"/><rect y="62" width="100" height="1.3" fill="#fff" opacity=".38"/><rect y="63.3" width="100" height="2.6" fill="#000" opacity=".1"/>
-    ${prop}${p.custom ? (prefs.customLaptop ? V('laptop', working, lapDark) : '') : V('laptop', working, lap) + V('hands', working, hands)}${V('sparks', done, `<g class="sparks">${sparks}</g>`)}
+    ${p.custom ? custFront(p.custom, uid + 'hd' + p.gid, p.id || p.gid) : ''}
+    ${room ? `<use href="#${room}" clip-path="url(#${room}c)"/>` : `<rect y="62" width="100" height="13" fill="url(#${uid}dk${p.scene})"/><rect y="62" width="100" height="1.3" fill="#fff" opacity=".38"/><rect y="63.3" width="100" height="2.6" fill="#000" opacity=".1"/>`}
+    ${room ? '' : prop}${p.custom ? (prefs.customLaptop && !(p.custom.desks && p.custom.desks.length) ? V('laptop', working, lapDark) : '') : V('laptop', working, lap) + V('hands', working, hands)}${V('sparks', done, `<g class="sparks">${sparks}</g>`)}
   </svg>`;
 }
 
@@ -1470,7 +1608,7 @@ function unpinArt() { if (!S.artPin) return; S.artPin = null; hidePresent(); }
 $('#present').addEventListener('click', (e) => {
   const b = e.target.closest('[data-open], [data-x], [data-go], [data-lib], [data-pin]'), a = b && S.arts.get($('#pbody').dataset.art || ''); if (!a) return; const d = b.dataset;
   if ('open' in d) openExternal(a.url); else if ('x' in d) unpinArt(); else if ('pin' in d) pinArt(a.url);
-  else if ('lib' in d) { prefs.artNet = true; savePrefs(); const sw = document.querySelector('#menu .mi[data-t="artNet"] .sw'); if (sw) sw.classList.add('on'); renderPresent(); }
+  else if ('lib' in d) { prefs.artNet = true; savePrefs(); const sw = document.querySelector('#prefs .mi[data-t="artNet"] .sw'); if (sw) sw.classList.add('on'); renderPresent(); }
   else if ('go' in d) { const all = [...S.arts.keys()]; pinArt(all[(all.indexOf(a.url) + +d.go + all.length) % all.length]); }
 });
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.artPin) unpinArt(); });
@@ -2523,7 +2661,7 @@ async function exportVideo(from = 0, to = 0, clip = 0) {   // clip: length in ms
 //  UI wiring
 // =====================================================================
 function applyLang() {
-  renderCharInfo();
+  renderCharInfo(); packNote(); menuTip();
   document.documentElement.lang = (LANGS.find((l) => l[0] === prefs.lang) || LANGS[0])[2];
   document.querySelectorAll('[data-fr]').forEach((el) => (el.textContent = FR() ? el.dataset.fr : tr(el.dataset.en)));
   document.querySelectorAll('#viewSeg button').forEach((b) => { b.title = b.textContent; });   // in a narrow window they are icons: the name stays as a tooltip
@@ -2533,7 +2671,7 @@ function applyLang() {
   $('#gT').textContent = L('Rejoindre l’appel', 'Join the call'); $('#gP').textContent = L('Cliquez pour activer le son et suivre votre session Claude Code en direct.', 'Click to enable sound and follow your Claude Code session live.'); $('#gB').textContent = L('▶ Rejoindre', '▶ Join');
   $('#eDemo').textContent = L('▶ Voir la démo', '▶ Watch the demo'); $('#eT').textContent = L('En attente d’une session', 'Waiting for a session'); $('#eP').innerHTML = watched() ? esc(L('Lancez Claude Code dans {0} : l’appel démarrera tout seul.', 'Start Claude Code in {0} — the call will start by itself.')).replace('{0}', `<b>${esc(watched())}</b>`) : esc(L('Lancez Claude Code dans ce dossier : l’appel démarrera tout seul.', 'Start Claude Code in this folder — the call will start by itself.'));
   for (const id in S.agents) { const p = persona(S.agents[id]); Object.assign(S.agents[id], { name: p.name, role: p.role }); const t = $('#t-' + id); if (t) { t.querySelector('.tag span').textContent = p.role; t.querySelector('.tag b').textContent = p.name; if (id === 'main' || id === 'user') t.querySelector('.tag span').textContent = p.role; } }
-  document.querySelectorAll('#menu .mi[data-t]').forEach((b) => b.querySelector('.sw').classList.toggle('on', !!prefs[b.dataset.t])); renderCoffee(); renderTokens(); updateHint(); renderLog(true); syncUI();
+  document.querySelectorAll('#menu .mi[data-t], #prefs .mi[data-t]').forEach((b) => b.querySelector('.sw').classList.toggle('on', !!prefs[b.dataset.t])); renderCoffee(); renderTokens(); updateHint(); renderLog(true); syncUI();
 }
 const elsewhere = () => !!(S.owner && S.owner !== CID);
 function applyMute() {
@@ -2554,27 +2692,63 @@ function setView(v) { prefs.view = v; savePrefs(); document.body.classList.toggl
 
 $('#viewSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); };
 $('#langSel').onchange = () => setLang($('#langSel').value, true);
-$('#charPack').value = ['none', 'folder', 'cats'].includes(prefs.charPack) ? prefs.charPack : 'none'; $('#charPack').onchange = () => { prefs.charPack = $('#charPack').value; savePrefs(); $('#charReload').onclick(); };
-$('#charReload').onclick = async () => { await loadChars(); for (const k in imgCache) delete imgCache[k]; for (const id in S.agents) S.agents[id].custom = null; for (const id in S.agents) S.agents[id].custom = customFor(id); buildStage(); paintStatus(); renderCharInfo(); };
-$('#charOpen').onclick = () => window.parent.postMessage({ agentStandup: 'openCharacters' }, '*');
+const LAP = { id: '' };   // now and then one character pulls out its laptop for 7 to 14 seconds: one at a time, about every 40 seconds, preferably one at work. ⚙ → Characters → laptop keeps them all out instead
+setInterval(() => {
+  if (prefs.customLaptop || document.hidden || LAP.id || Math.random() > .13) return;
+  const ids = Object.keys(S.agents).filter((id) => { const c = S.agents[id].custom, t = $('#t-' + id); return c && c.desks && c.desks.length && t && t.style.display !== 'none'; }); if (!ids.length) return;
+  const busy = ids.filter((id) => agentState(id, Date.now()).k === 'working'), from = busy.length ? busy : ids, id = from[Math.floor(Math.random() * from.length)], t = $('#t-' + id);
+  LAP.id = id; t.classList.add('lap'); setTimeout(() => { t.classList.add('lapout'); setTimeout(() => { t.classList.remove('lap', 'lapout'); LAP.id = ''; }, 450); }, 7000 + Math.random() * 7000);
+}, 5000);
+async function reloadChars() { await loadChars(); for (const k in imgCache) delete imgCache[k]; for (const id in S.agents) S.agents[id].custom = null; for (const id in S.agents) S.agents[id].custom = customFor(id); buildStage(); paintStatus(); packNote(); await renderCharInfo(); }
+$('#charPick').onclick = () => { $('#menu').classList.remove('on'); CHPICK.more = ''; openChars(); };
+$('#packNoteB').onclick = () => { prefs.vampSeen = true; savePrefs(); packNote(); CHPICK.more = 'halloween'; openChars(); };
+$('#packNoteX').onclick = () => { prefs.vampSeen = true; savePrefs(); packNote(); };
 $('#modeSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m); };
 // ⚙ menu: sections that fold (remembered) and a search box
 function menuInit() {
   const m = $('#menu'), secs = []; let cur = null;
   for (const el of [...m.children]) { if (el.tagName === 'H4') { cur = { h: el, items: [] }; secs.push(cur); } else if (cur && !el.classList.contains('keys')) cur.items.push(el); }
-  secs.forEach((sc, i) => { sc.h.classList.add('fold'); sc.h.dataset.i = i; sc.h.onclick = () => { const c = !sc.h.classList.contains('closed'); sc.h.classList.toggle('closed', c); sc.items.forEach((e) => e.classList.toggle('mfold', c)); const set = new Set(prefs.menuClosed || []); c ? set.add(i) : set.delete(i); prefs.menuClosed = [...set]; savePrefs(); };
-    if ((prefs.menuClosed || []).includes(i)) { sc.h.classList.add('closed'); sc.items.forEach((e) => e.classList.add('mfold')); } });
+  secs.forEach((sc, i) => { sc.h.classList.add('fold'); sc.h.dataset.i = i; sc.h.onclick = () => { const c = !sc.h.classList.contains('closed'); sc.h.classList.toggle('closed', c); sc.items.forEach((e) => e.classList.toggle('mfold', c)); const set = new Set(prefs.menuFold || []); c ? set.add(sc.h.dataset.en) : set.delete(sc.h.dataset.en); prefs.menuFold = [...set]; savePrefs(); };   // by name: the sections moved in 1.33
+    if ((prefs.menuFold || []).includes(sc.h.dataset.en)) { sc.h.classList.add('closed'); sc.items.forEach((e) => e.classList.add('mfold')); } });
   $('#menuQ').oninput = () => {
     const q = $('#menuQ').value.trim().toLowerCase();
     for (const sc of secs) { let any = false;
       for (const e of sc.items) { const hit = !q || e.textContent.toLowerCase().includes(q) || [...e.querySelectorAll('option')].some((o) => o.textContent.toLowerCase().includes(q)); e.classList.toggle('mhide', !hit); if (hit && q) any = true; if (q) e.classList.remove('mfold'); else e.classList.toggle('mfold', sc.h.classList.contains('closed')); }
       sc.h.classList.toggle('mhide', !!q && !any && !sc.h.textContent.toLowerCase().includes(q)); if (q) sc.h.classList.remove('closed'); }
-    if (!q) secs.forEach((sc, i) => sc.h.classList.toggle('closed', (prefs.menuClosed || []).includes(i)));
-    $('#menuNone').style.display = q && !secs.some((sc) => sc.items.some((e) => !e.classList.contains('mhide'))) ? '' : 'none';
+    if (!q) secs.forEach((sc) => sc.h.classList.toggle('closed', (prefs.menuFold || []).includes(sc.h.dataset.en)));
+    const found = $('#menuFound'), label = (e) => ((e.matches('.mi') ? e.querySelector('span') : e.querySelector('.lbl')) || {}).textContent || ''; found.innerHTML = '';
+    const far = q ? [...document.querySelectorAll('#prefs .mi, #prefs .box')].filter((e) => e.style.display !== 'none' && label(e) && (e.textContent.toLowerCase().includes(q) || [...e.querySelectorAll('option')].some((o) => o.textContent.toLowerCase().includes(q)))) : [];
+    for (const e of far) { const b = document.createElement('button'); b.className = 'mi'; b.innerHTML = `<span>${esc(label(e))}</span><span class="dim" style="font-size:11px">${esc(L('Tous les réglages', 'All settings'))} ›</span>`; b.onclick = (ev) => { ev.stopPropagation(); openPrefs(e); }; found.appendChild(b); }   // a setting of the panel, found from the menu
+    $('#menuNone').style.display = q && !far.length && !secs.some((sc) => sc.items.some((e) => !e.classList.contains('mhide'))) ? '' : 'none';
   };
 }
-$('#menu').onclick = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'callTr') { prefs.callTrSeen = true; savePrefs(); setLang(prefs.lang); } if (b.dataset.t === 'voice') voiceOffer(); if (b.dataset.t === 'customLaptop') { for (const k in imgCache) delete imgCache[k]; buildStage(); paintStatus(); } if (b.dataset.t === 'files') paintFiles(); if (b.dataset.t === 'artNet' && S.present) renderPresent(); if (b.dataset.t === 'ownNames') renameAll(); if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify') { prefs.notifyChosen = true; savePrefs(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
+const onSwitch = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'callTr') { prefs.callTrSeen = true; savePrefs(); setLang(prefs.lang); } if (b.dataset.t === 'voice') voiceOffer(); if (b.dataset.t === 'customLaptop') { for (const k in imgCache) delete imgCache[k]; buildStage(); paintStatus(); } if (b.dataset.t === 'files') paintFiles(); if (b.dataset.t === 'artNet' && S.present) renderPresent(); if (b.dataset.t === 'ownNames') renameAll(); if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify') { prefs.notifyChosen = true; savePrefs(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
   if (b.dataset.t === 'music') { $('#musicBox').style.display = prefs.music ? '' : 'none'; if (prefs.music) { AUD.init(); AUD.apply(); } } };
+$('#menu').onclick = onSwitch; $('#prefs').onclick = (e) => { if (e.target === $('#prefs')) return closePrefs(); onSwitch(e); setTimeout(syncSwitches); };
+function openPrefs(target) {   // ⚙ → All settings; target: one of its settings, found by the search of the menu, shown and lit up
+  $('#menu').classList.remove('on'); $('#prefs').classList.add('on'); syncSwitches(); document.querySelectorAll('#prefs .mi[data-t]').forEach((b) => b.querySelector('.sw').classList.toggle('on', !!prefs[b.dataset.t]));
+  if (target) { target.scrollIntoView({ block: 'center' }); target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash'); (target.matches('.mi') ? target : target.querySelector('select, input, button') || target).focus(); } else $('#prefsX').focus();
+}
+const PANEL_KEYS = ['office', 'officeVol', 'music', 'station', 'musicVol', 'notify', 'customLaptop', 'ownNames', 'roster', 'reactions', 'banter', 'chat', 'vanish', 'epi', 'files', 'artNet', 'visits', 'followTab'];   // what the panel holds, and so what Reset puts back
+$('#prefsReset').onclick = async () => {
+  const b = $('#prefsReset'); if (!b.classList.contains('sure')) { b.classList.add('sure'); b.textContent = L('Cliquez encore pour tout remettre', 'Click again to reset them all'); setTimeout(() => { b.classList.remove('sure'); b.textContent = L('Réglages par défaut', 'Reset to defaults'); }, 4000); return; }   // two clicks: nothing is lost by a stray one
+  for (const k of PANEL_KEYS) { if (k in PREF_DEFAULTS) prefs[k] = PREF_DEFAULTS[k]; else delete prefs[k]; }
+  prefs._t = Date.now(); try { localStorage.setItem('cc.prefs', JSON.stringify(prefs)); } catch {} try { await fetch('/api/prefs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(prefs) }); } catch {}
+  location.reload();   // every part of the page starts again from them
+};
+function menuTip() {   // once, to someone who used the app before: where the settings went. Gone with its button, or as soon as the menu is opened
+  const t = $('#menuTip'); if (!HAD_PREFS || prefs.menuTipSeen || Q.get('demo')) { t.style.display = 'none'; return; }
+  const r = $('#bMenu').getBoundingClientRect(); if (!r.width) return;
+  $('#menuTipT').textContent = L('Vos réglages ont bougé : ceux de tous les jours sont ici, les autres dans « Tous les réglages ».', 'Your settings moved: the everyday ones are here, the rest in “All settings”.'); $('#menuTipOk').textContent = L('Compris', 'Got it');
+  t.style.display = ''; t.style.top = Math.round(r.bottom + 10) + 'px'; t.style.right = Math.max(8, Math.round(innerWidth - r.right - 6)) + 'px'; t.style.setProperty('--ax', Math.max(8, Math.round(r.width / 2 - 2)) + 'px');
+}
+const menuTipDone = () => { if (prefs.menuTipSeen) return; prefs.menuTipSeen = true; savePrefs(); $('#menuTip').style.display = 'none'; };
+$('#menuTipOk').onclick = menuTipDone;
+function closePrefs() { $('#prefs').classList.remove('on'); $('#bMenu').focus(); }
+$('#prefsX').onclick = closePrefs; $('#mPrefs').onclick = () => openPrefs();
+function renderMenuShop() {   // in the menu, under Characters: the Halloween pack for those who do not have it. Emptied while the Characters window shows the same panel (one set of ids at a time)
+  const el = $('#menuShop'), sp = SHOP.halloween; if (!el) return; if (!sp || sp.n || $('#recap.on #chdlg')) { el.innerHTML = ''; return; } renderShop(el, 'halloween', sp);
+}
 $('#station').innerHTML = STATIONS.map((s) => `<option value="${s.id}">📻 ${s.name}</option>`).join('');
 $('#station').value = prefs.station; $('#musicVol').value = prefs.musicVol; $('#musicBox').style.display = prefs.music ? '' : 'none';
 $('#station').onchange = (e) => { prefs.station = e.target.value; savePrefs(); AUD.init(); RADIO.sync(); };
@@ -2702,15 +2876,16 @@ function focusDoor() {   // never taken from a field or a menu the person is in
   if (b && a !== b && (!a || a === document.body || a === $('#gB') || a === $('#eDemo'))) b.focus({ preventScroll: true });
 }
 for (const q of ['#gate', '#empty']) new MutationObserver(focusDoor).observe($(q), { attributes: true, attributeFilter: ['class'] });
-function syncSwitches() { document.querySelectorAll('#menu .mi[data-t]').forEach((b) => { b.setAttribute('role', 'switch'); b.setAttribute('aria-checked', String(!!prefs[b.dataset.t])); }); }
+function syncSwitches() { document.querySelectorAll('#menu .mi[data-t], #prefs .mi[data-t]').forEach((b) => { b.setAttribute('role', 'switch'); b.setAttribute('aria-checked', String(!!prefs[b.dataset.t])); }); }
 new MutationObserver(() => {   // the menu opens under the header and the status line, not over them
   const m = $('#menu'), on = m.classList.contains('on'), h = Math.round($('main').getBoundingClientRect().top); $('#bMenu').setAttribute('aria-expanded', String(on)); if (!on) return;
-  syncSwitches(); m.style.top = h + 3 + 'px'; m.style.maxHeight = `calc(100dvh - ${h + 13}px)`;
+  syncSwitches(); menuTipDone(); if (!$('#menuShop').innerHTML) renderMenuShop(); m.style.top = h + 3 + 'px'; m.style.maxHeight = `calc(100dvh - ${h + 13}px)`;
 }).observe($('#menu'), { attributes: true, attributeFilter: ['class'] });
 $('#menu').addEventListener('click', () => setTimeout(syncSwitches)); $('#bMenu').setAttribute('aria-expanded', 'false'); syncSwitches();
 addEventListener('keydown', (e) => {   // on the way down: Escape also works from the search box and the selects of the menu, which the shortcuts below ignore
   if (e.key !== 'Escape' || $('#switcher')) return;
-  if ($('#menu').classList.contains('on')) { $('#menu').classList.remove('on'); $('#bMenu').focus(); }
+  if ($('#prefs').classList.contains('on')) closePrefs();
+  else if ($('#menu').classList.contains('on')) { $('#menu').classList.remove('on'); $('#bMenu').focus(); }
   else if ($('#detail').classList.contains('on') && !$('#recap').classList.contains('on')) { const t = $('#t-' + S.detail); $('#dclose').click(); if (t && t.offsetParent) t.focus(); }
 }, true);
 // ---------- a bubble that is not whole on screen (last row of tiles, a row of the compact list below the fold) brings the stage to it ----------

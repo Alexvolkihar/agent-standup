@@ -813,18 +813,100 @@ const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css
 
 // ---- Custom characters: the person's own pixel art replaces the drawn characters. Plain image files in one folder, nothing else is ever served from it.
 //   lead.png / claude.png → the lead · you.png → the human · any other image → a pool for the sub-agents · name-talk.png → optional open-mouth frame of name.png
-const CHAR_NAME = /^[\w][\w .()\-]{0,78}\.(png|gif|webp|jpe?g)$/i, CHAR_MAX = 300 * 1024, CHAR_TYPES = { png: 'image/png', gif: 'image/gif', webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
+//   name-bg.png → optional room of name.png: the whole picture behind it, desk included (its bottom sixth is drawn again in front of the character)
+//   name-head.png → optional head of name.png, drawn above it and nodding while it speaks: name.png is then the body, and name-talk.png the head with its mouth open
+//   name-hands.png → optional hands of name.png, on their own: they type while the agent works · name-desk.png, name-desk-dark.png… → optional laptops of name.png, drawn over its hands:
+//   the page gives each agent one of them, out now and then for a few seconds (all the time with ⚙ → Characters → laptop)
+//   name+hat-1.png, name+hat-2.png, name+glasses-1.png… → optional extras of name.png, by kind (the word after the +): pictures drawn over it. Each agent that gets this character wears one of each kind or none,
+//   so one character becomes many: it is the one given again when there are more agents than characters
+//   an extra whose kind starts with "sticker" (name+sticker1-2.png) is worn by the thing on the desk, not by the character: drawn over the laptop, under the hands
+const CHAR_NAME = /^[\w][\w .()+\-]{0,78}\.(png|gif|webp|jpe?g)$/i, CHAR_MAX = 300 * 1024, CHAR_TYPES = { png: 'image/png', gif: 'image/gif', webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
 const charactersDir = () => process.env.AGENT_STANDUP_CHARACTERS || path.join(os.homedir(), '.agent-standup', 'characters');
 // lstat, not stat: a symlink is not a regular file, so it is skipped and never served
 // Built-in character packs, shipped with the app (examples/<folder>): picked in ⚙ → Characters. examples/characters stays in the repository as a model for one's own folder; it is not shipped
-const PACKS = { cats: 'cats' }, packDir = (name) => (Object.prototype.hasOwnProperty.call(PACKS, name) ? path.join(__dirname, 'examples', PACKS[name]) : null);   // its own names only: 'constructor' or 'toString' is not a pack (they answered 500)
+const PACKS = { cats: 'cats', vampire: 'vampire' };   // vampire: the one character of the Halloween pack that everyone gets, as the human (see the page's charYou)
+// Packs sold in the shop of the website (api/ in the repository): their pictures are neither in the app nor in the repository. A bought pack is unpacked in the packs folder and is then a pack like a built-in one.
+const SHOP_PACKS = { halloween: { price: '2 €', artist: 'Fabien Coupas', artistUrl: 'https://www.instagram.com/fabien_coupas/' } },   // the artist is credited wherever the pack is shown
+  PACK_MAX = 20 * 1024 * 1024;
+const shopUrl = () => (process.env.AGENT_STANDUP_STORE || 'https://agent-standup.com').replace(/\/+$/, ''), packsDir = () => process.env.AGENT_STANDUP_PACKS || path.join(os.homedir(), '.agent-standup', 'packs');
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);   // its own names only: 'constructor' or 'toString' is not a pack (they answered 500)
+const packDir = (name) => (hasOwn(PACKS, name) ? path.join(__dirname, 'examples', PACKS[name]) : hasOwn(SHOP_PACKS, name) ? path.join(packsDir(), name) : null);
 function listCharacters(pack) {
   const dir = pack ? packDir(pack) : charactersDir(); let names = []; if (!dir) return { dir: '', max: CHAR_MAX, chars: [] }; try { names = fs.readdirSync(dir); } catch {}
-  const ok = names.filter((f) => CHAR_NAME.test(f)).filter((f) => { try { const st = fs.lstatSync(path.join(dir, f)); return st.isFile() && st.size <= CHAR_MAX; } catch { return false; } }).slice(0, 80);
+  const ok = names.filter((f) => CHAR_NAME.test(f)).filter((f) => { try { const st = fs.lstatSync(path.join(dir, f)); return st.isFile() && st.size <= CHAR_MAX; } catch { return false; } }).sort().slice(0, 200);
   const stem = (f) => f.replace(/\.[^.]+$/, ''), by = new Map(ok.map((f) => [stem(f).toLowerCase(), f]));
-  const chars = ok.filter((f) => !/-talk$/i.test(stem(f))).map((f) => { const st = stem(f), l = st.toLowerCase();
-    return { stem: st, file: f, talk: by.get(l + '-talk') || null, role: /^(lead|claude)$/.test(l) ? 'lead' : /^(you|human|user)$/.test(l) ? 'you' : 'agent' }; }).sort((a, b) => a.stem.localeCompare(b.stem));
+  const extra = (f) => stem(f).match(/^(.+)\+([a-z]+\d*)[-_ ]?\w*$/i);   // the kind may end with a number: sticker1, sticker2… are kinds of their own
+  const chars = ok.filter((f) => !/-(talk|bg|head|hands|desk(-\w+)?)$/i.test(stem(f)) && !extra(f)).map((f) => { const st = stem(f), l = st.toLowerCase(), extras = {};
+    for (const x of ok) { const m = extra(x), k = m && m[1].toLowerCase() === l ? m[2].toLowerCase() : ''; if (k) (extras[k] = extras[k] || []).push(x); }
+    return { stem: st, file: f, talk: by.get(l + '-talk') || null, bg: by.get(l + '-bg') || null, desks: ok.filter((x) => { const s = stem(x).toLowerCase(); return s === l + '-desk' || s.startsWith(l + '-desk-'); }), head: by.get(l + '-head') || null, hands: by.get(l + '-hands') || null, extras: Object.keys(extras).length ? extras : null, role: /^(lead|claude)$/.test(l) ? 'lead' : /^(you|human|user)$/.test(l) ? 'you' : 'agent' }; }).sort((a, b) => a.stem.localeCompare(b.stem));
   return { dir, max: CHAR_MAX, chars };
+}
+// ---- Buying a pack. The app never sees a card: it asks the shop for a payment page (Stripe's), opens it in the browser, then asks the shop for the pack with the code of that purchase until the shop,
+// which asks Stripe, says it is paid. The code is kept beside the packs: it is the proof of the purchase, and what installs the pack on another computer. Nothing else is sent, and nothing is asked again once the pack is here.
+const codesFile = () => path.join(packsDir(), 'codes.json');
+const readCodes = () => { try { const v = JSON.parse(fs.readFileSync(codesFile(), 'utf8')); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } };
+const writeCode = (name, v) => { const all = readCodes(); all[name] = v; fs.mkdirSync(packsDir(), { recursive: true }); const tmp = codesFile() + '.' + process.pid + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(all, null, 1), { mode: 0o600 }); fs.renameSync(tmp, codesFile()); };
+const packList = () => [...Object.keys(PACKS).map((name) => ({ name, n: listCharacters(name).chars.length })),
+  ...Object.keys(SHOP_PACKS).map((name) => { const c = readCodes()[name] || {}; return { name, n: listCharacters(name).chars.length, shop: true, price: SHOP_PACKS[name].price, artist: SHOP_PACKS[name].artist || '', artistUrl: SHOP_PACKS[name].artistUrl || '', code: c.short || c.code || '', waiting: !!(c.pending && c.pending.length) }; })];   // the code shown is the one for people when there is one
+// A pack arrives as a zip of plain image files, read here without a library: stored or deflated entries only, kept under their bare name and only if a characters folder would accept that name, each within the size of a character.
+function unzipImages(buf) {
+  let e = buf.length - 22; while (e >= 0 && buf.readUInt32LE(e) !== 0x06054b50) e--; if (e < 0) throw new Error('not a zip');
+  const n = buf.readUInt16LE(e + 10), out = []; let p = buf.readUInt32LE(e + 16); if (n > 400) throw new Error('too many files');
+  for (let i = 0; i < n; i++) {
+    if (p + 46 > buf.length || buf.readUInt32LE(p) !== 0x02014b50) throw new Error('bad zip');
+    const method = buf.readUInt16LE(p + 10), csize = buf.readUInt32LE(p + 20), size = buf.readUInt32LE(p + 24), nl = buf.readUInt16LE(p + 28), off = buf.readUInt32LE(p + 42), name = buf.toString('utf8', p + 46, p + 46 + nl).split(/[\\/]/).pop();
+    p += 46 + nl + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
+    const note = /^(LICEN[CS]E|README)\.txt$/i.test(name); if (!note && !CHAR_NAME.test(name)) continue;   // a folder, a hidden file, anything that is not a picture or the pack's two notes: left out
+    if (size > (note ? 65536 : CHAR_MAX) || off + 30 > buf.length) throw new Error('bad entry: ' + name);
+    const from = off + 30 + buf.readUInt16LE(off + 26) + buf.readUInt16LE(off + 28), raw = buf.subarray(from, from + csize);
+    const data = method === 0 ? raw : method === 8 ? zlib.inflateRawSync(raw, { maxOutputLength: CHAR_MAX }) : null; if (!data || data.length !== size) throw new Error('bad entry: ' + name);
+    if (!out.some((f) => f.name.toLowerCase() === name.toLowerCase())) out.push({ name, data });
+  }
+  if (!out.some((f) => CHAR_NAME.test(f.name))) throw new Error('no picture in the pack');
+  return out.slice(0, 200);
+}
+// ---- Pictures added from the page (⚙ → Characters → My folder): written in the characters folder under the name of their role, or under their own name for a sub-agent.
+// The picture a new one replaces is moved to a "replaced" folder beside it, never deleted, and nothing but the four image types is written.
+const IMG_MAGIC = [['png', (b) => b.length > 8 && b.readUInt32BE(0) === 0x89504e47], ['gif', (b) => b.toString('latin1', 0, 4) === 'GIF8'], ['webp', (b) => b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP'], ['jpg', (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff]];
+const ROLE_FILES = { you: 'you', 'you-talk': 'you-talk', lead: 'lead', 'lead-talk': 'lead-talk' };
+function putAside(dir, stem) {   // the pictures of this name, whatever their type, go to dir/replaced/ under a name that says when
+  let names = []; try { names = fs.readdirSync(dir); } catch {} const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  for (const f of names) if (CHAR_NAME.test(f) && f.replace(/\.[^.]+$/, '').toLowerCase() === stem) { fs.mkdirSync(path.join(dir, 'replaced'), { recursive: true }); fs.renameSync(path.join(dir, f), path.join(dir, 'replaced', stamp + ' ' + f)); }
+}
+function addCharacter(role, name, b64) {   // → { file } or throws a word the page can say: 'type', 'size', 'name'
+  const data = Buffer.from(String(b64 || ''), 'base64'), type = (IMG_MAGIC.find(([, ok]) => ok(data)) || [])[0]; if (!type) throw Object.assign(new Error('type'), { word: 'type' }); if (data.length > CHAR_MAX) throw Object.assign(new Error('size'), { word: 'size' });
+  const dir = charactersDir(); fs.mkdirSync(dir, { recursive: true });
+  let stem = ROLE_FILES[role]; if (!stem) { stem = String(name || '').replace(/\.[^.]*$/, '').replace(/[^\w .()\-]+/g, ' ').trim().slice(0, 60).replace(/^[^\w]+/, '') || 'agent'; if (/^(lead|claude|you|human|user)(-talk)?$/i.test(stem) || /-(talk|bg|head|hands|desk(-\w+)?)$/i.test(stem)) stem += ' 2'; }   // a sub-agent never takes the name of a role
+  const file = stem + '.' + type; if (!CHAR_NAME.test(file)) throw Object.assign(new Error('name'), { word: 'name' });
+  if (!ROLE_FILES[role]) { let k = 2, f = file; while (fs.existsSync(path.join(dir, f))) f = `${stem} ${k++}.${type}`; fs.writeFileSync(path.join(dir, f), data); return { file: f }; }   // a sub-agent's picture never replaces another one
+  putAside(dir, stem.toLowerCase()); fs.writeFileSync(path.join(dir, file), data); return { file };
+}
+function removeCharacter(file) {   // moved to replaced/, with its open mouth and its room; only a picture the folder lists
+  const f = String(file || ''), dir = charactersDir(); if (!CHAR_NAME.test(f) || !listCharacters('').chars.some((c) => c.file === f)) return false;
+  const stem = f.replace(/\.[^.]+$/, '').toLowerCase(); for (const s of [stem, stem + '-talk', stem + '-head', stem + '-bg', stem + '-desk', stem + '-desk-dark', stem + '-hands']) putAside(dir, s); return true;
+}
+function installPack(name, zip) {   // written beside its place first, then swapped in: a pack is never half there
+  const files = unzipImages(zip), dir = packDir(name), tmp = dir + '.' + process.pid + '.tmp'; fs.rmSync(tmp, { recursive: true, force: true }); fs.mkdirSync(tmp, { recursive: true });
+  for (const f of files) fs.writeFileSync(path.join(tmp, f.name), f.data); fs.rmSync(dir, { recursive: true, force: true }); fs.renameSync(tmp, dir);
+}
+const askShop = (p, body) => fetch(shopUrl() + p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+async function buyPack(name) {   // → { status, url } the payment page to open, or { status, error }
+  let r; try { r = await askShop('/api/checkout', { pack: name }); } catch { return { status: 502, error: 'offline' }; }
+  const j = await r.json().catch(() => ({})); if (!r.ok) return { status: r.status, error: j.error || 'shop' };
+  if (typeof j.url !== 'string' || typeof j.code !== 'string' || !/^(https:\/\/|http:\/\/localhost[:/])/.test(j.url)) return { status: 502, error: 'shop' };
+  const c = readCodes()[name] || {}, pending = [j.code, ...(c.pending || [])].slice(0, 5), short = typeof j.short === 'string' && /^[A-Z]{2}-[\w-]{9}$/.test(j.short) ? j.short : '';
+  writeCode(name, { code: c.code || '', short: c.short || '', pending, shorts: Object.fromEntries(pending.map((k) => [k, k === j.code ? short : (c.shorts || {})[k] || ''])) }); return { status: 200, url: j.url };   // shorts: the code for people (HW-…) of each payment page opened   // a few, in case the button was pressed more than once: any of them may be the one that gets paid
+}
+async function claimPack(name, typed) {   // typed: a code the person pastes (another computer); else the purchases started here
+  const c = readCodes()[name] || {}, tries = typed ? [typed] : [c.code, ...(c.pending || [])].filter(Boolean); if (!tries.length) return { status: 400, error: 'code' };
+  let last = { status: 402, error: 'unpaid' };
+  for (const code of tries) {
+    let r; try { r = await askShop('/api/pack', { pack: name, code }); } catch { return { status: 502, error: 'offline' }; }
+    if (r.ok) { const zip = Buffer.from(await r.arrayBuffer()); if (zip.length > PACK_MAX) return { status: 502, error: 'shop' }; try { installPack(name, zip); } catch (e) { logError('pack ' + name, e); return { status: 502, error: 'shop' }; }
+      writeCode(name, { code, short: (c.shorts || {})[code] || (/^[A-Z]{2}-/i.test(code) ? code.toUpperCase() : c.short || ''), pending: [] }); return { status: 200, ok: true, n: listCharacters(name).chars.length }; }
+    last = { status: r.status, error: (await r.json().catch(() => ({}))).error || 'shop' }; if (r.status !== 402 && r.status !== 404) break;   // not paid yet, or not a purchase of this pack: the next one may be; anything else is the shop's trouble
+  }
+  return last;
 }
 // ---- Shared files: a file the session created is shown in its folder (Finder, Explorer, the file manager) when the page asks. Only a file a Write call of that very session names, and only if it is still there:
 // the page cannot have any other path opened, nothing is read and nothing is run. A Codex or Vibe session may name a file from the folder it was started in.
@@ -863,11 +945,11 @@ function start(port = PORT) {
   const sendFile = (fp) => { const s = fs.createReadStream(fp); s.on('error', () => res.destroy()); s.pipe(res); };   // a file that vanished between the check and the read ends this answer, not the server
   // Endpoints with side effects (they spawn programs or claim the sound), and the one that serves pictures from a session, refuse requests that a browser marks as coming from another site, e.g. an <img> on a web page.
   const sfs = req.headers['sec-fetch-site'];
-  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && (req.method !== 'GET' || ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts', '/api/prefs', '/api/prefs.js', '/api/voices', '/api/kokoro', '/api/kokoro/install', '/api/media', '/api/artifact', '/api/errors'].includes(url.pathname))) { res.writeHead(403); return res.end('forbidden'); }
-  const readBody = (cb) => {   // request bodies are small JSON: stop reading beyond 256 KB and give up after 10 s
+  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && (req.method !== 'GET' || ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts', '/api/prefs', '/api/prefs.js', '/api/voices', '/api/kokoro', '/api/kokoro/install', '/api/media', '/api/artifact', '/api/errors', '/api/packs'].includes(url.pathname))) { res.writeHead(403); return res.end('forbidden'); }
+  const readBody = (cb, max = 262144) => {   // request bodies are small JSON: stop reading beyond 256 KB (or max) and give up after 10 s
     const chunks = []; let size = 0, over = false; req.setTimeout(10000, () => req.destroy());
-    if (+req.headers['content-length'] > 262144) { res.writeHead(413); res.end('too large'); return req.destroy(); }
-    req.on('data', (d) => { if (over) return; size += d.length; if (size > 262144) { over = true; res.writeHead(413); res.end('too large'); req.destroy(); } else chunks.push(d); });   // bytes, not characters
+    if (+req.headers['content-length'] > max) { res.writeHead(413); res.end('too large'); return req.destroy(); }
+    req.on('data', (d) => { if (over) return; size += d.length; if (size > max) { over = true; res.writeHead(413); res.end('too large'); req.destroy(); } else chunks.push(d); });   // bytes, not characters
     req.on('end', () => { if (!over) cb(Buffer.concat(chunks).toString('utf8')); });
   };
   const textList = (x) => (Array.isArray(x) ? x : []).slice(0, 200).map((t) => String(t).slice(0, 2000));
@@ -908,7 +990,13 @@ function start(port = PORT) {
     if (url.pathname === '/api/current') { const q = (k) => url.searchParams.get(k) || ''; return json(currentSession(q('proj'), q('pid') ? { proj: q('pproj'), id: q('pid'), since: q('since') ? +q('since') : NaN, pin: q('pin') === '1' } : null, { proj: q('sproj'), id: q('sid') })); }
     if (url.pathname === '/api/board') return json(boardRows());
     if (url.pathname === '/api/characters') return json(listCharacters(url.searchParams.get('pack') || ''));
-    if (url.pathname === '/api/packs') return json(Object.keys(PACKS).map((name) => ({ name, n: listCharacters(name).chars.length })));
+    if (url.pathname === '/api/characters/add' && req.method === 'POST') return readBody((body) => { try { const b = JSON.parse(body || '{}') || {}; json(addCharacter(String(b.role || ''), b.name, b.data)); } catch (e) { if (!e.word) logError('add character', e); json({ error: e.word || 'write' }, e.word ? 400 : 500); } }, 512 * 1024);   // a picture of 300 KB is 400 KB once written as text
+    if (url.pathname === '/api/characters/remove' && req.method === 'POST') return readBody((body) => { let b = {}; try { b = JSON.parse(body || '{}') || {}; } catch {} try { json(removeCharacter(b.file) ? { ok: true } : { error: 'file' }, 200); } catch (e) { logError('remove character', e); json({ error: 'write' }, 500); } });
+    if (url.pathname === '/api/packs') return json(packList());
+    if ((url.pathname === '/api/packs/buy' || url.pathname === '/api/packs/claim') && req.method === 'POST') return readBody((body) => {
+      let b = {}; try { b = JSON.parse(body || '{}') || {}; } catch {} const name = String(b.pack || ''); if (!hasOwn(SHOP_PACKS, name)) return json({ error: 'pack' }, 404);
+      (url.pathname.endsWith('/buy') ? buyPack(name) : claimPack(name, typeof b.code === 'string' ? b.code.trim().slice(0, 260) : '')).then((r) => json(r, r.status), (e) => { logError('shop', e); json({ error: 'shop' }, 500); });
+    });
     if (url.pathname === '/api/reveal' && req.method === 'POST') return readBody((body) => {   // 404: not a file this session created · 410: created, and no longer there
       try {
         let b = null; try { b = JSON.parse(body); } catch {} const SAFE = /^[\w.\-]+$/, ok = (v) => typeof v === 'string' && SAFE.test(v) && v !== '..' && v.length <= 200;
@@ -968,7 +1056,7 @@ function start(port = PORT) {
   } catch (e) { logError(req.method + ' ' + url.pathname, e); if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });
 }
-module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, logError, _reveal: reveal, _scrub: { tidy, homeRe }, _artifact: { page: artifactPage, csp: artifactCsp } };
+module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, packsDir, installPack, logError, _reveal: reveal, _scrub: { tidy, homeRe }, _artifact: { page: artifactPage, csp: artifactCsp } };
 if (require.main === module) {
   start().on('error', (e) => {
     console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use (maybe Agent Standup is already running, e.g. inside VS Code). Try: PORT=4790 node server.js` : String(e));

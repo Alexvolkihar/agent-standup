@@ -55,7 +55,7 @@ const now = Date.now(), BOARD = [   // the board scene: Codex and Claude Code se
   { proj: '-Users-dev-docs', id: 's3', title: 'Write the onboarding docs', mtime: now - 20000, state: 'waiting', tool: 'Agent', ageMs: 20000, subActive: 2, subTotal: 2 },
   { proj: '_codex', id: 'c3', title: 'Upgrade the test runner', mtime: now - 3 * 3600e3, state: 'idle', tool: '', ageMs: 3 * 3600e3, subActive: 0, subTotal: 0 },
 ];
-const PREFS = JSON.stringify({ lang: 'en', voice: false, office: false, music: false, sfx: false, epi: false, vanish: true, view: 'call', langChosen: true, banter: true, roster: true, reactions: false, charPack: 'none' });
+const PREFS = JSON.stringify({ lang: 'en', voice: false, office: false, music: false, sfx: false, epi: false, vanish: true, view: 'call', langChosen: true, banter: true, roster: true, reactions: false, charPack: 'none', charYou: 'cast' });
 const mp4 = (raw, to) => { execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-vf', 'fps=30,scale=1280:720,setsar=1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18', '-an', to]); return parseFloat(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', to]).toString()); };
 
 (async () => {

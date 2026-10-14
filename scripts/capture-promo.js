@@ -27,7 +27,7 @@ const BOARD = [
   const server = require('../server.js').start(PORT); await new Promise((r) => server.once('listening', r));
   const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio'] });
   const page = await browser.newPage();
-  await page.evaluateOnNewDocument((p) => { try { localStorage.setItem('cc.prefs', p); } catch {} }, JSON.stringify({ lang: LANG, voice: false, office: false, music: false, epi: false, vanish: true, view: 'call', langChosen: true, banter: true, roster: true, reactions: false }));
+  await page.evaluateOnNewDocument((p) => { try { localStorage.setItem('cc.prefs', p); } catch {} }, JSON.stringify({ lang: LANG, charYou: 'cast', voice: false, office: false, music: false, epi: false, vanish: true, view: 'call', langChosen: true, banter: true, roster: true, reactions: false }));
   await page.setRequestInterception(true);
   page.on('request', (req) => { if (/\/api\/board/.test(req.url())) req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(BOARD) }); else req.continue(); });
   await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });

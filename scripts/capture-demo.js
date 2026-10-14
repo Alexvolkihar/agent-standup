@@ -12,7 +12,7 @@ const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'as-capture-')); fo
 Object.assign(process.env, { AGENT_STANDUP_PROJECTS: path.join(tmp, 'projects'), AGENT_STANDUP_CHARACTERS: path.join(tmp, 'characters'), AGENT_STANDUP_PREFS: path.join(tmp, 'prefs.json'), AGENT_STANDUP_KOKORO_DIR: path.join(tmp, 'kokoro'), AGENT_STANDUP_CODEX: 'off', AGENT_STANDUP_VIBE: 'off' });
 fs.mkdirSync(out, { recursive: true });
 const fresh = () => { try { fs.unlinkSync(process.env.AGENT_STANDUP_PREFS); } catch {} };   // the page saves what it is shown with (a language, the tree view) and would start the next capture from it
-const prefs = (lang) => JSON.stringify({ lang, voice: false, sfx: false, music: false, epi: false, vanish: true, view: 'call', langChosen: true });
+const prefs = (lang) => JSON.stringify({ lang, charYou: 'cast', voice: false, sfx: false, music: false, epi: false, vanish: true, view: 'call', langChosen: true });
 
 // Moments are found by what happens in the demo (not by position), so adding events to the demo never breaks the captures.
 const D = require('../demo.js')();

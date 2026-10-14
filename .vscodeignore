@@ -15,6 +15,10 @@ scripts/**
 
 examples/**
 !examples/cats/**
+!examples/vampire/**
+halloween-src/**
+api/**
+4 persos/**
 
 bin/**
 desktop/**
@@ -32,3 +36,6 @@ package-lock.json
 .claude/**
 research_notes/**
 reports/**
+
+# local secrets written by tools (vercel env pull, Vercel CLI): never in a package
+.env*

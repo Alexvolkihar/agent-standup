@@ -85,7 +85,9 @@ test('a link the page asks for is opened on a known site only; the draft of a pr
     ask(draft); ask(coffee); ask('https://example.com/?x=1'); ask('http://github.com/Atoll92/agent-standup/issues/new?title=a'); ask('not a link');
     assert.equal(v.opened.length, 2); assert.equal(v.opened[0], draft);   // as text: given as a Uri, VS Code decodes and re-encodes the query, and "&" or "#" cut the draft
     assert.equal(typeof v.opened[1], 'object'); assert.equal(v.opened[1].toString(), coffee);
+    const pay = 'https://checkout.stripe.com/c/pay/cs_test_a1B2#fidkdWxOYHwnPyd1blpxYHZxWjA0'; ask(pay); ask('https://checkout.stripe.com.example.com/c/pay/cs_test_a1B2');   // the payment page of a pack: Stripe's own address only, and with its fragment whole
+    assert.equal(v.opened.length, 3); assert.equal(v.opened[2], pay);
     const art = 'https://claude.ai/artifact/AbCdEf123456'; ask(art); ask('https://claude.ai/code/artifact/0f81abdd-8134-4fc0-889a-28c4fe7dbb8f'); ask('https://claude.ai/settings'); ask('https://claude.ai.example.com/artifact/AbCdEf123456'); ask('https://claude.ai/artifact/../settings');   // an artifact the call shows: that page of claude.ai, and no other
-    assert.equal(v.opened.length, 4); assert.equal(v.opened[2].toString(), art);
+    assert.equal(v.opened.length, 5); assert.equal(v.opened[3].toString(), art);
   } finally { await x.close(); }
 });
