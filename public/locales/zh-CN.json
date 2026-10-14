@@ -256,5 +256,6 @@
  "This page uses libraries kept on other servers: they are loaded only if you ask": "此页面使用存放在其他服务器上的库：仅在你要求时才加载",
  "Mark as done": "标记为已处理",
  "Open the pull request": "打开拉取请求",
- "Reopen": "重新打开"
+ "Reopen": "重新打开",
+ "Pinned: click to unpin": "已固定：点击以取消固定"
 }

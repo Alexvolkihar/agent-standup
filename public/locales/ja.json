@@ -256,5 +256,6 @@
  "This page uses libraries kept on other servers: they are loaded only if you ask": "このページは他のサーバーにあるライブラリを使います: 求めたときだけ読み込まれます",
  "Mark as done": "完了にする",
  "Open the pull request": "プルリクエストを開く",
- "Reopen": "元に戻す"
+ "Reopen": "元に戻す",
+ "Pinned: click to unpin": "固定中：クリックで解除"
 }

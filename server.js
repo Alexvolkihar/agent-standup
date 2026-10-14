@@ -458,7 +458,8 @@ function currentSession(projFilter, pick, stick) {   // pick: { proj, id, since 
   const inScope = (c) => !projFilter || c.proj === projFilter || c.proj.startsWith(projFilter + '-') || !!(sourceOf(c.proj) && guard(() => sourceOf(c.proj).inProject(c.id, projFilter), false));   // a Codex or Vibe session counts for a project when it was started in that folder
   const same = (a, b) => !!a && !!b && a.proj === b.proj && a.id === b.id, all = boardRows(), rows = all.filter(inScope), mine = there(pick) ? all.find((r) => same(r, pick)) : null;
   const asked = Math.max(0, (mine && mine.asked) || 0, ...rows.map((r) => r.asked || 0));   // the latest order, in the folder the call follows or in the session you went to
-  if (there(pick) && !(asked > pick.since)) return { proj: pick.proj, id: pick.id, mtime: now, asked, pick: 1 };   // no "since" on the first question after a pick: the answer gives it (asked), and the page sends it back from then on
+  const moved = pick && pick.pin ? Math.max(0, ...rows.filter((r) => !same(r, pick)).map((r) => r.asked || 0)) : asked;   // pick.pin: a call pinned by a click on its tab (📌) is left for an order typed in another session only; what you type in it keeps it there
+  if (there(pick) && !(moved > pick.since)) return { proj: pick.proj, id: pick.id, mtime: now, asked, pick: 1 };   // no "since" on the first question after a pick: the answer gives it (asked), and the page sends it back from then on
   const live = rows.filter((r) => /^(working|waiting|blocked)$/.test(r.state) || r.subActive > 0 || now - r.mtime < STICK_MS), last = Math.max(0, ...live.map((r) => r.asked || 0)), top = live.filter((r) => (r.asked || 0) === last);
   const to = top.find((r) => same(r, stick)) || top.sort((a, b) => b.mtime - a.mtime)[0];   // two sessions whose last order is not known (or of the same instant): the call stays where it is
   if (to) return { proj: to.proj, id: to.id, mtime: to.mtime, asked };
@@ -897,7 +898,7 @@ function start(port = PORT) {
     if (url.pathname === '/api/done' && req.method === 'POST') return readBody((body) => { try { const v = JSON.parse(body); json({ ok: setDone(String(v.proj || ''), String(v.id || ''), v.on !== false) }); } catch (e) { logError('done', e); json({ error: String(e.message || e) }, 400); } });
     if (url.pathname === '/api/errors' && req.method === 'POST') return readBody((body) => { try { const b = JSON.parse(body) || {}; logError('page' + (typeof b.where === 'string' && b.where ? ' ' + b.where.slice(0, 40) : ''), { message: String(b.msg || ''), stack: String(b.stack || '') }); json({ ok: true }); } catch (e) { json({ error: String(e.message || e) }, 400); } });   // an error of the page, written to the local log
     if (url.pathname === '/api/errors') return json(errorReport());
-    if (url.pathname === '/api/current') { const q = (k) => url.searchParams.get(k) || ''; return json(currentSession(q('proj'), q('pid') ? { proj: q('pproj'), id: q('pid'), since: q('since') ? +q('since') : NaN } : null, { proj: q('sproj'), id: q('sid') })); }
+    if (url.pathname === '/api/current') { const q = (k) => url.searchParams.get(k) || ''; return json(currentSession(q('proj'), q('pid') ? { proj: q('pproj'), id: q('pid'), since: q('since') ? +q('since') : NaN, pin: q('pin') === '1' } : null, { proj: q('sproj'), id: q('sid') })); }
     if (url.pathname === '/api/board') return json(boardRows());
     if (url.pathname === '/api/characters') return json(listCharacters(url.searchParams.get('pack') || ''));
     if (url.pathname === '/api/packs') return json(Object.keys(PACKS).map((name) => ({ name, n: listCharacters(name).chars.length })));

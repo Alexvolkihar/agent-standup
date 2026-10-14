@@ -256,5 +256,6 @@
  "This page uses libraries kept on other servers: they are loaded only if you ask": "이 페이지는 다른 서버에 있는 라이브러리를 사용합니다: 요청할 때만 불러옵니다",
  "Mark as done": "완료로 표시",
  "Open the pull request": "풀 리퀘스트 열기",
- "Reopen": "다시 열기"
+ "Reopen": "다시 열기",
+ "Pinned: click to unpin": "고정됨: 클릭하면 고정이 풀립니다"
 }

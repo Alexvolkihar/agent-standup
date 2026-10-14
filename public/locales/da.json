@@ -255,5 +255,6 @@
  "This page uses libraries kept on other servers: they are loaded only if you ask": "Denne side bruger biblioteker, der ligger på andre servere: de indlæses kun, hvis du beder om det",
  "Mark as done": "Markér som færdig",
  "Open the pull request": "Åbn pull requesten",
- "Reopen": "Genåbn"
+ "Reopen": "Genåbn",
+ "Pinned: click to unpin": "Fastgjort: klik for at frigøre"
 }

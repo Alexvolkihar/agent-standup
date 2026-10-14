@@ -256,5 +256,6 @@
  "This page uses libraries kept on other servers: they are loaded only if you ask": "Diese Seite nutzt Bibliotheken von anderen Servern: Sie werden nur geladen, wenn Sie es verlangen",
  "Mark as done": "Als erledigt markieren",
  "Open the pull request": "Pull Request öffnen",
- "Reopen": "Wieder öffnen"
+ "Reopen": "Wieder öffnen",
+ "Pinned: click to unpin": "Angeheftet: klicken zum Lösen"
 }

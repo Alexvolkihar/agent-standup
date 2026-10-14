@@ -2214,7 +2214,7 @@ async function fillProjects() {   // live view: follow the latest activity anywh
 $('#liveProj').onchange = () => { Q.delete('proj'); prefs.proj = $('#liveProj').value; S.pick = null; savePrefs(); S.cur = null; followCurrent(); };
 async function followCurrent() {
   const at = S.pick, enc = encodeURIComponent, watch = Q.get('proj') || prefs.proj || '';   // at: the session you went to by hand (see goSession). The server says whether the call is still to be kept there: it is, until you type somewhere
-  const cur = await (await fetch('/api/current?proj=' + enc(watch) + (at ? '&pproj=' + enc(at.proj || watch) + '&pid=' + enc(at.id) + (at.since != null ? '&since=' + at.since : '') : '') + (S.cur ? '&sproj=' + enc(S.cur.proj) + '&sid=' + enc(S.cur.id) : ''))).json();
+  const cur = await (await fetch('/api/current?proj=' + enc(watch) + (at ? '&pproj=' + enc(at.proj || watch) + '&pid=' + enc(at.id) + (at.since != null ? '&since=' + at.since : '') + (at.pin ? '&pin=1' : '') : '') + (S.cur ? '&sproj=' + enc(S.cur.proj) + '&sid=' + enc(S.cur.id) : ''))).json();
   if (S.pick !== at) return false;   // asked before a click or a tab sent the call elsewhere: the answer to act on is the one asked since. This one undid the click
   if (!cur.pick) { S.pick = null; S.wide = !!cur.wide; } else if (at.since == null) at.since = cur.asked || 0;   /* not kept there any more: you typed somewhere since, or that session is gone · wide: the folder the call follows has no session, the server looked everywhere, and so do the tabs (inWatch). An answer about a session you went to says nothing of that folder · since: the latest order there was when you went there, which a later one is told from */
   if (!cur.id) { $('#empty').classList.add('on'); return false; } $('#empty').classList.remove('on');
@@ -2267,7 +2267,7 @@ setInterval(async () => {
 
 window.addEventListener('message', (e) => {   // VS Code asks for a given session: the one the status bar was clicked for, or the one of the Claude Code tab you went to (the message is named 'pin' on both sides, from when the call was pinned there)
   const d = e.data; if (!EMBED || e.source !== window.parent || !d || d.agentStandup !== 'pin' || typeof d.id !== 'string') return;
-  if (d.tab) { if (prefs.followTab !== false && S.live && !S.demo && typeof d.proj === 'string') goSession(d.proj, d.id); return; }   // the Claude Code tab you went to: the call goes with you (followTab in extension.js; off in ⚙)
+  if (d.tab) { if (prefs.followTab !== false && S.live && !S.demo && typeof d.proj === 'string' && !(S.pick && S.pick.pin)) goSession(d.proj, d.id); return; }   // the Claude Code tab you went to: the call goes with you (followTab in extension.js; off in ⚙), unless you pinned a call (📌): that one stays while you go through your tabs
   const dp = typeof d.proj === 'string' ? d.proj : ''; if (!TOOL[dp]) prefs.proj = dp; S.pick = { proj: dp, id: d.id }; S.cur = null; setView('call'); if (S.live) { fillProjects(); followCurrent(); } else setMode('live');
 });
 // ---------- meeting chrome: participants and a clock ----------
@@ -2361,19 +2361,21 @@ function paintTabs() {
   for (const k of by.keys()) if (!S.tabOrder.includes(k)) S.tabOrder.push(k);   // a session keeps its place while it has no tab: the call now goes by itself to a session that is started, sometimes before the list has the one it leaves, which then came back second
   const ks = S.tabOrder.filter((k) => by.has(k)).slice(0, 8); if (!ks.includes(ck)) ks[ks.length - 1] = ck;   // the others are in ⋯
   const html = by.size < 2 ? '' : ks.map((k) => { const r = by.get(k), on = k === ck, st = BSTATE[r.state];   // one session: no row, there is nothing to tell apart
-    const tip = tabName(r) + '\n' + niceProj(r.proj) + (st ? ' · ' + L(st[2], st[1]) : '');
-    return `<button class="stab ${r.state}${on ? ' on' : ''}" role="tab" aria-selected="${on}" data-k="${esc(k)}" title="${esc(tip)}">${st ? st[0] : ''}${TOOL[r.proj] ? `<i>${TOOL[r.proj]}</i>` : ''}<span>${esc(tabName(r))}</span></button>`; }).join('')
+    const pinned = on && !!S.pick && !!S.pick.pin && sessKey(S.pick) === k, tip = tabName(r) + '\n' + niceProj(r.proj) + (st ? ' · ' + L(st[2], st[1]) : '') + (pinned ? '\n' + L('Épinglé : cliquez pour désépingler', 'Pinned: click to unpin') : '');
+    return `<button class="stab ${r.state}${on ? ' on' : ''}" role="tab" aria-selected="${on}" data-k="${esc(k)}" title="${esc(tip)}">${st ? st[0] : ''}${TOOL[r.proj] ? `<i>${TOOL[r.proj]}</i>` : ''}<span>${esc(tabName(r))}</span>${pinned ? '📌' : ''}</button>`; }).join('')
     + `<button class="stab all" title="${esc(L('Aller à une session', 'Go to a session'))} (Cmd / Ctrl + K)" aria-label="${esc(L('Aller à une session', 'Go to a session'))}">⋯</button>`;
   if (html === paintTabs.html) return; if (!html) paintTabs.cur = ''; el.innerHTML = paintTabs.html = html;
   if (paintTabs.cur !== ck) { paintTabs.cur = ck; const on = el.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
 }
-function goSession(proj, id) {   // you go to this session: the call is kept there until you type somewhere (since: filled by the first answer, see followCurrent)
-  S.pick = { proj, id }; if (S.cur && S.cur.proj === proj && S.cur.id === id) return;   // already there: the call no longer leaves it for a session still at work
+function goSession(proj, id, pin) {   // you go to this session: the call is kept there until you type somewhere (since: filled by the first answer, see followCurrent)
+  // pin: by a click on its tab. The call is pinned there (📌): it stays while you go through the Claude Code tabs of the editor and while you type in it, until you ask something in another session. A click on that tab again unpins it
+  const held = !!pin && !!S.pick && !!S.pick.pin && S.pick.proj === proj && S.pick.id === id; S.pick = pin && !held ? { proj, id, pin: true } : { proj, id };
+  if (S.cur && S.cur.proj === proj && S.cur.id === id) { paintTabs(); return; }   // already there: the call no longer leaves it for a session still at work
   hideVisit(); S.cur = null; followCurrent();
 }
 $('#tabs').onclick = (e) => {
   const b = e.target.closest('.stab'); if (!b) return; if (b.classList.contains('all')) { openSwitcher(); return; }
-  const [p, i] = b.dataset.k.split('/'); goSession(p, i);
+  const [p, i] = b.dataset.k.split('/'); goSession(p, i, true);
 };
 // The visitor: another session has just stopped for you (a question, an edit that waits for your go-ahead, or its turn is over). Someone from there leans in at the edge of the call and says so,
 // between two lines and never over one; a click takes the call there. One at a time, a session that needs you before one that is merely done. Off in ⚙; its line exists in English and French, as the other little lines.

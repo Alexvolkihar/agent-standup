@@ -246,6 +246,8 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     s.user('And now this'); await goes('s');   // you type in the other session: the call goes there, nothing was to be let go first
     await tab('old'); await goes('old'); await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click()); await tab('s'); await wait(2500); assert.equal((await at()).id, 'old', '⚙: off');
     await c.page.evaluate(() => document.querySelector('#menu .mi[data-t=followTab]').click());
+    await c.page.evaluate((proj) => goSession(proj, 'old', true), s.proj); await tab('s'); await wait(2500); assert.deepEqual([(await at()).id, await c.page.evaluate(() => !!(S.pick && S.pick.pin))], ['old', true], 'pinned (a click on its tab): the Claude Code tabs you go through do not take the call');
+    s.user('One last thing'); await goes('s'); await c.until(() => !S.pick); assert.equal(await c.page.evaluate(() => S.pick), null, 'until you ask something in another session: the call goes there, and nothing is pinned any more');
     await c.close();
   });
 
@@ -280,11 +282,11 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     const at = () => c.page.evaluate(() => S.cur && S.cur.id), goes = (id) => c.until((k) => S.cur && S.cur.id === k, id), tabOf = (name) => c.page.evaluate((n) => [...document.querySelectorAll('#tabs .stab:not(.all)')].find((x) => x.querySelector('span').textContent === n).click(), name);
     await c.quiet(500); assert.deepEqual(await row(), [], 'one session: no row');
     b.user('Second session'); const cmd = b.tool('Bash', { command: 'npm test' }); await goes('b'); await rowIs(['First session turn', '>Second session working']);   // a session is started: the call goes there by itself. It stayed where it was, and went there only when that session wrote last
-    await tabOf('First session'); await goes('s'); await rowIs(['>First session turn', 'Second session working']); assert.ok(!(await c.page.evaluate(() => document.querySelector('#tabs').textContent)).includes('📌'), 'a click on a tab takes the call there, and nothing is pinned');
+    await tabOf('First session'); await goes('s'); await rowIs(['>First session turn', 'Second session working']); assert.ok((await c.page.evaluate(() => document.querySelector('#tabs .stab.on').textContent)).includes('📌'), 'a click on a tab takes the call there and pins it');
     b.result(cmd); b.say('The tests pass.'); await comes('turn'); let v = await visitor(); assert.match(v.says, /Second session/); assert.match(v.says, /done|finished/); assert.deepEqual(await row(), ['>First session turn', 'Second session turn']);   // its turn is over there
     assert.equal(await at(), 's', 'the other session writes and ends its turn: the call has not moved');
     await c.page.click('#visit .vgo'); await goes('b'); assert.equal(await visitor(), null, 'the call went there: the visitor leaves'); await rowIs(['First session turn', '>Second session turn']);
-    await c.page.click('#tabs .stab.on'); await wait(1500); assert.equal(await at(), 'b', 'a click on the call’s own tab changes nothing to see');
+    assert.ok(!(await c.page.evaluate(() => document.querySelector('#tabs').textContent)).includes('📌'), 'the visitor takes the call there without pinning it'); await c.page.click('#tabs .stab.on'); await wait(1500); assert.deepEqual([await at(), await c.page.evaluate(() => document.querySelector('#tabs .stab.on').textContent.includes('📌'))], ['b', true], 'a click on the call’s own tab pins it there');
     q.user('Third session'); await goes('q'); await rowIs(['First session turn', 'Second session turn', '>Third session working']);   // a third one is started while the call was kept in the second: it goes there, nothing was to be let go first
     await tabOf('First session'); await goes('s'); await rowIs(['>First session turn', 'Second session turn', 'Third session working']);
     const ask = () => q.tool('AskUserQuestion', { questions: [{ question: 'Which one?', header: 'Choice', options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], multiSelect: false }] }), first = ask();

@@ -390,6 +390,18 @@ test('a sub-agent that hands its report back through SubagentHandback says that 
   } finally { stop(); }
 });
 
+test('a pinned call (a click on its tab) is left for an order typed in another session only: what you type in it keeps it there', async () => {
+  const dir = path.join(tmp, 'projects', '-pin'), put = (id, ...recs) => fs.appendFileSync(path.join(dir, id + '.jsonl'), recs.map(line).join('')), bash = (s, id) => used(s, id, 'Bash', { command: 'npm test' }); fs.mkdirSync(dir, { recursive: true });
+  const { port, stop } = await serve(), cur = async (q) => { await wait(1300); return JSON.parse((await get(port, '/api/current?proj=-pin&sproj=-pin&sid=b&pproj=-pin&pid=b' + q)).body); };   // the call is in b, the session you went to
+  try {
+    put('a', typed(0, 'Build the page'), bash(1, 'toolu_a1')); put('b', typed(10, 'Fix the test'), bash(11, 'toolu_b1'));
+    const since = (await cur('&pin=1')).asked; assert.equal(since, Date.parse(at(10)));
+    put('b', result(20, 'toolu_b1', 'ok'), typed(21, 'And its name'), bash(22, 'toolu_b2'));
+    assert.deepEqual([(await cur('&pin=1&since=' + since)).pick, (await cur('&since=' + since)).pick], [1, undefined], 'pinned, the call is kept while you type in it; a session you only went to is let go (and stays the call, being the last one typed in)');
+    put('a', result(30, 'toolu_a1', 'ok'), typed(31, 'And the footer'), bash(32, 'toolu_a2')); const left = await cur('&pin=1&since=' + since); assert.deepEqual([left.id, left.pick], ['a', undefined], 'an order in another session lets the pin go, and the call goes there');
+  } finally { stop(); }
+});
+
 test('the call is translated into the language the page asks for: French when it says nothing, Spanish and Brazilian Portuguese by name', { skip: process.platform === 'win32' }, async () => {
   const key = process.env.ANTHROPIC_API_KEY; delete process.env.ANTHROPIC_API_KEY;   // with a key the server would call the real API
   const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;
