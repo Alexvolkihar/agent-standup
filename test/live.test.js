@@ -179,6 +179,19 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     s.user('One thing'); await wait(1200); s.say('LAST line of the call.', { end: true }); await c.heard('LAST line'); await c.quiet(500);
     await c.page.evaluate(() => togglePlay()); await wait(800); await c.page.evaluate(() => togglePlay()); await c.quiet(); assert.equal(count(await c.lines(), 'LAST line'), 1); await c.close();
   });
+  await t.test('in a replay too, sub-agents that spoke back to back take turns: never two voices at once', async () => {
+    const s = session(), t0 = Date.now() - 3000; s.user('Split the work in three', t0); s.say('Three of you, one part each.', { at: t0 + 1000 });
+    for (const k of [1, 2, 3]) { s.launch(k, 'Part ' + k, `Do part ${k} and say where you are.`); await wait(20); }
+    for (const k of [1, 2, 3]) { s.say(`PART ${k} is under way, nothing in my way so far.`, { sub: k }); await wait(20); }
+    const c = await open(s, false);
+    await c.page.evaluate(async (proj) => {
+      await setMode('replay'); await loadSession(proj, 's'); S.locked = false; $('#gate').classList.remove('on'); $('#speed').value = $('#speed').max;
+      window.__at = 0; window.__most = 0; const o = window.speakLine; window.speakLine = function () { window.__most = Math.max(window.__most, ++window.__at); return o.apply(this, arguments).finally(() => window.__at--); };   // how many voices are in flight
+      seekTo(0);
+    }, s.proj);
+    await c.until(() => !S.playing && window.__said.filter((x) => x.line.includes('PART')).length === 3, null, 60000);
+    assert.equal(await c.page.evaluate(() => window.__most), 1, 'voices at once'); assert.deepEqual((await c.lines()).filter((l) => l.includes('PART')).map((l) => l.slice(0, 6)), ['PART 1', 'PART 2', 'PART 3'], 'each in turn, in the order they spoke'); await c.close();
+  });
 
   await t.test('the files made for you show under the call when the turn ends: those the lead names, else the documents; a click shows the file in its folder', async () => {
     const server = require('../server.js'), run = server._reveal.run, shown = []; server._reveal.run = (f) => shown.push(f); t.after(() => { server._reveal.run = run; });   // no Finder window during the tests
