@@ -12,6 +12,6 @@
   "config.shareUsage.description": "Ayuda al proyecto a contar las instalaciones activas: una vez al día, envía una solicitud vacía a un archivo de 1 píxel en GitHub (sin identificador ni contenido; GitHub ve tu IP como en cualquier descarga). Desactivado por defecto; se ignora si la telemetría de VS Code está desactivada.",
   "config.codex.description": "Mostrar también las sesiones de Codex (leídas de ~/.codex/sessions o $CODEX_HOME). Desactívalo para mostrar solo las sesiones de Claude Code.",
   "config.vibe.description": "Mostrar también las sesiones de Mistral Vibe (leídas de ~/.vibe/logs/session, o $VIBE_HOME). Desactívalo para no mostrarlas.",
-  "config.claudePath.description": "Ruta completa del ejecutable de Claude Code, si no se encuentra automáticamente (se usa para la traducción al francés).",
+  "config.claudePath.description": "Ruta completa del ejecutable de Claude Code, si no se encuentra automáticamente (se usa para la traducción).",
   "config.charactersPath.description": "Carpeta con tus propias imágenes de personajes (PNG, GIF o WebP, hasta 300 KB cada una). Si está vacía, usa ~/.agent-standup/characters. lead.png es el agente principal, you.png eres tú, cualquier otra imagen es un subagente y name-talk.png es un fotograma opcional con la boca abierta."
 }

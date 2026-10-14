@@ -231,6 +231,7 @@
   /* ---------- overlays ---------- */
   #gate, #empty { position:absolute; inset:0; z-index:4; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px; background:rgba(18,19,26,.82); backdrop-filter:blur(3px) }
   #gate.on, #empty.on { display:flex } #empty { background:var(--bg) } #empty.on ~ #gate { display:none }   /* no session at all: nothing to join, the empty state and its demo button are what there is to see */
+  body:has(#gate.on) .toast.offer, body:has(#empty.on) .toast.offer { display:none !important }   /* the lines that offer something wait for the call: over the join screen of a small panel they covered its button, and the click fell on theirs */
   #gate h2, #empty h2 { margin:0; font:800 22px "Comic Sans MS","Chalkboard SE",system-ui,sans-serif } #gate p, #empty p { margin:0; color:var(--dim); max-width:380px } #eP b { color:var(--text) }
   .cta { background:var(--accent); color:#0b1020; font-weight:700; padding:10px 22px; border-radius:99px; font-size:14px } .cta:hover { filter:brightness(1.1) } .cta:empty { display:none }
   .btn { background:var(--panel2); border:1px solid var(--line); padding:6px 12px; border-radius:8px } .btn:hover { border-color:var(--accent) }
@@ -2600,12 +2601,13 @@ async function voiceOffer() {
   const el = $('#vOffer'), hide = () => { el.style.display = 'none'; clearInterval(offerTimer); offerTimer = null; };
   if (!prefs.voice || prefs.voiceOffer === 'no' || Q.get('demo')) return hide();
   let st; try { st = await (await fetch('/api/kokoro')).json(); } catch { return; }
-  if (st.ready && prefs.voiceOffer === 'want') { prefs.voiceOffer = 'no'; prefs.vstyle = 'kokoro'; prefs.vstyleChosen = true; savePrefs(); $('#vstyle').value = 'kokoro'; hide(); await TTS.init(); kokoroUI(); toast(L('Voix prêtes.', 'Voices ready.')); return; }
+  const add = st.installed && st.ready && !st.g2p && !!CALL_LANG[prefs.lang] && prefs.vstyle === 'kokoro';   // the voices are there, from before French, Spanish and Portuguese were added: one small package more, said on the call where one of them is the language of the interface (⚙ said it, and nothing else)
+  if (st.ready && prefs.voiceOffer === 'want' && !st.installing && !add) { prefs.voiceOffer = 'no'; prefs.vstyle = 'kokoro'; prefs.vstyleChosen = true; savePrefs(); $('#vstyle').value = 'kokoro'; hide(); await TTS.init(); kokoroUI(); toast(L('Voix prêtes.', 'Voices ready.')); return; }
   const busy = st.installing || (st.installed && !st.ready && !st.gaveUp && prefs.voiceOffer === 'want');
   if (busy && !st.installing && !voiceOffer.woke) { voiceOffer.woke = true; fetch('/api/voices?engine=kokoro').catch(() => {}); }   // installed in an earlier run, closed before the model was ready: nothing else starts the engine while another style is in use, and the line would say “Downloading” for good
-  if ((st.installed && !busy) || !st.npm) return hide();   // they have them; or cannot have them (no npm), which ⚙ explains
-  $('#vOfferT').textContent = busy ? L('Téléchargement des vraies voix… vous pouvez continuer.', 'Downloading the real voices… you can carry on.') : st.error || L('Vos agents peuvent parler avec de vraies voix.', 'Your agents can speak with real voices.');
-  $('#vOfferB').style.display = busy ? 'none' : ''; $('#vOfferB').textContent = L('Installer', 'Install') + L(` (${st.sizeMb} Mo)`, ` (${st.sizeMb} MB)`); el.style.display = '';
+  if ((st.installed && !busy && !add) || !st.npm) return hide();   // they have them; or cannot have them (no npm), which ⚙ explains
+  $('#vOfferT').textContent = busy ? L('Téléchargement des vraies voix… vous pouvez continuer.', 'Downloading the real voices… you can carry on.') : st.error || (add ? L('Voix prêtes en anglais. Le français est encore lu par les voix du système.', 'Voices ready in English. This language is still read by the system voices.') : L('Vos agents peuvent parler avec de vraies voix.', 'Your agents can speak with real voices.'));
+  $('#vOfferB').style.display = busy ? 'none' : ''; $('#vOfferB').textContent = add ? L('Ajouter les voix françaises', 'Add the voices of this language') + L(` (${st.g2pMb} Mo)`, ` (${st.g2pMb} MB)`) : L('Installer', 'Install') + L(` (${st.sizeMb} Mo)`, ` (${st.sizeMb} MB)`); el.style.display = '';
   if (busy && !offerTimer) offerTimer = setInterval(voiceOffer, 2500); if (!busy && offerTimer) { clearInterval(offerTimer); offerTimer = null; }
 }
 $('#vOfferB').onclick = async () => { prefs.voiceOffer = 'want'; savePrefs(); try { await fetch('/api/kokoro/install', { method: 'POST' }); } catch {} voiceOffer(); kokoroUI(); };
@@ -2774,7 +2776,7 @@ addEventListener('keydown', (e) => {
 if (EMBED) $('#mBrowser').style.display = $('#mFollowTab').style.display = '';
 
 (async function init() {
-  if (!LANGS.some((l) => l[0] === prefs.lang)) prefs.lang = 'en'; await loadLocale(prefs.lang); voiceOffer(); await loadChars();
+  if (!LANGS.some((l) => l[0] === prefs.lang)) prefs.lang = 'en'; await loadLocale(prefs.lang); voiceOffer(); kokoroUI(); await loadChars();
   document.body.classList.toggle('rost', prefs.roster !== false); document.body.classList.toggle('react', !!prefs.reactions); setView(prefs.view); menuInit(); addEventListener('click', () => { try { if (prefs.notify && !EMBED && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch {} }, { once: true }); applyLang(); applyMute(); TTS.init().then(updateHint);
   loadHealth().then(() => {   // French by default only if translation can actually work; otherwise stay in English without a warning
     const h = S.health || {};

@@ -36,7 +36,7 @@ The app reads the session files Claude Code writes in `~/.claude/projects`, the 
 
 On your machine it keeps your settings in one small file and, when voices are on, the spoken lines as sound files in a private temporary folder, deleted after a day.
 
-Three things in the app's settings call out, all off by default: French translation and jokes (short lines go through your own Claude login), a web radio stream, and a usage counter (one empty request a day). The plugin turns none of them on.
+The app translates the call when its interface is in French, Spanish or Brazilian Portuguese (short lines go through your own Claude login). Three other things in its settings call out, all off by default: jokes (the same login), a web radio stream, and a usage counter (one empty request a day). The plugin turns none of them on.
 
 ## Privacy
 
