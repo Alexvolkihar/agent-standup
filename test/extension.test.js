@@ -49,6 +49,25 @@ test('the extension registers its commands, its panel and its sidebar view, also
   } finally { await x.close(); }
 });
 
+test('a rating is asked once, on the third day the call is opened, for the store the editor installs from; "Later" or closing it asks again a week later, one time', async () => {
+  const v = standIn(), x = await activated(v), asked = [], tick = () => new Promise((r) => setImmediate(r));
+  let answer; v.vscode.window.showInformationMessage = (m, ...b) => { asked.push([m, ...b]); return Promise.resolve(answer === undefined ? undefined : b[answer]); };
+  const store = () => { const m = new Map(); return { get: (k) => m.get(k), update: async (k, val) => { m.set(k, val); } }; };
+  const use = async (st, ...days) => { for (const d of days) { x.ext._noteUse(st, d); await tick(); } };
+  try {
+    v.vscode.env.uriScheme = 'vscode';
+    const st = store(); await use(st, '2026-10-01', '2026-10-01', '2026-10-02'); assert.equal(asked.length, 0);   // two days, however many times the call was opened
+    answer = 1; await use(st, '2026-10-05'); assert.equal(asked.length, 1); assert.deepEqual(asked[0], ['Enjoying Agent Standup? A rating helps other people find it.', 'Rate it', 'Later', 'No thanks']);
+    await use(st, '2026-10-06', '2026-10-11'); assert.equal(asked.length, 1);   // "Later": not before a week
+    answer = undefined; await use(st, '2026-10-12'); assert.equal(asked.length, 2);   // asked again, and closed this time: that was the last
+    await use(st, '2026-10-30'); assert.equal(asked.length, 2); assert.deepEqual(v.opened, []);
+    answer = 0; await use(store(), '2026-10-01', '2026-10-02', '2026-10-03'); assert.deepEqual(v.opened, [x.ext._ratePages.vscode]);   // the review page of the Marketplace, link as text
+    v.vscode.env.uriScheme = 'cursor'; await use(store(), '2026-10-01', '2026-10-02', '2026-10-03'); assert.deepEqual(v.opened.slice(-1), [x.ext._ratePages.other]);   // Cursor, VSCodium… install from Open VSX
+    answer = 2; await use(store(), '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-20'); assert.equal(asked.length, 5); assert.equal(v.opened.length, 2);   // "No thanks": never again
+    assert.match(x.ext._ratePages.vscode, /^https:\/\/marketplace\.visualstudio\.com\/items\?itemName=DoubleGeste\.agent-standup&/); assert.match(x.ext._ratePages.other, /^https:\/\/open-vsx\.org\/extension\/DoubleGeste\/agent-standup\//);
+  } finally { await x.close(); }
+});
+
 test('the status bar opens the call on a session without changing the folder the window follows: a Vibe session is kept under its tool, which is not a folder', async () => {
   const v = standIn(), x = await activated(v, { id: 'abc-123', proj: '_vibe' });
   try {

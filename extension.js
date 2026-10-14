@@ -37,6 +37,7 @@ async function url() {
 }
 
 async function openPanel(pin) {   // pin: { id, proj } of the session to follow (from the status bar)
+  noteUse();
   if (panel) { try { panel.reveal(); if (pin && pin.id) panel.webview.postMessage({ agentStandup: 'pin', id: pin.id, proj: pin.proj }); return; } catch { panel = null; } }   // a disposed panel falls through and is recreated
   let u;
   try { u = await url(); } catch (e) { return vscode.window.showErrorMessage(e.message); }
@@ -65,7 +66,7 @@ const relay = (webview) => webview.onDidReceiveMessage((m) => {
 // Sidebar view: the same live call, in the activity bar.
 const sidebar = {
   async resolveWebviewView(view) {
-    view.webview.options = { enableScripts: true }; relay(view.webview); side = view; view.onDidDispose(() => { if (side === view) side = null; });
+    view.webview.options = { enableScripts: true }; relay(view.webview); noteUse(); side = view; view.onDidDispose(() => { if (side === view) side = null; });
     try {
       const ext = await vscode.env.asExternalUri(vscode.Uri.parse((await url()) + '&embed=1'));
       view.webview.html = frameHtml(ext.toString(true));
@@ -113,8 +114,27 @@ function pingActive(ctx) {
     r.on('error', () => {}); r.on('timeout', () => r.destroy());
   } catch {}
 }
+// A rating, asked once: when the call is opened on a third day, a notification asks for a rating on the page of the store this editor installs from
+// (the VS Code Marketplace; Open VSX for Cursor, VSCodium and the others). "Later", or closing it, asks again a week later, one time; "Rate it" and "No thanks" end it.
+// Nothing is sent: VS Code keeps the number of days, the last of them and the answer, for this extension (see PRIVACY.md).
+const RATE_PAGES = { vscode: 'https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup&ssr=false#review-details', other: 'https://open-vsx.org/extension/DoubleGeste/agent-standup/reviews' };
+let extCtx = null;
+function noteUse(st = extCtx && extCtx.globalState, day = new Date().toISOString().slice(0, 10)) {
+  try {
+    if (!st || st.get('rate.done')) return;
+    const fresh = st.get('rate.last') !== day, days = (st.get('rate.days') || 0) + (fresh ? 1 : 0), later = st.get('rate.later') || '';
+    if (fresh) { st.update('rate.last', day); st.update('rate.days', days); }
+    if (days < 3 || (later && day < later)) return;
+    st.update('rate.done', true);   // marked before it shows: another window opening the call at the same time does not ask too
+    const rate = tt('Rate it'), not = tt('Later'), no = tt('No thanks'), page = /^vscode(-insiders)?$/.test(vscode.env.uriScheme || '') ? RATE_PAGES.vscode : RATE_PAGES.other;
+    Promise.resolve(vscode.window.showInformationMessage(tt('Enjoying Agent Standup? A rating helps other people find it.'), rate, not, no)).then((a) => {
+      if (a === rate) vscode.env.openExternal(page);   // handed over as text, as in relay: given as a Uri, VS Code re-encodes the query and the link loses its "&"
+      else if (a !== no && !later) { st.update('rate.later', new Date(Date.parse(day) + 7 * 864e5).toISOString().slice(0, 10)); st.update('rate.done', false); }
+    }, () => {});
+  } catch (err) { logErr('rating', err); }
+}
 function activate(ctx) {
-  pingActive(ctx);
+  extCtx = ctx; pingActive(ctx);
   try { process.env.AGENT_STANDUP_HOST = `${vscode.env.appName || 'editor'} ${vscode.version || ''}`.trim(); } catch {}   // named in a problem report: VS Code, Cursor, VSCodium…
   const codex0 = process.env.AGENT_STANDUP_CODEX, vibe0 = process.env.AGENT_STANDUP_VIBE;   // what the environment asked for, put back when the setting is on
   const applyPath = () => { process.env.AGENT_STANDUP_CLAUDE = cfg().get('claudePath') || ''; process.env.AGENT_STANDUP_CHARACTERS = cfg().get('charactersPath') || ''; if (cfg().get('codex') === false) process.env.AGENT_STANDUP_CODEX = 'off'; else if (codex0 === undefined) delete process.env.AGENT_STANDUP_CODEX; else process.env.AGENT_STANDUP_CODEX = codex0; if (cfg().get('vibe') === false) process.env.AGENT_STANDUP_VIBE = 'off'; else if (vibe0 === undefined) delete process.env.AGENT_STANDUP_VIBE; else process.env.AGENT_STANDUP_VIBE = vibe0; };
@@ -156,4 +176,4 @@ function activate(ctx) {
   if (cfg().get('autoOpen')) openPanel();
 }
 async function deactivate() { try { if (started) { const s = await started; s.server && s.server.close(); } require('./server.js').shutdown(); } catch {} }
-module.exports = { activate, deactivate, _pingActive: pingActive };
+module.exports = { activate, deactivate, _pingActive: pingActive, _noteUse: noteUse, _ratePages: RATE_PAGES };
