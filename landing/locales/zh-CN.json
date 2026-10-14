@@ -66,5 +66,8 @@
  "Subscribe to the channel": "订阅频道",
  "Watch on YouTube": "在 YouTube 上观看",
  "Play the video": "播放视频",
- "The video comes from YouTube, and only once you press play.": "视频来自 YouTube，只有在你按下播放后才会加载。"
+ "The video comes from YouTube, and only once you press play.": "视频来自 YouTube，只有在你按下播放后才会加载。",
+ "<b>{people} people</b> have already bought him <b>{coffees} coffees</b>. Thank you!": "已经有 <b>{people} 个人</b>请他喝了 <b>{coffees} 杯咖啡</b>。谢谢你们！",
+ "Your name here": "你的名字",
+ "One coffee puts you on this wall.": "一杯咖啡，你就会出现在这面墙上。"
 }

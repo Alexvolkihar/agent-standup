@@ -92,5 +92,8 @@
  "Subscribe to the channel": "Suscríbete al canal",
  "Watch on YouTube": "Ver en YouTube",
  "Play the video": "Reproducir el vídeo",
- "The video comes from YouTube, and only once you press play.": "El vídeo viene de YouTube, y solo cuando pulsas reproducir."
+ "The video comes from YouTube, and only once you press play.": "El vídeo viene de YouTube, y solo cuando pulsas reproducir.",
+ "<b>{people} people</b> have already bought him <b>{coffees} coffees</b>. Thank you!": "<b>{people} personas</b> ya lo han invitado a <b>{coffees} cafés</b>. ¡Gracias!",
+ "Your name here": "Tu nombre aquí",
+ "One coffee puts you on this wall.": "Un café y apareces en este muro."
 }

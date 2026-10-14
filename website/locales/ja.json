@@ -92,5 +92,8 @@
  "Subscribe to the channel": "チャンネル登録",
  "Watch on YouTube": "YouTube で見る",
  "Play the video": "動画を再生",
- "The video comes from YouTube, and only once you press play.": "動画は YouTube から配信され、再生ボタンを押したときにだけ読み込まれます。"
+ "The video comes from YouTube, and only once you press play.": "動画は YouTube から配信され、再生ボタンを押したときにだけ読み込まれます。",
+ "<b>{people} people</b> have already bought him <b>{coffees} coffees</b>. Thank you!": "すでに <b>{people} 人</b>が <b>{coffees} 杯のコーヒー</b>をおごってくれました。ありがとう！",
+ "Your name here": "ここにあなたの名前",
+ "One coffee puts you on this wall.": "コーヒー一杯で、この壁に名前が載ります。"
 }

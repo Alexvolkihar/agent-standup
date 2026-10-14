@@ -66,5 +66,8 @@
  "Subscribe to the channel": "Abonner på kanalen",
  "Watch on YouTube": "Se på YouTube",
  "Play the video": "Afspil videoen",
- "The video comes from YouTube, and only once you press play.": "Videoen kommer fra YouTube, og først når du trykker på afspil."
+ "The video comes from YouTube, and only once you press play.": "Videoen kommer fra YouTube, og først når du trykker på afspil.",
+ "<b>{people} people</b> have already bought him <b>{coffees} coffees</b>. Thank you!": "<b>{people} personer</b> har allerede købt <b>{coffees} kopper kaffe</b> til ham. Tak!",
+ "Your name here": "Dit navn her",
+ "One coffee puts you on this wall.": "Én kop kaffe, og du er på væggen."
 }

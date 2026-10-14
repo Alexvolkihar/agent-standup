@@ -1,0 +1,35 @@
+{
+ "source": "https://www.buymeacoffee.com/bored_dev_and_his_robots",
+ "supporters": [
+  {
+   "id": 15889986,
+   "name": "Someone",
+   "coffees": 5,
+   "note": "Awesome work!",
+   "date": "2026-10-14",
+   "picture": null,
+   "initials": "SO",
+   "color": "#EFC16D"
+  },
+  {
+   "id": 15888009,
+   "name": "Morwic",
+   "coffees": 2,
+   "note": "",
+   "date": "2026-10-13",
+   "picture": "15888009.jpg",
+   "initials": "MO",
+   "color": "#f5c04a"
+  },
+  {
+   "id": 15870444,
+   "name": "Vndrski",
+   "coffees": 1,
+   "note": "",
+   "date": "2026-10-12",
+   "picture": null,
+   "initials": "VN",
+   "color": "#E3CBF4"
+  }
+ ]
+}

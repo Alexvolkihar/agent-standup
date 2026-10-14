@@ -6,6 +6,7 @@
 // that takes an email, and the "For teams" section stays out of the page while it is empty.
 const fs = require('fs'), path = require('path');
 const { LANGS, COPY, decode, load } = require('./site-locales.js');
+const supporters = require('./supporters.js');
 const root = path.join(__dirname, '..'), src = path.join(root, 'website'), dist = path.join(src, 'dist');
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8'), write = (rel, s) => { fs.mkdirSync(path.dirname(path.join(dist, rel)), { recursive: true }); fs.writeFileSync(path.join(dist, rel), s); };
 const copy = (from, rel) => { fs.mkdirSync(path.dirname(path.join(dist, rel)), { recursive: true }); fs.copyFileSync(path.join(root, from), path.join(dist, rel)); };
@@ -17,14 +18,19 @@ if (!/^https:\/\/[^/]+\/$/.test(site)) throw new Error('website/site.json: "url"
 // which is all its npm package adds. Only on the site's own address, so not on a preview or a copy opened from a folder, and not for a browser that sends Do Not Track.
 const analytics = `<script>if (location.hostname === ${JSON.stringify(new URL(site).hostname)} && navigator.doNotTrack !== '1') { window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); }; const s = document.createElement('script'); s.defer = true; s.src = '/_vercel/insights/script.js'; document.head.appendChild(s); }</script>`;
 
+// on the host, the people who bought a coffee are fetched again first (scripts/supporters.js), so a deployment shows the latest ones; here, the ones committed in website/supporters/
+if (process.env.VERCEL) require('child_process').execFileSync(process.execPath, [path.join(__dirname, 'supporters.js')], { stdio: 'inherit' });
+const backers = supporters.read(), people = backers.length, coffees = backers.reduce((n, p) => n + p.coffees, 0);
+
 fs.rmSync(dist, { recursive: true, force: true });
 fs.cpSync(path.join(src, 'static'), dist, { recursive: true });
+if (fs.existsSync(path.join(src, 'supporters'))) fs.cpSync(path.join(src, 'supporters'), path.join(dist, 'supporters'), { recursive: true, filter: (f) => !f.endsWith('.json') });
 copy('website/src/style.css', 'style.css');
 copy('media/icon.png', 'brand/icon.png'); copy('public/favicon.svg', 'brand/favicon.svg'); copy('brand/team-strip.svg', 'brand/team-strip.svg'); copy('docs/media/social.jpg', 'brand/social.jpg');
 
 let home = read('website/src/home.html');
 home = waitlist ? home.replace(/<!--\/?WAITLIST-->\n?/g, '').replace(/__WAITLIST__/g, () => esc(waitlist)) : home.replace(/<!--WAITLIST-->[\s\S]*?<!--\/WAITLIST-->\n?/, '');
-home = home.replace(/__VERSION__/g, version).replace(/__SITE__/g, site).replace('<!--ANALYTICS-->', () => analytics);
+home = supporters.fill(home, backers).replace(/__VERSION__/g, version).replace(/__SITE__/g, site).replace('<!--ANALYTICS-->', () => analytics);
 // ---- one page per language, written here and not by the browser, so that each has its own address for search engines: / in English, /fr/, /de/…
 // English and French come from the page (data-en / data-fr), the others from website/locales/<code>.json (see scripts/site-locales.js); a missing text stays in English.
 const locales = load('website');
@@ -42,7 +48,8 @@ for (const [code, name, label, htmlLang, dir] of LANGS) {
     .replace(/\b(href|src|poster)=(["'])(?!https?:|#|\/|mailto:|data:|\.\/["'])/g, (m, attr, q) => `${attr}=${q}${up}`)   // a language page is one folder down
     .replace('<html lang="en">', `<html lang="${htmlLang}">`).replace(/__PAGE__/g, site + dir)
     .replace('<!--HREFLANG-->', alternates).replace('<!--REDIRECT-->\n', redirect ? redirect + '\n' : '').replace('<!--LANGS-->', menu)
-    .replace('__COPY__', () => JSON.stringify(COPY.map(([en, fr]) => t(en, fr)))));
+    .replace('__COPY__', () => JSON.stringify(COPY.map(([en, fr]) => t(en, fr))))
+    .replace(/\{people\}/g, people).replace(/\{coffees\}/g, coffees));
 }
 
 // ---- two plain pages. Just enough Markdown for what those files use: titles, paragraphs, lists, one table, bold, code, links.
@@ -92,4 +99,4 @@ page('TRADEMARKS.md', 'name-and-logo', 'Name and logo', 'The code of Agent Stand
 write('robots.txt', `User-agent: *\nAllow: /\nSitemap: ${site}sitemap.xml\n`);
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...LANGS.map((l) => l[4]), 'privacy/', 'name-and-logo/'].map((p) => `  <url><loc>${site}${p}</loc></url>`).join('\n')}\n</urlset>\n`);
 const size = (d) => fs.readdirSync(d, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? size(path.join(d, e.name)) : fs.statSync(path.join(d, e.name)).size), 0);
-console.log(`website built for ${site} in website/dist (v${version}, ${(size(dist) / 1048576).toFixed(1)} MB${waitlist ? ', waitlist on' : ', no waitlist form yet'})`);
+console.log(`website built for ${site} in website/dist (v${version}, ${(size(dist) / 1048576).toFixed(1)} MB${waitlist ? ', waitlist on' : ', no waitlist form yet'}, ${people} supporter(s))`);

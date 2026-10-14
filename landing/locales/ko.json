@@ -66,5 +66,8 @@
  "Subscribe to the channel": "채널 구독하기",
  "Watch on YouTube": "YouTube에서 보기",
  "Play the video": "동영상 재생",
- "The video comes from YouTube, and only once you press play.": "동영상은 YouTube에서 제공되며, 재생을 누를 때에만 불러옵니다."
+ "The video comes from YouTube, and only once you press play.": "동영상은 YouTube에서 제공되며, 재생을 누를 때에만 불러옵니다.",
+ "<b>{people} people</b> have already bought him <b>{coffees} coffees</b>. Thank you!": "벌써 <b>{people}명</b>이 <b>커피 {coffees}잔</b>을 사 주었습니다. 고마워요!",
+ "Your name here": "여기에 당신의 이름을",
+ "One coffee puts you on this wall.": "커피 한 잔이면 이 벽에 이름이 올라갑니다."
 }

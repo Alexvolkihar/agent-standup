@@ -66,5 +66,8 @@
  "Subscribe to the channel": "Kanal abonnieren",
  "Watch on YouTube": "Auf YouTube ansehen",
  "Play the video": "Video abspielen",
- "The video comes from YouTube, and only once you press play.": "Das Video kommt von YouTube, und erst, wenn du auf Abspielen drückst."
+ "The video comes from YouTube, and only once you press play.": "Das Video kommt von YouTube, und erst, wenn du auf Abspielen drückst.",
+ "<b>{people} people</b> have already bought him <b>{coffees} coffees</b>. Thank you!": "<b>{people} Leute</b> haben ihm schon <b>{coffees} Kaffees</b> spendiert. Danke!",
+ "Your name here": "Dein Name hier",
+ "One coffee puts you on this wall.": "Ein Kaffee, und du stehst an dieser Wand."
 }
