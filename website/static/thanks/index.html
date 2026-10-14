@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark">
+<title>Thank you · Agent Standup</title>
+<link rel="icon" href="/brand/favicon.svg">
+<!-- The page a buyer of the Halloween pack lands on after paying on Stripe. It shows the code of the purchase, read from its own address: nothing is sent anywhere and nothing is counted here.
+     The site's own fonts and logo, the night of the pack (its dots, its moon, its bats), the characters drawn by Fabien Coupas. English, or French when the browser asks for it. -->
+<style>
+  @font-face { font-family: Gabarito; src: url(/fonts/gabarito.woff2) format('woff2'); font-weight: 400 900; font-display: swap }
+  @font-face { font-family: Figtree; src: url(/fonts/figtree.woff2) format('woff2'); font-weight: 300 900; font-display: swap }
+  :root { --night:#0b1418; --night2:#10222a; --card:rgba(20,38,45,.86); --line:#2a4a52; --ink:#f6f2ea; --dim:#a8c3c8; --pumpkin:#f58a1f; --gold:#f5c04a; --peach:#e8845f }
+  * { box-sizing:border-box }
+  html { -webkit-text-size-adjust:100% }
+  body { margin:0; min-height:100vh; color:var(--ink); font:400 17px/1.6 Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+    background: radial-gradient(circle at 86% 9%, rgba(245,192,74,.28), transparent 26%), radial-gradient(circle at 86% 9%, rgba(245,138,31,.18), transparent 46%), linear-gradient(180deg, var(--night2), var(--night) 60%) fixed }
+  body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity:.22; background-image:radial-gradient(rgba(0,0,0,.9) 1.1px, transparent 1.4px); background-size:7px 7px; -webkit-mask-image:linear-gradient(180deg, #000, transparent 70%); mask-image:linear-gradient(180deg, #000, transparent 70%) }   /* the dots of the pack's rooms */
+  a { color:inherit }
+  .moon { position:fixed; top:34px; right:7%; width:92px; height:92px; border-radius:50%; background:radial-gradient(circle at 38% 36%, #fff8e6, #f3e3bd 62%, #e7cf9c); box-shadow:0 0 60px rgba(245,192,74,.45); pointer-events:none }
+  .moon::before, .moon::after { content:''; position:absolute; border-radius:50%; background:rgba(150,120,70,.25) } .moon::before { width:16px; height:16px; left:24px; top:30px } .moon::after { width:10px; height:10px; left:54px; top:56px }
+  .bat { position:fixed; width:34px; fill:#05080a; pointer-events:none; animation:fly 7s ease-in-out infinite } .bat.b2 { width:22px; animation-duration:9s; animation-delay:-3s } .bat.b3 { width:16px; animation-duration:11s; animation-delay:-6s }
+  @keyframes fly { 50% { transform:translate(-14px, 10px) rotate(-6deg) } }
+  @media (prefers-reduced-motion: reduce) { .bat, .pulse { animation:none } }
+  main { position:relative; max-width:720px; margin:0 auto; padding:26px 20px 56px }
+  header { display:flex; align-items:center; gap:11px; margin-bottom:46px } header a { display:flex; align-items:center; gap:11px; text-decoration:none; font:800 19px Gabarito, system-ui, sans-serif } header img { width:34px; height:34px; border-radius:9px }
+  .eyebrow { display:inline-block; margin-bottom:12px; padding:3px 12px; border:1px solid rgba(245,138,31,.55); border-radius:99px; color:var(--pumpkin); font:700 13px/1.6 Figtree, sans-serif; letter-spacing:.06em; text-transform:uppercase }
+  h1 { margin:0; font:800 clamp(52px, 11vw, 92px)/.98 Gabarito, system-ui, sans-serif; letter-spacing:-.02em }
+  h1 span { color:var(--pumpkin) }
+  .lead { margin:14px 0 30px; font:600 clamp(20px, 3.4vw, 25px)/1.35 Gabarito, system-ui, sans-serif; color:var(--soft, #e9e4d8) }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:20px 22px; margin-bottom:16px; backdrop-filter:blur(3px) }
+  .status { display:flex; align-items:center; gap:14px } .pulse { flex:none; width:14px; height:14px; border-radius:50%; background:var(--pumpkin); box-shadow:0 0 0 0 rgba(245,138,31,.6); animation:pulse 1.6s ease-out infinite }
+  @keyframes pulse { 70% { box-shadow:0 0 0 12px rgba(245,138,31,0) } 100% { box-shadow:0 0 0 0 rgba(245,138,31,0) } }
+  .label { margin:0 0 8px; font:700 13px/1.4 Figtree, sans-serif; letter-spacing:.06em; text-transform:uppercase; color:var(--dim) }
+  .code { display:flex; gap:10px; align-items:stretch } code { flex:1; min-width:0; padding:12px 14px; background:rgba(5,10,12,.7); border:1px dashed var(--line); border-radius:12px; font:14px/1.45 ui-monospace, Menlo, Consolas, monospace; overflow-wrap:anywhere; color:#fff3dc }
+  .dl { display:inline-flex; align-items:center; gap:8px; margin-top:14px; padding:10px 16px; border:1px solid var(--line); border-radius:12px; text-decoration:none; font-weight:600; color:var(--ink) } .dl:hover { border-color:var(--gold) }
+  button { flex:none; border:0; border-radius:12px; padding:0 18px; background:var(--gold); color:#20160a; font:700 15px Figtree, system-ui, sans-serif; cursor:pointer } button:focus-visible, a:focus-visible { outline:2px solid var(--gold); outline-offset:3px }
+  .hint { margin:12px 0 0; color:var(--dim); font-size:15px } .hint b { color:var(--ink); font-weight:600 }
+  figure { margin:30px 0 8px } figure img { display:block; width:100%; height:auto; border-radius:16px; border:1px solid var(--line); box-shadow:0 18px 50px rgba(0,0,0,.45) }
+  figcaption { margin-top:10px; color:var(--dim); font-size:15px } figcaption a { color:var(--gold) }
+  .help { margin-top:28px; color:var(--dim); font-size:15px } footer { margin-top:34px; padding-top:18px; border-top:1px solid var(--line); color:var(--dim); font-size:14px; display:flex; flex-wrap:wrap; gap:6px 18px }
+  @media (max-width: 520px) { .moon { width:64px; height:64px; top:22px; right:18px } .code { flex-direction:column } button { padding:12px 18px } header { margin-bottom:34px } }
+</style>
+</head>
+<body>
+<div class="moon" aria-hidden="true"></div>
+<svg class="bat" style="top:118px;right:24%" viewBox="-20 -10 40 22" aria-hidden="true"><path d="M0 4q-3-6-2-9l2 3l2-3q1 3-2 9zM-1 -1q-6-9-17-7q5 2 5 7q4-3 7 1q2-3 5 1zM1 -1q6-9 17-7q-5 2-5 7q-4-3-7 1q-2-3-5 1z"/></svg>
+<svg class="bat b2" style="top:66px;right:34%" viewBox="-20 -10 40 22" aria-hidden="true"><path d="M0 4q-3-6-2-9l2 3l2-3q1 3-2 9zM-1 -1q-6-9-17-7q5 2 5 7q4-3 7 1q2-3 5 1zM1 -1q6-9 17-7q-5 2-5 7q-4-3-7 1q-2-3-5 1z"/></svg>
+<svg class="bat b3" style="top:170px;right:12%" viewBox="-20 -10 40 22" aria-hidden="true"><path d="M0 4q-3-6-2-9l2 3l2-3q1 3-2 9zM-1 -1q-6-9-17-7q5 2 5 7q4-3 7 1q2-3 5 1zM1 -1q6-9 17-7q-5 2-5 7q-4-3-7 1q-2-3-5 1z"/></svg>
+<main>
+  <header><a href="/"><img src="/brand/icon.png" alt="" width="34" height="34">Agent Standup</a></header>
+  <span class="eyebrow" data-k="eyebrow">Halloween pack</span>
+  <h1 data-k="title">Thank you<span>!</span></h1>
+  <p class="lead" data-k="lead">Your Halloween crew is moving in.</p>
+  <div class="card status"><span class="pulse" aria-hidden="true"></span><span data-k="back">Go back to Agent Standup: the pack installs by itself within a few seconds.</span></div>
+  <div class="card" id="has">
+    <p class="label" data-k="codeLabel">Your purchase code</p>
+    <div class="code"><code id="code"></code><button id="copy" data-k="copy">Copy</button></div>
+    <p class="hint"><span data-k="keep">Keep it: it installs the pack on any computer, now or later. In the app:</span> <b data-k="path">⚙ → Characters → Halloween pack → “I already bought it”</b>. <span data-k="mail">It is also on the receipt and the invoice Stripe emails you.</span></p>
+    <a class="dl" id="dl" href="/shop/#install"><span aria-hidden="true">⬇</span> <span data-k="dl">Download the pack (zip)</span></a> <a class="hint" href="/shop/#install" data-k="how" style="margin-left:6px">How to install it by hand</a>
+  </div>
+  <figure><img src="cast.jpg" alt="" data-k-alt="castAlt" width="960" height="360"><figcaption><span data-k="drawn">Characters drawn by Fabien Coupas</span> · <a href="https://www.instagram.com/fabien_coupas/">@fabien_coupas</a></figcaption></figure>
+  <p class="help"><span data-k="help">Something wrong? Write to us with your code and we will sort it out:</span> <a href="mailto:contact.doublegeste@gmail.com">contact.doublegeste@gmail.com</a></p>
+  <footer><a href="/">agent-standup.com</a><a href="/privacy/" data-k="privacy">Privacy</a></footer>
+</main>
+<script>
+  const T = { fr: { eyebrow: 'Pack Halloween', title: 'Merci<span> !</span>', lead: 'Votre équipe d’Halloween emménage.', back: 'Retournez dans Agent Standup : le pack s’installe tout seul en quelques secondes.', codeLabel: 'Votre code d’achat', copy: 'Copier', copied: 'Copié',
+    keep: 'Gardez-le : il installe le pack sur n’importe quel ordinateur, maintenant ou plus tard. Dans l’app :', mail: 'Il figure aussi sur le reçu et la facture que Stripe vous envoie par e-mail.', dl: 'Télécharger le pack (zip)', how: 'L’installer à la main', path: '⚙ → Personnages → Pack Halloween → « Je l’ai déjà acheté »', castAlt: 'Les huit personnages du pack Halloween, chacun dans sa pièce', drawn: 'Personnages dessinés par Fabien Coupas', help: 'Un souci ? Écrivez-nous avec votre code, on s’en occupe :', privacy: 'Confidentialité' },
+    en: { copied: 'Copied', castAlt: 'The eight characters of the Halloween pack, each in its own room' } };
+  const fr = (navigator.language || '').toLowerCase().startsWith('fr'), t = fr ? T.fr : T.en;
+  if (fr) { document.documentElement.lang = 'fr'; document.title = 'Merci · Agent Standup'; for (const el of document.querySelectorAll('[data-k]')) if (t[el.dataset.k]) el.innerHTML = t[el.dataset.k]; }   // the strings are the page's own, never what the address carries
+  for (const el of document.querySelectorAll('[data-k-alt]')) el.alt = t[el.dataset.kAlt] || T.en[el.dataset.kAlt];
+  const q = new URLSearchParams(location.search), code = q.get('code') || '', ses = q.get('s') || '', ok = /^([A-Z]{2}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}|(cs|pi)_[A-Za-z0-9_]{8,220})$/.test(code);
+  if (ok) { document.getElementById('code').textContent = code; document.getElementById('dl').href = '/api/download?pack=halloween&code=' + encodeURIComponent(/^cs_[A-Za-z0-9_]{8,220}$/.test(ses) ? ses : code); } else document.getElementById('has').hidden = true;   // the download asks with Stripe's id of the payment when it is there: Stripe's search may not know the short code for a minute
+  document.getElementById('copy').onclick = async (e) => { try { await navigator.clipboard.writeText(code); e.target.textContent = t.copied || T.en.copied; } catch {} };
+</script>
+</body>
+</html>

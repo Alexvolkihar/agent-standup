@@ -2,12 +2,14 @@
 /*
 !/scripts
 !/website
+!/api
 !/brand
 !/media
 !/public
 !/docs
 !/package.json
 !/PRIVACY.md
+!/TERMS.md
 !/TRADEMARKS.md
 !/vercel.json
 /public/*

@@ -13,6 +13,9 @@ const copy = (from, rel) => { fs.mkdirSync(path.dirname(path.join(dist, rel)), {
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const version = JSON.parse(read('package.json')).version, conf = JSON.parse(read('website/site.json'));
 const site = String(conf.url || '').replace(/\/?$/, '/'), waitlist = /^https:\/\//.test(conf.waitlist || '') ? conf.waitlist : '';
+// "halloweenVideo": the YouTube id of the Halloween pack's video. While it is empty, the hero and the shop show its picture as a link to the shop instead of a video
+const hwVideo = /^[\w-]{6,20}$/.test(conf.halloweenVideo || '') ? conf.halloweenVideo : '';
+const hwPin = (html) => (hwVideo ? html.replace(/<!--HWSHOP-->[\s\S]*?<!--\/HWSHOP-->\n?/g, '').replace(/<!--\/?HWVIDEO-->/g, '').replace(/__HALLOWEEN_YT__/g, hwVideo) : html.replace(/<!--HWVIDEO-->[\s\S]*?<!--\/HWVIDEO-->\n?/g, '').replace(/<!--\/?HWSHOP-->/g, ''));
 if (!/^https:\/\/[^/]+\/$/.test(site)) throw new Error('website/site.json: "url" must be the https address of the site');
 // Visits are counted by the host (Vercel Web Analytics, switched on in the project's settings; no cookie, see PRIVACY.md). This is the tag Vercel gives for a plain HTML site,
 // which is all its npm package adds. Only on the site's own address, so not on a preview or a copy opened from a folder, and not for a browser that sends Do Not Track.
@@ -24,11 +27,12 @@ const backers = supporters.read(), people = backers.length, coffees = backers.re
 
 fs.rmSync(dist, { recursive: true, force: true });
 fs.cpSync(path.join(src, 'static'), dist, { recursive: true });
+for (const f of ['shop/index.html']) { const fp = path.join(dist, f); fs.writeFileSync(fp, hwPin(fs.readFileSync(fp, 'utf8'))); }   // the shop shows the Halloween video once it is online
 if (fs.existsSync(path.join(src, 'supporters'))) fs.cpSync(path.join(src, 'supporters'), path.join(dist, 'supporters'), { recursive: true, filter: (f) => !f.endsWith('.json') });
 copy('website/src/style.css', 'style.css');
 copy('media/icon.png', 'brand/icon.png'); copy('public/favicon.svg', 'brand/favicon.svg'); copy('brand/team-strip.svg', 'brand/team-strip.svg'); copy('docs/media/social.jpg', 'brand/social.jpg');
 
-let home = read('website/src/home.html');
+let home = hwPin(read('website/src/home.html'));
 home = waitlist ? home.replace(/<!--\/?WAITLIST-->\n?/g, '').replace(/__WAITLIST__/g, () => esc(waitlist)) : home.replace(/<!--WAITLIST-->[\s\S]*?<!--\/WAITLIST-->\n?/, '');
 home = supporters.fill(home, backers).replace(/__VERSION__/g, version).replace(/__SITE__/g, site).replace('<!--ANALYTICS-->', () => analytics);
 // ---- one page per language, written here and not by the browser, so that each has its own address for search engines: / in English, /fr/, /de/…
@@ -95,8 +99,9 @@ ${markdown(read(file).replace(/^# .+\n/, ''))}
 </html>
 `);
 page('PRIVACY.md', 'privacy', 'Privacy', 'What Agent Standup reads, what it keeps on your computer, and what can leave it.');
+page('TERMS.md', 'terms', 'Terms of sale', 'The terms of sale of the Agent Standup shop: the seller, the price, the delivery, the right of withdrawal, the licence of the pictures.');
 page('TRADEMARKS.md', 'name-and-logo', 'Name and logo', 'The code of Agent Standup is MIT licensed. What you may and may not do with its name, its logo and its characters.');
 write('robots.txt', `User-agent: *\nAllow: /\nSitemap: ${site}sitemap.xml\n`);
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...LANGS.map((l) => l[4]), 'privacy/', 'name-and-logo/'].map((p) => `  <url><loc>${site}${p}</loc></url>`).join('\n')}\n</urlset>\n`);
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...LANGS.map((l) => l[4]), 'shop/', 'privacy/', 'terms/', 'name-and-logo/'].map((p) => `  <url><loc>${site}${p}</loc></url>`).join('\n')}\n</urlset>\n`);
 const size = (d) => fs.readdirSync(d, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? size(path.join(d, e.name)) : fs.statSync(path.join(d, e.name)).size), 0);
 console.log(`website built for ${site} in website/dist (v${version}, ${(size(dist) / 1048576).toFixed(1)} MB${waitlist ? ', waitlist on' : ', no waitlist form yet'}, ${people} supporter(s))`);
