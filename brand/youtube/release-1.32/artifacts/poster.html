@@ -1,0 +1,207 @@
+<title>Agent Standup 1.32</title>
+<style>
+/* Layout: a 16:9 call screen. Title block on the left, five changes on the right, the cast along the bottom. One dark look on purpose. */
+:root {
+  --bg-deep: #10282f;
+  --bg: #18444f;
+  --peach: #E8845F;
+  --gold: #F5C04A;
+  --cream: #F6F2EA;
+  --ink: #2C2F40;
+  --cream-soft: rgba(246, 242, 234, .72);
+  --line: rgba(246, 242, 234, .14);
+  --tile: rgba(246, 242, 234, .07);
+  --display: ui-rounded, "SF Pro Rounded", "Nunito", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg-deep);
+  background-image: radial-gradient(120% 90% at 85% 10%, var(--bg) 0%, var(--bg-deep) 70%);
+  color: var(--cream);
+  font-family: var(--body);
+  overflow-x: hidden;
+}
+.poster {
+  box-sizing: border-box;
+  min-height: 100%;
+  padding-block: clamp(16px, 4vh, 48px);
+  padding-inline: clamp(16px, 4.5vw, 72px);
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  grid-template-rows: auto 1fr auto;
+  gap: clamp(14px, 3.2vh, 40px) clamp(24px, 4vw, 72px);
+}
+.top {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: clamp(11px, 1.15vw, 16px);
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--cream-soft);
+}
+.top .brand { display: flex; align-items: center; gap: 10px; color: var(--cream); font-weight: 700; }
+.top .brand svg { width: 1.9em; height: 1.9em; color: var(--gold); }
+.live {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 12px; border-radius: 999px;
+  background: var(--peach); color: var(--ink); font-weight: 800;
+}
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); animation: blink 1.6s ease-in-out infinite; }
+.top .spacer { flex: 1; }
+
+.hero { display: flex; flex-direction: column; justify-content: center; gap: clamp(10px, 2vh, 24px); min-width: 0; }
+.eyebrow {
+  font-family: var(--mono); font-size: clamp(12px, 1.3vw, 18px);
+  letter-spacing: .14em; text-transform: uppercase; color: var(--gold);
+}
+h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 900;
+  line-height: .86;
+  letter-spacing: -.035em;
+  text-wrap: balance;
+}
+h1 .name { display: block; font-size: min(7.4vw, 13.5vh); color: var(--cream); }
+h1 .ver {
+  display: block;
+  font-size: min(19vw, 34vh);
+  color: var(--gold);
+  text-shadow: 0.06em 0.06em 0 var(--peach);
+  margin-top: .04em;
+}
+.lede {
+  margin: 0; max-width: 32ch;
+  font-size: clamp(15px, 1.7vw, 24px); line-height: 1.35; color: var(--cream-soft);
+  text-wrap: balance;
+}
+.lede b { color: var(--cream); font-weight: 650; }
+
+.changes {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  gap: clamp(8px, 1.6vh, 18px);
+  min-width: 0;
+}
+.changes li {
+  display: grid; grid-template-columns: auto 1fr; align-items: center;
+  gap: clamp(12px, 1.4vw, 22px);
+  padding: clamp(8px, 1.5vh, 16px) clamp(12px, 1.4vw, 20px);
+  border-radius: 18px;
+  background: var(--tile);
+  border: 1px solid var(--line);
+}
+.changes li.lead { background: var(--cream); border-color: var(--cream); color: var(--ink); }
+.ic {
+  width: clamp(38px, 3.6vw, 58px); aspect-ratio: 1; max-width: 100%;
+  border-radius: 14px; display: grid; place-items: center;
+  background: var(--c); color: var(--ink);
+}
+.ic svg { width: 58%; height: 58%; }
+.changes h2 {
+  margin: 0; font-family: var(--display); font-weight: 850;
+  font-size: clamp(16px, 1.85vw, 28px); line-height: 1.1; letter-spacing: -.01em;
+}
+.changes p { margin: 3px 0 0; font-size: clamp(13px, 1.2vw, 18px); line-height: 1.3; color: var(--cream-soft); }
+.changes li.lead p { color: var(--ink); opacity: .8; }
+.changes .txt { min-width: 0; }
+
+.bottom {
+  grid-column: 1 / -1;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  border-top: 1px solid var(--line);
+  padding-top: clamp(10px, 2vh, 22px);
+}
+.cast { display: flex; align-items: flex-end; gap: clamp(6px, 1vw, 14px); }
+.cast svg { width: clamp(34px, 3.8vw, 60px); height: auto; aspect-ratio: 1; }
+.cast svg:nth-child(odd) { animation: bob 2.4s ease-in-out infinite; }
+.cast svg:nth-child(even) { animation: bob 2.4s ease-in-out .6s infinite; }
+.say {
+  align-self: center; position: relative; margin-left: 10px;
+  padding: 8px 14px; border-radius: 14px;
+  background: var(--cream); color: var(--ink);
+  font-family: var(--display); font-weight: 800; font-size: clamp(13px, 1.3vw, 19px);
+}
+.say::before {
+  content: ""; position: absolute; left: -7px; top: 50%; transform: translateY(-50%);
+  border: 7px solid transparent; border-left: 0; border-right-color: var(--cream);
+}
+.tools {
+  font-family: var(--mono); font-size: clamp(11px, 1.1vw, 15px);
+  letter-spacing: .08em; text-transform: uppercase; color: var(--cream-soft);
+  text-align: right;
+}
+.tools b { color: var(--gold); font-weight: 700; }
+
+@keyframes blink { 50% { opacity: .25; } }
+@keyframes bob { 50% { transform: translateY(-6%); } }
+@media (prefers-reduced-motion: reduce) { .live i, .cast svg { animation: none !important; } }
+
+@media (max-width: 760px) {
+  .poster { grid-template-columns: 1fr; grid-template-rows: auto; }
+  h1 .name { font-size: 13vw; }
+  h1 .ver { font-size: 34vw; }
+  .tools { text-align: left; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <mask id="mono_m" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="75"><rect width="100" height="62" fill="#000"/><g fill="#fff"><ellipse cx="25" cy="56" rx="4.6" ry="9" transform="rotate(12 25 56)"/><ellipse cx="75" cy="56" rx="4.6" ry="9" transform="rotate(-12 75 56)"/><rect x="27" y="20" width="46" height="56" rx="22"/></g><path d="M26.5 37Q27 13 50 13Q73 13 73.5 37" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round"/><rect x="23" y="33" width="7" height="14" rx="3.5" fill="#fff" stroke="#000" stroke-width="2"/><rect x="70" y="33" width="7" height="14" rx="3.5" fill="#fff" stroke="#000" stroke-width="2"/><rect x="23.75" y="33.75" width="5.5" height="12.5" rx="2.75" fill="#fff"/><rect x="70.75" y="33.75" width="5.5" height="12.5" rx="2.75" fill="#fff"/><g fill="#000"><ellipse cx="41.5" cy="40" rx="3.72" ry="5.16"/><ellipse cx="58.5" cy="40" rx="3.72" ry="5.16"/></g><path d="M46 50.5q4 3.6 8 0" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/><rect x="0" y="62" width="100" height="20" fill="#000"/></mask>
+    <symbol id="head" viewBox="19 4.5 62 62"><rect x="19" y="9" width="62" height="53" fill="currentColor" mask="url(#mono_m)"/></symbol>
+  </defs>
+</svg>
+
+<main class="poster">
+  <header class="top">
+    <span class="brand"><svg viewBox="19 4.5 62 62" aria-hidden="true"><use href="#head"/></svg>Agent Standup</span>
+    <span class="live"><i></i>Live</span>
+    <span class="spacer"></span>
+    <span>v1.32.0 · free &amp; open source</span>
+  </header>
+
+  <section class="hero">
+    <div class="eyebrow">Shipped today</div>
+    <h1><span class="name">Agent Standup</span><span class="ver">1.32</span></h1>
+    <p class="lede">Your coding agents, as a <b>live team call</b>. Now they can share their screen.</p>
+  </section>
+
+  <ul class="changes">
+    <li class="lead">
+      <span class="ic" style="--c: var(--peach)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2.5"/><path d="M3 8h18M9 22h6M12 18v4"/></svg></span>
+      <div class="txt"><h2>Artifacts in the call</h2><p>A page your session publishes goes up on screen.</p></div>
+    </li>
+    <li>
+      <span class="ic" style="--c: var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="12" height="12" rx="3"/><rect x="9" y="9" width="12" height="12" rx="3"/></svg></span>
+      <div class="txt"><h2>Cowork sessions too</h2><p>The Claude desktop app's Cowork joins the call.</p></div>
+    </li>
+    <li>
+      <span class="ic" style="--c: var(--cream)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></svg></span>
+      <div class="txt"><h2>Natural voices, four languages</h2><p>English, French, Spanish, Brazilian Portuguese.</p></div>
+    </li>
+    <li>
+      <span class="ic" style="--c: var(--peach)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h11a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H8l-4 3v-3H3z"/><path d="M18 9h1a2 2 0 0 1 2 2v5h-1v3l-4-3h-4"/></svg></span>
+      <div class="txt"><h2>Two voice styles</h2><p>Natural voices, or a softer Animal Crossing babble.</p></div>
+    </li>
+    <li>
+      <span class="ic" style="--c: var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/></svg></span>
+      <div class="txt"><h2>The call follows you</h2><p>It sits in the session you last touched. Click a tab to pin it.</p></div>
+    </li>
+  </ul>
+
+  <footer class="bottom">
+    <div class="cast" aria-hidden="true">
+      <svg style="color: var(--gold)"><use href="#head"/></svg>
+      <svg style="color: var(--peach)"><use href="#head"/></svg>
+      <svg style="color: var(--cream)"><use href="#head"/></svg>
+      <svg style="color: var(--peach)"><use href="#head"/></svg>
+      <svg style="color: var(--gold)"><use href="#head"/></svg>
+      <span class="say">Look, I'm sharing my screen!</span>
+    </div>
+    <div class="tools">Claude Code · Codex · Mistral Vibe<br><b>agent-standup.com</b></div>
+  </footer>
+</main>

@@ -1,0 +1,296 @@
+<title>Standup Bingo</title>
+<style>
+/* Layout: one 16:9 screen, a quiet side panel on the left, the square card filling the height on the right. Single dark look, deliberately. */
+:root {
+  --peach: #E8845F;
+  --gold: #F5C04A;
+  --teal: #18444F;
+  --teal-deep: #10282f;
+  --cream: #F6F2EA;
+  --ink: #2C2F40;
+  --cream-dim: rgba(246, 242, 234, 0.68);
+  --line: rgba(246, 242, 234, 0.14);
+  --font-display: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Nunito", system-ui, sans-serif;
+  --font-body: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --card: min(88vh, 58vw);
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: linear-gradient(160deg, var(--teal-deep) 0%, var(--teal) 100%);
+  background-color: var(--teal-deep);
+  color: var(--cream);
+  font-family: var(--font-body);
+  overflow: hidden;
+}
+.stage {
+  box-sizing: border-box;
+  height: 100%;
+  padding-block: 4vh;
+  padding-inline: max(16px, 4vw);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4vw;
+}
+.panel { display: flex; flex-direction: column; gap: 3.2vh; min-width: 0; }
+.eyebrow {
+  display: flex; align-items: center; gap: 0.6em;
+  font-size: clamp(12px, 1.6vw, 26px);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600;
+}
+.eyebrow svg { width: 1.6em; height: 1.6em; flex: none; }
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(34px, 6.4vw, 120px);
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+h1 span { color: var(--peach); }
+.hint { margin: 0; font-size: clamp(14px, 1.7vw, 30px); line-height: 1.35; color: var(--cream-dim); max-width: 22ch; }
+.tally {
+  display: flex; align-items: baseline; gap: 0.4em;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(16px, 2.2vw, 40px);
+  font-variant-numeric: tabular-nums;
+}
+.tally b { font-size: 1.8em; color: var(--gold); }
+.tally small { font-size: 0.7em; color: var(--cream-dim); font-weight: 600; }
+.status {
+  align-self: flex-start;
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(16px, 2.4vw, 44px);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 0.35em 0.8em; border-radius: 999px;
+  border: 2px dashed var(--line); color: var(--cream-dim);
+  transition: background-color .3s, color .3s, border-color .3s, transform .3s;
+}
+.status.on {
+  background: var(--gold); color: var(--ink); border: 2px solid var(--gold);
+  transform: rotate(-3deg);
+}
+.reset {
+  align-self: flex-start;
+  font: 600 clamp(13px, 1.3vw, 22px) var(--font-body);
+  color: var(--cream); background: transparent;
+  border: 1.5px solid var(--line); border-radius: 0.6em;
+  padding: 0.5em 1em; cursor: pointer;
+}
+.reset:hover { border-color: var(--cream-dim); }
+.reset:focus-visible, .cell:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+
+.card {
+  position: relative;
+  width: var(--card); height: var(--card);
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: calc(var(--card) * 0.022);
+  background: var(--cream);
+  border-radius: calc(var(--card) * 0.035);
+  box-shadow: 0 2vh 6vh rgba(0, 0, 0, 0.35);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: calc(var(--card) * 0.016);
+}
+.cell {
+  position: relative;
+  min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0.5em;
+  font-family: var(--font-display);
+  font-weight: 750;
+  font-size: calc(var(--card) * 0.036);
+  line-height: 1.12;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--ink);
+  background: #fff;
+  background: color-mix(in srgb, var(--cream) 40%, white);
+  border: 2px solid rgba(44, 47, 64, 0.1);
+  border-radius: calc(var(--card) * 0.02);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .2s, transform .15s, border-color .2s;
+  overflow: hidden;
+}
+.cell:hover { border-color: var(--peach); }
+.cell:active { transform: scale(0.97); }
+.cell .txt { position: relative; z-index: 1; }
+.cell .stamp {
+  position: absolute; inset: 12%;
+  border-radius: 50%;
+  background: var(--peach);
+  opacity: 0; transform: scale(0.4) rotate(-20deg);
+  transition: opacity .2s, transform .25s cubic-bezier(.3,1.6,.5,1);
+}
+.cell.marked .stamp { opacity: 0.9; transform: scale(1) rotate(0); }
+.cell.marked { border-color: var(--peach); }
+.cell.win { background: var(--gold); border-color: var(--gold); }
+.cell.win .stamp { background: var(--peach); opacity: 1; }
+
+.banner {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .3s;
+}
+.banner.show { opacity: 1; }
+.banner div {
+  font-family: var(--font-display); font-weight: 900;
+  font-size: calc(var(--card) * 0.2);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  background: var(--gold);
+  padding: 0.05em 0.45em 0.1em;
+  border-radius: 0.25em;
+  border: calc(var(--card) * 0.012) solid var(--ink);
+  transform: rotate(-8deg) scale(0.6);
+  transition: transform .4s cubic-bezier(.3,1.7,.5,1);
+  box-shadow: 0 1.5vh 4vh rgba(0,0,0,.3);
+}
+.banner.show div { transform: rotate(-8deg) scale(1); }
+
+@media (max-width: 760px), (max-aspect-ratio: 1/1) {
+  body { overflow: auto; }
+  .stage { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 100%; gap: 24px; padding-block: 24px; }
+  :root { --card: min(calc(100vw - 32px), 78vh); }
+  .panel { gap: 14px; }
+  .hint { max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+
+<main class="stage">
+  <section class="panel">
+    <div class="eyebrow">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="2" y="5" width="22" height="16" rx="5" fill="#E8845F"/>
+        <path d="M8 21 L6 27 L13 21 Z" fill="#E8845F"/>
+        <rect x="12" y="11" width="18" height="13" rx="4.5" fill="#F5C04A"/>
+        <path d="M24 24 L27 29 L21 24 Z" fill="#F5C04A"/>
+      </svg>
+      Daily call with the agents
+    </div>
+    <h1>Standup <span>Bingo</span></h1>
+    <p class="hint">Hear it in the call, tap the square. Four in a line wins.</p>
+    <div class="tally"><b id="count">0</b><small>/ 16 heard</small></div>
+    <div class="status" id="status">No line yet</div>
+    <button class="reset" id="reset" type="button">New card</button>
+  </section>
+
+  <section class="card" id="card" aria-label="Bingo card">
+    <div class="banner" id="banner" aria-live="polite"><div>BINGO!</div></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var PHRASES = [
+    "Works on my machine",
+    "Can we take this offline?",
+    "The tests pass locally",
+    "Let's circle back",
+    "You're on mute",
+    "Still thinking…",
+    "Just one more refactor",
+    "Waiting on your approval",
+    "Small change, 40 files",
+    "Quick sync after this?",
+    "Who left the dev server running?",
+    "My context is full",
+    "Ship it on Friday?",
+    "It was a typo",
+    "Great question!",
+    "I'll add the tests later"
+  ];
+  var LINES = [];
+  for (var r = 0; r < 4; r++) LINES.push([0,1,2,3].map(function (c) { return r * 4 + c; }));
+  for (var c = 0; c < 4; c++) LINES.push([0,1,2,3].map(function (r2) { return r2 * 4 + c; }));
+  LINES.push([0,5,10,15], [3,6,9,12]);
+
+  var card = document.getElementById('card');
+  var banner = document.getElementById('banner');
+  var countEl = document.getElementById('count');
+  var statusEl = document.getElementById('status');
+  var order = PHRASES.map(function (_, i) { return i; });
+  var marked = {};
+  var wins = 0;
+  var cells = [];
+  var bannerTimer = null;
+
+  function shuffle(a) {
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+
+  function build() {
+    cells.forEach(function (el) { el.remove(); });
+    cells = order.map(function (p, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cell';
+      b.id = 'cell-' + i;
+      b.innerHTML = '<span class="stamp"></span><span class="txt"></span>';
+      b.querySelector('.txt').textContent = PHRASES[p];
+      b.addEventListener('click', function () { toggle(i); });
+      card.insertBefore(b, banner);
+      return b;
+    });
+    render(false);
+  }
+
+  function toggle(i) {
+    if (marked[i]) delete marked[i]; else marked[i] = true;
+    render(true);
+  }
+
+  function render(celebrate) {
+    var winCells = {};
+    var full = LINES.filter(function (l) { return l.every(function (i) { return marked[i]; }); });
+    full.forEach(function (l) { l.forEach(function (i) { winCells[i] = true; }); });
+    cells.forEach(function (el, i) {
+      el.classList.toggle('marked', !!marked[i]);
+      el.classList.toggle('win', !!winCells[i]);
+      el.setAttribute('aria-pressed', marked[i] ? 'true' : 'false');
+    });
+    countEl.textContent = Object.keys(marked).length;
+    statusEl.classList.toggle('on', full.length > 0);
+    statusEl.textContent = full.length === 0 ? 'No line yet' : full.length === 1 ? 'Bingo!' : 'Bingo × ' + full.length;
+    if (celebrate && full.length > wins) {
+      banner.classList.add('show');
+      clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(function () { banner.classList.remove('show'); }, 2200);
+    }
+    if (full.length === 0) banner.classList.remove('show');
+    wins = full.length;
+  }
+
+  function start(data) {
+    if (data && data.order && data.order.length === 16) order = data.order;
+    if (data && data.marked) marked = data.marked;
+    build();
+  }
+
+  document.getElementById('reset').addEventListener('click', function () {
+    order = shuffle(order.slice());
+    marked = {};
+    wins = 0;
+    banner.classList.remove('show');
+    build();
+  });
+
+  var hot = window.claude && window.claude.hot;
+  if (hot && hot.snapshot) hot.snapshot(function () { return { order: order, marked: marked }; });
+  if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
+})();
+</script>

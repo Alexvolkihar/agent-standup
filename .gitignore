@@ -17,3 +17,11 @@ dist-release-*/
 # research notes and reports written during a session: never part of the repository or of a package
 research_notes/
 reports/
+.env*
+# the art of the Halloween pack, which is sold: its layers and its build never go in this public repository (only the free vampire, examples/vampire, and the public previews do)
+4 persos/
+halloween-src/
+# the YouTube videos are too heavy for the repository (GitHub refuses files over 100 MB): their scripts, thumbnails and texts are kept, the videos stay local and on YouTube
+brand/youtube/**/*.mp4
+# working copies left by agents
+.claude/worktrees/

@@ -1,0 +1,146 @@
+<title>Agent Standup Commit Week</title>
+<style>
+/* Layout: one 16:9 stage, all of it an SVG drawn from the numbers below, centred on a deep-teal ground */
+:root {
+  --bg-top: #10282f;
+  --bg-bottom: #18444f;
+  --bar: #E8845F;      /* peach: commits */
+  --release: #F5C04A;  /* gold: tagged releases */
+  --text: #F6F2EA;     /* cream */
+  --text-muted: rgba(246, 242, 234, 0.62);
+  --grid: rgba(246, 242, 234, 0.12);
+  --ink: #2C2F40;
+  --font-display: "Avenir Next", "Avenir", "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+  --font-data: "SF Mono", ui-monospace, "Menlo", "Consolas", monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: linear-gradient(160deg, var(--bg-top) 0%, var(--bg-bottom) 100%) fixed, var(--bg-top);
+  color: var(--text);
+  font-family: var(--font-display);
+  display: grid;
+  place-items: center;
+  padding-inline: 16px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+#stage { width: 100%; max-width: 100%; height: auto; max-height: 100%; aspect-ratio: 16 / 9; display: block; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.bar { transition: opacity .15s; }
+.day:hover .bar { opacity: .85; }
+@media (prefers-reduced-motion: reduce) { .bar { transition: none; } }
+</style>
+
+<svg id="stage" viewBox="0 0 1600 900" role="img" aria-labelledby="t d" preserveAspectRatio="xMidYMid meet">
+  <title id="t">167 commits this week</title>
+  <desc id="d">Commits per day on Agent Standup from Thursday 8 to Wednesday 14 October 2026, with the tagged releases of each day.</desc>
+</svg>
+
+<table class="sr-only" id="table">
+  <caption>Commits and releases per day</caption>
+  <thead><tr><th>Day</th><th>Commits</th><th>Releases</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<script>
+// The numbers: git log --since="7 days ago", counted per day; version tags counted per day.
+const week = [
+  { day: "Thu", date: 8,  commits: 0,  releases: 0,  from: null,     to: null },
+  { day: "Fri", date: 9,  commits: 0,  releases: 0,  from: null,     to: null },
+  { day: "Sat", date: 10, commits: 50, releases: 35, from: "v1.6",   to: "v1.22" },
+  { day: "Sun", date: 11, commits: 48, releases: 18, from: "v1.22.1", to: "v1.25.10" },
+  { day: "Mon", date: 12, commits: 34, releases: 5,  from: "v1.26",  to: "v1.30" },
+  { day: "Tue", date: 13, commits: 19, releases: 1,  from: "v1.31.0", to: null },
+  { day: "Wed", date: 14, commits: 16, releases: 1,  from: "v1.32.0", to: null },
+];
+
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("stage");
+const el = (tag, attrs, text) => {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text != null) n.textContent = text;
+  return n;
+};
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const C = { bar: css("--bar"), rel: css("--release"), text: css("--text"), muted: css("--text-muted"), grid: css("--grid"), ink: css("--ink") };
+const FD = css("--font-display"), FM = css("--font-data");
+
+const total = week.reduce((s, d) => s + d.commits, 0);
+const totalReleases = week.reduce((s, d) => s + d.releases, 0);
+
+// Headline
+svg.append(el("text", { x: 90, y: 128, fill: C.text, "font-family": FD, "font-size": 76, "font-weight": 700, "letter-spacing": "-1" }, `${total} commits this week`));
+svg.append(el("text", { x: 92, y: 182, fill: C.muted, "font-family": FD, "font-size": 30, "font-weight": 500 },
+  `Agent Standup · Thu 8 – Wed 14 October 2026 · ${totalReleases} tagged releases`));
+
+// Scale
+const plot = { left: 150, right: 1530, top: 270, bottom: 680 };
+const yMax = 60, ticks = [0, 20, 40, 60];
+const y = v => plot.bottom - (v / yMax) * (plot.bottom - plot.top);
+const slot = (plot.right - plot.left) / week.length;
+const barW = 118;
+
+// Grid and y labels
+for (const t of ticks) {
+  svg.append(el("line", { x1: plot.left, x2: plot.right, y1: y(t), y2: y(t), stroke: C.grid, "stroke-width": t === 0 ? 2 : 1.5 }));
+  svg.append(el("text", { x: plot.left - 22, y: y(t) + 9, fill: C.muted, "font-family": FM, "font-size": 24, "text-anchor": "end" }, t));
+}
+
+const tbody = document.querySelector("#table tbody");
+
+week.forEach((d, i) => {
+  const cx = plot.left + slot * i + slot / 2;
+  const g = el("g", { class: "day" });
+  const label = d.releases
+    ? `${d.day} ${d.date} Oct: ${d.commits} commits, ${d.releases} release${d.releases > 1 ? "s" : ""}`
+    : `${d.day} ${d.date} Oct: ${d.commits} commits`;
+  g.append(el("title", {}, label));
+  // generous hit area
+  g.append(el("rect", { x: cx - slot / 2, y: plot.top - 40, width: slot, height: 900 - plot.top, fill: "transparent" }));
+
+  if (d.commits > 0) {
+    const top = y(d.commits), h = plot.bottom - top, r = 6;
+    // bar with rounded data end, square on the baseline
+    g.append(el("path", {
+      class: "bar", fill: C.bar,
+      d: `M${cx - barW / 2},${plot.bottom} V${top + r} Q${cx - barW / 2},${top} ${cx - barW / 2 + r},${top} H${cx + barW / 2 - r} Q${cx + barW / 2},${top} ${cx + barW / 2},${top + r} V${plot.bottom} Z`
+    }));
+    g.append(el("text", { x: cx, y: top - 18, fill: C.text, "font-family": FD, "font-size": 44, "font-weight": 700, "text-anchor": "middle" }, d.commits));
+  } else {
+    g.append(el("text", { x: cx, y: plot.bottom - 18, fill: C.muted, "font-family": FD, "font-size": 34, "font-weight": 600, "text-anchor": "middle" }, "0"));
+  }
+
+  // Day label
+  g.append(el("text", { x: cx, y: plot.bottom + 46, fill: C.text, "font-family": FD, "font-size": 30, "font-weight": 600, "text-anchor": "middle" }, `${d.day} ${d.date}`));
+
+  // Release mark
+  if (d.releases) {
+    const many = d.releases > 1;
+    const main = many ? `${d.releases} releases` : d.from;
+    const pillW = many ? 172 : 150, pillY = plot.bottom + 74;
+    g.append(el("rect", { x: cx - pillW / 2, y: pillY, width: pillW, height: 46, rx: 23, fill: C.rel }));
+    g.append(el("text", { x: cx, y: pillY + 32, fill: C.ink, "font-family": FD, "font-size": 25, "font-weight": 700, "text-anchor": "middle" }, main));
+    if (many) {
+      g.append(el("text", { x: cx, y: pillY + 84, fill: C.muted, "font-family": FM, "font-size": 18, "text-anchor": "middle" }, `${d.from}–${d.to}`));
+    } else if (i === week.length - 1) {
+      g.append(el("text", { x: cx, y: pillY + 84, fill: C.rel, "font-family": FD, "font-size": 22, "font-weight": 600, "text-anchor": "middle" }, "today"));
+    }
+  }
+  svg.append(g);
+
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td>${d.day} ${d.date} Oct</td><td>${d.commits}</td><td>${d.releases ? (d.to ? `${d.releases} (${d.from} to ${d.to})` : d.from) : "none"}</td>`;
+  tbody.append(tr);
+});
+
+// Legend (top right)
+const lg = el("g", { transform: "translate(1530 128)" });
+lg.append(el("rect", { x: -440, y: -24, width: 26, height: 26, rx: 4, fill: C.bar }));
+lg.append(el("text", { x: -402, y: -2, fill: C.text, "font-family": FD, "font-size": 26, "font-weight": 500 }, "commits"));
+lg.append(el("rect", { x: -246, y: -24, width: 46, height: 26, rx: 13, fill: C.rel }));
+lg.append(el("text", { x: -188, y: -2, fill: C.text, "font-family": FD, "font-size": 26, "font-weight": 500 }, "releases"));
+svg.append(lg);
+</script>
