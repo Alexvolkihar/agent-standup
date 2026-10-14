@@ -66,7 +66,7 @@
  "A team edition is being considered: a shared board, cost per agent and per week, an alert in your chat when an agent is blocked. Leave your email to hear about it and to say what you would need. One message when it exists, nothing else.": "Se está estudiando una edición para equipos: un tablero compartido, el coste por agente y por semana, una alerta en tu chat cuando un agente se queda bloqueado. Deja tu correo para enterarte y contar qué necesitarías. Un solo mensaje cuando exista, nada más.",
  "Tell me when it exists": "Avísame cuando exista",
  "The code is MIT licensed; the name and the logo are not (see <a href='name-and-logo/'>Name and logo</a>). Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "El código tiene licencia MIT; el nombre y el logo, no (consulta <a href='name-and-logo/'>Nombre y logo</a>). No oficial: sin relación con Anthropic, OpenAI ni Mistral AI.",
- "This site sets no cookie and loads nothing from any other site. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "Este sitio no usa cookies y no carga nada de otros sitios. Su alojamiento, Vercel, cuenta las visitas sin cookies: consulta <a href='privacy/'>Privacidad</a>.",
+ "This site sets no cookie and loads nothing from any other site, except the YouTube video once you press play. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "Este sitio no usa cookies y no carga nada de otros sitios, salvo el vídeo de YouTube cuando pulsas reproducir. Su alojamiento, Vercel, cuenta las visitas sin cookies: consulta <a href='privacy/'>Privacidad</a>.",
  "Changelog": "Novedades",
  "Logo and colours": "Logo y colores",
  "Name and logo": "Nombre y logo",
@@ -85,5 +85,12 @@
  "Support": "Apoyar",
  "Free for you. A coffee for the dev?": "Gratis para ti. ¿Un café para el dev?",
  "Made by a bored dev and his robots.": "Hecho por un dev aburrido y sus robots.",
- "☕ Buy him a coffee": "☕ Invítalo a un café"
+ "☕ Buy him a coffee": "☕ Invítalo a un café",
+ "Now on YouTube": "Ya en YouTube",
+ "A video made by the agents you see in it": "Un vídeo hecho por los agentes que salen en él",
+ "Agent Standup now has a YouTube channel. Its first video is the very session that made it, replayed in the app with its own voices: Margot, the lead, briefs three sub-agents, a critic objects, and Margot decides. 2 min 51, in English.": "Agent Standup ya tiene canal de YouTube. Su primer vídeo es la misma sesión que lo creó, reproducida en la aplicación con sus propias voces: Margot, la agente principal, da instrucciones a tres subagentes, un crítico pone objeciones y Margot decide. 2 min 51, en inglés.",
+ "Subscribe to the channel": "Suscríbete al canal",
+ "Watch on YouTube": "Ver en YouTube",
+ "Play the video": "Reproducir el vídeo",
+ "The video comes from YouTube, and only once you press play.": "El vídeo viene de YouTube, y solo cuando pulsas reproducir."
 }

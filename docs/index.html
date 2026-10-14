@@ -60,6 +60,10 @@ footer a { color:inherit }
 .shots { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:16px }
 @media (max-width:620px) { .shots { grid-template-columns:1fr } }
 .shots figure { margin:0 } .shots img { display:block; width:100%; border-radius:12px; box-shadow:0 6px 18px rgba(60,40,20,.18) } .shots figcaption { color:var(--dim); font-size:13.5px; margin-top:8px; line-height:1.4 }
+.yt { position:relative; aspect-ratio:16/9; overflow:hidden; margin-bottom:8px } .yt img, .yt iframe { display:block; width:100%; height:100%; object-fit:cover; border:0 }
+.yt span { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:inline-flex; align-items:center; gap:10px; white-space:nowrap; background:rgba(20,18,15,.9); color:#fff; font-weight:700; font-size:16px; padding:11px 20px 11px 17px; border-radius:99px; box-shadow:0 0 0 2px var(--accent), 0 8px 24px rgba(0,0,0,.45); transition:transform .15s }
+.yt span::before { content:''; border-style:solid; border-width:7px 0 7px 12px; border-color:transparent transparent transparent var(--accent) }
+.yt:hover span { transform:translate(-50%,-50%) scale(1.05) } .yt:focus-visible { outline:3px solid var(--accent); outline-offset:3px }
 .soon { color:var(--dim); font-size:14px }
 .cta.ghost { background:transparent; color:var(--ink); border:1.5px solid var(--line); box-shadow:none; font-weight:600; padding:13px 22px }
 .cta.ghost:hover { border-color:var(--accent) }
@@ -130,6 +134,11 @@ p a, .fine a, li a { color:var(--accent) } p a:hover, .fine a:hover, li a:hover 
       <figure><img src="media/editor-diff.jpg" alt="An agent sharing an editor with a diff" loading="lazy"><figcaption data-en="…and the exact change they make." data-fr="…et la modification exacte qu’ils font.">…and the exact change they make.</figcaption></figure>
       <figure><img src="media/tree.jpg" alt="The tree of who asked whom" loading="lazy"><figcaption data-en="A tree of who asked whom." data-fr="Un arbre de qui a demandé quoi à qui.">A tree of who asked whom.</figcaption></figure>
     </div>
+
+    <h2 id="video" data-en="Now on YouTube" data-fr="Maintenant sur YouTube">Now on YouTube</h2>
+    <p class="fine" data-en="Agent Standup now has a YouTube channel. Its first video is the very session that made it, replayed in the app with its own voices: Margot, the lead, briefs three sub-agents, a critic objects, and Margot decides. 2 min 51, in English." data-fr="Agent Standup a maintenant sa chaîne YouTube. Sa première vidéo est la session même qui l’a faite, rejouée dans l’application avec ses propres voix : Margot, l’agent principal, lance trois sous-agents, un critique objecte, et Margot tranche. 2 min 51, en anglais.">Agent Standup now has a YouTube channel.</p>
+    <a class="shot yt" href="https://www.youtube.com/watch?v=EI5tMlxN4wI" target="_blank" rel="noopener" data-yt="EI5tMlxN4wI" data-title="This video was made by the Claude Code agents you see in it"><img src="media/youtube-first-video.jpg" width="1280" height="720" loading="lazy" alt=""><span data-en="Play the video" data-fr="Lire la vidéo">Play the video</span></a>
+    <p class="fine"><a href="https://www.youtube.com/@Agent_Standup?sub_confirmation=1" target="_blank" rel="noopener" data-en="Subscribe to the channel" data-fr="S’abonner à la chaîne">Subscribe to the channel</a> · <a href="https://www.youtube.com/watch?v=EI5tMlxN4wI" target="_blank" rel="noopener" data-en="Watch on YouTube" data-fr="Voir sur YouTube">Watch on YouTube</a> · <span data-en="The video comes from YouTube, and only once you press play." data-fr="La vidéo vient de YouTube, et seulement quand vous appuyez sur lecture.">The video comes from YouTube, and only once you press play.</span></p>
 
     <h2 id="ways" data-en="Use it where you work" data-fr="Utilisez-le là où vous travaillez">Use it where you work</h2>
     <p class="fine" data-en="One small local server, several ways in. Pick whichever fits." data-fr="Un petit serveur local, plusieurs façons d’y accéder. Prenez celle qui vous convient.">One small local server, several ways in.</p>
@@ -385,6 +394,15 @@ function showRelease() {
   document.getElementById('dlS').textContent = r.tag_name;
 }
 document.querySelectorAll('.cmd').forEach((b) => { b.title = 'Click to copy'; b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); const o = b.textContent; b.textContent = '✓ copied'; setTimeout(() => (b.textContent = o), 1200); } catch {} }; });
+// ---- the YouTube video is a picture and a link until it is clicked: only then is the player, and so anything from YouTube, loaded. A click that asks for a new tab opens the video on YouTube.
+document.querySelectorAll('a[data-yt]').forEach((a) => { a.onclick = (e) => {
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  const box = document.createElement('div'), f = document.createElement('iframe'); box.className = a.className;
+  f.src = 'https://www.youtube-nocookie.com/embed/' + a.dataset.yt + '?autoplay=1&rel=0&hl=' + encodeURIComponent(document.documentElement.lang);
+  f.title = a.dataset.title; f.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'; f.allowFullscreen = true; f.referrerPolicy = 'strict-origin-when-cross-origin';
+  box.appendChild(f); a.replaceWith(box); f.focus();
+}; });
 // ---- anonymous visit counter: loads one 1-pixel file from GitHub per visit (one file per channel, set with ?ref=). No cookies, no tracker.
 (function () {
   try {

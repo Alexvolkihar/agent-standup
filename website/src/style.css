@@ -1,4 +1,4 @@
-/* The website of Agent Standup. Colours and type come from brand/README.md: the lead's peach and gold on the teal of its room. No request leaves the site: fonts and media are served from it. */
+/* The website of Agent Standup. Colours and type come from brand/README.md: the lead's peach and gold on the teal of its room. No request leaves the site: fonts and media are served from it. The one exception is the YouTube video, once the visitor plays it. */
 @font-face { font-family: Gabarito; src: url(fonts/gabarito.woff2) format('woff2'); font-weight: 400 900; font-display: swap }
 @font-face { font-family: Figtree; src: url(fonts/figtree.woff2) format('woff2'); font-weight: 300 900; font-display: swap }
 :root { --bg:#0e2328; --bg2:#122b31; --card:#163239; --line:#24474f; --ink:#f6f2ea; --dim:#a8c3c8; --soft:#cfe0e2; --peach:#e8845f; --gold:#f5c04a; --mint:#4fd1a5; --ink-dark:#2c2f40; --wide:1120px }
@@ -55,6 +55,14 @@ nav a:hover, nav button:hover { color: var(--ink) }
 .frame video, .frame img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover }
 .shot { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #0a1a1f; box-shadow: 0 16px 40px rgba(0, 0, 0, .35) }
 
+/* the YouTube video: a picture and a link until it is played (the script at the end of the page puts the player in its place) */
+#video { padding-top: 0 }
+.yt { position: relative; display: block; aspect-ratio: 16 / 9 }
+.yt img, .yt iframe { display: block; width: 100%; height: 100%; object-fit: cover; border: 0 }
+.yt span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 11px; white-space: nowrap; background: rgba(14, 35, 40, .92); color: var(--ink); font: 700 16.5px Figtree, system-ui, sans-serif; padding: 13px 22px 13px 19px; border-radius: 99px; box-shadow: 0 0 0 2px var(--gold), 0 10px 30px rgba(0, 0, 0, .5); transition: transform .12s }
+.yt span::before { content: ''; border-style: solid; border-width: 8px 0 8px 13px; border-color: transparent transparent transparent var(--gold) }
+.yt:hover span { transform: translate(-50%, -50%) scale(1.05) }
+.yt:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px }
 .shots { display: grid; gap: 14px }
 .with { border-block: 1px solid var(--line); background: var(--bg2) }
 .with .wrap { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; padding-block: 16px; font-size: 15px; color: var(--dim) }
@@ -114,4 +122,4 @@ footer a { color: var(--soft) }
 .doc table { border-collapse: collapse; width: 100%; font-size: 15.5px }
 .doc th, .doc td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); color: var(--soft) }
 .doc th { color: var(--dim); font-weight: 600 }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto } .btn { transition: none } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto } .btn, .yt span { transition: none } }

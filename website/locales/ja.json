@@ -66,7 +66,7 @@
  "A team edition is being considered: a shared board, cost per agent and per week, an alert in your chat when an agent is blocked. Leave your email to hear about it and to say what you would need. One message when it exists, nothing else.": "チーム版を検討中です。共有ボード、エージェントごと・週ごとのコスト、エージェントが止まったときにチャットへ届くアラートなど。メールアドレスを残しておくと、公開のお知らせを受け取り、欲しい機能を伝えることができます。お送りするのは公開時の1通だけで、それ以外は何も送りません。",
  "Tell me when it exists": "公開されたら知らせてほしい",
  "The code is MIT licensed; the name and the logo are not (see <a href='name-and-logo/'>Name and logo</a>). Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "コードは MIT ライセンスですが、名称とロゴは対象外です（<a href='name-and-logo/'>名称とロゴ</a>を参照）。非公式：Anthropic、OpenAI、Mistral AI とは関係ありません。",
- "This site sets no cookie and loads nothing from any other site. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "このサイトは Cookie を使わず、他のサイトからは何も読み込みません。ホスティング元の Vercel が Cookie を使わずにアクセス数を数えています。詳しくは<a href='privacy/'>プライバシー</a>をご覧ください。",
+ "This site sets no cookie and loads nothing from any other site, except the YouTube video once you press play. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "このサイトは Cookie を使わず、再生ボタンを押したときの YouTube 動画を除き、他のサイトからは何も読み込みません。ホスティング元の Vercel が Cookie を使わずにアクセス数を数えています。詳しくは<a href='privacy/'>プライバシー</a>をご覧ください。",
  "Changelog": "更新履歴",
  "Logo and colours": "ロゴとカラー",
  "Name and logo": "名称とロゴ",
@@ -85,5 +85,12 @@
  "Support": "応援する",
  "Free for you. A coffee for the dev?": "あなたは無料。開発者にはコーヒーを一杯？",
  "Made by a bored dev and his robots.": "退屈した開発者とそのロボットたちが作りました。",
- "☕ Buy him a coffee": "☕ コーヒーをおごる"
+ "☕ Buy him a coffee": "☕ コーヒーをおごる",
+ "Now on YouTube": "YouTube チャンネルができました",
+ "A video made by the agents you see in it": "映っているエージェントたちが作った動画",
+ "Agent Standup now has a YouTube channel. Its first video is the very session that made it, replayed in the app with its own voices: Margot, the lead, briefs three sub-agents, a critic objects, and Margot decides. 2 min 51, in English.": "Agent Standup に YouTube チャンネルができました。最初の動画は、その動画を作ったセッションそのものを、アプリ上でアプリ自身の音声とともに再生したものです。メインエージェントの Margot が 3 人のサブエージェントに指示を出し、批評役が異議を唱え、Margot が決断します。2分51秒、英語。",
+ "Subscribe to the channel": "チャンネル登録",
+ "Watch on YouTube": "YouTube で見る",
+ "Play the video": "動画を再生",
+ "The video comes from YouTube, and only once you press play.": "動画は YouTube から配信され、再生ボタンを押したときにだけ読み込まれます。"
 }

@@ -66,7 +66,7 @@
  "A team edition is being considered: a shared board, cost per agent and per week, an alert in your chat when an agent is blocked. Leave your email to hear about it and to say what you would need. One message when it exists, nothing else.": "團隊版正在評估中：共用看板、依代理和依週統計的費用、代理卡住時在你的聊天工具裡提醒。留下電子郵件，以便第一時間收到消息，也可以說說你需要什麼。推出時只寄一封信，僅此而已。",
  "Tell me when it exists": "推出時通知我",
  "The code is MIT licensed; the name and the logo are not (see <a href='name-and-logo/'>Name and logo</a>). Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "程式碼採用 MIT 授權；名稱和 Logo 不在此列（請見<a href='name-and-logo/'>名稱與 Logo</a>）。非官方專案：與 Anthropic、OpenAI 和 Mistral AI 皆無關聯。",
- "This site sets no cookie and loads nothing from any other site. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "本站不設定 cookie，也不從任何其他網站載入內容。代管商 Vercel 會在不使用 cookie 的情況下統計造訪次數，詳見<a href='privacy/'>隱私權</a>。",
+ "This site sets no cookie and loads nothing from any other site, except the YouTube video once you press play. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "本站不設定 cookie，也不從任何其他網站載入內容，只有在你按下播放後才會載入 YouTube 影片。代管商 Vercel 會在不使用 cookie 的情況下統計造訪次數，詳見<a href='privacy/'>隱私權</a>。",
  "Changelog": "更新紀錄",
  "Logo and colours": "Logo 與配色",
  "Name and logo": "名稱與 Logo",
@@ -85,5 +85,12 @@
  "Support": "支持",
  "Free for you. A coffee for the dev?": "對你免費。請開發者喝杯咖啡？",
  "Made by a bored dev and his robots.": "由一位閒得發慌的開發者和他的機器人們製作。",
- "☕ Buy him a coffee": "☕ 請他喝杯咖啡"
+ "☕ Buy him a coffee": "☕ 請他喝杯咖啡",
+ "Now on YouTube": "現已登上 YouTube",
+ "A video made by the agents you see in it": "這支影片，由片中的代理親手製作",
+ "Agent Standup now has a YouTube channel. Its first video is the very session that made it, replayed in the app with its own voices: Margot, the lead, briefs three sub-agents, a critic objects, and Margot decides. 2 min 51, in English.": "Agent Standup 現在有 YouTube 頻道了。第一支影片就是製作它的那個工作階段本身，在應用程式裡用它自己的聲音重播：主代理 Margot 向三個子代理交代任務，一位評論者提出異議，最後由 Margot 定奪。2 分 51 秒，英文。",
+ "Subscribe to the channel": "訂閱頻道",
+ "Watch on YouTube": "在 YouTube 上觀看",
+ "Play the video": "播放影片",
+ "The video comes from YouTube, and only once you press play.": "影片來自 YouTube，只有在你按下播放後才會載入。"
 }

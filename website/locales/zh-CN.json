@@ -66,7 +66,7 @@
  "A team edition is being considered: a shared board, cost per agent and per week, an alert in your chat when an agent is blocked. Leave your email to hear about it and to say what you would need. One message when it exists, nothing else.": "团队版正在考虑中：共享看板、按代理和按周统计的费用、代理卡住时在你的聊天工具里提醒。留下邮箱，以便第一时间获知消息，也可以说说你需要什么。上线时只发一封邮件，仅此而已。",
  "Tell me when it exists": "上线时通知我",
  "The code is MIT licensed; the name and the logo are not (see <a href='name-and-logo/'>Name and logo</a>). Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "代码采用 MIT 许可证；名称和 Logo 不在此列（参见<a href='name-and-logo/'>名称与 Logo</a>）。非官方项目：与 Anthropic、OpenAI 和 Mistral AI 均无关联。",
- "This site sets no cookie and loads nothing from any other site. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "本站不设置 cookie，也不从任何其他网站加载内容。托管方 Vercel 会在不使用 cookie 的情况下统计访问量，详见<a href='privacy/'>隐私</a>。",
+ "This site sets no cookie and loads nothing from any other site, except the YouTube video once you press play. Its host, Vercel, counts visits without cookies: see <a href='privacy/'>Privacy</a>.": "本站不设置 cookie，也不从任何其他网站加载内容，只有在你按下播放后才会加载 YouTube 视频。托管方 Vercel 会在不使用 cookie 的情况下统计访问量，详见<a href='privacy/'>隐私</a>。",
  "Changelog": "更新日志",
  "Logo and colours": "Logo 与配色",
  "Name and logo": "名称与 Logo",
@@ -85,5 +85,12 @@
  "Support": "支持",
  "Free for you. A coffee for the dev?": "对你免费。请开发者喝杯咖啡？",
  "Made by a bored dev and his robots.": "由一位闲得发慌的开发者和他的机器人们制作。",
- "☕ Buy him a coffee": "☕ 请他喝杯咖啡"
+ "☕ Buy him a coffee": "☕ 请他喝杯咖啡",
+ "Now on YouTube": "现已登陆 YouTube",
+ "A video made by the agents you see in it": "这个视频，由片中的代理亲手制作",
+ "Agent Standup now has a YouTube channel. Its first video is the very session that made it, replayed in the app with its own voices: Margot, the lead, briefs three sub-agents, a critic objects, and Margot decides. 2 min 51, in English.": "Agent Standup 现在有 YouTube 频道了。第一个视频就是制作它的那个会话本身，在应用里用它自己的声音重播：主代理 Margot 向三个子代理布置任务，一位评论者提出异议，最后由 Margot 定夺。2 分 51 秒，英文。",
+ "Subscribe to the channel": "订阅频道",
+ "Watch on YouTube": "在 YouTube 上观看",
+ "Play the video": "播放视频",
+ "The video comes from YouTube, and only once you press play.": "视频来自 YouTube，只有在你按下播放后才会加载。"
 }

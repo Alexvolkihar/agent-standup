@@ -1,6 +1,6 @@
 # Privacy
 
-Last updated: 13 October 2026.
+Last updated: 14 October 2026.
 
 This page covers Agent Standup in all its forms (the VS Code extension, the `agent-standup` command, the desktop app, the Claude Code plugin) and its website. Agent Standup is published by Double Geste, an individual developer. It is an unofficial community project, not affiliated with Anthropic, OpenAI or Mistral AI.
 
@@ -43,11 +43,13 @@ Each of these services sees your IP address, as any website does, and applies it
 
 ## The websites
 
-The website at https://agent-standup.com is hosted by Vercel. It sets no cookie and loads nothing from any other service: its fonts, pictures and videos are served from the site itself. Vercel, as the host, sees your IP address.
+The website at https://agent-standup.com is hosted by Vercel. It sets no cookie and, with the one exception described below (a video from YouTube, when you play it), loads nothing from any other service: its fonts, pictures and videos are served from the site itself. Vercel, as the host, sees your IP address.
 
 Since 13 October 2026 its visits are counted with Vercel Web Analytics, the host's own counter. For each page viewed, Vercel records the page, the page the visit came from, the approximate location (country, region, city), and the kind of browser, system and device. It uses no cookie. According to Vercel, it tells visitors apart with a value computed from the request that is discarded after a day and is not kept as an identifier: https://vercel.com/docs/analytics/privacy-policy. A visit from a browser that sends "Do Not Track" is not counted.
 
 The earlier landing page at https://atoll92.github.io/agent-standup/ is hosted by GitHub Pages. Each visit there loads one tiny image from GitHub, named after where the visit came from (for example "reddit" or "direct"), so the project can count visits by source. It also asks GitHub's public API which release is the latest, to show its version number and download links. It sets no cookie and carries no identifier. GitHub, as the host, sees your IP address.
+
+Both pages show one video from YouTube. Until you press play it is a picture and a link served by the page itself, and nothing is asked of YouTube. When you press play, the player is loaded from YouTube (Google), in the mode YouTube calls privacy-enhanced (youtube-nocookie.com): Google then sees your IP address and that you play this video, may keep data in your browser, and applies its own privacy policy: https://policies.google.com/privacy. The links to the channel open YouTube itself.
 
 ## What the developer can see
 

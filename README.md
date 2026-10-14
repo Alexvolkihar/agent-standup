@@ -20,6 +20,10 @@
 
 _A fictional team fixing a slow login page — the built-in demo (⚙ → Source → Demo). [Watch the full 1-minute video](https://atoll92.github.io/agent-standup/media/demo.mp4)._
 
+**New: Agent Standup is on YouTube.** The first video is the very session that made it, replayed in the app with its own voices (2 min 51). [Subscribe to the channel](https://www.youtube.com/@Agent_Standup?sub_confirmation=1).
+
+<a href="https://www.youtube.com/watch?v=EI5tMlxN4wI"><img src="https://atoll92.github.io/agent-standup/media/youtube-first-video-play.jpg" width="640" alt="Watch on YouTube: This video was made by the Claude Code agents you see in it"></a>
+
 [![Buy me a coffee](https://img.shields.io/badge/-Buy%20the%20(replaced)%20dev%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/bored_dev_and_his_robots)
 
 > Unofficial community project, not affiliated with or endorsed by Anthropic, OpenAI or Mistral AI. "Claude" is a trademark of Anthropic; "Codex" is a trademark of OpenAI; "Mistral" is a trademark of Mistral AI.

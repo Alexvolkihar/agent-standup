@@ -60,5 +60,11 @@
  "Two bugs. Report incoming.": "バグが2つ。これから報告します。",
  "Done ✓ Tests are green.": "完了 ✓ テストはすべてグリーンです。",
  "Perfect. Coffee’s on the dev.": "完璧。コーヒーは開発者のおごりね。",
- "Support": "応援する"
+ "Support": "応援する",
+ "Now on YouTube": "YouTube チャンネルができました",
+ "Agent Standup now has a YouTube channel. Its first video is the very session that made it, replayed in the app with its own voices: Margot, the lead, briefs three sub-agents, a critic objects, and Margot decides. 2 min 51, in English.": "Agent Standup に YouTube チャンネルができました。最初の動画は、その動画を作ったセッションそのものを、アプリ上でアプリ自身の音声とともに再生したものです。メインエージェントの Margot が 3 人のサブエージェントに指示を出し、批評役が異議を唱え、Margot が決断します。2分51秒、英語。",
+ "Subscribe to the channel": "チャンネル登録",
+ "Watch on YouTube": "YouTube で見る",
+ "Play the video": "動画を再生",
+ "The video comes from YouTube, and only once you press play.": "動画は YouTube から配信され、再生ボタンを押したときにだけ読み込まれます。"
 }
