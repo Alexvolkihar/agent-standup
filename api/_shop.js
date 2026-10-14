@@ -112,4 +112,4 @@ async function download(req, res) {
     res.statusCode = 200; res.setHeader('content-type', 'application/zip'); res.setHeader('content-disposition', `attachment; filename="agent-standup-${name}.zip"`); res.setHeader('cache-control', 'no-store'); res.setHeader('content-length', zip.length); res.end(zip);
   } catch (e) { if (e.closed) return back('closed'); if (e.code === 'resource_missing' || e.status === 404) return back('code'); console.error('shop:', e.status || '', e.code || '', String(e.message || e).replace(/\b(cs|pi)_[A-Za-z0-9_]+|\b[A-Z]{2}-\w{4}-\w{4}\b/g, '…')); back('shop'); }
 }
-module.exports = { checkout, pack, download, PACKS };
+module.exports = { checkout, pack, download, PACKS, stripe };   // stripe: also for api/sales.js
