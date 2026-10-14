@@ -238,7 +238,7 @@ function listSessions0() {
     }
   }
   rows.sort((a, b) => b.mtime - a.mtime);
-  const top = rows.filter((r) => !r.cx).slice(0, 60).concat(rows.filter((r) => r.cx)).sort((a, b) => b.mtime - a.mtime);   // the 60 most recent Claude Code sessions as always, and up to 30 of each other tool beside them: none pushes another out
+  const own = (r) => !r.cx && r.proj !== COWORK, top = rows.filter(own).slice(0, 60).concat(rows.filter((r) => r.cx), rows.filter((r) => r.proj === COWORK).slice(0, 30)).sort((a, b) => b.mtime - a.mtime);   // the 60 most recent Claude Code sessions as always, and up to 30 of each other tool beside them, Cowork included: none pushes another out
   for (const r of top) {
     if (r.cx) { const c = r.cx, m = r.src; delete r.cx; delete r.src; r.title = guard(() => m.title(c), '') || r.id; r.project = guard(() => m.projectLabel(c.cwd), '') || m.SOURCE; r.source = m.SOURCE; continue; }
     // titles come from the cached tail read (custom title, then AI title, then first prompt): no whole-file reads
@@ -305,13 +305,14 @@ const PR_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+$/;   // noth
 const askOf = (b) => { const q = b.name === 'AskUserQuestion' && b.input && Array.isArray(b.input.questions) && b.input.questions[0] && b.input.questions[0].question; return typeof q === 'string' ? clip(q.trim(), 200) : ''; };   // the question a session stopped on, for its card
 // When the person last did something in a session: an order, a slash command, a "!" command, an order typed while the lead was working. It is what moves the live call (see currentSession).
 // Not what the harness writes as a user record: the result of a tool, a reminder, the news that a background task ended, the summary of a compaction, an Esc.
+// Nor the prompt of a task Cowork runs on a schedule (it opens with <scheduled-task …>): nobody typed it, so it does not take the call from the session you are in.
 const NOT_TYPED = /<(system-reminder|browser_instruction|ide_selection|ide_opened_file|task-notification|local-command-stdout|local-command-caveat)>[\s\S]*?<\/\1>\s*/g;
 function typedAt(r) {
   if (!r || r.isSidechain) return 0;
   if (r.type === 'attachment') { const q = r.attachment; return q && q.type === 'queued_command' && (q.origin ? q.origin.kind === 'human' : q.commandMode === 'prompt') ? Date.parse(r.timestamp) || 0 : 0; }
   if (r.type !== 'user' || r.isMeta || r.isCompactSummary) return 0; const bl = blocks(r); if (bl.some((b) => b && b.type === 'tool_result')) return 0;
   const t = bl.filter((b) => b && b.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('\n').replace(NOT_TYPED, '').trim();
-  return (t ? !/^\[Request interrupted/i.test(t) : bl.some((b) => b && b.type === 'image')) ? Date.parse(r.timestamp) || 0 : 0;   // a picture sent alone is an order too
+  return (t ? !/^(\[Request interrupted|<scheduled-task[\s>])/i.test(t) : bl.some((b) => b && b.type === 'image')) ? Date.parse(r.timestamp) || 0 : 0;   // a picture sent alone is an order too
 }
 function typedBefore(file) {   // the first look at a session whose last order is further back than what the list reads (a long turn, large outputs): looked for once, in its last megabytes
   const { text, cut } = readTail(file, 4 * 1024 * 1024), lines = text.split('\n');
@@ -362,7 +363,7 @@ function boardRows0() {
     for (const { id, file } of transcripts(proj)) { try { const st = fs.statSync(file); if (now - st.mtimeMs < 12 * 3600e3) rows.push({ proj, id, st }); } catch {} }
   }
   rows.sort((a, b) => b.st.mtimeMs - a.st.mtimeMs);
-  return rows.filter((r) => !r.cx).slice(0, 40).concat(...SOURCES.map((m) => rows.filter((r) => r.src === m).slice(0, 20))).sort((a, b) => b.st.mtimeMs - a.st.mtimeMs).map(({ proj, id, st, cx, src }) => {
+  return rows.filter((r) => !r.cx && r.proj !== COWORK).slice(0, 40).concat(...SOURCES.map((m) => rows.filter((r) => r.src === m).slice(0, 20)), rows.filter((r) => r.proj === COWORK).slice(0, 20)).sort((a, b) => b.st.mtimeMs - a.st.mtimeMs).map(({ proj, id, st, cx, src }) => {
     if (cx) return guard(() => src.boardRow(cx, now), null);
     const file = path.join(projDir(proj, id), id + '.jsonl'); let p; try { p = parseTail(file, st); } catch { p = { pending: [] }; }
     const age = now - st.mtimeMs, lp = (p.pending || [])[(p.pending || []).length - 1]; let state = 'idle', tool = '', ageMs = age;
@@ -953,7 +954,8 @@ function start(port = PORT) {
     const file = path.join(PUBLIC, url.pathname === '/' ? 'index.html' : url.pathname);
     let fst = null; try { fst = fs.statSync(file); } catch {}
     if (!file.startsWith(PUBLIC + path.sep) || !fst || !fst.isFile()) { res.writeHead(404); return res.end('not found'); }
-    res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
+    // The only frame of the page is the window of an artifact, served from here. Without this line a page shown there could take its own frame to another site, and send out what it holds in the address.
+    res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', ...(path.extname(file) === '.html' ? { 'content-security-policy': "frame-src 'self'" } : {}) });
     res.end(fs.readFileSync(file));
   } catch (e) { logError(req.method + ' ' + url.pathname, e); if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });

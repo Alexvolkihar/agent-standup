@@ -39,3 +39,19 @@ test('Cowork sessions are left out when turned off, and when the app is pointed 
     process.env.AGENT_STANDUP_COWORK = CW; await later(); assert.equal(core.currentSession('', null, null).id, S1);
   } finally { process.env.AGENT_STANDUP_COWORK = keep; }
 });
+test('a task Cowork runs on a schedule is nobody typing: it does not take the call from the session you went to; and Cowork sessions take no place of a Claude Code session in the list or on the board', async () => {
+  const core = require('../server.js'), later = () => new Promise((r) => setTimeout(r, 3200));   // the folders of Cowork are looked at once every 3 s
+  const S3 = '55555555-5555-4555-8555-555555555555', three = path.join(CW, 'acct', 'org', 'local_three'), p3 = path.join(three, '.claude', 'projects', '-sessions-fair-kind-lovelace'), cc = { proj: '-work-app', id: CC };
+  await later(); const went = core.currentSession('', cc, null); assert.deepEqual([went.id, went.pick], [CC, 1]);   // you go to the Claude Code session
+  fs.mkdirSync(p3, { recursive: true }); fs.writeFileSync(three + '.json', JSON.stringify({ sessionId: 'local_three', cliSessionId: S3, title: 'Daily mail', scheduledTaskId: 'daily-mail' }));
+  fs.writeFileSync(path.join(p3, S3 + '.jsonl'), [{ type: 'user', timestamp: new Date().toISOString(), message: { role: 'user', content: '<scheduled-task name="daily-mail" file="/tasks/daily-mail/SKILL.md">\nThis is an automated run of a scheduled task. The user is not present.\n</scheduled-task>' } },
+    { type: 'assistant', timestamp: new Date().toISOString(), message: { id: 'm1', role: 'assistant', stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'toolu_1', name: 'Bash', input: { command: 'sleep 60' } }] } }].map((r) => JSON.stringify(r)).join('\n') + '\n');   // then a task starts by itself, and is at work
+  await later(); const task = core.boardRows().find((r) => r.id === S3); assert.equal(task.state, 'working'); assert.ok(!task.asked, 'the prompt of a scheduled task is not an order someone typed');
+  assert.ok(core.boardRows().find((r) => r.id === S1).asked > 0);   // what you type in a Cowork session is
+  const still = core.currentSession('', { ...cc, since: went.asked }, null); assert.deepEqual([still.id, still.pick], [CC, 1], 'the call stays in the session you went to');
+  const old = path.join(PROJECTS, '-old-app'); fs.mkdirSync(old, { recursive: true });   // sixty more Claude Code sessions, all older than those of Cowork
+  for (let i = 0; i < 60; i++) { const f = path.join(old, 'aaaaaaaa-0000-4000-8000-' + String(i).padStart(12, '0') + '.jsonl'); fs.writeFileSync(f, talk('Task ' + i, 'Done.')); at(f, 2 * 3600e3 + i * 1000); }
+  await later(); const rows = core.sessionRows(), board = core.boardRows(), cowork = (r) => r.proj === '_cowork';
+  assert.deepEqual([rows.filter((r) => !cowork(r)).length, rows.filter(cowork).length], [60, 3], 'the list: sixty Claude Code sessions as before Cowork was read, and the Cowork ones beside them');
+  assert.deepEqual([board.filter((r) => !cowork(r)).length, board.filter(cowork).length], [40, 3], 'the board: forty, and the Cowork ones beside them');
+});

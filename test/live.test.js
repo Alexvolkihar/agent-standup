@@ -192,6 +192,17 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     await c.until(() => !S.playing && window.__said.filter((x) => x.line.includes('PART')).length === 3, null, 60000);
     assert.equal(await c.page.evaluate(() => window.__most), 1, 'voices at once'); assert.deepEqual((await c.lines()).filter((l) => l.includes('PART')).map((l) => l.slice(0, 6)), ['PART 1', 'PART 2', 'PART 3'], 'each in turn, in the order they spoke'); await c.close();
   });
+  await t.test('a replay paused while one of them speaks loses no line: it resumes with the one that was cut, then the others', async () => {
+    const s = session(), t0 = Date.now() - 3000; s.user('Split the work in three', t0); s.say('Three of you, one part each.', { at: t0 + 1000 });
+    for (const k of [1, 2, 3]) { s.launch(k, 'Part ' + k, `Do part ${k} and say where you are.`); await wait(20); }
+    for (const k of [1, 2, 3]) { s.say(`PART ${k} is under way, nothing in my way so far.`, { sub: k }); await wait(20); }
+    const c = await open(s, false);
+    await c.page.evaluate(async (proj) => { await setMode('replay'); await loadSession(proj, 's'); S.locked = false; $('#gate').classList.remove('on'); seekTo(0); }, s.proj);
+    await c.heard('PART 1', 60000); assert.equal(await c.page.evaluate(() => S.events[S.idx].text.slice(0, 6)), 'PART 1', 'the place is the line being said, not the last of the group');
+    await c.page.evaluate(() => togglePlay()); await wait(500); await c.page.evaluate(() => togglePlay());   // paused in the first of the three, then resumed: it used to go on with the third
+    await c.until(() => !S.playing && window.__said.some((x) => x.line.includes('PART 3')), null, 60000);
+    assert.deepEqual([...new Set((await c.lines()).filter((l) => l.includes('PART')).map((l) => l.slice(0, 6)))], ['PART 1', 'PART 2', 'PART 3'], 'each is heard, in the order they spoke'); await c.close();
+  });
 
   await t.test('the files made for you show under the call when the turn ends: those the lead names, else the documents; a click shows the file in its folder', async () => {
     const server = require('../server.js'), run = server._reveal.run, shown = []; server._reveal.run = (f) => shown.push(f); t.after(() => { server._reveal.run = run; });   // no Finder window during the tests
@@ -330,6 +341,8 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     assert.equal(await inFrame(() => document.querySelector('#h') && document.querySelector('#h').textContent + '|' + window.origin), 'Totals|null');   // the page the session wrote, in an origin of its own
     assert.equal(await inFrame(() => fetch('/api/sessions').then(() => 'answered', () => 'refused')), 'refused'); assert.equal(await inFrame(() => fetch('https://example.com/').then(() => 'answered', () => 'refused')), 'refused');
     assert.equal(await c.page.evaluate(() => document.querySelector('#ptitle').textContent + '|' + document.querySelector('.purl').textContent + '|' + document.querySelector('#pstat').textContent), 'Report|🔒 claude.ai/artifact/AbCdEf123456|The totals of the quarter.');
+    const left = [], sink = require('http').createServer((q, r) => { left.push(q.url); r.end('elsewhere'); }).listen(0, '127.0.0.1'); await new Promise((r) => sink.once('listening', r));   // another address, on this machine: what a page would reach by taking its own frame there
+    await frame().evaluate((to) => { location.href = to; }, 'http://127.0.0.1:' + sink.address().port + '/?said=Totals').catch(() => {}); await wait(1200); sink.close(); assert.deepEqual(left, [], 'a page cannot take its frame elsewhere either');
     s.say('The report is published.', { end: true }); await c.until(() => !!document.querySelector('#files.on [data-a]'), null, 40000);
     await c.until(() => !document.querySelector('#present.on'), null, 40000); assert.equal(await c.page.evaluate(() => document.querySelectorAll('iframe').length), 0);   // the window closes by itself, and its page does not go on running behind it
     await c.page.click('#files [data-a]'); await c.until(() => !!document.querySelector('#present.on.pin .pwin.web iframe')); assert.equal(await c.page.evaluate(() => document.querySelector('.pweb').style.getPropertyValue('--z')), '1.000');   // pinned: at its real size

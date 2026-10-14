@@ -2152,8 +2152,8 @@ async function run(i) {
       setTimeout(() => rest.forEach((o, k) => setTimeout(() => { fly(o.agent, o.to, '📨'); popTile(o.to); }, k * 120)), 30);
       plays = [playOne(ev).then(() => { if (token !== S.token) return; startTalk(ev.agent, line, ''); return speakLine(clipSpeech(line, S.pace), S.agents[ev.agent], true, token).then(() => { if (token === S.token) stopTalk(ev.agent); }); })];
     }
-    else plays = [group.reduce((turn, g) => turn.then(() => (token === S.token ? playOne(g) : null)), Promise.resolve())];   // one voice at a time, live and in replay: each waits for the one before to finish, so every line is heard
-    S.idx = j - 1; paintStatus(); await Promise.all(plays); if (token !== S.token) return;
+    else plays = [group.reduce((turn, g) => turn.then(() => { if (token !== S.token) return null; if (!S.live) { S.idx = S.events.indexOf(g); paintStatus(); } return playOne(g); }), Promise.resolve())];   // one voice at a time, live and in replay: each waits for the one before to finish, so every line is heard. In a replay the place follows the one who speaks: paused there, the replay resumes with that line and loses none of the next ones
+    S.idx = j - 1; paintStatus(); await Promise.all(plays); if (token !== S.token) return; S.idx = j - 1;
     for (const g of (ev.kind === 'order' ? group.slice(0, 3) : group)) { await converse(g, token); if (token !== S.token) return; }   // a parallel launch: the first three answer, as long as the call keeps up
     i = j;
   }
@@ -2597,6 +2597,7 @@ async function voiceOffer() {
   let st; try { st = await (await fetch('/api/kokoro')).json(); } catch { return; }
   if (st.ready && prefs.voiceOffer === 'want') { prefs.voiceOffer = 'no'; prefs.vstyle = 'kokoro'; prefs.vstyleChosen = true; savePrefs(); $('#vstyle').value = 'kokoro'; hide(); await TTS.init(); kokoroUI(); toast(L('Voix prêtes.', 'Voices ready.')); return; }
   const busy = st.installing || (st.installed && !st.ready && !st.gaveUp && prefs.voiceOffer === 'want');
+  if (busy && !st.installing && !voiceOffer.woke) { voiceOffer.woke = true; fetch('/api/voices?engine=kokoro').catch(() => {}); }   // installed in an earlier run, closed before the model was ready: nothing else starts the engine while another style is in use, and the line would say “Downloading” for good
   if ((st.installed && !busy) || !st.npm) return hide();   // they have them; or cannot have them (no npm), which ⚙ explains
   $('#vOfferT').textContent = busy ? L('Téléchargement des vraies voix… vous pouvez continuer.', 'Downloading the real voices… you can carry on.') : st.error || L('Vos agents peuvent parler avec de vraies voix.', 'Your agents can speak with real voices.');
   $('#vOfferB').style.display = busy ? 'none' : ''; $('#vOfferB').textContent = L('Installer', 'Install') + L(` (${st.sizeMb} Mo)`, ` (${st.sizeMb} MB)`); el.style.display = '';
@@ -2760,7 +2761,7 @@ addEventListener('keydown', (e) => {
 if (EMBED) $('#mBrowser').style.display = $('#mFollowTab').style.display = '';
 
 (async function init() {
-  if (!LANGS.some((l) => l[0] === prefs.lang)) prefs.lang = 'en'; await loadLocale(prefs.lang); await loadChars();
+  if (!LANGS.some((l) => l[0] === prefs.lang)) prefs.lang = 'en'; await loadLocale(prefs.lang); voiceOffer(); await loadChars();
   document.body.classList.toggle('rost', prefs.roster !== false); document.body.classList.toggle('react', !!prefs.reactions); setView(prefs.view); menuInit(); addEventListener('click', () => { try { if (prefs.notify && !EMBED && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch {} }, { once: true }); applyLang(); applyMute(); TTS.init().then(updateHint);
   loadHealth().then(() => {   // French by default only if translation can actually work; otherwise stay in English without a warning
     const h = S.health || {};
