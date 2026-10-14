@@ -373,6 +373,21 @@ test('the live call is in the session you last touched: the one you typed in, or
     await wait(1300); assert.equal(JSON.parse((await get(port, '/api/board')).body).find((r) => r.proj === '-follow2').asked, T(5), 'an order far back in a long turn is found on the first look');
   } finally { stop(); }
 });
+test('a sub-agent that hands its report back through SubagentHandback says that report, not the sentence it opened with', async () => {
+  const dir = path.join(tmp, 'projects', '-hb'), sub = path.join(dir, 's', 'subagents', 'agent-a1.jsonl'); fs.mkdirSync(path.dirname(sub), { recursive: true });
+  fs.writeFileSync(path.join(dir, 's.jsonl'), [typed(0, 'order'), used(1, 'toolu_ag', 'Agent', { prompt: 'Write the notes.', description: 'Writer', run_in_background: true }), result(2, 'toolu_ag', 'Async agent launched successfully.'),
+    { type: 'queue-operation', operation: 'enqueue', timestamp: at(9), content: '<task-notification>\n<tool-use-id>toolu_ag</tool-use-id>\n<status>completed</status>\n</task-notification>' }].map(line).join(''));
+  fs.writeFileSync(path.join(dir, 's', 'subagents', 'agent-a1.meta.json'), JSON.stringify({ agentType: 'general-purpose', description: 'Writer', toolUseId: 'toolu_ag' }));
+  fs.writeFileSync(sub, [typed(3, 'Write the notes.'), said(4, 'I am reading the changelog.'), used(5, 'toolu_b', 'Bash', { command: 'ls' }), result(6, 'toolu_b', 'ok'),
+    used(7, 'toolu_hb', 'SubagentHandback', { message: 'The notes are written: six changes.' }), result(8, 'toolu_hb', '{"success":true,"message":"Report delivered to your caller."}')].map(line).join(''));   // Claude Code 2.1.293 and later: no last sentence, the report is the message of the call
+  const { port, stop } = await serve();
+  try {
+    const ev = (await load(port, 'proj=-hb&id=s')).events, of = (k) => ev.filter((e) => e.agent === 'a1' && e.kind === k);
+    assert.deepEqual(of('report').map((e) => e.text), ['The notes are written: six changes.']);
+    assert.deepEqual(of('say').map((e) => e.text), ['I am reading the changelog.'], 'the sentence it opened with stays an ordinary line');
+    assert.ok(!/Handback|Report delivered/.test(JSON.stringify(ev.filter((e) => e.kind === 'tools' || e.kind === 'results'))), 'the call is not shown as a tool, nor its answer as an output');
+  } finally { stop(); }
+});
 
 test('the call is translated into the language the page asks for: French when it says nothing, Spanish and Brazilian Portuguese by name', { skip: process.platform === 'win32' }, async () => {
   const key = process.env.ANTHROPIC_API_KEY; delete process.env.ANTHROPIC_API_KEY;   // with a key the server would call the real API
