@@ -402,6 +402,19 @@ test('a pinned call (a click on its tab) is left for an order typed in another s
   } finally { stop(); }
 });
 
+test('sessions started in the temporary folder: the call that looks everywhere leaves them out unless there is nothing else; a window open on that folder follows them', async () => {
+  const temp = '-private-var-folders-zz-ab12cd-T-neutral-dcRuea', mine = '-Users-me-test-workflow', s0 = Math.floor((Date.now() - Date.UTC(2026, 0, 1)) / 1000);   // s0: now, in the seconds at() counts from
+  for (const [p, s, text] of [[mine, s0 - 20, 'Review the diff'], [temp, s0 - 10, 'Say OK']]) { const d = path.join(tmp, 'projects', p); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 's.jsonl'), [typed(s, text), used(s + 1, 'toolu_t' + s, 'Bash', { command: 'ls' })].map(line).join('')); }   // both at work, and the latest order is in the temporary folder, as when a script runs claude -p there
+  const { port, stop } = await serve(), cur = async (q) => { await wait(1300); return JSON.parse((await get(port, '/api/current?' + q)).body); };
+  try {
+    assert.equal((await cur('proj=')).proj, mine, 'looking everywhere: not the session in the temporary folder');
+    const wide = await cur('proj=-no-such-folder'); assert.deepEqual([wide.proj, wide.wide], [mine, 1], 'nor when the folder of the window has no session');
+    assert.equal((await cur('proj=' + temp)).proj, temp, 'a window open on that folder follows it');
+    assert.equal((await cur('proj=&sproj=' + temp + '&sid=s')).proj, mine, 'a call that was in it is not kept there');
+    const rows = JSON.parse((await get(port, '/api/board')).body); assert.deepEqual([mine, temp].map((p) => (rows.find((r) => r.proj === p) || {}).tmp), [undefined, 1], 'the list of sessions has both, the one in the temporary folder marked');
+  } finally { stop(); }
+});
+
 test('the call is translated into the language the page asks for: French when it says nothing, Spanish and Brazilian Portuguese by name', { skip: process.platform === 'win32' }, async () => {
   const key = process.env.ANTHROPIC_API_KEY; delete process.env.ANTHROPIC_API_KEY;   // with a key the server would call the real API
   const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;

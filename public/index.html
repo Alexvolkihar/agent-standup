@@ -2353,7 +2353,7 @@ setInterval(() => { if (!document.hidden) renderBoardView(); }, 2500);
 // the next thing you type, wherever it is, takes the call there. The rule itself is in server.js (currentSession).
 S.rows = []; S.tabOrder = []; S.knockAt = {}; S.left = {}; S.visit = S.knock = null; S.pick = S.pick || null;
 const UNTITLED = /^[0-9a-f]{8}-[0-9a-f-]{27}$/, sessKey = (r) => r.proj + '/' + r.id, tabName = (r) => (r.title && !UNTITLED.test(r.title) ? r.title : r.title ? L('Session sans titre', 'Untitled session') : niceProj(r.proj) || L('Session sans titre', 'Untitled session'));
-const inWatch = (r) => { const k = Q.get('proj') || prefs.proj || ''; return !k || S.wide || [r.proj, r.dir || ''].some((d) => d === k || d.startsWith(k + '-')); };   // the folder the live view follows, when it follows one and that folder has sessions (S.wide: it has none, see followCurrent)
+const inWatch = (r) => { const k = Q.get('proj') || prefs.proj || ''; return !k || S.wide ? !r.tmp : [r.proj, r.dir || ''].some((d) => d === k || d.startsWith(k + '-')); };   // the folder the live view follows, when it follows one and that folder has sessions (S.wide: it has none, see followCurrent). Looking everywhere, not the sessions started in the temporary folder (tmp, see tmpKey in server.js)
 const rowOf = (c) => (c && S.rows.find((r) => r.proj === c.proj && r.id === c.id)) || null;
 function paintTabs() {
   const el = $('#tabs'), cur = S.cur; if (!S.live || S.demo) { if (paintTabs.html) el.innerHTML = paintTabs.html = ''; if (S.visit) hideVisit(); return; } if (!cur) return;   // between two sessions the tabs stay as they are: the row does not come and go

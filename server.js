@@ -364,7 +364,7 @@ function boardRows0() {
   }
   rows.sort((a, b) => b.st.mtimeMs - a.st.mtimeMs);
   return rows.filter((r) => !r.cx && r.proj !== COWORK).slice(0, 40).concat(...SOURCES.map((m) => rows.filter((r) => r.src === m).slice(0, 20)), rows.filter((r) => r.proj === COWORK).slice(0, 20)).sort((a, b) => b.st.mtimeMs - a.st.mtimeMs).map(({ proj, id, st, cx, src }) => {
-    if (cx) return guard(() => src.boardRow(cx, now), null);
+    if (cx) { const r = guard(() => src.boardRow(cx, now), null); if (r && tmpKey(r.dir)) r.tmp = 1; return r; }   // tmp: started in the temporary folder (see tmpKey)
     const file = path.join(projDir(proj, id), id + '.jsonl'); let p; try { p = parseTail(file, st); } catch { p = { pending: [] }; }
     const age = now - st.mtimeMs, lp = (p.pending || [])[(p.pending || []).length - 1]; let state = 'idle', tool = '', ageMs = age;
     if (age < 30 * 60e3) {
@@ -377,7 +377,7 @@ function boardRows0() {
     }
     let subActive = 0, subTotal = 0;
     for (const x of subFiles(proj, id)) { subTotal++; if (now - mtimeOf(x.file) < 90e3) subActive++; }
-    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, asked: p.asked || 0, ...(p.pr ? { pr: p.pr } : {}), ...(state === 'blocked' && lp && lp.q ? { ask: lp.q } : {}), ...(p.esc ? { cut: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
+    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, asked: p.asked || 0, ...(p.pr ? { pr: p.pr } : {}), ...(state === 'blocked' && lp && lp.q ? { ask: lp.q } : {}), ...(p.esc ? { cut: 1 } : {}), ...(tmpKey(proj) ? { tmp: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
   }).filter(Boolean);
 }
 // Settings live in a file, not only in the page's localStorage: the port changes between VS Code windows and reloads, and localStorage is per origin (port included).
@@ -447,15 +447,21 @@ process.on('uncaughtExceptionMonitor', (e, origin) => { try { if (OWN || String(
 // One exception, so that the call is not left on an empty room: when the session you last typed in has finished and been quiet for STICK_MS while another one is at work, the call
 // goes to that one. A session you went to by hand is not left that way.
 const STICK_MS = 90000;
+// Sessions started in the system's temporary folder: a program running Claude Code there for a moment (a test, a script, a tool that makes a folder per run), not a session someone works in.
+// When the call looks everywhere it leaves them out, unless there is nothing else; they have no tab then and send no visitor. They stay in the Sessions view, and a window open on such a folder follows it.
+// macOS: /var/folders/… (/private/… once resolved) and /tmp; Linux: /tmp; Windows: …\AppData\Local\Temp; and wherever TMPDIR points. A key is a folder as Claude Code names it, every other character a "-".
+const TMP_KEYS = [...new Set([os.tmpdir(), (() => { try { return fs.realpathSync(os.tmpdir()); } catch { return ''; } })()].filter((d) => d && d.length > 4).map((d) => d.replace(/[^a-zA-Z0-9]/g, '-')))];
+const tmpKey = (k) => !!k && (/^-(private-)?(tmp|var-folders)(-|$)/.test(k) || /-AppData-Local-Temp(-|$)/i.test(k) || TMP_KEYS.some((t) => k === t || k.startsWith(t + '-')));
+const tmpSession = (proj, id) => { const sx = sourceOf(proj); return sx ? tmpKey(String(guard(() => sx.cwd(id), '') || '').replace(/[^a-zA-Z0-9]/g, '-')) : tmpKey(proj); };   // a Codex or Vibe session: the folder it was started in
 function sessionMtime(proj, id) {
   const sx = sourceOf(proj), r = sx ? guard(() => sx.row(id), null) : null; if (sx && (!r || !sx.subFiles)) return r ? r.mtime : 0;
   let m = sx ? r.mtime : mtimeOf(path.join(projDir(proj, id), id + '.jsonl')); if (!m) return 0; const subs = subFilesOf(proj, id);
   for (const x of subs) m = Math.max(m, mtimeOf(x.file)); for (const d of subs.dirs) m = Math.max(m, mtimeOf(d)); return m;   // the folders too: a new file in them is activity, as when every file around the transcripts was looked at
 }
-function currentSession(projFilter, pick, stick) {   // pick: { proj, id, since } the session you went to by hand, and the latest order there was then · stick: the session the call is in
+function currentSession(projFilter, pick, stick, anyTmp) {   // pick: { proj, id, since } the session you went to by hand, and the latest order there was then · stick: the session the call is in · anyTmp: sessions in the temporary folder count too (see tmpKey)
   const safe = (x) => typeof x === 'string' && /^[\w.\-]+$/.test(x) && x !== '..', now = Date.now();
   const there = (c) => !!c && safe(c.id) && safe(c.proj) && (sourceOf(c.proj) ? !!guard(() => sourceOf(c.proj).fileOf(c.id), null) : fs.existsSync(path.join(projDir(c.proj, c.id), c.id + '.jsonl')));
-  const inScope = (c) => !projFilter || c.proj === projFilter || c.proj.startsWith(projFilter + '-') || !!(sourceOf(c.proj) && guard(() => sourceOf(c.proj).inProject(c.id, projFilter), false));   // a Codex or Vibe session counts for a project when it was started in that folder
+  const inScope = (c) => (!projFilter ? anyTmp || !tmpSession(c.proj, c.id) : c.proj === projFilter || c.proj.startsWith(projFilter + '-') || !!(sourceOf(c.proj) && guard(() => sourceOf(c.proj).inProject(c.id, projFilter), false)));   // a Codex or Vibe session counts for a project when it was started in that folder
   const same = (a, b) => !!a && !!b && a.proj === b.proj && a.id === b.id, all = boardRows(), rows = all.filter(inScope), mine = there(pick) ? all.find((r) => same(r, pick)) : null;
   const asked = Math.max(0, (mine && mine.asked) || 0, ...rows.map((r) => r.asked || 0));   // the latest order, in the folder the call follows or in the session you went to
   const moved = pick && pick.pin ? Math.max(0, ...rows.filter((r) => !same(r, pick)).map((r) => r.asked || 0)) : asked;   // pick.pin: a call pinned by a click on its tab (📌) is left for an order typed in another session only; what you type in it keeps it there
@@ -468,10 +474,11 @@ function currentSession(projFilter, pick, stick) {   // pick: { proj, id, since 
   const consider = (proj, id, m) => { if (!best || m > best.mtime) best = { proj, id, mtime: m }; };
   for (const m of SOURCES) for (const r of guard(() => m.sessions(), [])) if (inScope({ proj: m.PROJ, id: r.id })) consider(m.PROJ, r.id, r.mtime);
   for (const proj of projects()) {
-    if (projFilter && proj !== projFilter && !proj.startsWith(projFilter + '-')) continue;   // the folder itself, or a folder inside it (a Cowork session is in no folder of yours: it counts when the call looks everywhere, or at Cowork)
+    if (projFilter ? proj !== projFilter && !proj.startsWith(projFilter + '-') : !anyTmp && tmpKey(proj)) continue;   // the folder itself, or a folder inside it (a Cowork session is in no folder of yours: it counts when the call looks everywhere, or at Cowork)
     for (const { id } of transcripts(proj)) { const m = sessionMtime(proj, id); if (m) consider(proj, id, m); }   // 0: a link to a transcript that is gone
   }
-  if (!best && projFilter) return { ...currentSession('', null, stick), wide: 1 };   // nothing in that folder (an editor open on another one than the sessions): the latest of anywhere, and the page is told, so its tabs follow the same rule
+  if (!best && projFilter) return { ...currentSession('', null, stick), wide: 1 };
+  if (!best && !projFilter && !anyTmp) return currentSession('', pick, stick, true);   // nothing but sessions in the temporary folder: one of them rather than an empty call   // nothing in that folder (an editor open on another one than the sessions): the latest of anywhere, and the page is told, so its tabs follow the same rule
   return best ? { ...best, asked } : {};   // a call that is opened while nobody is at work: the session that was written to last
 }
 

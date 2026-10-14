@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.32.1
+- **Sessions started in a temporary folder no longer take the call.** A script or a tool that runs Claude Code in a folder of its own under the system's temporary folder (`/var/folders`, `/tmp`, `AppData\Local\Temp`) leaves a session each time. When the call follows all projects, or your editor's folder has no session, it went to those: one of them, with no tab for yours. It now leaves them out unless there is nothing else, they have no tab and send no visitor, and the VS Code status bar does not count them when no folder is open. They are still in the Sessions view, and a window open on such a folder follows it.
+
 ## 1.32.0
 - **A softer babble.** In the Animal Crossing style each letter was a click: full level in 2 ms, gone 10 ms later, tiring now that it is what you hear before the real voices are installed. Same notes and same rhythm, but each blip now has a rounder start and a short tail, and the high voices, which came out twice as loud as the lead, are level with the others.
 - **Two voice styles, and the natural voices are the default.** ⚙ → Voice style now has the **natural voices** (the Kokoro model, called *Very natural voices* until now) and the Animal Crossing babble. Until the natural voices are installed (about 750 MB, one download for every language) the agents babble in the Animal Crossing style, and a line at the bottom of the call says the real voices exist: **Install** fetches them and switches to them once they are ready, ✕ closes the line for good. The cartoon voices (the default until now), Simlish and the plain system voices (*Natural*) are gone: whoever had Simlish is on Animal Crossing, and whoever had the cartoon or the plain system voices is on the natural voices.
