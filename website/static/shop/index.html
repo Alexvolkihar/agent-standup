@@ -31,7 +31,7 @@
   p { margin:0 }
   .eyebrow { display:inline-block; margin-bottom:14px; padding:3px 12px; border:1px solid rgba(245,138,31,.55); border-radius:99px; color:var(--pumpkin); font:700 13px/1.6 Figtree, sans-serif; letter-spacing:.06em; text-transform:uppercase }
   .hero { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1.1fr); gap:46px; align-items:center; padding:34px 0 64px }
-  .lead { margin:18px 0 24px; font-size:20px; line-height:1.5; color:var(--soft); max-width:31em }
+  .lead a, .hand a { color:var(--gold) } .lead { margin:18px 0 24px; font-size:20px; line-height:1.5; color:var(--soft); max-width:31em }
   .buy { display:flex; flex-wrap:wrap; align-items:center; gap:14px 18px } .price { font:800 40px/1 Gabarito, sans-serif } .price small { display:block; margin-top:4px; font:500 13px Figtree, sans-serif; color:var(--dim) }
   .btn { display:inline-flex; align-items:center; gap:8px; border:0; border-radius:14px; padding:15px 26px; background:var(--gold); color:#20160a; font:800 18px Gabarito, system-ui, sans-serif; cursor:pointer; text-decoration:none } .btn:hover { filter:brightness(1.06) } .btn[disabled] { opacity:.6; cursor:wait }
   .ghost { background:transparent; color:var(--ink); border:1px solid var(--line) } .sm { padding:11px 18px; font-size:16px }
@@ -63,7 +63,7 @@
     <div>
       <span class="eyebrow" data-k="eyebrow">The Agent Standup shop</span>
       <h1 data-k="title">Halloween pack</h1>
-      <p class="lead" data-k="lead">Eight characters drawn by hand by Fabien Coupas, each in its own room, to replace the cast of your Agent Standup calls. Your agents become a pumpkin, a ghost, a cat, a bat, a wolf, a witch and a crowd of skeletons.</p>
+      <p class="lead"><span data-k="lead">Eight characters drawn by hand by</span> <a href="https://www.instagram.com/fabien_coupas/" rel="noopener">Fabien Coupas</a><span data-k="lead2">, each in its own room, to replace the cast of your Agent Standup calls. Your agents become a pumpkin, a ghost, a cat, a bat, a wolf, a witch and a crowd of skeletons.</span></p>
       <div class="buy"><div class="price">2 €<small data-k="vat">or more, as you wish. One payment, VAT included if any.</small></div><button class="btn" id="buy" data-k="buy">Buy the pack</button></div>
       <p class="msg" id="buyMsg" role="status"></p>
       <p class="fine" data-k="secure">Secure payment on Stripe. No account. You get the pack at once, with a code that installs it on any computer.</p>
@@ -80,8 +80,8 @@
 <section><div class="wrap two">
   <div>
     <span class="eyebrow" data-k="handEyebrow">Drawn by hand</span>
-    <h2 data-k="handTitle">Ink, dots and a lot of patience</h2>
-    <p class="lead" style="margin:0" data-k="handText">Every character was drawn by hand by the illustrator Fabien Coupas, in black ink and printed-style dots, then cut into layers so that it can talk, nod and type in the call. The rooms around them are drawn in the same style: a crypt, a field under the moon, an old house, a graveyard, the roofs of the city, a bell tower, a forest, a witch's kitchen.</p>
+    <h2 data-k="handTitle">Every character, drawn by hand</h2>
+    <p class="lead" style="margin:0" data-k="handText">Every character was drawn by hand by the illustrator Fabien Coupas, then cut into layers so that it can talk, nod and type in the call. The rooms around them are drawn in the same style: a crypt, a field under the moon, an old house, a graveyard, the roofs of the city, a bell tower, a forest, a witch's kitchen.</p>
     <div class="credit"><div><b>Fabien Coupas</b><br><span data-k="illustrator">Illustrator</span> · <a href="https://www.instagram.com/fabien_coupas/" rel="noopener">@fabien_coupas</a></div></div>
   </div>
   <img class="cast" src="/thanks/cast.jpg" width="960" height="360" alt="The eight characters of the Halloween pack, each in its own room" loading="lazy">
@@ -129,11 +129,11 @@
 
 <script>
   const T = { fr: { home: 'Accueil', shop: 'Boutique', eyebrow: 'La boutique d’Agent Standup', title: 'Pack Halloween',
-    lead: 'Huit personnages dessinés à la main par Fabien Coupas, chacun dans sa pièce, pour remplacer l’équipe de vos appels Agent Standup. Vos agents deviennent une citrouille, un fantôme, un chat, une chauve-souris, un loup, une sorcière et une foule de squelettes.',
+    lead: 'Huit personnages dessinés à la main par', lead2: ', chacun dans sa pièce, pour remplacer l’équipe de vos appels Agent Standup. Vos agents deviennent une citrouille, un fantôme, un chat, une chauve-souris, un loup, une sorcière et une foule de squelettes.',
     vat: 'ou plus, comme vous voulez. Un seul paiement, TTC le cas échéant.', buy: 'Acheter le pack', secure: 'Paiement sécurisé sur Stripe. Sans compte. Vous recevez le pack tout de suite, avec un code qui l’installe sur n’importe quel ordinateur.',
     inapp: 'Vous utilisez déjà Agent Standup ? Vous pouvez aussi l’acheter depuis l’app :', path: '⚙ → Personnages → Pack Halloween', play: 'Lire la vidéo', ytnote: 'La vidéo vient de YouTube, et seulement quand vous appuyez sur lecture.',
-    handEyebrow: 'Dessiné à la main', handTitle: 'De l’encre, de la trame et beaucoup de patience',
-    handText: 'Chaque personnage a été dessiné à la main par l’illustrateur Fabien Coupas, à l’encre noire et en trame façon impression, puis découpé en calques pour qu’il puisse parler, hocher la tête et taper dans l’appel. Les pièces autour d’eux sont dans le même style : une crypte, un champ sous la lune, une vieille maison, un cimetière, les toits de la ville, un clocher, une forêt, la cuisine d’une sorcière.',
+    handEyebrow: 'Dessiné à la main', handTitle: 'Chaque personnage, dessiné à la main',
+    handText: 'Chaque personnage a été dessiné à la main par l’illustrateur Fabien Coupas, puis découpé en calques pour qu’il puisse parler, hocher la tête et taper dans l’appel. Les pièces autour d’eux sont dans le même style : une crypte, un champ sous la lune, une vieille maison, un cimetière, les toits de la ville, un clocher, une forêt, la cuisine d’une sorcière.',
     illustrator: 'Illustrateur', insideTitle: 'Ce qu’il contient', i1t: 'Huit personnages', i1: 'Une citrouille pour mener l’appel, un vampire pour vous, et un fantôme, un chat, une chauve-souris, un loup, une sorcière et un squelette pour vos agents. Chacun a sa pièce.',
     i2t: '360 squelettes', i2: 'Cinq chapeaux, quatre paires de lunettes, deux moustaches et trois paires d’yeux : quand une grande équipe demande plus de personnages, chaque squelette est habillé à sa façon.',
     i3t: 'Ils parlent et travaillent', i3: 'Deux bouches pour parler, des mains qui tapent pendant que l’agent travaille, et de temps en temps un ordinateur à autocollants, sorti quelques secondes.',

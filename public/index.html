@@ -2732,7 +2732,7 @@ function openPrefs(target) {   // ⚙ → All settings; target: one of its setti
 const PANEL_KEYS = ['office', 'officeVol', 'music', 'station', 'musicVol', 'notify', 'customLaptop', 'ownNames', 'roster', 'reactions', 'banter', 'chat', 'vanish', 'epi', 'files', 'artNet', 'visits', 'followTab'];   // what the panel holds, and so what Reset puts back
 $('#prefsReset').onclick = async () => {
   const b = $('#prefsReset'); if (!b.classList.contains('sure')) { b.classList.add('sure'); b.textContent = L('Cliquez encore pour tout remettre', 'Click again to reset them all'); setTimeout(() => { b.classList.remove('sure'); b.textContent = L('Réglages par défaut', 'Reset to defaults'); }, 4000); return; }   // two clicks: nothing is lost by a stray one
-  for (const k of PANEL_KEYS) { if (k in PREF_DEFAULTS) prefs[k] = PREF_DEFAULTS[k]; else delete prefs[k]; }
+  for (const k of PANEL_KEYS) { if (k in PREF_DEFAULTS) prefs[k] = PREF_DEFAULTS[k]; else delete prefs[k]; } delete prefs.notifyChosen;   // notifyChosen too: the default of notifications is decided at start-up from it
   prefs._t = Date.now(); try { localStorage.setItem('cc.prefs', JSON.stringify(prefs)); } catch {} try { await fetch('/api/prefs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(prefs) }); } catch {}
   location.reload();   // every part of the page starts again from them
 };

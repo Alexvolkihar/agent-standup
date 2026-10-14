@@ -513,5 +513,10 @@ test('pictures added from the page: under the name of their role, the one replac
     assert.deepEqual(await post('/api/characters/remove', { file: 'Ghost Writer.png' }), { status: 200, ok: true }); assert.ok(!fs.existsSync(path.join(dir, 'Ghost Writer.png')));
     assert.equal((await post('/api/characters/remove', { file: '../server.js' })).error, 'file'); assert.equal((await post('/api/characters/remove', { file: 'replaced' })).error, 'file');
     assert.equal(fs.readdirSync(path.join(dir, 'replaced')).length, 2);   // nothing deleted: you.png and Ghost Writer.png wait there
+    fs.writeFileSync(path.join(dir, 'help-desk.png'), Buffer.from(png('h'), 'base64'));   // a picture of one's own whose name looks like a layer, with no character of that name: still a character, as in 1.32
+    assert.ok(JSON.parse((await get(port, '/api/characters')).body).chars.some((c) => c.stem === 'help-desk'));
+    assert.equal((await post('/api/characters/add', { role: 'you-talk', name: 'open.png', data: png('o') })).file, 'you-talk.png');
+    assert.equal((await post('/api/characters/add', { role: 'you', name: 'new face.png', data: png('n') })).file, 'you.png');   // a new face: the old open mouth goes aside with the old picture
+    assert.ok(!fs.existsSync(path.join(dir, 'you-talk.png'))); assert.equal(JSON.parse((await get(port, '/api/characters')).body).chars.find((c) => c.role === 'you').talk, null);
   } finally { stop(); delete process.env.AGENT_STANDUP_CHARACTERS; }
 });

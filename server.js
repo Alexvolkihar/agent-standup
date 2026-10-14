@@ -836,7 +836,8 @@ function listCharacters(pack) {
   const ok = names.filter((f) => CHAR_NAME.test(f)).filter((f) => { try { const st = fs.lstatSync(path.join(dir, f)); return st.isFile() && st.size <= CHAR_MAX; } catch { return false; } }).sort().slice(0, 200);
   const stem = (f) => f.replace(/\.[^.]+$/, ''), by = new Map(ok.map((f) => [stem(f).toLowerCase(), f]));
   const extra = (f) => stem(f).match(/^(.+)\+([a-z]+\d*)[-_ ]?\w*$/i);   // the kind may end with a number: sticker1, sticker2… are kinds of their own
-  const chars = ok.filter((f) => !/-(talk|bg|head|hands|desk(-\w+)?)$/i.test(stem(f)) && !extra(f)).map((f) => { const st = stem(f), l = st.toLowerCase(), extras = {};
+  const layer = (f) => { const m = stem(f).match(/^(.+)-(bg|head|hands|desk(-\w+)?)$/i); return !!(m && by.has(m[1].toLowerCase())); };   // a layer only when its character is there: help-desk.png alone is a character
+  const chars = ok.filter((f) => !/-talk$/i.test(stem(f)) && !layer(f) && !extra(f)).map((f) => { const st = stem(f), l = st.toLowerCase(), extras = {};
     for (const x of ok) { const m = extra(x), k = m && m[1].toLowerCase() === l ? m[2].toLowerCase() : ''; if (k) (extras[k] = extras[k] || []).push(x); }
     return { stem: st, file: f, talk: by.get(l + '-talk') || null, bg: by.get(l + '-bg') || null, desks: ok.filter((x) => { const s = stem(x).toLowerCase(); return s === l + '-desk' || s.startsWith(l + '-desk-'); }), head: by.get(l + '-head') || null, hands: by.get(l + '-hands') || null, extras: Object.keys(extras).length ? extras : null, role: /^(lead|claude)$/.test(l) ? 'lead' : /^(you|human|user)$/.test(l) ? 'you' : 'agent' }; }).sort((a, b) => a.stem.localeCompare(b.stem));
   return { dir, max: CHAR_MAX, chars };
@@ -879,7 +880,8 @@ function addCharacter(role, name, b64) {   // → { file } or throws a word the 
   let stem = ROLE_FILES[role]; if (!stem) { stem = String(name || '').replace(/\.[^.]*$/, '').replace(/[^\w .()\-]+/g, ' ').trim().slice(0, 60).replace(/^[^\w]+/, '') || 'agent'; if (/^(lead|claude|you|human|user)(-talk)?$/i.test(stem) || /-(talk|bg|head|hands|desk(-\w+)?)$/i.test(stem)) stem += ' 2'; }   // a sub-agent never takes the name of a role
   const file = stem + '.' + type; if (!CHAR_NAME.test(file)) throw Object.assign(new Error('name'), { word: 'name' });
   if (!ROLE_FILES[role]) { let k = 2, f = file; while (fs.existsSync(path.join(dir, f))) f = `${stem} ${k++}.${type}`; fs.writeFileSync(path.join(dir, f), data); return { file: f }; }   // a sub-agent's picture never replaces another one
-  putAside(dir, stem.toLowerCase()); fs.writeFileSync(path.join(dir, file), data); return { file };
+  putAside(dir, stem.toLowerCase()); if (!/-talk$/.test(stem)) for (const s of ['-talk', '-head', '-hands', '-bg', '-desk', '-desk-dark']) putAside(dir, stem + s);   // a new face: the old open mouth and layers go aside with the old picture
+  fs.writeFileSync(path.join(dir, file), data); return { file };
 }
 function removeCharacter(file) {   // moved to replaced/, with its open mouth and its room; only a picture the folder lists
   const f = String(file || ''), dir = charactersDir(); if (!CHAR_NAME.test(f) || !listCharacters('').chars.some((c) => c.file === f)) return false;
