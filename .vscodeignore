@@ -28,6 +28,7 @@ dist-release/**
 ROADMAP.md
 PRIVACY.md
 TRADEMARKS.md
+TERMS.md
 dist-release-*/**
 test/**
 node_modules/**
