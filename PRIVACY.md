@@ -31,7 +31,7 @@ The following happen only if you turn them on or start them yourself:
 
 | When | What is sent | To whom |
 |---|---|---|
-| You choose French, switch on the call in Spanish or Portuguese, or turn on the jokes | Short lines of the session, to be translated or answered | Anthropic, through your own Claude Code login (or your own API key if you set one) |
+| You choose French, Spanish or Brazilian Portuguese as the language (for the last two, unless you switch off "Call in this language" in the ⚙ menu), or turn on the jokes | Short lines of the session, to be translated or answered | Anthropic, through your own Claude Code login (or your own API key if you set one) |
 | You turn on the office radio | A request for the audio stream; no session content | Radio France |
 | You turn on "share usage" in VS Code (off by default, and never when VS Code telemetry is off) | One empty request a day for a 1-pixel file. No identifier, no content | GitHub |
 | You install the very natural voices | A download of the voice package and its model; no session content | The npm registry and Hugging Face |

@@ -48,7 +48,7 @@
  "The interface in <b>10 languages</b>: English, Français, 繁體中文, 简体中文, Español, Deutsch, Dansk, Português, 日本語, 한국어.": "介面提供 <b>10 種語言</b>：English, Français, 繁體中文, 简体中文, Español, Deutsch, Dansk, Português, 日本語, 한국어。",
  "Is it serious?": "這是認真的嗎？",
  "Mostly for fun. A little for clarity: when eight sub-agents are working at once, seeing who’s doing what, and what’s on their screen, is easier than scrolling through a log.": "主要是為了好玩，也有一點是為了看得清楚：八個子代理同時開工時，直接看到誰在做什麼、螢幕上有什麼，比翻日誌輕鬆。",
- "<b>Is my code sent anywhere?</b> No. Everything runs on your machine and reads the session files Claude Code, Codex, Mistral Vibe and Cowork already write. (Only if you choose French, switch on the call in Spanish or Portuguese, or turn on the jokes, short lines go through your own Claude login.)": "<b>我的程式碼會被傳到別的地方嗎？</b>不會。一切都在你的電腦上執行，讀取的是 Claude Code、Codex、Mistral Vibe 和 Cowork 本來就會寫下的工作階段檔案。（只有在你選擇法語、開啟西班牙語或葡萄牙語通話，或開啟玩笑功能時，才會有簡短的句子透過你自己的 Claude 登入傳送。）",
+ "<b>Is my code sent anywhere?</b> No. Everything runs on your machine and reads the session files Claude Code, Codex, Mistral Vibe and Cowork already write. (Only if you choose French, Spanish or Portuguese as the language, or turn on the jokes, short lines go through your own Claude login.)": "<b>我的程式碼會被傳到別的地方嗎？</b>不會。一切都在你的電腦上執行，讀取的是 Claude Code、Codex、Mistral Vibe 和 Cowork 本來就會寫下的工作階段檔案。（只有在你選擇法語、西班牙語或葡萄牙語作為語言，或開啟玩笑功能時，才會有簡短的句子透過你自己的 Claude 登入傳送。）",
  "Made by a bored dev and his robots.": "由一位閒得發慌的開發者和他的機器人們製作。",
  "☕ Buy him a coffee": "☕ 請他喝杯咖啡",
  "MIT licensed. Unofficial: not affiliated with Anthropic, OpenAI or Mistral AI.": "採用 MIT 授權。非官方專案：與 Anthropic、OpenAI 和 Mistral AI 皆無關聯。",
