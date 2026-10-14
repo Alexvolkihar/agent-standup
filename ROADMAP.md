@@ -15,6 +15,8 @@ What exists today, what was investigated, and what is deliberately not built yet
 ## Other agent tools
 **Codex is read** (`codex.js`): the desktop app and the command line, written and tested against real session files. Its sub-agents and pictures are not shown yet; a session with Codex sub-agents is needed to learn how they are recorded.
 
+**Cowork is read**: the sessions of the Cowork tab of the Claude desktop app, sub-agents and scheduled tasks included. Cowork records them in the format of Claude Code, in the desktop app’s own folder (`local-agent-mode-sessions`).
+
 **Mistral Vibe is read** (`vibe.js`): both of its engines, checked against real sessions of Vibe 2.26.1, with its sub-agents. Pictures are not shown.
 
 The rest is researched, not built. Reading another tool needs one adapter each. A web research pass found that **almost every format is undocumented or reverse-engineered and sources disagree**, and no real log of these tools was available to test against, so no adapter was written blind. Ranking if/when someone wants to take one (sources are third-party; verify against a real install first):
