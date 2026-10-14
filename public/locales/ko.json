@@ -251,6 +251,7 @@
  "No preview here: the page is on claude.ai": "여기서는 미리 볼 수 없습니다: 페이지는 claude.ai에 있습니다",
  "Open on claude.ai": "claude.ai에서 열기",
  "Publishing ": "게시 중: ",
+ "Showing ": "보여 주는 중: ",
  "This page uses libraries kept on other servers: they are loaded only if you ask": "이 페이지는 다른 서버에 있는 라이브러리를 사용합니다: 요청할 때만 불러옵니다",
  "Mark as done": "완료로 표시",
  "Open the pull request": "풀 리퀘스트 열기",

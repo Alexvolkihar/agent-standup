@@ -111,14 +111,26 @@ const toolLabel = (b, ts) => {
     case 'Skill': out.d = { kind: 'text', what: 'skill', v: i.skill, text: clip(i.skill + (i.args ? ' ' + i.args : ''), 200) }; break;
     case 'ToolSearch': out.d = { kind: 'text', what: 'toolsearch', text: clip(i.query, 200) }; break;
     case 'Artifact': if ((!i.action || i.action === 'publish') && !i.asset) { out.d = { kind: 'artifact', file: typeof i.file_path === 'string' ? i.file_path : '', title: clip(i.title, 120), note: clip(i.description, 240) }; break; }   // a page published on claude.ai: the call shows it in a browser window (see artifactPage). Any other use of the tool (a read, a list, an upload) is a call like any other
+    if (i.action === 'open') { out.d = { kind: 'artifact', file: '', title: '', note: '', open: 1 }; break; }   // a page put on the person's screen: in the line of files when this session did not make it (see artOf)
     // falls through
-    default: out.d = mcp ? { kind: 'text', what: 'mcp', v: (mcp[1] || '') + ' · ' + (mcp.slice(2).join('__') || ''), text: clip(JSON.stringify(i), 400) } : { kind: 'text', text: clip(JSON.stringify(i), 300) };
+    default: if (mcp && /(^|_)Claude_Docs$/.test(mcp[1] || '') && mcp[2] === 'batch' && i.container && i.container.create && typeof i.container.create.name === 'string') { out.d = { kind: 'artifact', file: '', title: clip(i.container.create.name, 120), note: '', doc: 1 }; break; }   // a doc of the Claude Docs connector being born (its later edits are calls like any other)
+      out.d = mcp ? { kind: 'text', what: 'mcp', v: (mcp[1] || '') + ' · ' + (mcp.slice(2).join('__') || ''), text: clip(JSON.stringify(i), 400) } : { kind: 'text', text: clip(JSON.stringify(i), 300) };
   }
   return out;
 };
 // What a publish answered: the link of the page on claude.ai, its title and which version this is. typed: made from an Artifact type (a deck, a design, a document), whose page is the type's and not the file that was sent.
 const ART_URL = /^https:\/\/claude\.ai\/(code\/)?artifact\/[\w-]{6,80}$/;
 const artifactOf = (u) => (u && typeof u === 'object' && typeof u.url === 'string' && ART_URL.test(u.url) ? { url: u.url, title: clip(u.title, 120), ...(u.seq > 0 ? { v: +u.seq } : {}), ...(u.type || u.created_from_type ? { typed: 1 } : {}) } : null);
+// What a call that put an artifact in front of the person answered, for the line of files: a publish (above); a doc the Claude Docs connector created, whose answer names the doc and its address;
+// an artifact opened on the person's screen, only when this session did not publish or create it already (the same artifact under its other address would show twice, and an open would take the place of the publish that has the preview).
+const DOC_ID = /"created":\{[^{}]*"minted":"([\w-]{6,80})"/, DOC_URL = /"frame":\{[^{}]*"url":"(https:\/\/claude\.ai\/(?:code\/)?artifact\/[\w-]{6,80})"/;
+function artOf(st, how, u, text) {
+  const seen = (st.artIds = st.artIds || new Set());
+  if (how === 'doc') { const id = DOC_ID.exec(text), m = DOC_URL.exec(text); if (!id || !m || !ART_URL.test(m[1])) return null; seen.add(id[1]); return { url: m[1], title: '', typed: 1 }; }
+  const a = artifactOf(u), id = a && typeof u.artifact_id === 'string' ? u.artifact_id : ''; if (!a) return null;
+  if (how === 'open') return id && seen.has(id) ? null : (id && seen.add(id), { ...a, typed: 1 });   // opened, not made here: the window gives its title and its link
+  if (id) seen.add(id); return a;
+}
 const resultText = (c) => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => x.text || '').join('\n') : '');
 // Pictures a tool returned (a screenshot, an image file that was read). They are served from the transcript itself, so nothing outside the session files is ever read, and only bitmap types are sent.
 const IMG_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']), mediaMemo = new Map();
@@ -534,7 +546,7 @@ function parseRecord(st, r) {
     for (const b of blocks(r)) if (b.type === 'tool_result' && wf) push({ ts, agent, kind: 'wfrun', toolId: b.tool_use_id, run: wf });   // the answer to a Workflow call names the run it started: its agents are in subagents/workflows/<run>/
     for (const b of blocks(r)) if (b.type === 'tool_result' && (st.toolName[b.tool_use_id] === 'Agent' || st.toolName[b.tool_use_id] === 'Task') && !(st.bg && st.bg[b.tool_use_id]) && !/^\s*Async agent launched/i.test(resultText(b.content))) push({ ts, agent, kind: 'agentdone', toolId: b.tool_use_id });   // a synchronous call: the lead got the sub-agent's answer back, so it has finished (async launches answer immediately and are not a completion)
     for (const b of blocks(r)) if (b.type === 'tool_result' && st.toolName[b.tool_use_id] && !NO_RESULT.has(st.toolName[b.tool_use_id])) {
-      const n = st.toolName[b.tool_use_id], img = resultImages(b.content).length, files = n === 'Bash' && !b.is_error ? docPaths(resultText(b.content), false).map((f) => absPath(f, r.cwd)) : [], art = !b.is_error && st.pubs && st.pubs.has(b.tool_use_id) ? artifactOf(r.toolUseResult) : null;
+      const n = st.toolName[b.tool_use_id], img = resultImages(b.content).length, files = n === 'Bash' && !b.is_error ? docPaths(resultText(b.content), false).map((f) => absPath(f, r.cwd)) : [], art = !b.is_error && st.pubs && st.pubs.has(b.tool_use_id) ? artOf(st, st.pubs.get(b.tool_use_id), r.toolUseResult, resultText(b.content)) : null;
       items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || (/^mcp__/.test(n) ? 900 : 600)), ...(img ? { img } : {}), ...(files.length ? { files } : {}), ...(art ? { art } : {}) });   // img: how many pictures came back; the page fetches them from /api/media · files: the documents a command says it made
     }
     if (items.length) push({ ts, agent, kind: 'results', items });
@@ -558,7 +570,7 @@ function parseRecord(st, r) {
       else if (b.type === 'tool_use') {
         st.toolName[b.id] = b.name; (st.out = st.out || new Set()).add(b.id); if (b.input && b.input.run_in_background) (st.bg = st.bg || {})[b.id] = true;   // out: the calls that have no answer yet
         if (b.name === 'Agent' || b.name === 'Task') push({ ts, agent, kind: 'agentcall', toolId: b.id, bg: !!(b.input && b.input.run_in_background), text: (b.input && b.input.prompt) || '', title: (b.input && b.input.description) || '', ...(b.input && typeof b.input.name === 'string' && b.input.name.trim() ? { nm: b.input.name.trim() } : {}) });
-        else { const tool = toolLabel(b, ts); if (tool.d && tool.d.outs) tool.d.outs = tool.d.outs.map((f) => absPath(f, r.cwd)); if (tool.d && tool.d.kind === 'artifact') (st.pubs = st.pubs || new Set()).add(b.id); push({ ts, agent, kind: 'tool', tool, ...th() }); st.act = st.raw.length - 1; }
+        else { const tool = toolLabel(b, ts); if (tool.d && tool.d.outs) tool.d.outs = tool.d.outs.map((f) => absPath(f, r.cwd)); if (tool.d && tool.d.kind === 'artifact') (st.pubs = st.pubs || new Map()).set(b.id, tool.d.open ? 'open' : tool.d.doc ? 'doc' : 'pub'); push({ ts, agent, kind: 'tool', tool, ...th() }); st.act = st.raw.length - 1; }
       }
     }
     if (agent === 'main' && (m.stop_reason === 'end_turn' || ((r.isApiErrorMessage || (m.model === '<synthetic>' && m.stop_reason === 'stop_sequence')) && !(st.out && st.out.size)))) {   // also a turn that ends on a message Claude Code writes itself, in the place of the model's: the API is down, the limit is reached, the request was refused, or there was nothing to answer. Nothing follows it, unless a call of the lead is still out: the connection dropped while its agents worked, and it goes on when they answer. (A message of the model that a safety check cuts is not the end either: Claude Code tells the model, which goes on.) The lead's turn is over: Claude Code writes one record per content block, each with the message's stop reason, so the mark goes on the line this record carries (a thinking block carries none)

@@ -409,6 +409,34 @@ test('an artifact a session published is shown from the session file alone: each
     assert.equal((await page('agent=main&tool=toolu_pub001', { 'sec-fetch-site': 'cross-site' })).status, 403); assert.equal((await page('agent=main&tool=toolu_pub001', { origin: 'null' })).status, 403);   // another site cannot have it; nor can the page itself, from inside its frame, ask the app for anything
   } finally { srv.close(); require('../server.js').shutdown(); }
 });
+test('a doc made with the Claude Docs connector, and an artifact opened on the person\'s screen, are in the line of files; once per artifact, whatever its address', async () => {
+  let t = 0; const at = () => new Date(Date.UTC(2026, 0, 1, 0, 0, t++)).toISOString();
+  const use = (id, name, input) => ({ type: 'assistant', timestamp: at(), message: { content: [{ type: 'tool_use', id, name, input }] } });
+  const res = (id, content, extra = {}, err) => ({ type: 'user', timestamp: at(), message: { content: [{ type: 'tool_result', tool_use_id: id, content, ...(err ? { is_error: true } : {}) }] }, ...extra });
+  const doc = '393c5caa-df0e-41e7-adc2-72c128cd02c9', docUrl = 'https://claude.ai/code/artifact/' + doc, D = 'mcp__claude_ai_Claude_Docs__batch';
+  const born = (minted, url) => [{ type: 'text', text: JSON.stringify({ verdict: 'allow', acks: [{ verdict: 'allow', minted: 'e3b4362c-be18' }], created: { verdict: 'allow', minted, bound: true }, frame: { slug: minted, url, artifactUrl: url } }) }, { type: 'text', text: "The doc's viewer is at " + url }];
+  const lines = [
+    use('toolu_doc001', D, { container: { kind: 'project', create: { name: 'Growth report', doc: { markdown: '# Growth report' } } }, batch: [] }), res('toolu_doc001', born(doc, docUrl), { toolUseResult: born(doc, docUrl) }),
+    use('toolu_open01', 'Artifact', { action: 'open', url: docUrl }), res('toolu_open01', 'Opened the Artifact', { toolUseResult: { opened: true, url: 'https://claude.ai/artifact/84voqSfc2pp96QTMGotLXS', artifact_id: doc, title: 'Growth report' } }),
+    use('toolu_doc002', D, { container: { kind: 'project', id: doc }, batch: [{ verb: 'update' }] }), res('toolu_doc002', [{ type: 'text', text: JSON.stringify({ verdict: 'allow', frame: { slug: doc, url: docUrl } }) }]),
+    use('toolu_pub001', 'Artifact', { file_path: '/tmp/scratch/page.html' }), res('toolu_pub001', 'Published', { toolUseResult: { url: 'https://claude.ai/artifact/PagePagePage', title: 'Page', artifact_id: 'p1' } }),
+    use('toolu_open02', 'Artifact', { action: 'open', url: 'https://claude.ai/artifact/PagePagePage' }), res('toolu_open02', 'Opened', { toolUseResult: { opened: true, url: 'https://claude.ai/artifact/PagePagePage', artifact_id: 'p1', title: 'Page' } }),
+    use('toolu_open03', 'Artifact', { action: 'open', url: 'https://claude.ai/artifact/OlderOlder12' }), res('toolu_open03', 'Opened', { toolUseResult: { opened: true, url: 'https://claude.ai/artifact/OlderOlder12', artifact_id: 'old1', title: 'Made last week' } }),
+    use('toolu_open04', 'Artifact', { action: 'open', url: 'https://claude.ai/artifact/OlderOlder12' }), res('toolu_open04', 'Opened', { toolUseResult: { opened: true, url: 'https://claude.ai/artifact/OlderOlder12', artifact_id: 'old1', title: 'Made last week' } }),
+    use('toolu_doc003', D, { container: { kind: 'project', create: { name: 'Refused' } }, batch: [] }), res('toolu_doc003', 'refused', {}, true),
+    use('toolu_doc004', D, { container: { kind: 'project', create: { name: 'Elsewhere' } }, batch: [] }), res('toolu_doc004', born('aaaaaaaa-0000', 'https://claude.ai.example.com/artifact/aaaaaaaa-0000')),
+    use('toolu_doc005', 'mcp__other__batch', { container: { kind: 'project', create: { name: 'Not a doc' } } }), res('toolu_doc005', born('bbbbbbbb-0000', 'https://claude.ai/artifact/bbbbbbbb-0000')),
+  ];
+  const dir = path.join(tmp, 'projects', '-docs'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 's1.jsonl'), lines.map((r) => JSON.stringify(r)).join('\n') + '\n');
+  const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;
+  try {
+    const ev = JSON.parse((await get(port, '/api/session?proj=-docs&id=s1')).body).events, tools = ev.filter((e) => e.kind === 'tools').flatMap((e) => e.tools), items = ev.filter((e) => e.kind === 'results').flatMap((e) => e.items);
+    assert.deepEqual(tools.filter((x) => x.d.kind === 'artifact').map((x) => x.id), ['toolu_doc001', 'toolu_open01', 'toolu_pub001', 'toolu_open02', 'toolu_open03', 'toolu_open04', 'toolu_doc003', 'toolu_doc004']);   // a doc being born, not its edits; no other connector
+    assert.deepEqual(tools.find((x) => x.id === 'toolu_doc001').d, { kind: 'artifact', file: '', title: 'Growth report', note: '', doc: 1 });
+    assert.deepEqual(tools.find((x) => x.id === 'toolu_open01').d, { kind: 'artifact', file: '', title: '', note: '', open: 1 });
+    assert.deepEqual(items.filter((it) => it.art).map((it) => [it.id, it.art]), [['toolu_doc001', { url: docUrl, title: '', typed: 1 }], ['toolu_pub001', { url: 'https://claude.ai/artifact/PagePagePage', title: 'Page' }], ['toolu_open03', { url: 'https://claude.ai/artifact/OlderOlder12', title: 'Made last week', typed: 1 }]]);   // an open of what this session made, or opened before, adds nothing; a refused birth and an address that is not claude.ai's are not shown
+  } finally { srv.close(); require('../server.js').shutdown(); }
+});
 test('the live call is in the session you last touched: the one you typed in, or the one you went to, until you type somewhere. What the agents write moves nothing', async () => {
   const dir = path.join(tmp, 'projects', '-follow'), f = (id) => path.join(dir, id + '.jsonl'), put = (id, ...recs) => fs.appendFileSync(f(id), recs.map(line).join('')), aged = (id, s) => { const t = (Date.now() - s * 1000) / 1000; fs.utimesSync(f(id), t, t); }; fs.mkdirSync(dir, { recursive: true });
   const { port, stop } = await serve(), cur = async (q = '') => { await wait(1300); return JSON.parse((await get(port, '/api/current?proj=-follow' + q)).body); }, from = (id) => '&sproj=-follow&sid=' + id, went = (id, since) => '&pproj=-follow&pid=' + id + (since == null ? '' : '&since=' + since);   // the list of sessions is worked out at most once every 1.2 s
