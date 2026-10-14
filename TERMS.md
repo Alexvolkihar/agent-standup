@@ -2,8 +2,6 @@
 
 Last updated: 14 October 2026. Version française plus bas.
 
-> ⚠ Still to fill in before the shop opens (Arthur): the consumer mediator in section 11. Then delete this note.
-
 ## In English
 
 **1. Seller.** The shop at https://agent-standup.com/shop/ is run by Double Geste, a French limited liability company (SARL), 5 rue Papillon, 75009 Paris, France, registered in the Paris trade register under number 904 884 822 (SIRET 904 884 822 00019). Contact: contact.doublegeste@gmail.com.
@@ -26,7 +24,7 @@ Last updated: 14 October 2026. Version française plus bas.
 
 **10. Personal data.** What the shop and Stripe see of a purchase is described in the privacy policy: https://agent-standup.com/privacy/
 
-**11. Disputes.** These terms are governed by French law. Before any claim, write to us so that we can find a solution. You may also turn to the consumer mediator [name and address of the mediator], free of charge.
+**11. Disputes.** These terms are governed by French law. Before any claim, write to us so that we can find a solution.
 
 ## En français
 
@@ -50,4 +48,4 @@ Last updated: 14 October 2026. Version française plus bas.
 
 **10. Données personnelles.** Ce que la boutique et Stripe voient d'un achat est décrit dans la politique de confidentialité : https://agent-standup.com/privacy/
 
-**11. Litiges.** Les présentes conditions sont régies par le droit français. Avant toute réclamation, écrivez-nous pour que nous trouvions une solution. Vous pouvez aussi recourir gratuitement au médiateur de la consommation [nom et adresse du médiateur].
+**11. Litiges.** Les présentes conditions sont régies par le droit français. Avant toute réclamation, écrivez-nous pour que nous trouvions une solution.
