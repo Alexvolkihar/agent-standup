@@ -9,7 +9,7 @@
   "config.autoOpen.description": "VS Code가 시작될 때 실시간 통화를 자동으로 엽니다.",
   "config.onlyThisWorkspace.description": "현재 작업 영역 폴더에서 시작된 Claude Code 세션만 따라갑니다.",
   "config.statusBar.description": "이 작업 영역의 상황(작업 중인 에이전트, 응답 필요, 내 차례)을 상태 표시줄에 실시간으로 보여 줍니다. 에이전트가 기다리고 있을 수 있으면 항목이 빨간색으로 바뀝니다.",
-  "config.shareUsage.description": "활성 설치 수 집계에 도움을 주세요. 하루에 한 번 GitHub의 1픽셀 파일로 빈 요청을 하나 보냅니다(식별자 없음, 내용 없음. 일반 다운로드처럼 GitHub에는 IP 주소가 보입니다). 기본값은 꺼짐이며, VS Code 원격 분석이 꺼져 있으면 무시됩니다.",
+  "config.shareUsage.description": "사용자 수 집계에 도움을 주세요. 에디터 시작 시 하루에 한 번, 통화를 열 때 최대 주 1회 GitHub의 1픽셀 파일로 빈 요청을 하나 보냅니다(식별자 없음, 내용 없음. 일반 다운로드처럼 GitHub에는 IP 주소가 보입니다). 동의하기 전까지는 꺼져 있으며(처음 통화를 열 때 한 번 묻습니다), VS Code 원격 분석이 꺼져 있으면 무시됩니다.",
   "config.codex.description": "Codex 세션도 표시합니다(~/.codex/sessions 또는 $CODEX_HOME에서 읽음). 끄면 Claude Code 세션만 표시합니다.",
   "config.vibe.description": "Mistral Vibe 세션도 표시합니다 (~/.vibe/logs/session 또는 $VIBE_HOME에서 읽음). 끄면 표시하지 않습니다.",
   "config.claudePath.description": "자동으로 찾지 못할 경우 Claude Code 실행 파일의 전체 경로입니다(번역에 사용).",

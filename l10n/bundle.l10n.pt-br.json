@@ -7,5 +7,8 @@
   "Enjoying Agent Standup? A rating helps other people find it.": "Está gostando do Agent Standup? Uma avaliação ajuda outras pessoas a encontrá-lo.",
   "Rate it": "Avaliar",
   "Later": "Mais tarde",
-  "No thanks": "Não, obrigado"
+  "No thanks": "Não, obrigado",
+  "Help count how many people use Agent Standup? When you open the call, at most once a week (and once a day when the editor starts), the extension would load an empty 1-pixel file from GitHub: no identifier, nothing about you or your sessions. GitHub sees your IP address, as with any download. You can turn it off any time in the settings.": "Quer ajudar a contar quantas pessoas usam o Agent Standup? Quando você abre a chamada, no máximo uma vez por semana (e uma vez por dia quando o editor inicia), a extensão carregaria um arquivo vazio de 1 pixel do GitHub: sem identificador, nada sobre você ou suas sessões. O GitHub vê seu endereço IP, como em qualquer download. Você pode desativar quando quiser nas configurações.",
+  "Count me in": "Pode contar comigo",
+  "Privacy policy": "Política de privacidade"
 }

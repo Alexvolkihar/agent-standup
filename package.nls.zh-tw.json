@@ -9,7 +9,7 @@
   "config.autoOpen.description": "VS Code 啟動時自動開啟即時視訊通話。",
   "config.onlyThisWorkspace.description": "只追蹤在目前工作區資料夾中啟動的 Claude Code 工作階段。",
   "config.statusBar.description": "在狀態列顯示此工作區的即時數量（工作中的代理、需要你、換你了）；當有代理可能在等你時，項目會變紅。",
-  "config.shareUsage.description": "協助專案統計活躍安裝數：每天向 GitHub 上一個 1 像素的檔案送出一次空請求（無識別碼、無內容；GitHub 會看到你的 IP，如同任何下載）。預設關閉；若 VS Code 遙測已關閉則忽略。",
+  "config.shareUsage.description": "協助專案統計有多少人在使用：編輯器啟動時每天一次、開啟通話時每週最多一次，向 GitHub 上一個 1 像素的檔案送出一次空請求（無識別碼、無內容；GitHub 會看到你的 IP，如同任何下載）。在你同意之前保持關閉（第一次開啟通話時詢問一次）；若 VS Code 遙測已關閉則忽略。",
   "config.codex.description": "同時顯示 Codex 工作階段（讀取自 ~/.codex/sessions 或 $CODEX_HOME）。關閉後僅顯示 Claude Code 工作階段。",
   "config.vibe.description": "同時顯示 Mistral Vibe 工作階段（讀取自 ~/.vibe/logs/session 或 $VIBE_HOME）。關閉後不顯示。",
   "config.claudePath.description": "Claude Code 可執行檔的完整路徑（若無法自動找到時使用；用於翻譯）。",

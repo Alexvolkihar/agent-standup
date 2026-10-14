@@ -238,7 +238,7 @@ The first click on **Join** is required by browsers to allow sound.
 |---|---|---|
 | `agentStandup.port` | `0` | Local port of the server. `0` = a free port is picked automatically for each VS Code window (recommended) |
 | `agentStandup.statusBar` | `true` | Live counts in the VS Code status bar (needs you / working / your turn) for this workspace |
-| `agentStandup.shareUsage` | `false` | Opt-in, anonymous: at most one empty request per day to a 1-pixel file on GitHub, to count active installs (ignored when VS Code telemetry is off) |
+| `agentStandup.shareUsage` | `false` | Opt-in, anonymous: one empty request a day (when the editor starts) and at most one a week (when you open the call) to 1-pixel files on GitHub, to count how many people use it. Asked once, the first time you open the call; ignored when VS Code telemetry is off |
 | `agentStandup.charactersPath` | _(empty)_ | Folder with your own character images (default `~/.agent-standup/characters`) |
 | `agentStandup.codex` | `true` | Also show Codex sessions (read from `~/.codex/sessions`, or `$CODEX_HOME`). Turn off to show Claude Code sessions only |
 | `agentStandup.vibe` | `true` | Also show Mistral Vibe sessions (read from `~/.vibe/logs/session`, or `$VIBE_HOME`). Turn off to leave them out |

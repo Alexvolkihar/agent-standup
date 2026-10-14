@@ -9,7 +9,7 @@
   "config.autoOpen.description": "Åbn live-opkaldet automatisk, når VS Code starter.",
   "config.onlyThisWorkspace.description": "Følg kun Claude Code-sessioner, der er startet i den aktuelle arbejdsmappe.",
   "config.statusBar.description": "Vis live-tal i statuslinjen (agenter der arbejder, har brug for dig, din tur) for dette arbejdsområde; elementet bliver rødt, når en agent måske venter på dig.",
-  "config.shareUsage.description": "Hjælp projektet med at tælle aktive installationer: én gang om dagen sendes én tom forespørgsel til en 1-pixel-fil på GitHub (ingen identifikator, intet indhold; GitHub ser din IP som ved enhver download). Fra som standard; ignoreres, hvis VS Code-telemetri er slået fra.",
+  "config.shareUsage.description": "Hjælp projektet med at tælle, hvor mange der bruger det: én gang om dagen, når editoren starter, og højst én gang om ugen, når du åbner opkaldet, sendes én tom forespørgsel til en 1-pixel-fil på GitHub (ingen identifikator, intet indhold; GitHub ser din IP som ved enhver download). Fra, indtil du siger ja (du bliver spurgt én gang, første gang du åbner opkaldet); ignoreres, hvis VS Code-telemetri er slået fra.",
   "config.codex.description": "Vis også Codex-sessioner (læses fra ~/.codex/sessions eller $CODEX_HOME). Slå fra for kun at vise Claude Code-sessioner.",
   "config.vibe.description": "Vis også Mistral Vibe-sessioner (læst fra ~/.vibe/logs/session eller $VIBE_HOME). Slå fra for at udelade dem.",
   "config.claudePath.description": "Fuld sti til Claude Code-programmet, hvis det ikke findes automatisk (bruges til oversættelse).",

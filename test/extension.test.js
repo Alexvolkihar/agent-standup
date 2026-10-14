@@ -68,6 +68,28 @@ test('a rating is asked once, on the third day the call is opened, for the store
   } finally { await x.close(); }
 });
 
+test('sharing usage is asked once, the first time the call is opened, never when VS Code telemetry is off; yes turns it on for every window, and a week is counted once', async () => {
+  const v = standIn(), x = await activated(v), asked = [], sent = [], updates = [], conf = { shareUsage: false };
+  v.vscode.workspace.getConfiguration = () => ({ get: (k) => conf[k], update: async (k, val, target) => { updates.push([k, val, target]); conf[k] = val; } });
+  v.vscode.ConfigurationTarget = { Global: 1 }; x.ext._net.pixel = (name) => sent.push(name);
+  let answer; v.vscode.window.showInformationMessage = (m, ...b) => { asked.push(b); return Promise.resolve(answer == null ? undefined : b[answer]); };
+  const store = () => { const m = new Map(); return { get: (k) => m.get(k), update: async (k, val) => { m.set(k, val); } }; };
+  try {
+    await x.ext._askUsage(store()); assert.equal(asked.length, 0);   // the stand-in's telemetry is off: the person has already said no to that
+    v.vscode.env.isTelemetryEnabled = true;
+    const a = store(); answer = 2; await x.ext._askUsage(a);   // "Privacy policy": the page, then the question once more, without that button; closed
+    assert.deepEqual(asked, [['Count me in', 'No thanks', 'Privacy policy'], ['Count me in', 'No thanks']]); assert.deepEqual(v.opened.map(String), ['https://agent-standup.com/privacy/']);
+    await x.ext._askUsage(a); assert.equal(asked.length, 2); assert.equal(conf.shareUsage, false); assert.deepEqual(sent, []);   // never asked again, nothing sent
+    answer = 0; await x.ext._askUsage(store()); assert.deepEqual(updates, [['shareUsage', true, 1]]); assert.deepEqual(sent, ['app-week.gif']);   // "Count me in": on for all windows, this week counted
+    await x.ext._askUsage(store()); assert.equal(asked.length, 3);   // already on: not asked
+    const w = store(); for (const t of ['2026-10-12T08:00:00Z', '2026-10-14T20:00:00Z', '2026-10-18T23:59:00Z', '2026-10-19T00:01:00Z']) x.ext._pingWeek(w, new Date(t));
+    assert.deepEqual(sent, ['app-week.gif', 'app-week.gif', 'app-week.gif']);   // one for the week of Monday 12 October, one for the week of the 19th
+    assert.equal(x.ext._mondayOf(new Date('2026-10-18T23:59:00Z')), '2026-10-12'); assert.equal(x.ext._mondayOf(new Date('2026-10-19T00:01:00Z')), '2026-10-19');
+    conf.shareUsage = false; x.ext._pingWeek(store(), new Date('2026-10-26T10:00:00Z')); conf.shareUsage = true; v.vscode.env.isTelemetryEnabled = false; x.ext._pingWeek(store(), new Date('2026-10-26T10:00:00Z'));
+    assert.equal(sent.length, 3);   // off, or VS Code telemetry off: nothing
+  } finally { await x.close(); }
+});
+
 test('the status bar opens the call on a session without changing the folder the window follows: a Vibe session is kept under its tool, which is not a folder', async () => {
   const v = standIn(), x = await activated(v, { id: 'abc-123', proj: '_vibe' });
   try {

@@ -21,7 +21,7 @@ Agent Standup runs on your own computer. It reads files that are already there, 
 - **The sessions you put away as done**, in a file named `done.json` beside your settings: for each one, the name of its project folder, its id and a time. Nothing of what was said in it.
 - **A log of the app's own errors**, in a file named `errors.log` beside your settings. Each line holds the date, the app's version, where the error happened, its message and the first lines of its stack trace. The path of your home folder is replaced by `~`, and the address of the page (which names the project) by the word `page`. An error message can still name a file or a project of yours, or hold a few characters of what the app was reading when it failed. The file is cut down when it passes 256 KB, and it is never sent anywhere by the app.
 - **A character pack you bought**, in a `packs` folder beside your characters folder (`~/.agent-standup/packs`): its pictures, and in a file named `codes.json` the code of the purchase, which is the reference Stripe gave it. The code is kept so that the app can show it to you: it is what installs the pack on another computer.
-- **In VS Code's own storage for the extension:** the day of the last "share usage" request when that setting is on, and, for the one time the extension asks for a rating, the number of days the call was opened, the last of those days and your answer.
+- **In VS Code's own storage for the extension:** the day and the week of the last "share usage" requests when that setting is on, whether you have been asked about that setting, and, for the one time the extension asks for a rating, the number of days the call was opened, the last of those days and your answer.
 
 Nothing else is written. Uninstalling the app and deleting those folders removes everything.
 
@@ -35,7 +35,7 @@ The following happen only if you turn them on or start them yourself:
 |---|---|---|
 | You choose French, Spanish or Brazilian Portuguese as the language (for the last two, unless you switch off "Call in this language" in the ⚙ menu), or turn on the jokes | Short lines of the session, to be translated or answered | Anthropic, through your own Claude Code login (or your own API key if you set one) |
 | You turn on the office radio | A request for the audio stream; no session content | Radio France |
-| You turn on "share usage" in VS Code (off by default, and never when VS Code telemetry is off) | One empty request a day for a 1-pixel file. No identifier, no content | GitHub |
+| You turn on "share usage" in VS Code (off until you say yes: the extension asks once, the first time you open the call; never when VS Code telemetry is off) | One empty request a day for a 1-pixel file when the editor starts, and at most one a week for another when you open the call. No identifier, no content | GitHub |
 | You install the natural voices | A download of the voice package and its model; no session content | The npm registry and Hugging Face |
 | You run the app with `npx`, or the Claude Code plugin does | A download of the app's package; no session content | The npm registry |
 | You press "Buy" on a character pack in the ⚙ menu, or install one with a purchase code | To the website: the name of the pack, then the code of the purchase, asked again every few seconds until the payment is done (for a quarter of an hour at most). No session content, and nothing once the pack is installed, unless you press "Update the pack", which asks for it again with the same code. To Stripe: what you type on its payment page, which opens in your browser | agent-standup.com (hosted by Vercel), which asks Stripe whether that purchase is paid and then sends the pack; Stripe, for the payment |
@@ -58,7 +58,7 @@ Both pages show one video from YouTube. Until you press play it is a picture and
 
 ## What the developer can see
 
-Only totals that the stores, GitHub and Vercel show: download and install counts, stars, the number of daily "share usage" requests, visit counts by source, and for the website the number of visits by page, by the page they came from, by country and by kind of browser and device. None of it identifies a person.
+Only totals that the stores, GitHub and Vercel show: download and install counts, stars, the number of daily and weekly "share usage" requests, visit counts by source, and for the website the number of visits by page, by the page they came from, by country and by kind of browser and device. None of it identifies a person.
 
 If you buy a character pack, the developer also sees what Stripe shows a seller about a payment: the email and the name you gave on the payment page, your country, the amount and the date, and the last four digits and the brand of the card. This is used to answer you about that purchase, to refund it, and for the accounts the law requires, and for nothing else.
 

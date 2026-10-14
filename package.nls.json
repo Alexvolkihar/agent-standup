@@ -9,7 +9,7 @@
   "config.autoOpen.description": "Open the live call automatically when VS Code starts.",
   "config.onlyThisWorkspace.description": "Follow only Claude Code sessions started in the current workspace folder.",
   "config.statusBar.description": "Show live counts in the status bar (agents working, needs you, your turn) for this workspace; the item turns red when an agent may be waiting for you.",
-  "config.shareUsage.description": "Help the project count active installs: once a day, send one empty request to a 1-pixel file on GitHub (no identifier, no content; GitHub sees your IP like for any download). Off by default; ignored if VS Code telemetry is off.",
+  "config.shareUsage.description": "Help the project count how many people use it: once a day when the editor starts, and at most once a week when you open the call, send one empty request to a 1-pixel file on GitHub (no identifier, no content; GitHub sees your IP like for any download). Off until you say yes (asked once, the first time you open the call); ignored if VS Code telemetry is off.",
   "config.codex.description": "Also show Codex sessions (read from ~/.codex/sessions, or $CODEX_HOME). Turn off to show Claude Code sessions only.",
   "config.vibe.description": "Also show Mistral Vibe sessions (read from ~/.vibe/logs/session, or $VIBE_HOME). Turn off to leave them out.",
   "config.claudePath.description": "Full path to the Claude Code executable, if it is not found automatically (used for translation).",

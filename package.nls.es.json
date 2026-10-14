@@ -9,7 +9,7 @@
   "config.autoOpen.description": "Abrir la videollamada en vivo automáticamente al iniciar VS Code.",
   "config.onlyThisWorkspace.description": "Seguir solo las sesiones de Claude Code iniciadas en la carpeta del espacio de trabajo actual.",
   "config.statusBar.description": "Mostrar contadores en vivo en la barra de estado (agentes trabajando, te necesitan, tu turno) para este espacio de trabajo; el elemento se pone rojo cuando un agente puede estar esperándote.",
-  "config.shareUsage.description": "Ayuda al proyecto a contar las instalaciones activas: una vez al día, envía una solicitud vacía a un archivo de 1 píxel en GitHub (sin identificador ni contenido; GitHub ve tu IP como en cualquier descarga). Desactivado por defecto; se ignora si la telemetría de VS Code está desactivada.",
+  "config.shareUsage.description": "Ayuda al proyecto a contar cuántas personas lo usan: una vez al día al iniciar el editor, y como mucho una vez por semana al abrir la llamada, envía una solicitud vacía a un archivo de 1 píxel en GitHub (sin identificador ni contenido; GitHub ve tu IP como en cualquier descarga). Desactivado hasta que digas que sí (se pregunta una vez, la primera vez que abres la llamada); se ignora si la telemetría de VS Code está desactivada.",
   "config.codex.description": "Mostrar también las sesiones de Codex (leídas de ~/.codex/sessions o $CODEX_HOME). Desactívalo para mostrar solo las sesiones de Claude Code.",
   "config.vibe.description": "Mostrar también las sesiones de Mistral Vibe (leídas de ~/.vibe/logs/session, o $VIBE_HOME). Desactívalo para no mostrarlas.",
   "config.claudePath.description": "Ruta completa del ejecutable de Claude Code, si no se encuentra automáticamente (se usa para la traducción).",

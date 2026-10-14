@@ -37,7 +37,7 @@ async function url() {
 }
 
 async function openPanel(pin) {   // pin: { id, proj } of the session to follow (from the status bar)
-  noteUse();
+  opened();
   if (panel) { try { panel.reveal(); if (pin && pin.id) panel.webview.postMessage({ agentStandup: 'pin', id: pin.id, proj: pin.proj }); return; } catch { panel = null; } }   // a disposed panel falls through and is recreated
   let u;
   try { u = await url(); } catch (e) { return vscode.window.showErrorMessage(e.message); }
@@ -66,7 +66,7 @@ const relay = (webview) => webview.onDidReceiveMessage((m) => {
 // Sidebar view: the same live call, in the activity bar.
 const sidebar = {
   async resolveWebviewView(view) {
-    view.webview.options = { enableScripts: true }; relay(view.webview); noteUse(); side = view; view.onDidDispose(() => { if (side === view) side = null; });
+    view.webview.options = { enableScripts: true }; relay(view.webview); opened(); side = view; view.onDidDispose(() => { if (side === view) side = null; });
     try {
       const ext = await vscode.env.asExternalUri(vscode.Uri.parse((await url()) + '&embed=1'));
       view.webview.html = frameHtml(ext.toString(true));
@@ -104,16 +104,43 @@ async function openBrowser() {
   try { vscode.env.openExternal(vscode.Uri.parse(await url())); } catch (e) { vscode.window.showErrorMessage(e.message); }
 }
 
-// Opt-in only (agentStandup.shareUsage, off by default, and never when VS Code telemetry is off): at most one request per day to a 1-pixel file on GitHub, so the project can count how many installs are used. Nothing is sent in the request: no id, no path, no content.
+// Opt-in only (agentStandup.shareUsage, off until the person says yes, and never when VS Code telemetry is off): empty requests for 1-pixel files on GitHub, so the project can count how much it is used.
+// app-active.gif at most once a day when the editor starts (installs in use); app-week.gif at most once a week (weeks from Monday, UTC) when the call is opened: the requests of a week
+// are the number of people who opened the call that week. Nothing is sent in a request: no id, no path, no content. (net: so that the tests send nothing)
+const net = { pixel: (name) => { const r = require('https').get({ host: 'github.com', path: '/Atoll92/agent-standup/releases/download/stats/' + name, headers: { 'user-agent': 'agent-standup' }, timeout: 5000 }, (m) => { m.resume(); m.destroy(); }); r.on('error', () => {}); r.on('timeout', () => r.destroy()); } };
+const sharing = () => !!cfg().get('shareUsage') && vscode.env.isTelemetryEnabled !== false;
 function pingActive(ctx) {
   try {
-    if (!cfg().get('shareUsage') || vscode.env.isTelemetryEnabled === false) return;
+    if (!sharing()) return;
     const day = new Date().toISOString().slice(0, 10); if (ctx.globalState.get('lastActivePing') === day) return;
-    ctx.globalState.update('lastActivePing', day);
-    const r = require('https').get({ host: 'github.com', path: '/Atoll92/agent-standup/releases/download/stats/app-active.gif', headers: { 'user-agent': 'agent-standup' }, timeout: 5000 }, (m) => { m.resume(); m.destroy(); });
-    r.on('error', () => {}); r.on('timeout', () => r.destroy());
+    ctx.globalState.update('lastActivePing', day); net.pixel('app-active.gif');
   } catch {}
 }
+const mondayOf = (d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7))).toISOString().slice(0, 10);
+function pingWeek(st = extCtx && extCtx.globalState, now = new Date()) {
+  try {
+    if (!st || !sharing()) return;
+    const week = mondayOf(now); if (st.get('lastWeekPing') === week) return;
+    st.update('lastWeekPing', week); net.pixel('app-week.gif');
+  } catch {}
+}
+// Asked once, the first time the call is opened (also of those who had the extension before this question existed): would they help count how many people use it? "Count me in" turns the
+// setting on for all their windows; any other answer leaves it off, and it is not asked again. Not asked when VS Code telemetry is off (that answer is already given) or the setting is on.
+// "Privacy policy" opens the policy and asks again, that one time, without the button.
+const PRIVACY_PAGE = 'https://agent-standup.com/privacy/';
+function askUsage(st = extCtx && extCtx.globalState, again = false) {
+  try {
+    if (!st || (!again && st.get('usage.asked')) || cfg().get('shareUsage') || vscode.env.isTelemetryEnabled === false) return Promise.resolve();
+    st.update('usage.asked', true);
+    const yes = tt('Count me in'), no = tt('No thanks'), read = tt('Privacy policy');
+    return Promise.resolve(vscode.window.showInformationMessage(tt('Help count how many people use Agent Standup? When you open the call, at most once a week (and once a day when the editor starts), the extension would load an empty 1-pixel file from GitHub: no identifier, nothing about you or your sessions. GitHub sees your IP address, as with any download. You can turn it off any time in the settings.'), yes, no, ...(again ? [] : [read]))).then((a) => {
+      if (a === yes) return Promise.resolve(cfg().update('shareUsage', true, vscode.ConfigurationTarget.Global)).then(() => pingWeek(st));
+      if (a === read) { vscode.env.openExternal(vscode.Uri.parse(PRIVACY_PAGE)); return askUsage(st, true); }
+    }).catch((err) => logErr('usage ask', err));
+  } catch (err) { logErr('usage ask', err); return Promise.resolve(); }
+}
+// Each time the call is opened, in a panel or in the side bar: the question about usage (the first time), the week counted (when shared), the days towards the rating
+const opened = () => { askUsage(); pingWeek(); noteUse(); };
 // A rating, asked once: when the call is opened on a third day, a notification asks for a rating on the page of the store this editor installs from
 // (the VS Code Marketplace; Open VSX for Cursor, VSCodium and the others). "Later", or closing it, asks again a week later, one time; "Rate it" and "No thanks" end it.
 // Nothing is sent: VS Code keeps the number of days, the last of them and the answer, for this extension (see PRIVACY.md).
@@ -176,4 +203,4 @@ function activate(ctx) {
   if (cfg().get('autoOpen')) openPanel();
 }
 async function deactivate() { try { if (started) { const s = await started; s.server && s.server.close(); } require('./server.js').shutdown(); } catch {} }
-module.exports = { activate, deactivate, _pingActive: pingActive, _noteUse: noteUse, _ratePages: RATE_PAGES };
+module.exports = { activate, deactivate, _pingActive: pingActive, _noteUse: noteUse, _ratePages: RATE_PAGES, _askUsage: askUsage, _pingWeek: pingWeek, _mondayOf: mondayOf, _net: net };
