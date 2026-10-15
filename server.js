@@ -235,7 +235,7 @@ function artifactPlan(proj, id, agent, toolId) {
     if (e.kind === 'tools') { for (const t of e.tools) if (t.d && t.d.kind === 'artifact') d.set(t.id, t.d); }
     else if (e.kind === 'results') { for (const it of e.items) if (it.art && d.has(it.id)) { ok.set(it.id, it.art.url); if (it.id === toolId) { url = it.art.url; typed = !!it.art.typed; } } }
   }
-  const me = d.get(toolId), fp = me ? me.page || me.file : ''; if (!url || !/\.html?$/i.test(fp)) return null;
+  const me = d.get(toolId), fp = me ? (typed && me.page) || me.file : ''; if (!url || !/\.html?$/i.test(fp)) return null;   // the page sent beside a canvas.json counts for a template only: a plain artifact is its main file
   const plan = { fp, pages: [], canvas: null }; if (!typed) return plan;
   const last = new Map(); for (const [tid, u] of ok) { if (u === url) for (const f of d.get(tid).sent || [d.get(tid).file]) if (/\.html?$/i.test(f) || CANVAS.test(f)) last.set(f, tid); if (tid === toolId) break; }   // in the order they were first sent
   for (const [f, tid] of last) { if (CANVAS.test(f)) plan.canvas = { fp: f, until: tid }; else plan.pages.push({ fp: f, until: tid }); }
@@ -255,7 +255,7 @@ function artifactBuild(file, toolId, plan, whole) {   // the page to show, or nu
   const data = JSON.stringify({ items, notes }).replace(/</g, '\\u003c').replace(ART_LS, (ch) => '\\u' + ch.charCodeAt(0).toString(16));
   return { html: ARTIFACT_WHOLE.replace('%DATA%', () => data), net: list.some((x) => x.page.net), pages: list.length, label };
 }
-// The whole document: each page in a shadow root of its own (its styles stay its own; its scripts do not run, as in the frame of one page). Shared, every page at once in the grid that shows them
+// The whole document: each page in a shadow root of its own (its styles stay its own; its script tags do not run, its inline handlers do, in the same sandbox as the frame of one page). Shared, every page at once in the grid that shows them
 // largest; pinned (fit=w), where the canvas puts them (or three to a row), to the width of the window, to scroll through. No backslash in this script: the template literal would eat it.
 const ARTIFACT_WHOLE = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#e8e8ec}#o{position:relative;margin:0 auto;overflow:hidden}#c{position:absolute;left:0;top:0;transform-origin:0 0}.b{position:absolute;overflow:hidden;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.18);font:initial;color:initial}.t,.n{position:absolute;white-space:nowrap;font:600 22px system-ui,sans-serif;color:#666}.n{font-size:30px;color:#333}.n.big{font-size:44px;font-weight:700}</style><div id="o"><div id="c"></div></div><script type="application/json" id="d">%DATA%</script><script>
 (function () {

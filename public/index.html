@@ -1577,14 +1577,14 @@ function hidePresent() {
 // a frame that can reach neither the app nor, unless you ask for the libraries, the network. Where there is no page to show (a claude.ai template that was sent no page, or one written another way) the window says so and gives the link.
 const artSrc = (a) => `/api/artifact?proj=${encodeURIComponent(S.cur.proj)}&id=${encodeURIComponent(S.cur.id)}&agent=${encodeURIComponent(a.agent)}&tool=${encodeURIComponent(a.id)}`;
 function noteArts(ev) {   // one entry per artifact, the last publish of it: published again, it is the newest and shows its new version
-  if (ev.kind === 'tools') { for (const t of ev.tools) if (t.d && t.d.kind === 'artifact') S.artCalls.set(t.id, { agent: ev.agent, title: t.d.title || '', note: t.d.note || '' }); return; }
+  if (ev.kind === 'tools') { for (const t of ev.tools) if (t.d && t.d.kind === 'artifact') S.artCalls.set(t.id, { agent: ev.agent, title: t.d.title || '', note: t.d.note || '', pub: !t.d.open && !t.d.doc }); return; }
   if (ev.kind !== 'results') return;
   for (const it of ev.items) { const c = it.art && S.artCalls.get(it.id); if (!c) continue; const u = it.art.url, was = S.arts.get(u) || {}; S.arts.delete(u); S.arts.set(u, { url: u, title: it.art.title || c.title || was.title || 'Artifact', note: c.note || was.note || '', agent: c.agent, id: it.id, v: it.art.v || 0, typed: !!it.art.typed, turn: S.turnN }); if (S.artPin === u) later('art', renderPresent); }
 }
 // A document of several pages made from a claude.ai type (the artboards of a design): each page is shared as it is published, and the whole document once, while the lead says it is done,
 // since the page on claude.ai cannot be shown here. Pinned from the line of files, it is the whole document too.
 function shareWhole() {
-  const a = [...S.arts.values()].reverse().find((x) => x.typed && x.turn === S.turnN && !S.wholeSeen.has(x.url + '|' + x.id)), st = a && S.artOk.get(a.id); if (!st || !st.ok || !(st.pages > 1)) return;
+  const a = [...S.arts.values()].reverse().find((x) => x.typed && x.turn === S.turnN && (S.artOk.get(x.id) || {}).pages > 1 && !S.wholeSeen.has(x.url + '|' + x.id)), st = a && S.artOk.get(a.id); if (!st || !st.ok || !(st.pages > 1)) return;
   S.wholeSeen.add(a.url + '|' + a.id); S.artWhole = a.url; showPresent(S.agents[a.agent] ? a.agent : 'main', true); if (S.present !== (S.agents[a.agent] ? a.agent : 'main')) S.artWhole = null;
 }
 function askArt(a) {   // is there a page to show for that publish? Asked once: null while the answer is on its way
@@ -2292,7 +2292,7 @@ async function run(i) {
     if (ev.kind === 'usage' || ev.kind === 'compact') { if (ev.kind === 'compact' && S.live && prefs.banter) toast(`${nameOf(ev.agent)}: ${L('contexte compacté 🗜', 'context compacted 🗜')}`); i++; continue; }
     if (ev.kind === 'finish') { applyStatus(ev); paintStatus(); i++; continue; }
     const backlog = S.live ? S.events.length - i : 0, quick = S.live ? Math.min(1, 40 / Math.max(1, backlog)) : 1;   // live: hundreds of tool events from parallel sub-agents must not take minutes to scroll past
-    if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.boost === 1 && S.present === ev.agent && ev.items.some((it) => it.img) ? (S.live ? 900 : 1800) : S.boost === 1 && S.present === ev.agent && ev.items.some((it) => it.art) ? (S.live ? 2500 : 4000) : S.demo ? 900 : S.live ? 30 * quick : 80) / spd()); i++; continue; }   // a picture gets a moment on screen
+    if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.boost === 1 && S.present === ev.agent && ev.items.some((it) => it.img) ? (S.live ? 900 : 1800) : S.boost === 1 && S.present === ev.agent && ev.items.some((it) => it.art && (S.artCalls.get(it.id) || {}).pub) ? (S.live ? 2500 : 4000) : S.demo ? 900 : S.live ? 30 * quick : 80) / spd()); i++; continue; }   // a picture gets a moment on screen
     if (ev.kind === 'tools') { applyStatus(ev); tickTools(ev); AUD.click(); OFFICE.kick(ev.tools[ev.tools.length - 1].name); paintStatus(); if (S.live && S.owed && ev.agent === 'main') { await leadAck(ev, token); if (token !== S.token) return; } if (quick === 1) await smallTalk(token); await sleep((S.demo ? 1100 : S.live ? 110 * quick : 250) / spd()); i++; continue; }
     if (ev.kind === 'say' && ev.end && ev.agent === 'main' && S.boost <= 1) shareWhole();   // the lead says it is done: the whole document it made, if it has several pages
     const group = [ev]; let j = i + 1;   // sub-agents talking back-to-back were running in parallel: their lines are taken together and said one after the other
