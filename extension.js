@@ -128,10 +128,12 @@ function pingWeek(st = extCtx && extCtx.globalState, now = new Date()) {
 // setting on for all their windows; any other answer leaves it off, and it is not asked again. Not asked when VS Code telemetry is off (that answer is already given) or the setting is on.
 // "Privacy policy" opens the policy and asks again, that one time, without the button.
 const PRIVACY_PAGE = 'https://agent-standup.com/privacy/';
+const askedHere = new WeakSet();   // the stores this window has already asked about: the panel and the side bar open together, and the answer may not be stored yet when the second one asks
 function askUsage(st = extCtx && extCtx.globalState, again = false) {
   try {
-    if (!st || (!again && st.get('usage.asked')) || cfg().get('shareUsage') || vscode.env.isTelemetryEnabled === false) return Promise.resolve();
-    st.update('usage.asked', true);
+    const set = cfg().inspect ? cfg().inspect('shareUsage') || {} : {};   // a workspace or folder that sets it off keeps it off: "Count me in" would change nothing there
+    if (!st || (!again && (askedHere.has(st) || st.get('usage.asked'))) || cfg().get('shareUsage') || set.workspaceValue === false || set.workspaceFolderValue === false || vscode.env.isTelemetryEnabled === false) return Promise.resolve();
+    askedHere.add(st); st.update('usage.asked', true);
     const yes = tt('Count me in'), no = tt('No thanks'), read = tt('Privacy policy');
     return Promise.resolve(vscode.window.showInformationMessage(tt('Help count how many people use Agent Standup? When you open the call, at most once a week (and once a day when the editor starts), the extension would load an empty 1-pixel file from GitHub: no identifier, nothing about you or your sessions. GitHub sees your IP address, as with any download. You can turn it off any time in the settings.'), yes, no, ...(again ? [] : [read]))).then((a) => {
       if (a === yes) return Promise.resolve(cfg().update('shareUsage', true, vscode.ConfigurationTarget.Global)).then(() => pingWeek(st));
@@ -146,17 +148,18 @@ const opened = () => { askUsage(); pingWeek(); noteUse(); };
 // Nothing is sent: VS Code keeps the number of days, the last of them and the answer, for this extension (see PRIVACY.md).
 const RATE_PAGES = { vscode: 'https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup&ssr=false#review-details', other: 'https://open-vsx.org/extension/DoubleGeste/agent-standup/reviews' };
 let extCtx = null;
+const ratedHere = new WeakSet();   // as askedHere: asked once by this window, whatever the store has written yet
 function noteUse(st = extCtx && extCtx.globalState, day = new Date().toISOString().slice(0, 10)) {
   try {
-    if (!st || st.get('rate.done')) return;
+    if (!st || ratedHere.has(st) || st.get('rate.done')) return;
     const fresh = st.get('rate.last') !== day, days = (st.get('rate.days') || 0) + (fresh ? 1 : 0), later = st.get('rate.later') || '';
     if (fresh) { st.update('rate.last', day); st.update('rate.days', days); }
     if (days < 3 || (later && day < later)) return;
-    st.update('rate.done', true);   // marked before it shows: another window opening the call at the same time does not ask too
+    ratedHere.add(st); st.update('rate.done', true);   // marked before it shows: another window opening the call at the same time does not ask too
     const rate = tt('Rate it'), not = tt('Later'), no = tt('No thanks'), page = /^vscode(-insiders)?$/.test(vscode.env.uriScheme || '') ? RATE_PAGES.vscode : RATE_PAGES.other;
     Promise.resolve(vscode.window.showInformationMessage(tt('Enjoying Agent Standup? A rating helps other people find it.'), rate, not, no)).then((a) => {
       if (a === rate) vscode.env.openExternal(page);   // handed over as text, as in relay: given as a Uri, VS Code re-encodes the query and the link loses its "&"
-      else if (a !== no && !later) { st.update('rate.later', new Date(Date.parse(day) + 7 * 864e5).toISOString().slice(0, 10)); st.update('rate.done', false); }
+      else if (a !== no && !later) { st.update('rate.later', new Date(Date.parse(day) + 7 * 864e5).toISOString().slice(0, 10)); st.update('rate.done', false); ratedHere.delete(st); }
     }, () => {});
   } catch (err) { logErr('rating', err); }
 }

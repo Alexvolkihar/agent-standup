@@ -87,6 +87,10 @@ test('sharing usage is asked once, the first time the call is opened, never when
     assert.equal(x.ext._mondayOf(new Date('2026-10-18T23:59:00Z')), '2026-10-12'); assert.equal(x.ext._mondayOf(new Date('2026-10-19T00:01:00Z')), '2026-10-19');
     conf.shareUsage = false; x.ext._pingWeek(store(), new Date('2026-10-26T10:00:00Z')); conf.shareUsage = true; v.vscode.env.isTelemetryEnabled = false; x.ext._pingWeek(store(), new Date('2026-10-26T10:00:00Z'));
     assert.equal(sent.length, 3);   // off, or VS Code telemetry off: nothing
+    v.vscode.env.isTelemetryEnabled = true; conf.shareUsage = false; answer = null; const deaf = { get() {}, update: async () => {} };   // a store that has not written the answer yet: the panel and the side bar open together
+    await Promise.all([x.ext._askUsage(deaf), x.ext._askUsage(deaf)]); assert.equal(asked.length, 4, 'asked once by this window');
+    v.vscode.workspace.getConfiguration = () => ({ get: (k) => conf[k], inspect: () => ({ globalValue: undefined, workspaceValue: false }), update: async () => {} });   // this workspace sets it off: yes would change nothing
+    await x.ext._askUsage(store()); assert.equal(asked.length, 4);
   } finally { await x.close(); }
 });
 

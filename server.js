@@ -125,11 +125,11 @@ const artifactOf = (u) => (u && typeof u === 'object' && typeof u.url === 'strin
 // an artifact opened on the person's screen, only when this session did not publish or create it already (the same artifact under its other address would show twice, and an open would take the place of the publish that has the preview).
 const DOC_ID = /"created":\{[^{}]*"minted":"([\w-]{6,80})"/, DOC_URL = /"frame":\{[^{}]*"url":"(https:\/\/claude\.ai\/(?:code\/)?artifact\/[\w-]{6,80})"/;
 function artOf(st, how, u, text) {
-  const seen = (st.artIds = st.artIds || new Set());
-  if (how === 'doc') { const id = DOC_ID.exec(text), m = DOC_URL.exec(text); if (!id || !m || !ART_URL.test(m[1])) return null; seen.add(id[1]); return { url: m[1], title: '', typed: 1 }; }
+  const seen = (st.artIds = st.artIds || new Set()), note = (id, url) => { if (id) seen.add('id ' + id); seen.add('url ' + url); };   // known by its id and by its address: a publish may answer without an id
+  if (how === 'doc') { const id = DOC_ID.exec(text), m = DOC_URL.exec(text); if (!id || !m || !ART_URL.test(m[1])) return null; note(id[1], m[1]); return { url: m[1], title: '', typed: 1 }; }
   const a = artifactOf(u), id = a && typeof u.artifact_id === 'string' ? u.artifact_id : ''; if (!a) return null;
-  if (how === 'open') return id && seen.has(id) ? null : (id && seen.add(id), { ...a, typed: 1 });   // opened, not made here: the window gives its title and its link
-  if (id) seen.add(id); return a;
+  if (how === 'open') { if ((id && seen.has('id ' + id)) || seen.has('url ' + a.url)) return null; note(id, a.url); return { ...a, typed: 1 }; }   // opened, not made here: the window gives its title and its link
+  note(id, a.url); return a;
 }
 const resultText = (c) => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => x.text || '').join('\n') : '');
 // Pictures a tool returned (a screenshot, an image file that was read). They are served from the transcript itself, so nothing outside the session files is ever read, and only bitmap types are sent.

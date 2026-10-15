@@ -1465,7 +1465,7 @@ function activityLabel(t) {   // the short "what is on their screen" tag
     case 'grep': return L('Cherche « ', 'Searching “') + String(d.pattern || '').slice(0, 22) + L(' »', '”');
     case 'glob': return L('Liste ', 'Listing ') + String(d.pattern || '').slice(0, 24);
     case 'todo': return L('Met à jour sa todo', 'Updating todo list');
-    case 'artifact': return (d.open ? L('Montre ', 'Showing ') : d.doc ? L('Crée ', 'Writing ') : L('Publie ', 'Publishing ')) + (d.title || f).slice(0, 30);
+    case 'artifact': return (d.open ? L('Montre ', 'Showing ') : d.doc ? L('Crée ', 'Writing ') : L('Publie ', 'Publishing ')) + (d.title || (d.open ? 'Artifact' : f)).slice(0, 30);
     case 'web': return d.url ? L('Consulte ', 'Fetching ') + d.url.replace(/^https?:\/\//, '').slice(0, 26) : L('Recherche sur le web', 'Web search');
     case 'text': { const w = d.what; if (w === 'question') return L('Pose une question', 'Asking a question'); if (w === 'skill') return L('Utilise ', 'Using skill ') + (d.v || ''); if (w === 'mcp') return d.v || t.name; if (w === 'toolsearch') return L('Cherche un outil', 'Looking for a tool'); return t.name; }
     default: return t.name;
