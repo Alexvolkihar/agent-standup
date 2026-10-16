@@ -7,7 +7,7 @@
  "What you see": "見えるもの",
  "Install": "インストール",
  "Your AI agents,<br>in a stand-up call.": "あなたの AI エージェントを、<br>チーム通話で。",
- "Agent Standup turns your Claude Code, Codex and Mistral Vibe sessions into a live team call. See who is working, who waits on whom, and who needs you.": "Agent Standup は、Claude Code、Codex、Mistral Vibe のセッションをライブのチーム通話に変えます。誰が作業中で、誰が誰を待っていて、誰があなたを待っているのかがひと目でわかります。",
+ "See which of your agents is working, stuck, waiting on another one, or burning tokens. Agent Standup turns your Claude Code, Codex and Mistral Vibe sessions into a live team call.": "どのエージェントが作業中か、止まっているか、ほかのエージェントを待っているか、トークンを使いすぎているかがひと目でわかります。Agent Standup は Claude Code、Codex、Mistral Vibe のセッションをライブのチーム会議に変えます。",
  "Install in VS Code": "VS Code にインストール",
  "Other ways to run it": "ほかの使い方",
  "copy": "コピー",
@@ -98,5 +98,12 @@
  "One coffee puts you on this wall.": "コーヒー一杯で、この壁に名前が載ります。",
  "Shop": "ショップ",
  "The Halloween pack: eight characters drawn by hand by <a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a>, each in its own room. Optional, and a way to support the artist and the developer.": "ハロウィンパック：<a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a> が手描きした8人のキャラクター。それぞれに専用の部屋つき。 購入は任意です。アーティストと開発者を応援する方法のひとつです。",
- "Visit the shop": "ショップを見る"
+ "Visit the shop": "ショップを見る",
+ "Optional": "任意",
+ "The Halloween pack": "ハロウィンパック",
+ "Eight characters drawn by hand by <a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a>, each in its own room. The app stays free and nothing in it is locked: buying the pack, 2 € or more, supports the artist and the developer.": "<a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a> が手描きした8人のキャラクター。それぞれに自分の部屋があります。アプリは無料のままで、何も制限されません。パック（2 € から）を買うと、アーティストと開発者の応援になります。",
+ "See the pack": "パックを見る",
+ "Claude Code sub-agents": "Claude Code のサブエージェント",
+ "Codex sessions": "Codex のセッション",
+ "Mistral Vibe sessions": "Mistral Vibe のセッション"
 }

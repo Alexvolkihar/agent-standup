@@ -7,7 +7,7 @@
  "What you see": "Was du siehst",
  "Install": "Installieren",
  "Your AI agents,<br>in a stand-up call.": "Deine KI-Agenten<br>im Stand-up-Meeting.",
- "Agent Standup turns your Claude Code, Codex and Mistral Vibe sessions into a live team call. See who is working, who waits on whom, and who needs you.": "Agent Standup macht aus deinen Claude Code-, Codex- und Mistral-Vibe-Sitzungen einen Live-Videoanruf mit dem ganzen Team. Sieh, wer arbeitet, wer auf wen wartet und wer dich braucht.",
+ "See which of your agents is working, stuck, waiting on another one, or burning tokens. Agent Standup turns your Claude Code, Codex and Mistral Vibe sessions into a live team call.": "Sieh, welcher deiner Agenten arbeitet, feststeckt, auf einen anderen wartet oder Tokens verbrennt. Agent Standup macht aus deinen Claude Code-, Codex- und Mistral Vibe-Sitzungen ein Live-Teammeeting.",
  "Install in VS Code": "In VS Code installieren",
  "Other ways to run it": "Weitere Möglichkeiten",
  "copy": "kopieren",
@@ -98,5 +98,12 @@
  "One coffee puts you on this wall.": "Ein Kaffee, und du stehst an dieser Wand.",
  "Shop": "Shop",
  "The Halloween pack: eight characters drawn by hand by <a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a>, each in its own room. Optional, and a way to support the artist and the developer.": "Das Halloween-Pack: acht Figuren, von Hand gezeichnet von <a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a>, jede in ihrem eigenen Raum. Freiwillig, und eine Möglichkeit, den Künstler und den Entwickler zu unterstützen.",
- "Visit the shop": "Zum Shop"
+ "Visit the shop": "Zum Shop",
+ "Optional": "Freiwillig",
+ "The Halloween pack": "Das Halloween-Pack",
+ "Eight characters drawn by hand by <a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a>, each in its own room. The app stays free and nothing in it is locked: buying the pack, 2 € or more, supports the artist and the developer.": "Acht Figuren, von Hand gezeichnet von <a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a>, jede in ihrem eigenen Raum. Die App bleibt kostenlos und nichts darin ist gesperrt: Wer das Pack kauft, ab 2 €, unterstützt den Künstler und den Entwickler.",
+ "See the pack": "Zum Pack",
+ "Claude Code sub-agents": "Claude Code-Subagenten",
+ "Codex sessions": "Codex-Sitzungen",
+ "Mistral Vibe sessions": "Mistral Vibe-Sitzungen"
 }

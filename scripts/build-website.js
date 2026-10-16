@@ -94,14 +94,17 @@ ${analytics}
 ${markdown(read(file).replace(/^# .+\n/, ''))}
   </main>
 </div>
-<footer><div class="wrap"><nav><a href="../">Agent Standup</a><a href="../privacy/">Privacy</a><a href="../name-and-logo/">Name and logo</a><a href="https://github.com/Atoll92/agent-standup" rel="noopener">GitHub</a></nav></div></footer>
+<footer><div class="wrap"><nav><a href="../">Agent Standup</a><a href="../privacy/">Privacy</a><a href="../name-and-logo/">Name and logo</a><a href="../claude-code-subagents/">Claude Code sub-agents</a><a href="../codex-sessions/">Codex sessions</a><a href="../mistral-vibe-sessions/">Mistral Vibe sessions</a><a href="https://github.com/Atoll92/agent-standup" rel="noopener">GitHub</a></nav></div></footer>
 </body>
 </html>
 `);
 page('PRIVACY.md', 'privacy', 'Privacy', 'What Agent Standup reads, what it keeps on your computer, and what can leave it.');
 page('TERMS.md', 'terms', 'Terms of sale', 'The terms of sale of the Agent Standup shop: the seller, the price, the delivery, the right of withdrawal, the licence of the pictures.');
+page('website/guides/claude-code-subagents.md', 'claude-code-subagents', 'Claude Code sub-agent monitor', 'See which Claude Code sub-agent is working, stuck, waiting on another or burning tokens, live, from the session files Claude Code already writes. Free, local, zero tokens.');
+page('website/guides/codex-sessions.md', 'codex-sessions', 'Codex session viewer', 'Follow and replay your OpenAI Codex sessions (desktop app and CLI) as a live call: prompts, commands with their output, file changes. Free, local, zero tokens.');
+page('website/guides/mistral-vibe-sessions.md', 'mistral-vibe-sessions', 'Mistral Vibe session viewer', 'Follow and replay your Mistral Vibe sessions and sub-agents as a live call, in both of Vibe\'s log formats. Free, local, zero tokens.');
 page('TRADEMARKS.md', 'name-and-logo', 'Name and logo', 'The code of Agent Standup is MIT licensed. What you may and may not do with its name, its logo and its characters.');
 write('robots.txt', `User-agent: *\nAllow: /\nSitemap: ${site}sitemap.xml\n`);
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...LANGS.map((l) => l[4]), 'shop/', 'privacy/', 'terms/', 'name-and-logo/'].map((p) => `  <url><loc>${site}${p}</loc></url>`).join('\n')}\n</urlset>\n`);
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...LANGS.map((l) => l[4]), 'shop/', 'claude-code-subagents/', 'codex-sessions/', 'mistral-vibe-sessions/', 'privacy/', 'terms/', 'name-and-logo/'].map((p) => `  <url><loc>${site}${p}</loc></url>`).join('\n')}\n</urlset>\n`);
 const size = (d) => fs.readdirSync(d, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? size(path.join(d, e.name)) : fs.statSync(path.join(d, e.name)).size), 0);
 console.log(`website built for ${site} in website/dist (v${version}, ${(size(dist) / 1048576).toFixed(1)} MB${waitlist ? ', waitlist on' : ', no waitlist form yet'}, ${people} supporter(s))`);

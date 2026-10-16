@@ -7,7 +7,7 @@
  "What you see": "你會看到什麼",
  "Install": "安裝",
  "Your AI agents,<br>in a stand-up call.": "你的 AI 代理，<br>正在開站會。",
- "Agent Standup turns your Claude Code, Codex and Mistral Vibe sessions into a live team call. See who is working, who waits on whom, and who needs you.": "Agent Standup 把你的 Claude Code、Codex 和 Mistral Vibe 工作階段變成一場即時團隊視訊通話。誰在工作、誰在等誰、誰需要你，一目瞭然。",
+ "See which of your agents is working, stuck, waiting on another one, or burning tokens. Agent Standup turns your Claude Code, Codex and Mistral Vibe sessions into a live team call.": "看清哪個代理在工作、卡住了、在等別的代理，還是在燒 token。Agent Standup 把你的 Claude Code、Codex 和 Mistral Vibe 工作階段變成一場即時團隊會議。",
  "Install in VS Code": "安裝到 VS Code",
  "Other ways to run it": "其他使用方式",
  "copy": "複製",
@@ -98,5 +98,12 @@
  "One coffee puts you on this wall.": "一杯咖啡，你就會出現在這面牆上。",
  "Shop": "商店",
  "The Halloween pack: eight characters drawn by hand by <a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a>, each in its own room. Optional, and a way to support the artist and the developer.": "萬聖節角色包：<a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a> 手繪的八個角色，每個都有自己的房間。 完全自願購買，是支持畫師和開發者的一種方式。",
- "Visit the shop": "進入商店"
+ "Visit the shop": "進入商店",
+ "Optional": "可選",
+ "The Halloween pack": "萬聖節角色包",
+ "Eight characters drawn by hand by <a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a>, each in its own room. The app stays free and nothing in it is locked: buying the pack, 2 € or more, supports the artist and the developer.": "由 <a href='https://www.instagram.com/fabien_coupas/' rel='noopener'>Fabien Coupas</a> 手繪的八個角色，各有自己的房間。應用程式始終免費，沒有任何功能被鎖定：購買角色包（2 € 起）是在支持畫師和開發者。",
+ "See the pack": "查看角色包",
+ "Claude Code sub-agents": "Claude Code 子代理",
+ "Codex sessions": "Codex 工作階段",
+ "Mistral Vibe sessions": "Mistral Vibe 工作階段"
 }
