@@ -539,6 +539,14 @@ function logError(where, e) {
     fs.appendFileSync(ERRLOG, JSON.stringify({ t: new Date().toISOString(), v: VERSION, where: tidy(where, 80), msg, stack }) + '\n');
   } catch {}
 }
+// Where this server runs, for ⚙ › Rate in the page: the editor (it sets AGENT_STANDUP_RATE to the review page of the store it installs from), the desktop app or the command line
+// (a star on GitHub: they have no store). Only the desktop app and the command line ask on their own, on the third day: the extension asks in its own way (extension.js, noteUse).
+const RATE_STORES = /^https:\/\/(marketplace\.visualstudio\.com|open-vsx\.org)\//, GITHUB_REPO = 'https://github.com/Atoll92/agent-standup';
+function appKind() {
+  const h = String(process.env.AGENT_STANDUP_HOST || ''), rate = String(process.env.AGENT_STANDUP_RATE || '');
+  const kind = h === 'desktop app' ? 'desktop' : h === 'command line' ? 'cli' : h ? 'editor' : '';
+  return { kind, rate: kind === 'editor' && RATE_STORES.test(rate) ? rate : GITHUB_REPO };
+}
 function errorReport() {   // what ⚙ › Report a problem shows: the app, the system and the last errors of the log
   let errors = []; try { errors = fs.readFileSync(ERRLOG, 'utf8').split('\n').filter(Boolean).slice(-40).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((x) => x && typeof x === 'object'); } catch {}
   return { version: VERSION, host: String(process.env.AGENT_STANDUP_HOST || '').slice(0, 80), platform: `${process.platform} ${os.release()} ${process.arch}`, node: process.version, electron: process.versions.electron || '', file: tidy(ERRLOG, 300), errors };
@@ -1111,7 +1119,7 @@ function start(port = PORT) {
         .then((f) => { res.writeHead(200, { 'content-type': 'audio/wav', 'cache-control': 'max-age=86400' }); sendFile(f); })
         .catch((e) => json({ error: String(e.message) }, 400));
     }
-    if (url.pathname === '/api/prefs.js') { res.writeHead(200, { 'content-type': 'application/javascript', 'cache-control': 'no-store' }); return res.end('window.SAVED_PREFS = ' + JSON.stringify(readPrefs()).replace(/</g, '\\u003c') + ';'); }
+    if (url.pathname === '/api/prefs.js') { res.writeHead(200, { 'content-type': 'application/javascript', 'cache-control': 'no-store' }); return res.end('window.SAVED_PREFS = ' + JSON.stringify(readPrefs()).replace(/</g, '\\u003c') + '; window.AS_APP = ' + JSON.stringify(appKind()).replace(/</g, '\\u003c') + ';'); }
     if (url.pathname === '/api/prefs' && req.method === 'PUT') return readBody((body) => { try { const v = JSON.parse(body); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('prefs must be an object'); writePrefs(v); json({ ok: true }); } catch (e) { json({ error: String(e.message || e) }, 400); } });
     if (url.pathname === '/api/prefs') return json(readPrefs() || {});
     if (url.pathname === '/api/done' && req.method === 'POST') return readBody((body) => { try { const v = JSON.parse(body); json({ ok: setDone(String(v.proj || ''), String(v.id || ''), v.on !== false) }); } catch (e) { logError('done', e); json({ error: String(e.message || e) }, 400); } });

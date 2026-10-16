@@ -328,5 +328,11 @@
  "is waiting for your answer": "在等你的回答",
  "A menu is open in Claude Code.": "Claude Code 中有一個開啟的選單。",
  "Speed presets": "速度預設",
- "pages": "頁"
+ "pages": "頁",
+ "⭐ Rate Agent Standup": "⭐ 為 Agent Standup 評分",
+ "⭐ Star Agent Standup on GitHub": "⭐ 在 GitHub 上為 Agent Standup 加星",
+ "⭐ Star it": "⭐ 加星",
+ "Enjoying Agent Standup? A star on GitHub helps other people find it.": "喜歡 Agent Standup 嗎？在 GitHub 上加顆星能幫助更多人發現它。",
+ "Later": "以後再說",
+ "No thanks": "不用了"
 }

@@ -106,6 +106,17 @@ test('a rating is asked once, on the third day the call is opened, for the store
   } finally { await x.close(); }
 });
 
+test('a day an agent works counts towards the rating, call opened or not; ⚙ › Rate in the page opens the store page and ends the asking', async () => {
+  const m = new Map(), st = { get: (k) => m.get(k), update: async (k, val) => { m.set(k, val); } }, v = standIn(), r0 = process.env.AGENT_STANDUP_RATE;
+  v.vscode.env.uriScheme = 'vscode'; const x = await activated(v, undefined, { globalState: st, noOpen: true });
+  try {
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(m.get('rate.days'), 1); assert.equal(m.get('rate.last'), new Date().toISOString().slice(0, 10));   // the status bar saw the sessions of this folder at work
+    assert.equal(process.env.AGENT_STANDUP_RATE, x.ext._ratePages.vscode);   // the page opened in a browser rates on the same store
+    x.ext._rateNow(st); assert.deepEqual(v.opened, [x.ext._ratePages.vscode]); assert.equal(m.get('rate.done'), true);
+  } finally { await x.close(); if (r0 == null) delete process.env.AGENT_STANDUP_RATE; else process.env.AGENT_STANDUP_RATE = r0; }
+});
+
 test('sharing usage is asked once, the first time the call is opened, never when VS Code telemetry is off; yes turns it on for every window, and a week is counted once', async () => {
   const v = standIn(), x = await activated(v), asked = [], sent = [], updates = [], conf = { shareUsage: false };
   v.vscode.workspace.getConfiguration = () => ({ get: (k) => conf[k], update: async (k, val, target) => { updates.push([k, val, target]); conf[k] = val; } });

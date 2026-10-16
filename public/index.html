@@ -288,6 +288,7 @@
   #prefs .flash { animation:flash 1.6s ease } @keyframes flash { 0%, 40% { background:rgba(124,156,255,.28) } }
   #prefs .pfoot { display:flex; justify-content:flex-end; padding:12px 10px 0; margin-top:8px; border-top:1px solid var(--line) } #prefsReset.sure { border-color:#ff7a6b; color:#ffb4a8 }
   #menuTip { position:fixed; z-index:13; max-width:260px; padding:10px 12px; border-radius:10px; background:#2b3352; border:1px solid var(--accent); box-shadow:0 10px 30px rgba(0,0,0,.5); font-size:12.5px; line-height:1.45; color:var(--text) } #menuTip::before { content:''; position:absolute; top:-7px; right:var(--ax,14px); width:12px; height:12px; background:#2b3352; border-left:1px solid var(--accent); border-top:1px solid var(--accent); transform:rotate(45deg) } #menuTip .btn { display:block; margin:8px 0 0 auto }   /* once, after the menu moved */
+  #rateTip { position:fixed; z-index:13; max-width:280px; padding:10px 12px; border-radius:10px; background:#2b3352; border:1px solid var(--accent); box-shadow:0 10px 30px rgba(0,0,0,.5); font-size:12.5px; line-height:1.45; color:var(--text) } #rateTip::before { content:''; position:absolute; top:-7px; right:var(--ax,14px); width:12px; height:12px; background:#2b3352; border-left:1px solid var(--accent); border-top:1px solid var(--accent); transform:rotate(45deg) } #rateTip .rtb { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; margin-top:8px } #rateYes { border-color:var(--accent) }   /* once, on the third day: a star (desktop app, command line) */
   a.artist { color:#f5c04a; text-underline-offset:2px } #menuShop:empty { display:none } #menuShop { margin:2px 0 8px; font-size:12px; line-height:1.5; color:#c3c6d4 }   /* the Halloween pack, for those who do not have it */
   #recap { position:fixed; inset:0; z-index:15; background:rgba(5,6,12,.88); display:none; overflow:auto; padding:28px 16px } #recap.on { display:block }
   #recap .box { max-width:860px; margin:0 auto; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px 26px }
@@ -350,6 +351,7 @@
   <button class="mi" id="mPrefs"><span data-fr="⚙ Tous les réglages (affichage, alertes…)" data-en="⚙ All settings (display, alerts…)">⚙ Tous les réglages (affichage, alertes…)</span><span class="dim" aria-hidden="true">›</span></button>
   <h4 data-fr="Outils" data-en="Tools">Outils</h4>
   <button class="mi" id="mCoffee" style="display:none"><span id="mCoffeeT"></span></button>
+  <button class="mi" id="mRate"><span id="mRateT"></span></button>
   <button class="mi" id="mKeys"><span data-fr="⌨ Raccourcis clavier (?)" data-en="⌨ Keyboard shortcuts (?)">⌨ Raccourcis clavier (?)</span></button>
   <button class="mi" id="mRecap"><span data-fr="📋 Récapitulatif" data-en="📋 Recap">📋 Récapitulatif</span></button>
   <button class="mi" id="mExport"><span data-fr="🎞 Exporter la vidéo" data-en="🎞 Export video">🎞 Exporter la vidéo</span></button>
@@ -359,6 +361,7 @@
   <button class="mi" id="mReport"><span data-fr="🐞 Signaler un problème" data-en="🐞 Report a problem">🐞 Signaler un problème</span></button>
 </div>
 <div id="menuTip" role="status" style="display:none"><span id="menuTipT"></span><button class="btn" id="menuTipOk"></button></div>
+<div id="rateTip" role="status" style="display:none"><span id="rateTipT"></span><div class="rtb"><button class="btn" id="rateNo"></button><button class="btn" id="rateLater"></button><button class="btn" id="rateYes"></button></div></div>
 <div id="prefs" role="dialog" aria-modal="true" aria-labelledby="prefsT"><div class="pbox">
   <div class="phead"><h2 id="prefsT" data-fr="Réglages" data-en="Settings">Réglages</h2><button class="btn" id="prefsX" data-fr="Fermer" data-en="Close">Fermer</button></div>
   <div class="pcols"><div class="pcol">
@@ -436,6 +439,7 @@ const SUPPORT = { url: 'https://www.buymeacoffee.com/bored_dev_and_his_robots' }
 const CID = Math.random().toString(36).slice(2, 12);   // identifies this window for the audio-ownership handshake
 const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
+const APP = window.AS_APP && typeof window.AS_APP === 'object' && typeof window.AS_APP.rate === 'string' ? window.AS_APP : { kind: '', rate: 'https://github.com/Atoll92/agent-standup' };   // where this page runs (appKind in server.js)
 
 let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'kokoro', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call', hideCode: false, ownNames: true, visits: true, followTab: true, files: true, callTr: true };
 const PREF_DEFAULTS = { ...prefs };   // for ⚙ → All settings → Reset to defaults
@@ -1970,9 +1974,32 @@ function openExternal(url) { if (EMBED) window.parent.postMessage({ agentStandup
 function renderCoffee() {
   const on = !!SUPPORT.url, b = $('#mCoffee'); b.style.display = on ? '' : 'none'; $('#mCoffeeT').textContent = L('☕ Offrir un café au développeur', '☕ Buy the (replaced) dev a coffee'); b.title = coffeeMsg();
   const h = $('#bCoffee'); h.style.display = on ? '' : 'none'; h.title = coffeeMsg(); h.setAttribute('aria-label', coffeeMsg());
+  $('#mRateT').textContent = APP.kind === 'editor' ? L('⭐ Noter Agent Standup', '⭐ Rate Agent Standup') : L('⭐ Une étoile pour Agent Standup sur GitHub', '⭐ Star Agent Standup on GitHub');
 }
 $('#bCoffee').onclick = () => openExternal(SUPPORT.url);
 $('#mCoffee').onclick = () => { $('#menu').classList.remove('on'); openExternal(SUPPORT.url); };
+// ⚙ › Rate: the review page of the store the editor installs from, or a star on GitHub for the desktop app and the command line, which have no store (AS_APP: appKind in server.js).
+// In the editor, the extension opens the page itself (the store it installs from) and stops asking. The desktop app and the command line ask here, once: on the third day the page
+// is in view, a tip by the menu; "Later" asks again a week later, one time; the star and "No thanks" end it. The days are kept in the settings file; nothing is sent.
+$('#mRate').onclick = () => { $('#menu').classList.remove('on'); rateGo(); };
+function rateGo() { rateEnd(); if (EMBED && APP.kind === 'editor') window.parent.postMessage({ agentStandup: 'rate' }, '*'); else openExternal(APP.rate); }
+const rateEnd = () => { prefs.rateDone = true; savePrefs(); $('#rateTip').style.display = 'none'; };
+const RATE_ASKS = (APP.kind === 'desktop' || APP.kind === 'cli') && !EMBED && !Q.get('demo'), utcDay = () => new Date().toISOString().slice(0, 10);
+function rateDay() {   // a day of use: the page in view that day
+  if (!RATE_ASKS || prefs.rateDone || document.hidden) return;
+  const day = utcDay(); if (prefs.rateLast !== day) { prefs.rateLast = day; prefs.rateDays = (+prefs.rateDays || 0) + 1; savePrefs(); }
+  rateTip();
+}
+function rateTip() {
+  const t = $('#rateTip'); if (!RATE_ASKS || prefs.rateDone || (+prefs.rateDays || 0) < 3 || (prefs.rateLater && utcDay() < prefs.rateLater) || $('#menuTip').style.display !== 'none' || $('#menu').classList.contains('on')) { t.style.display = 'none'; return; }
+  const r = $('#bMenu').getBoundingClientRect(); if (!r.width) return;
+  $('#rateTipT').textContent = L('Agent Standup vous plaît ? Une étoile sur GitHub aide d’autres personnes à le trouver.', 'Enjoying Agent Standup? A star on GitHub helps other people find it.');
+  $('#rateYes').textContent = L('⭐ Mettre une étoile', '⭐ Star it'); $('#rateLater').textContent = L('Plus tard', 'Later'); $('#rateNo').textContent = L('Non merci', 'No thanks');
+  t.style.display = ''; t.style.top = Math.round(r.bottom + 10) + 'px'; t.style.right = Math.max(8, Math.round(innerWidth - r.right - 6)) + 'px'; t.style.setProperty('--ax', Math.max(8, Math.round(r.width / 2 - 2)) + 'px');
+}
+$('#rateYes').onclick = rateGo; $('#rateNo').onclick = rateEnd;
+$('#rateLater').onclick = () => { if (prefs.rateLater) return rateEnd(); prefs.rateLater = new Date(Date.parse(utcDay()) + 7 * 864e5).toISOString().slice(0, 10); savePrefs(); $('#rateTip').style.display = 'none'; };
+document.addEventListener('visibilitychange', rateDay); setInterval(rateDay, 3600e3);   // the desktop window can stay open for days
 
 // =====================================================================
 //  recap
@@ -2729,7 +2756,7 @@ async function exportVideo(from = 0, to = 0, clip = 0) {   // clip: length in ms
 //  UI wiring
 // =====================================================================
 function applyLang() {
-  renderCharInfo(); packNote(); menuTip();
+  renderCharInfo(); packNote(); menuTip(); rateDay();
   try { for (const id in S.act) { const b = S.term[id], t = b && b[b.length - 1]; if (t && t.tool) S.act[id] = activityLabel(t.tool); } if (S.live) fillProjects(); } catch {}   // what each agent is doing, and the list of projects, were written in the language before
   document.documentElement.lang = (LANGS.find((l) => l[0] === prefs.lang) || LANGS[0])[2];
   document.querySelectorAll('[data-fr]').forEach((el) => (el.textContent = FR() ? el.dataset.fr : tr(el.dataset.en)));
@@ -2948,7 +2975,7 @@ for (const q of ['#gate', '#empty']) new MutationObserver(focusDoor).observe($(q
 function syncSwitches() { document.querySelectorAll('#menu .mi[data-t], #prefs .mi[data-t]').forEach((b) => { b.setAttribute('role', 'switch'); b.setAttribute('aria-checked', String(!!prefs[b.dataset.t])); }); }
 new MutationObserver(() => {   // the menu opens under the header and the status line, not over them
   const m = $('#menu'), on = m.classList.contains('on'), h = Math.round($('main').getBoundingClientRect().top); $('#bMenu').setAttribute('aria-expanded', String(on)); if (!on) return;
-  syncSwitches(); menuTipDone(); if (!$('#menuShop').innerHTML) renderMenuShop(); m.style.top = h + 3 + 'px'; m.style.maxHeight = `calc(100dvh - ${h + 13}px)`;
+  syncSwitches(); menuTipDone(); $('#rateTip').style.display = 'none'; if (!$('#menuShop').innerHTML) renderMenuShop(); m.style.top = h + 3 + 'px'; m.style.maxHeight = `calc(100dvh - ${h + 13}px)`;
 }).observe($('#menu'), { attributes: true, attributeFilter: ['class'] });
 $('#menu').addEventListener('click', () => setTimeout(syncSwitches)); $('#bMenu').setAttribute('aria-expanded', 'false'); syncSwitches();
 addEventListener('keydown', (e) => {   // on the way down: Escape also works from the search box and the selects of the menu, which the shortcuts below ignore

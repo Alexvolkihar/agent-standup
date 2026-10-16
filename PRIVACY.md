@@ -15,13 +15,13 @@ Agent Standup runs on your own computer. It reads files that are already there, 
 
 ## What it keeps on your computer
 
-- **Your settings**, in one small file in your user configuration folder.
+- **Your settings**, in one small file in your user configuration folder. In the desktop app and from the command line, it also holds, for the one time the app asks for a star on GitHub, the number of days the page was in view, the last of those days and your answer.
 - **Spoken lines, for a day.** When voices are on, each line is turned into a sound file in a private temporary folder so it does not have to be made twice. Files older than a day are deleted.
 - **The natural voice model**, only if you install it.
 - **The sessions you put away as done**, in a file named `done.json` beside your settings: for each one, the name of its project folder, its id and a time. Nothing of what was said in it.
 - **A log of the app's own errors**, in a file named `errors.log` beside your settings. Each line holds the date, the app's version, where the error happened, its message and the first lines of its stack trace. The path of your home folder is replaced by `~`, and the address of the page (which names the project) by the word `page`. An error message can still name a file or a project of yours, or hold a few characters of what the app was reading when it failed. The file is cut down when it passes 256 KB, and it is never sent anywhere by the app.
 - **A character pack you bought**, in a `packs` folder beside your characters folder (`~/.agent-standup/packs`): its pictures, and in a file named `codes.json` the code of the purchase, which is the reference Stripe gave it. The code is kept so that the app can show it to you: it is what installs the pack on another computer.
-- **In VS Code's own storage for the extension:** the day and the week of the last "share usage" requests when that setting is on, whether you have been asked about that setting, and, for the one time the extension asks for a rating, the number of days the call was opened, the last of those days and your answer.
+- **In VS Code's own storage for the extension:** the day and the week of the last "share usage" requests when that setting is on, whether you have been asked about that setting, and, for the one time the extension asks for a rating, the number of days the call was opened or an agent was at work, the last of those days and your answer.
 
 Nothing else is written. Uninstalling the app and deleting those folders removes everything.
 

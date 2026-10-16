@@ -86,6 +86,7 @@ const relay = (webview) => webview.onDidReceiveMessage((m) => {
   if (!m) return;
   if (m.agentStandup === 'openBrowser') openBrowser();
   if (m.agentStandup === 'openCharacters') openCharacters();
+  if (m.agentStandup === 'rate') rateNow();
   if (m.agentStandup === 'notify' && typeof m.text === 'string') vscode.window.showInformationMessage('Agent Standup: ' + m.text.slice(0, 120));
   if (m.agentStandup === 'openExternal') { try { const u = new URL(m.url); if (u.protocol === 'https:' && (DONATE_HOSTS.test(u.hostname) || SHOP_HOSTS.test(u.hostname) || (u.hostname === 'claude.ai' && ARTIFACT_PATH.test(u.pathname)))) vscode.env.openExternal(u.search || u.hash ? u.toString() : vscode.Uri.parse(u.toString())); } catch {} }
 });
@@ -179,12 +180,15 @@ function askUsage(st = extCtx && extCtx.globalState, again = false) {
 }
 // Each time the call is opened, in a panel or in the side bar: the question about usage (the first time), the week counted (when shared), the days towards the rating
 const opened = () => { askUsage(); pingWeek(); noteUse(); };
-// A rating, asked once: when the call is opened on a third day, a notification asks for a rating on the page of the store this editor installs from
+// A rating, asked once: on the third day of use, a notification asks for a rating on the page of the store this editor installs from
 // (the VS Code Marketplace; Open VSX for Cursor, VSCodium and the others). "Later", or closing it, asks again a week later, one time; "Rate it" and "No thanks" end it.
+// A day of use: the call was opened, or the status bar saw a session at work (many never open the call twice). ⚙ › Rate in the page opens the same store page, and ends the asking.
 // Nothing is sent: VS Code keeps the number of days, the last of them and the answer, for this extension (see PRIVACY.md).
 const RATE_PAGES = { vscode: 'https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup&ssr=false#review-details', other: 'https://open-vsx.org/extension/DoubleGeste/agent-standup/reviews' };
 let extCtx = null;
 const ratedHere = new WeakSet();   // as askedHere: asked once by this window, whatever the store has written yet
+const ratePage = () => (/^vscode(-insiders)?$/.test(vscode.env.uriScheme || '') ? RATE_PAGES.vscode : RATE_PAGES.other);
+function rateNow(st = extCtx && extCtx.globalState) { try { if (st) st.update('rate.done', true); vscode.env.openExternal(ratePage()); } catch (err) { logErr('rating', err); } }
 function noteUse(st = extCtx && extCtx.globalState, day = new Date().toISOString().slice(0, 10)) {
   try {
     if (!st || ratedHere.has(st) || st.get('rate.done')) return;
@@ -192,7 +196,7 @@ function noteUse(st = extCtx && extCtx.globalState, day = new Date().toISOString
     if (fresh) { st.update('rate.last', day); st.update('rate.days', days); }
     if (days < 3 || (later && day < later)) return;
     ratedHere.add(st); st.update('rate.done', true);   // marked before it shows: another window opening the call at the same time does not ask too
-    const rate = tt('Rate it'), not = tt('Later'), no = tt('No thanks'), page = /^vscode(-insiders)?$/.test(vscode.env.uriScheme || '') ? RATE_PAGES.vscode : RATE_PAGES.other;
+    const rate = tt('Rate it'), not = tt('Later'), no = tt('No thanks'), page = ratePage();
     Promise.resolve(vscode.window.showInformationMessage(tt('Enjoying Agent Standup? A rating helps other people find it.'), rate, not, no)).then((a) => {
       if (a === rate) vscode.env.openExternal(page);   // handed over as text, as in relay: given as a Uri, VS Code re-encodes the query and the link loses its "&"
       else if (a !== no && !later) { st.update('rate.later', new Date(Date.parse(day) + 7 * 864e5).toISOString().slice(0, 10)); st.update('rate.done', false); ratedHere.delete(st); }
@@ -204,6 +208,7 @@ const serverEnv = () => ({ AGENT_STANDUP_CLAUDE: cfg().get('claudePath') || '', 
 function activate(ctx) {
   extCtx = ctx; pingActive(ctx);
   try { process.env.AGENT_STANDUP_HOST = `${vscode.env.appName || 'editor'} ${vscode.version || ''}`.trim(); } catch {}   // named in a problem report: VS Code, Cursor, VSCodium…
+  try { process.env.AGENT_STANDUP_RATE = ratePage(); } catch {}   // ⚙ › Rate, in the page opened in a browser: the store this editor installs from
   codex0 = process.env.AGENT_STANDUP_CODEX; vibe0 = process.env.AGENT_STANDUP_VIBE;
   const applyPath = () => { const e = serverEnv(); for (const [k, v] of Object.entries(e)) { if (v == null) delete process.env[k]; else process.env[k] = v; } if (started) started.then((s) => { if (s.kid && s.kid.connected) s.kid.send({ env: Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v === undefined ? null : v])) }); }).catch(() => {}); };   /* null: unset there too (JSON leaves out undefined) */   // here (the characters folder, a server in the extension host) and in the server's process
   applyPath(); ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration((ev) => { if (ev.affectsConfiguration('agentStandup.claudePath') || ev.affectsConfiguration('agentStandup.charactersPath') || ev.affectsConfiguration('agentStandup.codex') || ev.affectsConfiguration('agentStandup.vibe')) applyPath(); }));
@@ -227,7 +232,7 @@ function activate(ctx) {
       if (!vscode.window.state.focused) return;
       const key = projKey(), rows = require('./server.js').boardRows().filter((r) => (key ? r.proj === key || r.dir === key : !r.tmp)), now = Date.now();   // read here, as before (the ends of the transcripts only): no server process for a window whose call is never opened
       const act = rows.filter((r) => r.state !== 'idle' || now - r.mtime < 15 * 60e3), cnt = (st) => act.filter((r) => r.state === st).length;
-      const blocked = cnt('blocked'), working = cnt('working') + cnt('waiting'), turn = cnt('turn');
+      const blocked = cnt('blocked'), working = cnt('working') + cnt('waiting'), turn = cnt('turn'); if (act.length) noteUse();   // a day of use towards the rating, call opened or not
       const parts = []; if (blocked) parts.push('$(warning) ' + tt('{0} needs you', blocked)); if (working) parts.push('$(sync~spin) ' + tt('{0} working', working)); if (!blocked && !working && turn) parts.push('$(check) ' + tt('your turn'));
       status.text = '$(device-camera-video) ' + (parts.join(' · ') || 'Agent Standup');
       status.backgroundColor = blocked ? new vscode.ThemeColor('statusBarItem.errorBackground') : undefined;
@@ -246,4 +251,4 @@ function activate(ctx) {
   if (cfg().get('autoOpen')) openPanel();
 }
 async function deactivate() { stopping = true; try { if (started) { const s = await started; if (s.kid) s.kid.kill(); if (s.server) { s.server.close(); require('./server.js').shutdown(); } } } catch {} }
-module.exports = { activate, deactivate, _server: () => started, _pingActive: pingActive, _noteUse: noteUse, _ratePages: RATE_PAGES, _askUsage: askUsage, _pingWeek: pingWeek, _mondayOf: mondayOf, _net: net };
+module.exports = { activate, deactivate, _server: () => started, _pingActive: pingActive, _noteUse: noteUse, _rateNow: rateNow, _ratePages: RATE_PAGES, _askUsage: askUsage, _pingWeek: pingWeek, _mondayOf: mondayOf, _net: net };

@@ -24,6 +24,21 @@ test('settings are kept in a file; cross-site writes are refused', async () => {
     assert.equal((await get(port, '/api/kokoro/install', { 'sec-fetch-site': 'cross-site' }, 'POST')).status, 403);
   } finally { srv.close(); require('../server.js').shutdown(); }
 });
+test('the page is told where it runs, for ⚙ › Rate: the store page the editor gave, a star on GitHub for the desktop app and the command line', async () => {
+  const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port, h0 = process.env.AGENT_STANDUP_HOST, r0 = process.env.AGENT_STANDUP_RATE;
+  const app = async () => JSON.parse((await get(port, '/api/prefs.js')).body.match(/window\.AS_APP = (.*);$/)[1]), GH = 'https://github.com/Atoll92/agent-standup', MP = 'https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup&ssr=false#review-details';
+  try {
+    delete process.env.AGENT_STANDUP_HOST; delete process.env.AGENT_STANDUP_RATE; assert.deepEqual(await app(), { kind: '', rate: GH });
+    process.env.AGENT_STANDUP_HOST = 'desktop app'; process.env.AGENT_STANDUP_RATE = MP; assert.deepEqual(await app(), { kind: 'desktop', rate: GH });   // the desktop app has no store
+    process.env.AGENT_STANDUP_HOST = 'command line'; assert.deepEqual(await app(), { kind: 'cli', rate: GH });
+    process.env.AGENT_STANDUP_HOST = 'Cursor 1.2'; assert.deepEqual(await app(), { kind: 'editor', rate: MP });
+    process.env.AGENT_STANDUP_RATE = 'https://example.com/'; assert.deepEqual(await app(), { kind: 'editor', rate: GH });   // only the two stores
+  } finally {
+    for (const [k, v] of [['AGENT_STANDUP_HOST', h0], ['AGENT_STANDUP_RATE', r0]]) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+    srv.close(); require('../server.js').shutdown();
+  }
+});
+
 test('one window at a time plays sound, also when each window has its own server (one per VS Code window): the last that claimed it, until it stops answering', async () => {
   const a = require('../server.js').start(0), b = require('../server.js').start(0); await Promise.all([a, b].map((x) => new Promise((r) => x.once('listening', r))));
   const owner = async (srv, q) => JSON.parse((await get(srv.address().port, '/api/audio?' + q)).body).owner;
