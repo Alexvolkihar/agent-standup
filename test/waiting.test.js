@@ -33,6 +33,9 @@ oput(oid('b'), [user('Release notes', 360e3), say('Here they are.', 240e3)], 240
 const folder = (key, cwd, c, ago) => { const d = path.join(PROJECTS, key); fs.mkdirSync(d, { recursive: true }); const f = path.join(d, oid(c) + '.jsonl'); fs.writeFileSync(f, [{ ...user('Hello', ago + 60e3), cwd }, { ...say('Done.', ago), cwd }].map((r) => JSON.stringify(r)).join('\n') + '\n'); const t = new Date(now - ago); fs.utimesSync(f, t, t); };
 folder('-work-app', '/work/app', 'c', 900e3); folder('-work-app-sub', '/work/app/sub', 'd', 600e3); folder('-work-app-old', '/work/app-old', 'e', 300e3);   // the folder, one inside it, and the newest beside it
 
+const two = { type: 'assistant', timestamp: iso(30e3), message: { role: 'assistant', stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'toolu_t1', name: 'Bash', input: { command: 'npm test' } }, { type: 'tool_use', id: 'toolu_t2', name: 'Bash', input: { command: 'npm run lint' } }] } };
+fs.mkdirSync(path.join(PROJECTS, '-work-two'), { recursive: true }); fs.writeFileSync(path.join(PROJECTS, '-work-two', oid('f') + '.jsonl'), JSON.stringify(user('Check it', 60e3)) + '\n' + JSON.stringify(two) + '\n'); fs.writeFileSync(path.join(SESSIONS, '112.json'), JSON.stringify({ pid: process.pid, sessionId: oid('f'), status: 'waiting', waitingFor: 'permission prompt', statusUpdatedAt: now - 25e3 }));   // two commands in one message: the menu asks about the first
+
 test('a Bash approval needs you, with the command, since the menu opened, apart from the time it worked', () => {
   const core = require('../server.js'), rows = core.boardRows(), row = (n) => rows.find((r) => r.id === id(n));
   assert.equal(row(MENU).state, 'blocked'); assert.equal(row(MENU).tool, 'Bash'); assert.equal(row(MENU).ask, 'Bash(npm run build --prod)');   // on one line, the way Claude Code shows it
@@ -68,5 +71,11 @@ test('the call of a folder takes the sessions of the folder and of the folders i
   const core = require('../server.js');
   assert.equal(core.currentSession('-work-app', null, null).id, oid('d'), 'app/sub, not app-old, which is newer');   // -work-app-old used to count as a folder inside -work-app
   assert.equal(core.currentSession('-work-app-old', null, null).id, oid('e'));
+  core.shutdown();
+});
+
+test('a menu open on a message with two commands names the first one, the one Claude Code asks about', () => {
+  const core = require('../server.js'), r = core.boardRows().find((x) => x.id === oid('f'));
+  assert.equal(r.state, 'blocked'); assert.equal(r.ask, 'Bash(npm test)');
   core.shutdown();
 });

@@ -372,7 +372,8 @@ let boardMemo = { at: 0, rows: [] };
 const PR_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+$/;   // nothing else is given to the page as a link to open
 const askOf = (b) => { const q = b.name === 'AskUserQuestion' && b.input && Array.isArray(b.input.questions) && b.input.questions[0] && b.input.questions[0].question; return typeof q === 'string' ? clip(q.trim(), 200) : ''; };   // the question a session stopped on, for its card
 const callOf = (b) => { const i = b.input || {}, v = b.name === 'Bash' ? i.command : /^(Edit|Write|MultiEdit|NotebookEdit)$/.test(b.name) ? path.basename(String(i.file_path || i.notebook_path || '')) : b.name === 'WebFetch' ? i.url : ''; return typeof v === 'string' && v.trim() ? b.name + '(' + clip(v.replace(/\s+/g, ' ').trim(), 160) + ')' : ''; };   // what a call waiting for your go-ahead would do, written the way Claude Code shows it: Bash(npm test)
-const PLAN_FILE = /[\\/]\.claude[\\/]plans[\\/][^\\/]+\.md$/;
+const PLAN_FILE = /[\\/]\.claude[\\/]plans[\\/][^\\/]+\.md$/, PLAN_DIR = process.env.CLAUDE_CONFIG_DIR ? path.join(process.env.CLAUDE_CONFIG_DIR, 'plans') + path.sep : '';
+const planFile = (f) => PLAN_FILE.test(f) || (!!PLAN_DIR && f.startsWith(PLAN_DIR) && f.endsWith('.md'));   // also where a CLAUDE_CONFIG_DIR set elsewhere keeps them
 const planText = (f) => { try { const st = fs.statSync(f); if (!st.isFile() || st.size > 262144) return ''; return clip(fs.readFileSync(f, 'utf8').trim(), 1200); } catch { return ''; } };
 const menuOf = (b) => {   // what a menu waiting for you shows, from the call it waits on, word for word: the questions and their options in their order (the terminal numbers them the same way), the command, the file, the plan
   const i = b.input || {}, t = (x, n) => (typeof x === 'string' ? clip(x.trim(), n) : '');
@@ -420,7 +421,7 @@ function parseTail(file, st) {
     const t = Date.parse(r.timestamp) || 0, bl = blocks(r);
     if (r.type === 'assistant' || r.type === 'user') { lastType = r.type; lastTool = bl.some((b) => b.type === 'tool_use'); lastStop = (r.type === 'assistant' && r.message && r.message.stop_reason) || null; if (lastStop) stops = true; if (t) lastTs = t;
       esc = r.type === 'user' && bl.some((b) => b.type === 'text' && /^\s*\[Request interrupted/i.test(b.text || '')); if (esc) pend.clear(); }   // Esc: the turn stops there, and no call is waited for any more
-    for (const b of bl) if (b.type === 'tool_use' && /^(Write|Edit|MultiEdit)$/.test(b.name) && b.input && PLAN_FILE.test(String(b.input.file_path || ''))) plan = { file: String(b.input.file_path), ts: t };   // the plan, written in its own file before it is shown for approval
+    for (const b of bl) if (b.type === 'tool_use' && /^(Write|Edit|MultiEdit)$/.test(b.name) && b.input && planFile(String(b.input.file_path || ''))) plan = { file: String(b.input.file_path), ts: t };   // the plan, written in its own file before it is shown for approval
     for (const b of bl) { if (b.type === 'tool_use') pend.set(b.id, { id: String(b.id || ''), name: b.name, ts: t, q: askOf(b), c: callOf(b), m: menuOf(b) }); else if (b.type === 'tool_result') pend.delete(b.tool_use_id); }
   } catch {}
   if (!hit && !custom) {   // first look at this file: a little further back than the lines read above, and without needing whole lines
@@ -466,7 +467,7 @@ function boardRows0() {
   return capRows(rows.filter((r) => !r.cx && r.proj !== COWORK), 40, own).concat(...SOURCES.map((m) => capRows(rows.filter((r) => r.src === m), 20, folder)), rows.filter((r) => r.proj === COWORK).slice(0, 20)).sort((a, b) => b.st.mtimeMs - a.st.mtimeMs).map(({ proj, id, st, cx, src }) => {
     if (cx) { const r = guard(() => src.boardRow(cx, now), null); if (r && tmpKey(r.dir)) r.tmp = 1; return r; }   // tmp: started in the temporary folder (see tmpKey)
     const file = path.join(projDir(proj, id), id + '.jsonl'); let p; try { p = parseTail(file, st); } catch { p = { pending: [] }; }
-    const age = now - st.mtimeMs, lp = (p.pending || [])[(p.pending || []).length - 1], w = live.get(id); let state = 'idle', tool = '', ageMs = age, since = 0, open = null;
+    const age = now - st.mtimeMs, pend = p.pending || [], w = live.get(id), lp = (w && w.status === 'waiting' && pend.find((c) => !SUBTOOL.test(c.name))) || pend[pend.length - 1]; let state = 'idle', tool = '', ageMs = age, since = 0, open = null;   // lp: with a menu open and several calls waiting, Claude Code asks about the first of them
     if (w && w.status === 'waiting' && lp) { state = 'blocked'; tool = lp.name; since = w.since || lp.ts || st.mtimeMs; ageMs = now - since; }   // a menu is open in the session and a call waits on it: it needs you now, however long ago it was written
     else if (w && w.status === 'waiting') { state = 'blocked'; since = w.since || st.mtimeMs; ageMs = now - since; const pt = p.plan && p.plan.ts > (p.asked || 0) ? planText(p.plan.file) : ''; open = { id: 'w' + since, tool: pt ? 'ExitPlanMode' : '', ...(pt ? { kind: 'plan', text: pt } : { kind: 'menu' }), sure: 1 }; }   // a menu is open and the transcript has no call waiting on it: the plan to approve (Claude Code writes that call only once it is answered, the plan itself is in its file, written this turn), or a menu it does not record
     else if (age < 30 * 60e3) {
