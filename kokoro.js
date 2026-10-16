@@ -76,8 +76,9 @@ function warm() { if (installed() && !worker && restarts < MAX_RESTARTS) try { s
 function pump() {
   if (busy || !queue.length) return;
   const j = queue.shift(); let w; try { w = startWorker(); } catch (e) { j.reject(e); return pump(); }
-  const id = ++seq, next = (fn) => (v) => { busy = false; fn(v); pump(); }; busy = true;
-  w.pending.set(id, { resolve: next(j.resolve), reject: next(j.reject) });
+  const id = ++seq, late = setTimeout(() => { if (w.pending.has(id)) { lastError = 'kokoro worker: no answer'; try { w.p.kill(); } catch {} } }, w.ready ? 60e3 : 180e3);   // a worker that hangs is stopped (and started again on the next line): every line after it waited for ever
+  const next = (fn, ok) => (v) => { clearTimeout(late); busy = false; if (ok) restarts = 0; fn(v); pump(); }; busy = true;   // ok: a line spoken, the count of crashes starts again (three over days of an open editor turned the voices off)
+  w.pending.set(id, { resolve: next(j.resolve, true), reject: next(j.reject) });
   const v = find(j.voice);
   w.p.stdin.write(JSON.stringify({ id, text: j.text, voice: j.voice, speed: j.speed, out: j.out, lang: v.lang, mix: v.mix }) + '\n');
 }

@@ -34,9 +34,9 @@ function standIn({ tabGroups = true } = {}) {
   return v;
 }
 const claude = (label) => ({ label, input: { viewType: 'mainThreadWebview-claudeVSCodePanel' } });
-async function activated(v, first) {   // a fresh copy of the extension for each stand-in: it keeps its panel and its last tab to itself. first: the session the status bar opens the call on
+async function activated(v, first, more = {}) {   // a fresh copy of the extension for each stand-in: it keeps its panel and its last tab to itself. first: the session the status bar opens the call on
   const load = Module._load; Module._load = function (req, ...a) { return req === 'vscode' ? v.vscode : load.call(this, req, ...a); };
-  const file = require.resolve('../extension.js'); delete require.cache[file]; const ext = require(file), ctx = { subscriptions: [], globalState: { get() {}, update: async () => {} } };
+  const file = require.resolve('../extension.js'); delete require.cache[file]; const ext = require(file), ctx = { subscriptions: [], globalState: { get() {}, update: async () => {} }, ...more };   // more: e.g. the extension's own folder (globalStorageUri)
   const log = console.log; console.log = () => {};
   try { ext.activate(ctx); await v.cmds['agentStandup.open'](first); await v.provider.resolveWebviewView({ webview: (v.side = { options: {}, html: '', onDidReceiveMessage: () => ({ dispose() {} }), postMessage: (m) => { v.sent.push({ where: 'side', ...m }); return Promise.resolve(true); } }), onDidDispose() {} }); } finally { console.log = log; Module._load = load; }
   return { ext, close: async () => { for (const s of ctx.subscriptions) try { s.dispose && s.dispose(); } catch {} await ext.deactivate(); } };
@@ -135,6 +135,16 @@ test('the call is sent to the Claude Code tab you go to: found by its title, who
     assert.equal(require('../server.js').boardRows().some((r) => r.id === 'lastweek'), false); assert.deepEqual(await v.go(claude('A conversation of last w…')), to('lastweek', '-work-app'), 'a conversation of another day is no longer among the sessions of the moment: it is found in the whole list');
     v.active = null; assert.doesNotThrow(() => v.groups[0]({}));
   } finally { await x.close(); }
+});
+
+test('an editor reopened with three windows counts its day and its week once, not once per window: the first window to mark it sends it', async () => {
+  const dir = path.join(tmp, 'storage'), sent = [], store = () => { const m = new Map(); return { get: (k) => m.get(k), update: async (k, val) => { m.set(k, val); } }; }, xs = [];
+  try {
+    for (let i = 0; i < 3; i++) { const v = standIn(); xs.push(await activated(v, undefined, { globalStorageUri: { fsPath: dir } })); v.settings.shareUsage = true; v.vscode.env.isTelemetryEnabled = true; xs[i].ext._net.pixel = (name) => sent.push(name); }
+    for (const x of xs) x.ext._pingActive({ globalState: store() });   // each window's store has not heard of the others yet
+    for (const x of xs) x.ext._pingWeek(store());
+    assert.deepEqual(sent, ['app-active.gif', 'app-week.gif']);
+  } finally { for (const x of xs) await x.close(); }
 });
 
 test('a link the page asks for is opened on a known site only; the draft of a problem report is handed over as text, so that its query arrives whole', async () => {

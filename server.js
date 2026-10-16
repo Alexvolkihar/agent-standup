@@ -757,7 +757,8 @@ function buildTimeline(proj, id, files = []) {
 
 // Ask the local `claude` CLI (uses the user's existing login) to map a JSON array of strings to another array. Cached.
 const { spawn } = require('child_process');
-const cache = new Map();
+const cache = new Map(), CACHE_MAX = 5000;   // translations and little lines, by text: the oldest go first past CACHE_MAX (an editor open for days kept every line of every session)
+const remember = (k, v) => { cache.delete(k); cache.set(k, v); if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value); };
 // Find a usable `claude` binary: explicit setting → PATH → usual install spots → the one bundled with the VS Code Claude Code extension.
 let lastTrError = '', claudeCache = null;
 const exists = (f) => { try { return fs.statSync(f).isFile(); } catch { return false; } };
@@ -807,7 +808,7 @@ function claudeMap(kind, instruction, texts) {
   const done = (ok) => ({ texts: texts.map((t) => cache.get(kind + '|' + t) || t), ok });
   if (!need.length) return Promise.resolve(done(true));
   const prompt = instruction + ' Output ONLY a JSON array of strings, same length and order, no markdown.\n' + JSON.stringify(need);
-  return apiMap(prompt, need).then((arr) => { need.forEach((t, i) => cache.set(kind + '|' + t, String(arr[i]))); return done(true); }).catch(() => schedule(() => new Promise((resolve) => {
+  return apiMap(prompt, need).then((arr) => { need.forEach((t, i) => remember(kind + '|' + t, String(arr[i]))); return done(true); }).catch(() => schedule(() => new Promise((resolve) => {
     const p = spawnClaude(['-p', '--model', 'haiku', '--no-session-persistence', '--tools', ''], { cwd: os.tmpdir() }); if (!p) return resolve(done(false));
     let out = ''; const timer = setTimeout(() => p.kill(), 60000);
     p.stdout.on('data', (d) => (out += d));
@@ -817,7 +818,7 @@ function claudeMap(kind, instruction, texts) {
       let ok = false;
       try {
         const arr = JSON.parse(out.slice(out.indexOf('['), out.lastIndexOf(']') + 1));
-        if (arr.length === need.length) { need.forEach((t, i) => cache.set(kind + '|' + t, String(arr[i]))); ok = true; }
+        if (arr.length === need.length) { need.forEach((t, i) => remember(kind + '|' + t, String(arr[i]))); ok = true; }
       } catch {}
       resolve(done(ok));
     });
@@ -867,7 +868,7 @@ const pickWorker = () => trWorkers.reduce((a, b) => (a.q.length + a.busy <= b.q.
 async function translateFast(texts, lang = 'fr') {
   const need = [...new Set(texts.filter((t) => !cache.has(lang + '|' + t)))];
   if (need.length && need.length <= 3 && !process.env.ANTHROPIC_API_KEY) {   // a few lines: warm workers in parallel; many lines: one batched call
-    await Promise.all(need.map(async (t) => { const r = await pickWorker().ask(t, lang); if (r) cache.set(lang + '|' + t, r); }));
+    await Promise.all(need.map(async (t) => { const r = await pickWorker().ask(t, lang); if (r) remember(lang + '|' + t, r); }));
     return { texts: texts.map((t) => cache.get(lang + '|' + t) || t), ok: texts.every((t) => cache.has(lang + '|' + t)) };
   }
   return claudeMap(lang, trInstr(lang), texts);
@@ -896,10 +897,11 @@ function loadVoices() {   // the same list for the page, asked without waiting: 
   if (sayVoices) return Promise.resolve(sayVoices);
   return sayVoicesJob || (sayVoicesJob = new Promise((resolve) => { try { execFile(VOICES_CMD[0], VOICES_CMD[1], { encoding: 'utf8', timeout: VOICES_CMD[2], windowsHide: true }, (err, out) => resolve(sayVoices || (sayVoices = parseVoices(err ? '' : String(out))))); } catch { resolve(sayVoices || (sayVoices = parseVoices(''))); } }));
 }
-const ttsDir = path.join(os.tmpdir(), 'agent-standup-tts-' + (process.getuid ? process.getuid() : 'user'));
+const ttsDir = process.platform === 'linux' ? path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'agent-standup', 'tts') : path.join(os.tmpdir(), 'agent-standup-tts-' + (process.getuid ? process.getuid() : 'user'));   // Linux: /tmp is shared by every user, and a folder or file put there first by someone else would have been used (written through, or played); macOS and Windows give each user a temporary folder of their own
 try { fs.mkdirSync(ttsDir, { recursive: true, mode: 0o700 }); } catch {}
 const ttsJobs = new Map();
-try { for (const f of fs.readdirSync(ttsDir)) { const p = path.join(ttsDir, f); if (Date.now() - fs.statSync(p).mtimeMs > 864e5) fs.unlinkSync(p); } } catch {}   // drop cached audio older than a day
+const ttsClean = () => { try { for (const f of fs.readdirSync(ttsDir)) { const p = path.join(ttsDir, f); if (Date.now() - fs.statSync(p).mtimeMs > 864e5) fs.unlinkSync(p); } } catch {} };   // drop cached audio older than a day
+ttsClean(); setInterval(ttsClean, 3600e3).unref();   // also while an editor stays open for days
 function synthesize(voice, wpm, text, out) {
   return new Promise((resolve, reject) => {
     let p; text = text.replace(/\[\[[^\]]*\]\]/g, ' ').replace(/\[(?=\[)/g, '[ ').replace(/\](?=\])/g, '] ');   // macOS `say` obeys commands written between [[ and ]] (a 30-second silence, another voice, another speed) and this text comes from a transcript: they are taken out, and no two brackets are left side by side
@@ -1062,7 +1064,7 @@ function start(port = PORT) {
   req.on('error', () => {}); res.on('error', () => {});   // a browser that goes away mid-request is not our problem
   // Only the local machine may talk to this server: blocks other websites (cross-site requests) and DNS-rebinding attempts.
   const local = (h) => /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(h || '');
-  let originOk = true; try { originOk = !req.headers.origin || local(new URL(req.headers.origin).host); } catch { originOk = false; }
+  let originOk = true; try { originOk = !req.headers.origin || (local(new URL(req.headers.origin).host) && new URL(req.headers.origin).host === req.headers.host); } catch { originOk = false; }   // the page's own address: another local page (a dev server on another port) is another site
   if (!local(req.headers.host) || !originOk) { res.writeHead(403); return res.end('forbidden'); }
   const json = (o, code = 200) => { try { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(o)); } catch { res.destroy(); } };   // also called from callbacks that run later, where nothing would catch an exception
   const sendFile = (fp) => { const s = fs.createReadStream(fp); s.on('error', () => res.destroy()); s.pipe(res); };   // a file that vanished between the check and the read ends this answer, not the server
@@ -1169,7 +1171,7 @@ function start(port = PORT) {
       let f = ''; try { f = decodeURIComponent(pk ? pk[2] : url.pathname.slice('/characters/'.length)); } catch {}
       const dir = pk ? packDir(pk[1]) : charactersDir(), fp = path.join(dir, f);
       try { const ls = fs.lstatSync(fp); if (!CHAR_NAME.test(f) || !fp.startsWith(dir + path.sep) || !ls.isFile() || ls.size > CHAR_MAX) throw 0; } catch { res.writeHead(404); return res.end('not found'); }
-      res.writeHead(200, { 'content-type': CHAR_TYPES[f.split('.').pop().toLowerCase()] || 'application/octet-stream', 'cache-control': 'no-cache' }); return sendFile(fp);
+      res.writeHead(200, { 'content-type': CHAR_TYPES[f.split('.').pop().toLowerCase()] || 'application/octet-stream', 'cache-control': 'no-cache', 'x-content-type-options': 'nosniff' }); return sendFile(fp);
     }
     const file = path.join(PUBLIC, url.pathname === '/' ? 'index.html' : url.pathname);
     let fst = null; try { fst = fs.statSync(file); } catch {}

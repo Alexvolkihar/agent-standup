@@ -75,7 +75,7 @@ async function openPanel(pin) {   // pin: { id, proj } of the session to follow 
   panel.onDidDispose(() => (panel = null));
 }
 const frameHtml = (src) => `<!doctype html><html><head><meta charset="utf-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src http: https:; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src http://localhost:* http://127.0.0.1:* https:; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
     <style>html,body{margin:0;height:100%;background:#12131a}iframe{border:0;width:100%;height:100vh}</style></head>
     <body><iframe src="${src}" allow="autoplay; clipboard-write"></iframe>
     <script>const vs = acquireVsCodeApi(); const fr = document.querySelector('iframe'); addEventListener('message', (e) => { if (e.source === fr.contentWindow) { if (e.data && e.data.agentStandup) vs.postMessage(e.data); } else if (e.data && e.data.agentStandup === 'pin') fr.contentWindow.postMessage(e.data, '*'); });</script></body></html>`;
@@ -136,11 +136,20 @@ async function openBrowser() {
 // are the number of people who opened the call that week. Nothing is sent in a request: no id, no path, no content. (net: so that the tests send nothing)
 const net = { pixel: (name) => { const r = require('https').get({ host: 'github.com', path: '/Atoll92/agent-standup/releases/download/stats/' + name, headers: { 'user-agent': 'agent-standup' }, timeout: 5000 }, (m) => { m.resume(); m.destroy(); }); r.on('error', () => {}); r.on('timeout', () => r.destroy()); } };
 const sharing = () => !!cfg().get('shareUsage') && vscode.env.isTelemetryEnabled !== false;
+// Once per day or week for all the windows: what one window stores in globalState reaches the others only later, and an editor reopened with several windows sent one request each.
+// The first window to create the file of that day (or week) in the extension's own folder sends it; any other finds the file there. No folder (an old editor, the tests): as before.
+function firstHere(name, period) {
+  try {
+    const dir = extCtx && extCtx.globalStorageUri && extCtx.globalStorageUri.fsPath; if (!dir) return true; fs.mkdirSync(dir, { recursive: true });
+    for (const f of fs.readdirSync(dir)) if (f.startsWith('sent-' + name + '-') && f !== 'sent-' + name + '-' + period) try { fs.unlinkSync(path.join(dir, f)); } catch {}
+    fs.closeSync(fs.openSync(path.join(dir, 'sent-' + name + '-' + period), 'wx')); return true;
+  } catch (e) { return !(e && e.code === 'EEXIST'); }
+}
 function pingActive(ctx) {
   try {
     if (!sharing()) return;
     const day = new Date().toISOString().slice(0, 10); if (ctx.globalState.get('lastActivePing') === day) return;
-    ctx.globalState.update('lastActivePing', day); net.pixel('app-active.gif');
+    ctx.globalState.update('lastActivePing', day); if (firstHere('active', day)) net.pixel('app-active.gif');
   } catch {}
 }
 const mondayOf = (d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7))).toISOString().slice(0, 10);
@@ -148,7 +157,7 @@ function pingWeek(st = extCtx && extCtx.globalState, now = new Date()) {
   try {
     if (!st || !sharing()) return;
     const week = mondayOf(now); if (st.get('lastWeekPing') === week) return;
-    st.update('lastWeekPing', week); net.pixel('app-week.gif');
+    st.update('lastWeekPing', week); if (firstHere('week', week)) net.pixel('app-week.gif');
   } catch {}
 }
 // Asked once, the first time the call is opened (also of those who had the extension before this question existed): would they help count how many people use it? "Count me in" turns the

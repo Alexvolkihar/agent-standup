@@ -17,6 +17,8 @@ test('settings are kept in a file; cross-site writes are refused', async () => {
     assert.equal((await get(port, '/api/prefs', { 'content-type': 'application/json' }, 'PUT', '{"lang":"fr","_t":5}')).status, 200);
     assert.match((await get(port, '/api/prefs.js')).body, /"lang":"fr"/);
     assert.equal((await get(port, '/api/prefs', { 'sec-fetch-site': 'cross-site' }, 'PUT', '{}')).status, 403);
+    assert.equal((await get(port, '/api/prefs', { origin: 'http://localhost:3000', 'content-type': 'application/json' }, 'PUT', '{"_t":6}')).status, 403, 'another local page (a dev server on another port) is another site');
+    assert.equal((await get(port, '/api/prefs', { origin: `http://localhost:${port}`, 'content-type': 'application/json' }, 'PUT', '{"lang":"fr","_t":7}')).status, 200, 'the page itself');
     assert.equal((await get(port, '/api/prefs', {}, 'PUT', '[1]')).status, 400);
     assert.equal(JSON.parse((await get(port, '/api/kokoro')).body).installed, false);
     assert.equal((await get(port, '/api/kokoro/install', { 'sec-fetch-site': 'cross-site' }, 'POST')).status, 403);
