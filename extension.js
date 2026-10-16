@@ -174,7 +174,7 @@ function askUsage(st = extCtx && extCtx.globalState, again = false) {
     return Promise.resolve(vscode.window.showInformationMessage(tt('Help count how many people use Agent Standup? When you open the call, at most once a week (and once a day when the editor starts), the extension would load an empty 1-pixel file from GitHub: no identifier, nothing about you or your sessions. GitHub sees your IP address, as with any download. You can turn it off any time in the settings.'), yes, no, ...(again ? [] : [read]))).then((a) => {
       if (a === yes) return Promise.resolve(cfg().update('shareUsage', true, vscode.ConfigurationTarget.Global)).then(() => pingWeek(st));
       if (a === read) { vscode.env.openExternal(vscode.Uri.parse(PRIVACY_PAGE)); return askUsage(st, true); }
-    }).catch((err) => logErr('usage ask', err));
+    }).catch((err) => { if (!/^Canceled$/.test(String(err && err.message))) logErr('usage ask', err); });   // the editor closed while the question was shown: not an error
   } catch (err) { logErr('usage ask', err); return Promise.resolve(); }
 }
 // Each time the call is opened, in a panel or in the side bar: the question about usage (the first time), the week counted (when shared), the days towards the rating
