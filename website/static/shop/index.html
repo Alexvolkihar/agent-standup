@@ -158,7 +158,7 @@
   const buy = document.getElementById('buy');
   buy.onclick = async () => {
     buy.disabled = true; document.getElementById('buyMsg').textContent = '';
-    try { const r = await fetch('/api/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pack: 'halloween' }) }), j = await r.json(); if (j.url) return void (location.href = j.url); document.getElementById('buyMsg').textContent = why(j.error); }
+    try { const r = await fetch('/api/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pack: 'halloween', from: 'site', ref: new URLSearchParams(location.search).get('ref') || '' }) }), j = await r.json(); if (j.url) return void (location.href = j.url); document.getElementById('buyMsg').textContent = why(j.error); }
     catch { document.getElementById('buyMsg').textContent = why('shop'); }
     buy.disabled = false;
   };

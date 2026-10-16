@@ -60,7 +60,7 @@ Both pages show one video from YouTube. Until you press play it is a picture and
 
 Only totals that the stores, GitHub and Vercel show: download and install counts, stars, the number of daily and weekly "share usage" requests, visit counts by source, and for the website the number of visits by page, by the page they came from, by country and by kind of browser and device. None of it identifies a person.
 
-If you buy a character pack, the developer also sees what Stripe shows a seller about a payment: the email and the name you gave on the payment page, your country, the amount and the date, and the last four digits and the brand of the card. This is used to answer you about that purchase, to refund it, and for the accounts the law requires, and for nothing else.
+If you buy a character pack, the developer also sees what Stripe shows a seller about a payment: the email and the name you gave on the payment page, your country, the amount and the date, and the last four digits and the brand of the card. It also sees whether the purchase was started in the app or on the website, and from which link of the website. This is used to answer you about that purchase, to refund it, and for the accounts the law requires, and for nothing else.
 
 ## Children
 
