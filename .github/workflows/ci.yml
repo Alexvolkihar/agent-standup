@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
   pull_request:
+permissions:
+  contents: read   # the checks only read the repository
 jobs:
   checks:
     runs-on: ubuntu-latest
