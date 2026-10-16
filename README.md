@@ -24,6 +24,16 @@ _A fictional team fixing a slow login page — the built-in demo (⚙ → Source
 
 <a href="https://www.youtube.com/watch?v=EI5tMlxN4wI"><img src="https://atoll92.github.io/agent-standup/media/youtube-first-video-play.jpg" width="640" alt="Watch on YouTube: This video was made by the Claude Code agents you see in it"></a>
 
+## Halloween pack (optional)
+
+<a href="https://agent-standup.com/shop/"><img src="https://agent-standup.com/thanks/cast.jpg" width="640" alt="The Halloween pack: eight characters drawn by hand, each in its own room"></a>
+
+Eight characters drawn by hand by [Fabien Coupas](https://www.instagram.com/fabien_coupas/), each in its own room: a pumpkin leads the call, you are a vampire, and a ghost, a cat, a bat, a wolf, a witch and a crowd of skeletons do the work.
+
+**It is entirely optional.** Agent Standup is and stays free and MIT licensed, and nothing in it is locked behind the pack: every feature and the default characters stay as they are, and the vampire is free for everyone. Buying the pack (2 €, or more if you like) is simply a way to support the artist who drew it and the developer who makes the app; the money is shared between them.
+
+[See the pack](https://agent-standup.com/shop/), or in the app: ⚙ → Characters → Halloween pack. The pack's pictures are not part of the open-source code: they remain the artist's work.
+
 [![Buy me a coffee](https://img.shields.io/badge/-Buy%20the%20(replaced)%20dev%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/bored_dev_and_his_robots)
 
 > Unofficial community project, not affiliated with or endorsed by Anthropic, OpenAI or Mistral AI. "Claude" is a trademark of Anthropic; "Codex" is a trademark of OpenAI; "Mistral" is a trademark of Mistral AI.
