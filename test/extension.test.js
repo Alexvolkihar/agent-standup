@@ -38,7 +38,7 @@ async function activated(v, first, more = {}) {   // a fresh copy of the extensi
   const load = Module._load; Module._load = function (req, ...a) { return req === 'vscode' ? v.vscode : load.call(this, req, ...a); };
   const file = require.resolve('../extension.js'); delete require.cache[file]; const ext = require(file), ctx = { subscriptions: [], globalState: { get() {}, update: async () => {} }, ...more };   // more: e.g. the extension's own folder (globalStorageUri)
   const log = console.log; console.log = () => {};
-  try { ext.activate(ctx); await v.cmds['agentStandup.open'](first); await v.provider.resolveWebviewView({ webview: (v.side = { options: {}, html: '', onDidReceiveMessage: () => ({ dispose() {} }), postMessage: (m) => { v.sent.push({ where: 'side', ...m }); return Promise.resolve(true); } }), onDidDispose() {} }); } finally { console.log = log; Module._load = load; }
+  try { ext.activate(ctx); if (more.noOpen) return { ext, close: async () => { for (const s of ctx.subscriptions) try { s.dispose && s.dispose(); } catch {} await ext.deactivate(); } }; await v.cmds['agentStandup.open'](first); await v.provider.resolveWebviewView({ webview: (v.side = { options: {}, html: '', onDidReceiveMessage: () => ({ dispose() {} }), postMessage: (m) => { v.sent.push({ where: 'side', ...m }); return Promise.resolve(true); } }), onDidDispose() {} }); } finally { console.log = log; Module._load = load; }
   return { ext, close: async () => { for (const s of ctx.subscriptions) try { s.dispose && s.dispose(); } catch {} await ext.deactivate(); } };
 }
 
@@ -53,6 +53,30 @@ test('the server runs in a process of its own, not in the extension host every e
   } finally { await x.close(); }
   for (let i = 0; i < 50 && srv.kid.exitCode === null && srv.kid.signalCode === null; i++) await new Promise((r) => setTimeout(r, 50));
   assert.ok(srv.kid.exitCode !== null || srv.kid.signalCode !== null, 'ended with the extension');
+});
+
+test('a window whose call is never opened starts no server: its status bar reads the ends of the transcripts itself, as before', async () => {
+  const v = standIn(), x = await activated(v, undefined, { noOpen: true });
+  try { await new Promise((r) => setTimeout(r, 300)); assert.equal(x.ext._server(), null); } finally { await x.close(); }
+});
+
+test('a server that ends while the call is open comes back, on the same port, also in a window that is not focused', async () => {
+  const v = standIn(), x = await activated(v), first = await x.ext._server();
+  try {
+    v.vscode.window.state.focused = false; first.kid.kill('SIGKILL');
+    let next = null; for (let i = 0; i < 80 && !(next && next.kid && next.kid.pid !== first.kid.pid); i++) { await new Promise((r) => setTimeout(r, 100)); const s = x.ext._server(); next = s ? await s : null; }
+    assert.ok(next && next.kid && next.kid.pid !== first.kid.pid, 'started again'); assert.equal(next.port, first.port, 'where the open call looks for it');
+  } finally { await x.close(); }
+});
+
+test('server.js run by a manager that gives it a channel (pm2) is the plain server on its own port: the editor\'s mode is asked for by name', async () => {
+  const net = require('net'), port = await new Promise((r) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)); }); });
+  const kid = require('child_process').fork(path.join(__dirname, '..', 'server.js'), [], { env: { ...process.env, PORT: String(port), AGENT_STANDUP_CHILD: '' }, stdio: ['ignore', 'pipe', 'ignore', 'ipc'] }), said = [];
+  kid.on('message', (m) => said.push(m));
+  try {
+    let up = false; for (let i = 0; i < 50 && !up; i++) { await new Promise((r) => setTimeout(r, 100)); up = await new Promise((r) => require('http').get({ host: '127.0.0.1', port, path: '/api/health' }, (m) => { m.resume(); r(m.statusCode === 200); }).on('error', () => r(false))); }
+    assert.ok(up, 'on the port it was given'); assert.deepEqual(said, [], 'and it says nothing on the channel');
+  } finally { kid.kill(); }
 });
 
 test('the extension registers its commands, its panel and its sidebar view, also on a VS Code that has no tab groups', async () => {

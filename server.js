@@ -368,7 +368,7 @@ const readTail = (file, bytes) => { const fd = fs.openSync(file, 'r'); try { con
 const readHead = (file, bytes) => { const fd = fs.openSync(file, 'r'); try { const n = Math.min(bytes, fs.fstatSync(fd).size), buf = Buffer.alloc(n); fs.readSync(fd, buf, 0, n, 0); return buf.toString('utf8'); } finally { fs.closeSync(fd); } };
 const APPROVAL = /^(Edit|Write|MultiEdit|NotebookEdit)/, ASKS = /^(AskUserQuestion|ExitPlanMode)/, SUBTOOL = /^(Task|Agent)$/;
 const boardCache = new Map();   // file → { sig, parsed, title }
-let boardMemo = { at: 0, rows: [] };
+let boardMemo = { at: 0, rows: [] }, boardForced = 0;
 const PR_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+$/;   // nothing else is given to the page as a link to open
 const askOf = (b) => { const q = b.name === 'AskUserQuestion' && b.input && Array.isArray(b.input.questions) && b.input.questions[0] && b.input.questions[0].question; return typeof q === 'string' ? clip(q.trim(), 200) : ''; };   // the question a session stopped on, for its card
 const callOf = (b) => { const i = b.input || {}, v = b.name === 'Bash' ? i.command : /^(Edit|Write|MultiEdit|NotebookEdit)$/.test(b.name) ? path.basename(String(i.file_path || i.notebook_path || '')) : b.name === 'WebFetch' ? i.url : ''; return typeof v === 'string' && v.trim() ? b.name + '(' + clip(v.replace(/\s+/g, ' ').trim(), 160) + ')' : ''; };   // what a call waiting for your go-ahead would do, written the way Claude Code shows it: Bash(npm test)
@@ -578,7 +578,7 @@ function currentSession(projFilter, pick, stick, anyTmp) {   // pick: { proj, id
   const there = (c) => !!c && safe(c.id) && safe(c.proj) && (sourceOf(c.proj) ? !!guard(() => sourceOf(c.proj).fileOf(c.id), null) : fs.existsSync(path.join(projDir(c.proj, c.id), c.id + '.jsonl')));
   const inScope = (c) => (!projFilter ? anyTmp || !tmpSession(c.proj, c.id) : inFolder(c.proj, projFilter) || !!(sourceOf(c.proj) && guard(() => sourceOf(c.proj).inProject(c.id, projFilter), false)));   // a Codex or Vibe session counts for a project when it was started in that folder
   const same = (a, b) => !!a && !!b && a.proj === b.proj && a.id === b.id; let all = boardRows();
-  if (there(pick) && !all.some((r) => same(r, pick)) && sessionMtime(pick.proj, pick.id) > boardMemo.at - 1500) { boardMemo.at = 0; all = boardRows(); }   // the session you went to was written after the list shared for 1.2 s was made: without it, its order read as none, and the next answer dropped your pick
+  if (there(pick) && !all.some((r) => same(r, pick)) && now - boardForced > 5000 && sessionMtime(pick.proj, pick.id) > boardMemo.at - 1500) { boardForced = now; boardMemo.at = 0; all = boardRows(); }   // boardForced: at most every 5 s, for a session written to that the list never holds (older than 12 h, past the places of its kind)   // the session you went to was written after the list shared for 1.2 s was made: without it, its order read as none, and the next answer dropped your pick
   const rows = all.filter(inScope), mine = there(pick) ? all.find((r) => same(r, pick)) : null;
   const asked = Math.max(0, (mine && mine.asked) || 0, ...rows.map((r) => r.asked || 0));   // the latest order, in the folder the call follows or in the session you went to
   const moved = pick && pick.pin ? Math.max(0, ...rows.filter((r) => !same(r, pick)).map((r) => r.asked || 0)) : asked;   // pick.pin: a call pinned by a click on its tab (📌) is left for an order typed in another session only; what you type in it keeps it there
@@ -1059,8 +1059,9 @@ const reveal = {   // run and stat: replaced in the tests, which must not open a
 };
 // Which window plays sound, in a file next to the settings: each VS Code window has its own server, and two windows with the call open both spoke.
 const AUDIO = path.join(path.dirname(PREFS), 'audio.json');
-const audioOwner = () => { try { const a = JSON.parse(fs.readFileSync(AUDIO, 'utf8')); if (a && typeof a.id === 'string') return { id: a.id, seen: +a.seen || 0 }; } catch {} return { id: null, seen: 0 }; };
-const audioSave = (a) => { try { fs.mkdirSync(path.dirname(AUDIO), { recursive: true }); const t = AUDIO + '.' + process.pid; fs.writeFileSync(t, JSON.stringify(a)); fs.renameSync(t, AUDIO); } catch {} };   // whole or not at all: another server may read it at that moment
+let audioMem = { id: null, seen: 0 }, audioFile = true;   // audioFile false: the file cannot be written (a read-only folder), this server keeps the owner itself as it used to
+const audioOwner = () => { if (!audioFile) return audioMem; try { const a = JSON.parse(fs.readFileSync(AUDIO, 'utf8')); if (a && typeof a.id === 'string') return { id: a.id, seen: Math.min(+a.seen || 0, Date.now()) }; } catch {} return { id: null, seen: 0 }; };   // min: a clock set back left a time to come, and the owner never expired
+const audioSave = (a) => { audioMem = a; try { fs.mkdirSync(path.dirname(AUDIO), { recursive: true }); const t = AUDIO + '.' + process.pid; fs.writeFileSync(t, JSON.stringify(a)); fs.renameSync(t, AUDIO); } catch { audioFile = false; } };   // whole or not at all: another server may read it at that moment
 function start(port = PORT) {
   return http.createServer((req, res) => {
   let url; try { url = new URL(req.url, 'http://x'); } catch { res.writeHead(400); return res.end('bad request'); }   // "GET //" is not an address: answered, where it used to stop the whole server
@@ -1186,11 +1187,12 @@ function start(port = PORT) {
   }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });
 }
 module.exports = { _winArg: winArg, start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, packsDir, installPack, logError, _reveal: reveal, _scrub: { tidy, homeRe }, _artifact: { page: artifactPage, csp: artifactCsp } };
-if (require.main === module && typeof process.send === 'function') {   // started by the VS Code extension in a process of its own (see extension.js): reading a large session no longer stops the editor's extensions
+if (require.main === module && process.env.AGENT_STANDUP_CHILD === '1' && typeof process.send === 'function') {   // started by the VS Code extension in a process of its own (see extension.js): reading a large session no longer stops the editor's extensions. Asked for by name: pm2 and others give any app a channel too
   const srv = start(+process.env.PORT || 0), tell = (m) => { try { process.send(m); } catch {} };
   srv.on('listening', () => tell({ port: srv.address().port })).on('error', (e) => { tell({ error: e.code || String(e) }); process.exit(1); });
   process.on('message', (m) => { if (m && m.env && typeof m.env === 'object') for (const [k, v] of Object.entries(m.env)) { if (v == null) delete process.env[k]; else process.env[k] = String(v); } });   // a setting changed in the editor (claudePath, codex, vibe…)
   process.on('disconnect', () => { try { shutdown(); } catch {} process.exit(0); });   // the editor window closed, or its extension host ended: this server ends with it
+  process.on('uncaughtException', (e) => logError('crash', e)); process.on('unhandledRejection', (e) => logError('promise', e));   // written down and gone on, as in the extension host it ran in before: one odd request does not end the call
 } else if (require.main === module) {
   start().on('error', (e) => {
     console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use (maybe Agent Standup is already running, e.g. inside VS Code). Try: PORT=4790 node server.js` : String(e));

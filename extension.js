@@ -37,14 +37,14 @@ function ensureServer() {
   const mine = (started = new Promise((resolve) => {
     if (inHost) return hostServer(wanted, resolve);
     let kid, done = false, ours = false;
-    try { kid = require('child_process').fork(path.join(__dirname, 'server.js'), [], { env: { ...process.env, ...serverEnv(), PORT: String(wanted), ELECTRON_RUN_AS_NODE: '1' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] }); }
+    try { kid = require('child_process').fork(path.join(__dirname, 'server.js'), [], { env: { ...process.env, ...serverEnv(), PORT: String(wanted), ELECTRON_RUN_AS_NODE: '1', AGENT_STANDUP_CHILD: '1' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] }); }
     catch (e) { logErr('server process', e); inHost = true; return hostServer(wanted, resolve); }
     const late = setTimeout(() => { if (!done) { logErr('server process', new Error('no answer in 8 s')); done = true; inHost = true; try { kid.kill(); } catch {} hostServer(wanted, resolve); } }, 8000);   // an editor whose runtime cannot run as Node: the extension host it is
     kid.on('message', async (m) => {
       clearTimeout(late);
       if (done) return;
       if (m && m.port) { done = ours = true; resolve({ port: (lastPort = m.port), kid }); }
-      else if (m && m.error) { done = true; resolve(m.error === 'EADDRINUSE' && (await ping(wanted)) ? { port: wanted } : { port: wanted, error: true }); }   // the port set in the settings is taken: by another window's server (used) or by something else (said)
+      else if (m && m.error) { done = true; if (!cfg().get('port') && wanted === lastPort && wanted) { lastPort = 0; if (started === mine) started = null; return resolve(ensureServer()); } resolve(m.error === 'EADDRINUSE' && (await ping(wanted)) ? { port: wanted } : { port: wanted, error: true }); }   // the port set in the settings is taken: by another window's server (used) or by something else (said). The port of a server that ended, taken meanwhile: any free one
     });
     kid.on('error', (e) => { logErr('server process', e); if (!done) { inHost = true; done = true; hostServer(wanted, resolve); } });
     kid.on('exit', () => {
@@ -116,7 +116,7 @@ async function followTab() {
     let rows = named(await getJson(port, '/api/board')); if (!rows.length) rows = named(await getJson(port, '/api/sessions'));   // a conversation of another day is no longer among the sessions of the moment: it is looked up in the whole list
     const r = rows.find((x) => ws && (x.proj === ws || x.proj.startsWith(ws + '-'))) || rows[0]; if (!r) return;
     for (const w of [panel, side]) if (w) w.webview.postMessage({ agentStandup: 'pin', id: r.id, proj: r.proj, tab: true });
-  } catch (e) { logErr('follow tab', e); }
+  } catch (e) { if (!/ECONNREFUSED|ECONNRESET|socket hang up|timeout|JSON/.test(String(e && e.message))) logErr('follow tab', e); }   // a server that is starting again is not an error
 }
 
 // The folder where the person drops their own pixel art (lead.png, you.png, others for the sub-agents, name-talk.png for an open mouth).
@@ -225,8 +225,7 @@ function activate(ctx) {
     try {
       if (!cfg().get('statusBar')) { if (status.text !== '$(device-camera-video) Agent Standup') { status.text = '$(device-camera-video) Agent Standup'; status.backgroundColor = undefined; status.tooltip = tt('Open the live Agent Standup call'); } return; }   // counts off: the plain button stays
       if (!vscode.window.state.focused) return;
-      const { port, error } = await ensureServer(); if (error) return;
-      const key = projKey(), rows = (await getJson(port, '/api/board')).filter((r) => (key ? r.proj === key || r.dir === key : !r.tmp)), now = Date.now();
+      const key = projKey(), rows = require('./server.js').boardRows().filter((r) => (key ? r.proj === key || r.dir === key : !r.tmp)), now = Date.now();   // read here, as before (the ends of the transcripts only): no server process for a window whose call is never opened
       const act = rows.filter((r) => r.state !== 'idle' || now - r.mtime < 15 * 60e3), cnt = (st) => act.filter((r) => r.state === st).length;
       const blocked = cnt('blocked'), working = cnt('working') + cnt('waiting'), turn = cnt('turn');
       const parts = []; if (blocked) parts.push('$(warning) ' + tt('{0} needs you', blocked)); if (working) parts.push('$(sync~spin) ' + tt('{0} working', working)); if (!blocked && !working && turn) parts.push('$(check) ' + tt('your turn'));
@@ -234,7 +233,7 @@ function activate(ctx) {
       status.backgroundColor = blocked ? new vscode.ThemeColor('statusBarItem.errorBackground') : undefined;
       const best = act.find((r) => r.state === 'blocked') || act.find((r) => r.state === 'working') || act.find((r) => r.state === 'waiting') || act[0] || null; target = best ? { id: best.id, proj: best.proj } : null;
       status.tooltip = act.length ? act.slice(0, 6).map((r) => `${{ blocked: '✋', working: '⚙', waiting: '🔗', turn: '✓', idle: '💤' }[r.state]} ${r.title}`).join('\n') + '\n\n' + tt('Click to open the call') : tt('Open the live Agent Standup call');
-    } catch (e) { if (!/ECONNREFUSED|ECONNRESET|timeout/.test(String(e && e.message))) logErr('status bar', e); } finally { polling = false; }   // a server that is starting again is not an error
+    } catch (e) { logErr('status bar', e); } finally { polling = false; }
   };
   ctx.subscriptions.push(vscode.commands.registerCommand('agentStandup.openStatus', () => openPanel(target)));
   status.command = 'agentStandup.openStatus';
@@ -242,7 +241,7 @@ function activate(ctx) {
   try { ctx.subscriptions.push(vscode.window.tabGroups.onDidChangeTabs(followTab), vscode.window.tabGroups.onDidChangeTabGroups(followTab)); } catch {}
   const pollT = setInterval(poll, 4000); poll(); ctx.subscriptions.push({ dispose: () => clearInterval(pollT) });
   // If another VS Code window was serving the port and closes, take over so this window keeps working.
-  const watch = setInterval(async () => { try { if (!started) return; const s = await started; if (!s.error && !(s.kid ? s.kid.exitCode === null : s.server ? s.server.listening : await ping(s.port))) { started = null; ensureServer(); } } catch { started = null; } }, 5000);
+  const watch = setInterval(async () => { try { if (!started) { if (panel || side) ensureServer(); return; } const s = await started; if (!s.error && !(s.kid ? s.kid.exitCode === null : s.server ? s.server.listening : await ping(s.port))) { started = null; ensureServer(); } } catch { started = null; } }, 5000);
   ctx.subscriptions.push({ dispose: () => clearInterval(watch) });   // its own server is asked whether it still runs, not pinged: a ping missed while a large session is read would start a second server and leave the first one running
   if (cfg().get('autoOpen')) openPanel();
 }
