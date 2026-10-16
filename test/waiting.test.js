@@ -26,6 +26,10 @@ put(OTHER, [user('Go on', 90e3), say('Ok.', 80e3)], 80e3); status(109, OTHER, pr
 put(GUESS, [user('Fix the header', 100e3), call('Edit', { file_path: '/work/shop/src/header.js', old_string: 'a', new_string: 'b' }, 20e3)], 20e3);
 put(DIALOG, [user('Thanks', 90e3), say('Done.', 80e3)], 80e3); fs.writeFileSync(path.join(SESSIONS, '110.json'), JSON.stringify({ pid: process.pid, sessionId: id(DIALOG), status: 'waiting', waitingFor: 'dialog open', statusUpdatedAt: now - 20e3 }));   // /model, /config… opened by you in a session whose turn is over
 
+const OLD = path.join(PROJECTS, '-work-old'), oid = (c) => `${c.repeat(8)}-${c.repeat(4)}-4${c.repeat(3)}-8${c.repeat(3)}-${c.repeat(12)}`, oput = (sid, recs, ago) => { fs.mkdirSync(OLD, { recursive: true }); const f = path.join(OLD, sid + '.jsonl'); fs.writeFileSync(f, recs.map((r) => JSON.stringify(r)).join('\n') + '\n'); const t = new Date(now - ago); fs.utimesSync(f, t, t); };
+oput(oid('a'), [user('Deploy', 10800e3), call('Bash', { command: './deploy.sh' }, 7200e3)], 7200e3); fs.writeFileSync(path.join(SESSIONS, '111.json'), JSON.stringify({ pid: process.pid, sessionId: oid('a'), status: 'waiting', waitingFor: 'permission prompt', statusUpdatedAt: now - 7195e3 }));   // a menu left open two hours ago
+oput(oid('b'), [user('Release notes', 360e3), say('Here they are.', 240e3)], 240e3);   // the session you were in, done four minutes ago
+
 test('a Bash approval needs you, with the command, since the menu opened, apart from the time it worked', () => {
   const core = require('../server.js'), rows = core.boardRows(), row = (n) => rows.find((r) => r.id === id(n));
   assert.equal(row(MENU).state, 'blocked'); assert.equal(row(MENU).tool, 'Bash'); assert.equal(row(MENU).ask, 'Bash(npm run build --prod)');   // on one line, the way Claude Code shows it
@@ -47,5 +51,12 @@ test('a session that waits on a menu says what the menu shows, word for word: th
   assert.equal(row(PLAN).state, 'blocked'); assert.deepEqual(row(PLAN).menu, { id: 'w' + (now - 45e3), tool: 'ExitPlanMode', kind: 'plan', text: '# Plan\n1. Check\n2. Write hello.txt', sure: 1 });   // read from the plan file as it is now, not as first written
   assert.equal(row(OTHER).state, 'blocked'); assert.deepEqual(row(OTHER).menu, { id: 'w' + (now - 30e3), tool: '', kind: 'menu', sure: 1 });
   assert.equal(row(DIALOG).state, 'turn'); assert.equal(row(DIALOG).menu, undefined);   // a dialog you opened yourself is not a question for you
+  core.shutdown();
+});
+
+test('a menu left open for more than half an hour still needs you on the board, but no longer takes the call from the session you were in', () => {
+  const core = require('../server.js'), rows = core.boardRows();
+  assert.equal(rows.find((r) => r.id === oid('a')).state, 'blocked');
+  assert.equal(core.currentSession('-work-old', null, { proj: '-work-old', id: oid('b') }).id, oid('b'));   // it used to move the call to the menu of two hours ago
   core.shutdown();
 });

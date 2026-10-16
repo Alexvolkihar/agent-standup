@@ -430,7 +430,7 @@ function parseTail(file, st) {
   if (!custom && !ai && first == null) first = firstPrompt(file) || (st.size > 64 * 1024 ? '' : null);   // '' = looked for and not there; a file that has just been created is looked at again
   if (!hit && !asked && cut) asked = typedBefore(file);
   const out = { sig, title: custom || ai || first || null, custom, ai, first, pr, lastType, lastTool, lastStop, stops, esc, lastTs, pending: [...pend.values()] };   // a title the person typed wins over the generated one, and both over the first prompt
-  out.asked = asked; out.plan = plan; boardCache.set(file, out); if (boardCache.size > 200) boardCache.delete(boardCache.keys().next().value); return out;
+  out.asked = asked; out.plan = plan; boardCache.set(file, out); if (boardCache.size > 3 * ROWS_MAX) boardCache.delete(boardCache.keys().next().value); return out;   // more than the list can hold: a full list never pushes its own rows out, which read every row again at each scan
 }
 function firstPrompt(file) {   // the first thing the person typed, read record by record: a pattern over the raw text ran from a user record into the assistant's first answer and took that as the title
   const ONE = (t) => t.replace(/\s+/g, ' ').trim().slice(0, 90);
@@ -449,10 +449,10 @@ function boardRows() {
 // How many sessions the list keeps, newest first, of each kind (Claude Code, each other tool, Cowork): `most` of them, and whatever the count, the PER_FOLDER newest of each folder, so that
 // sessions written elsewhere never push the ones of a folder out. That is what happened with only a count: the Claude Code session of the folder the call follows left the list, and with it its
 // tab and the call, behind 40 sessions a desktop app had just written in temporary folders (issue #9). Sessions started in a temporary folder (see tmpKey) have places of their own, TMP_ROWS at most.
-const PER_FOLDER = 3, TMP_ROWS = 10;
+const PER_FOLDER = 3, TMP_ROWS = 10, ROWS_MAX = 200;   // ROWS_MAX: a ceiling on what the folders add, for someone with hundreds of folders (one worktree per task)
 function capRows(list, most, folderOf) {   // list: newest first
   const real = list.filter((r) => !tmpKey(folderOf(r))), keep = new Set(real.slice(0, most)), per = new Map();
-  for (const r of real) { const k = folderOf(r), n = per.get(k) || 0; if (n < PER_FOLDER) { keep.add(r); per.set(k, n + 1); } }
+  for (const r of real) { if (keep.size >= ROWS_MAX) break; const k = folderOf(r), n = per.get(k) || 0; if (n < PER_FOLDER) { keep.add(r); per.set(k, n + 1); } }
   return real.filter((r) => keep.has(r)).concat(list.filter((r) => tmpKey(folderOf(r))).slice(0, TMP_ROWS));
 }
 function boardRows0() {
@@ -551,6 +551,7 @@ process.on('uncaughtExceptionMonitor', (e, origin) => { try { if (OWN || String(
 // One exception, so that the call is not left on an empty room: when the session you last typed in has finished and been quiet for STICK_MS while another one is at work, the call
 // goes to that one. A session you went to by hand is not left that way.
 const STICK_MS = 90000;
+const MENU_LIVE_MS = 30 * 60e3;   // a menu left open longer still needs you (board, visitor), but no longer takes the call from where you work
 // Sessions started in the system's temporary folder: a program running Claude Code there for a moment (a test, a script, a tool that makes a folder per run), not a session someone works in.
 // When the call looks everywhere it leaves them out, unless there is nothing else; they have no tab then and send no visitor. They stay in the Sessions view, and a window open on such a folder follows it.
 // macOS: /var/folders/… (/private/… once resolved) and /tmp; Linux: /tmp; Windows: …\AppData\Local\Temp; and wherever TMPDIR points. A key is a folder as Claude Code names it, every other character a "-".
@@ -570,7 +571,7 @@ function currentSession(projFilter, pick, stick, anyTmp) {   // pick: { proj, id
   const asked = Math.max(0, (mine && mine.asked) || 0, ...rows.map((r) => r.asked || 0));   // the latest order, in the folder the call follows or in the session you went to
   const moved = pick && pick.pin ? Math.max(0, ...rows.filter((r) => !same(r, pick)).map((r) => r.asked || 0)) : asked;   // pick.pin: a call pinned by a click on its tab (📌) is left for an order typed in another session only; what you type in it keeps it there
   if (there(pick) && !(moved > pick.since)) return { proj: pick.proj, id: pick.id, mtime: now, asked, pick: 1 };   // no "since" on the first question after a pick: the answer gives it (asked), and the page sends it back from then on
-  const live = rows.filter((r) => /^(working|waiting|blocked)$/.test(r.state) || r.subActive > 0 || now - r.mtime < STICK_MS), last = Math.max(0, ...live.map((r) => r.asked || 0)), top = live.filter((r) => (r.asked || 0) === last);
+  const live = rows.filter((r) => /^(working|waiting)$/.test(r.state) || (r.state === 'blocked' && !(now - (r.since || now) > MENU_LIVE_MS)) || r.subActive > 0 || now - r.mtime < STICK_MS), last = Math.max(0, ...live.map((r) => r.asked || 0)), top = live.filter((r) => (r.asked || 0) === last);
   const to = top.find((r) => same(r, stick)) || top.sort((a, b) => b.mtime - a.mtime)[0];   // two sessions whose last order is not known (or of the same instant): the call stays where it is
   if (to) return { proj: to.proj, id: to.id, mtime: to.mtime, asked };
   if (there(stick) && inScope(stick)) return { proj: stick.proj, id: stick.id, mtime: sessionMtime(stick.proj, stick.id), asked };   // nobody is at work: the call stays where it is
