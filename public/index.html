@@ -1335,13 +1335,13 @@ function ctxWin(model, ctx) { const base = WIN1M.test(model || '') ? 1e6 : 2e5; 
 // Repeated work, from the session's own records and no model call: a file read again with no change in between, a file another agent has already read, the same search run twice, a failing command run again unchanged
 const fileOf = (f) => String(f || '').split(/[\\/]/).pop();
 function wasteStep(W, ev) {   // W: the session's state (S.wst, or a fresh one for the recap); true when something was noted
-  if (!W.reads) Object.assign(W, { reads: {}, finds: {}, calls: {}, failed: {}, items: {} });
+  if (!W.reads) { const N = () => Object.create(null); Object.assign(W, { reads: N(), finds: N(), calls: N(), failed: N(), items: N() }); }   /* no prototype: a file or a search named __proto__ is just a name */
   const a = ev.agent; let hit = false; const note = (it) => { const l = (W.items[a] = W.items[a] || []); l.push(it); if (l.length > 60) l.shift(); hit = true; };
   if (ev.kind === 'tools') for (const t of ev.tools) { const d = t.d || {};
-    if (d.kind === 'read' && d.file) { const m = (W.reads[d.file] = W.reads[d.file] || {}), part = (d.offset || '') + ':' + (d.limit || ''), o = Object.keys(m).find((x) => x !== a);   /* a part of a long file is another read */
+    if (d.kind === 'read' && d.file) { const m = (W.reads[d.file] = W.reads[d.file] || Object.create(null)), part = (d.offset || '') + ':' + (d.limit || ''), o = Object.keys(m).find((x) => x !== a);   /* a part of a long file is another read */
       if (m[a] && m[a].has(part)) note({ k: 'again', f: d.file }); else if (o) note({ k: 'other', f: d.file, by: o }); (m[a] = m[a] || new Set()).add(part); }
     else if ((d.kind === 'edit' || d.kind === 'write') && d.file) delete W.reads[d.file];   /* a file that changed is read again for a good reason */
-    else if ((d.kind === 'grep' || d.kind === 'glob') && d.pattern) { const key = d.kind + '\u0000' + d.pattern + '\u0000' + (d.path || '') + '\u0000' + (d.glob || ''), m = (W.finds[key] = W.finds[key] || {}), o = Object.keys(m).find((x) => x !== a);
+    else if ((d.kind === 'grep' || d.kind === 'glob') && d.pattern) { const key = d.kind + '\u0000' + d.pattern + '\u0000' + (d.path || '') + '\u0000' + (d.glob || ''), m = (W.finds[key] = W.finds[key] || Object.create(null)), o = Object.keys(m).find((x) => x !== a);
       if (m[a]) note({ k: 'find', q: d.pattern }); else if (o) note({ k: 'findOther', q: d.pattern, by: o }); m[a] = 1; }
     else if (d.kind === 'cmd' && d.text && !POLLY.test(d.text)) { const key = a + '\u0000' + d.text.trim(); W.calls[t.id] = key; if (W.failed[key]) note({ k: 'retry', c: d.text.trim().split('\n')[0].slice(0, 80) }); }
   }
@@ -2008,7 +2008,7 @@ $('#mCoffee').onclick = () => { $('#menu').classList.remove('on'); openExternal(
 // is in view, a tip by the menu; "Later" asks again a week later, one time; the star and "No thanks" end it. The days are kept in the settings file; nothing is sent.
 $('#mRate').onclick = () => { $('#menu').classList.remove('on'); rateGo(); };
 function rateGo() { rateEnd(); if (EMBED && APP.kind === 'editor') window.parent.postMessage({ agentStandup: 'rate' }, '*'); else openExternal(APP.rate); }
-const rateEnd = () => { prefs.rateDone = true; savePrefs(); $('#rateTip').style.display = 'none'; };
+const rateEnd = () => { prefs.rateDone = utcDay(); savePrefs(); $('#rateTip').style.display = 'none'; };
 const RATE_ASKS = (APP.kind === 'desktop' || APP.kind === 'cli') && !EMBED && !Q.get('demo'), utcDay = () => new Date().toISOString().slice(0, 10);
 function rateDay() {   // a day of use: the page in view that day
   if (!RATE_ASKS || prefs.rateDone || document.hidden) return;
@@ -2020,19 +2020,19 @@ function rateTip() {
   const r = $('#bMenu').getBoundingClientRect(); if (!r.width) return;
   $('#rateTipT').textContent = L('Agent Standup vous plaît ? Une étoile sur GitHub aide d’autres personnes à le trouver.', 'Enjoying Agent Standup? A star on GitHub helps other people find it.');
   $('#rateYes').textContent = L('⭐ Mettre une étoile', '⭐ Star it'); $('#rateLater').textContent = L('Plus tard', 'Later'); $('#rateNo').textContent = L('Non merci', 'No thanks');
-  t.style.display = ''; t.style.top = Math.round(r.bottom + 10) + 'px'; t.style.right = Math.max(8, Math.round(innerWidth - r.right - 6)) + 'px'; t.style.setProperty('--ax', Math.max(8, Math.round(r.width / 2 - 2)) + 'px');
+  rateTip.seen = utcDay(); t.style.display = ''; t.style.top = Math.round(r.bottom + 10) + 'px'; t.style.right = Math.max(8, Math.round(innerWidth - r.right - 6)) + 'px'; t.style.setProperty('--ax', Math.max(8, Math.round(r.width / 2 - 2)) + 'px');
 }
 $('#rateYes').onclick = rateGo; $('#rateNo').onclick = rateEnd;
 $('#rateLater').onclick = () => { if (prefs.rateLater) return rateEnd(); prefs.rateLater = new Date(Date.parse(utcDay()) + 7 * 864e5).toISOString().slice(0, 10); savePrefs(); $('#rateTip').style.display = 'none'; };
 document.addEventListener('visibilitychange', rateDay); setInterval(rateDay, 3600e3);   // the desktop window can stay open for days
 // ☕ Once, at the end of a long run the call followed live (the lead at work for 10 minutes, or 3 agents at work in that turn), from the second day the call has been in view.
 // Never twice ("No thanks", the coffee or nothing at all end it), never the day the star is asked, never in a demo. The days are kept in the settings file; nothing is sent.
-function coffeeDay() { if (document.hidden || !SUPPORT.url || prefs.coffeeAsked) return; const day = utcDay(); if (prefs.useLast !== day) { prefs.useLast = day; prefs.useDays = (+prefs.useDays || 0) + 1; savePrefs(); } }
+function coffeeDay() { if (document.hidden || !SUPPORT.url || prefs.coffeeAsked || prefs.useFirst) return; prefs.useFirst = utcDay(); savePrefs(); }   /* one write, ever: the first day the call is in view (a window left open overnight must not write its old settings over newer ones) */
 function coffeeAsk(busyAt) {
-  if (!SUPPORT.url || prefs.coffeeAsked || Q.get('demo') || (+prefs.useDays || 0) < 2 || document.hidden) return;
+  if (!SUPPORT.url || prefs.coffeeAsked || Q.get('demo') || !prefs.useFirst || prefs.useFirst >= utcDay() || document.hidden) return;
   const now = Date.now(), team = Object.keys(S.agents).filter((id) => id !== 'main' && id !== 'user' && S.lastAct[id] >= busyAt).length;
   if (!(now - busyAt >= 10 * 60e3 || (team >= 3 && now - busyAt >= 2 * 60e3))) return;
-  if ($('#rateTip').style.display !== 'none' || (RATE_ASKS && !prefs.rateDone && prefs.rateLast === utcDay() && (+prefs.rateDays || 0) >= 3)) return;
+  if ($('#rateTip').style.display !== 'none' || rateTip.seen === utcDay() || prefs.rateDone === utcDay() || (RATE_ASKS && !prefs.rateDone && prefs.rateLast === utcDay() && (+prefs.rateDays || 0) >= 3)) return;   /* the star shown, given or declined today */
   clearTimeout(coffeeAsk.t); coffeeAsk.t = setTimeout(() => { if (prefs.coffeeAsked || document.hidden || $('#menu').classList.contains('on') || $('#menuTip').style.display !== 'none' || $('#rateTip').style.display !== 'none' || agentState('main', Date.now()).k !== 'done') return; coffeeTip(); }, 8000);   /* after the confetti and the lead's last word */
 }
 function coffeeTip() {
@@ -2082,7 +2082,7 @@ $('#hl').onclick = (e) => { const b = e.target.closest('.hlc'); if (b && !S.live
 function openRecap() {
   const per = {}, files = {}, mdl = {}; let tools = 0, cmds = 0, errs = 0; const tk = {}, A = (id) => (per[id] = per[id] || { id, tools: 0, files: new Set(), t0: null, t1: null });
   S.events.forEach((e) => {
-    if (e.kind === 'usage' && e.model) mdl[e.agent] = e.model;
+    if (e.kind === 'usage' && e.model && e.model[0] !== '<') mdl[e.agent] = e.model;   /* not <synthetic>, as in tally */
     if (e.kind === 'usage') { const u = (tk[e.agent] = tk[e.agent] || { i: 0, o: 0, r: 0, w: 0 }); u.i += e.u.i; u.o += e.u.o; u.r += e.u.r; u.w += e.u.w; }
     if (e.kind === 'results') e.items.forEach((it) => { if (it.err) errs++; });
     if (e.kind === 'order') A(e.to).t0 = e.t; if (e.kind === 'report') A(e.agent).t1 = e.t;
