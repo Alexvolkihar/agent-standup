@@ -326,5 +326,7 @@
  "the numbers match the menu": "编号与菜单一致",
  "What the session is waiting for from you": "会话在等你做什么",
  "is waiting for your answer": "在等你的回答",
- "A menu is open in Claude Code.": "Claude Code 中有一个打开的菜单。"
+ "A menu is open in Claude Code.": "Claude Code 中有一个打开的菜单。",
+ "Speed presets": "速度预设",
+ "pages": "页"
 }

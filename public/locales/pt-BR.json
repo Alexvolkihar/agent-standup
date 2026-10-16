@@ -326,5 +326,7 @@
  "the numbers match the menu": "os números são os do menu",
  "What the session is waiting for from you": "O que a sessão espera de você",
  "is waiting for your answer": "espera sua resposta",
- "A menu is open in Claude Code.": "Há um menu aberto no Claude Code."
+ "A menu is open in Claude Code.": "Há um menu aberto no Claude Code.",
+ "Speed presets": "Velocidades predefinidas",
+ "pages": "páginas"
 }

@@ -1177,7 +1177,7 @@ function start(port = PORT) {
     let fst = null; try { fst = fs.statSync(file); } catch {}
     if (!file.startsWith(PUBLIC + path.sep) || !fst || !fst.isFile()) { res.writeHead(404); return res.end('not found'); }
     // The only frame of the page is the window of an artifact, served from here. Without this line a page shown there could take its own frame to another site, and send out what it holds in the address.
-    res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', ...(path.extname(file) === '.html' ? { 'content-security-policy': "frame-src 'self'" } : {}) });
+    res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', ...(path.extname(file) === '.html' ? { 'content-security-policy': "frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" } : {}) });
     res.end(fs.readFileSync(file));
   } catch (e) { logError(req.method + ' ' + url.pathname, e); if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });

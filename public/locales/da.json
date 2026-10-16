@@ -325,5 +325,7 @@
  "the numbers match the menu": "numrene svarer til menuen",
  "What the session is waiting for from you": "Hvad sessionen venter på fra dig",
  "is waiting for your answer": "venter på dit svar",
- "A menu is open in Claude Code.": "En menu er åben i Claude Code."
+ "A menu is open in Claude Code.": "En menu er åben i Claude Code.",
+ "Speed presets": "Hastighedsforvalg",
+ "pages": "sider"
 }

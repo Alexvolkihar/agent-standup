@@ -326,5 +326,7 @@
  "the numbers match the menu": "番号はメニューと同じです",
  "What the session is waiting for from you": "セッションがあなたに求めていること",
  "is waiting for your answer": "があなたの回答を待っています",
- "A menu is open in Claude Code.": "Claude Code でメニューが開いています。"
+ "A menu is open in Claude Code.": "Claude Code でメニューが開いています。",
+ "Speed presets": "速度プリセット",
+ "pages": "ページ"
 }

@@ -326,5 +326,7 @@
  "the numbers match the menu": "번호는 메뉴와 같습니다",
  "What the session is waiting for from you": "세션이 기다리는 것",
  "is waiting for your answer": "— 답을 기다리고 있습니다",
- "A menu is open in Claude Code.": "Claude Code에 메뉴가 열려 있습니다."
+ "A menu is open in Claude Code.": "Claude Code에 메뉴가 열려 있습니다.",
+ "Speed presets": "속도 프리셋",
+ "pages": "페이지"
 }
