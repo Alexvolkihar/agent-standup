@@ -342,5 +342,7 @@
  "already read by {0}: {1}": "já lido por {0}: {1}",
  "same search again: {0}": "mesma busca de novo: {0}",
  "same search as {0}: {1}": "mesma busca que {0}: {1}",
- "reran a failing command: {0}": "repetiu um comando que falhou: {0}"
+ "reran a failing command: {0}": "repetiu um comando que falhou: {0}",
+ "☕ Buy a coffee": "☕ Pagar um café",
+ "{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)": "{0} e a equipe terminaram. Se a chamada ajudou você a acompanhar esse trabalho longo, um café ajuda o Agent Standup a continuar. (Só pedimos uma vez.)"
 }

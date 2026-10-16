@@ -342,5 +342,7 @@
  "already read by {0}: {1}": "{0} が既に読んだファイル: {1}",
  "same search again: {0}": "同じ検索をもう一度: {0}",
  "same search as {0}: {1}": "{0} と同じ検索: {1}",
- "reran a failing command: {0}": "失敗したコマンドを再実行: {0}"
+ "reran a failing command: {0}": "失敗したコマンドを再実行: {0}",
+ "☕ Buy a coffee": "☕ コーヒーをおごる",
+ "{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)": "{0}とチームの作業が終わりました。この長い作業を追うのに通話が役立ったなら、コーヒー1杯で Agent Standup の開発を支えられます。(お願いするのはこの一度だけです)"
 }

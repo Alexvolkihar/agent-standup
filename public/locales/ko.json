@@ -342,5 +342,7 @@
  "already read by {0}: {1}": "{0}이(가) 이미 읽음: {1}",
  "same search again: {0}": "같은 검색을 다시: {0}",
  "same search as {0}: {1}": "{0}와(과) 같은 검색: {1}",
- "reran a failing command: {0}": "실패한 명령을 다시 실행: {0}"
+ "reran a failing command: {0}": "실패한 명령을 다시 실행: {0}",
+ "☕ Buy a coffee": "☕ 커피 한 잔 사기",
+ "{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)": "{0}와 팀이 작업을 마쳤어요. 이 긴 작업을 따라가는 데 통화가 도움이 됐다면, 커피 한 잔이 Agent Standup을 계속 이어가게 해요. (딱 한 번만 여쭤볼게요.)"
 }

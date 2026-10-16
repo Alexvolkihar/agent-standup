@@ -342,5 +342,7 @@
  "already read by {0}: {1}": "{0} 已讀過：{1}",
  "same search again: {0}": "再次進行相同的搜尋：{0}",
  "same search as {0}: {1}": "與 {0} 相同的搜尋：{1}",
- "reran a failing command: {0}": "重新執行失敗的指令：{0}"
+ "reran a failing command: {0}": "重新執行失敗的指令：{0}",
+ "☕ Buy a coffee": "☕ 請喝杯咖啡",
+ "{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)": "{0} 和團隊已經完成。如果這次通話幫你跟上了這段長時間的工作，一杯咖啡能讓 Agent Standup 繼續下去。（我們只問這一次。）"
 }

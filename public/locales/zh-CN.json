@@ -342,5 +342,7 @@
  "already read by {0}: {1}": "{0} 已读过：{1}",
  "same search again: {0}": "再次进行相同的搜索：{0}",
  "same search as {0}: {1}": "与 {0} 相同的搜索：{1}",
- "reran a failing command: {0}": "重新运行失败的命令：{0}"
+ "reran a failing command: {0}": "重新运行失败的命令：{0}",
+ "☕ Buy a coffee": "☕ 请喝杯咖啡",
+ "{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)": "{0} 和团队已经完成。如果这次通话帮你跟上了这段长时间的工作，一杯咖啡能让 Agent Standup 继续下去。（我们只问这一次。）"
 }
