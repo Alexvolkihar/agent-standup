@@ -1,6 +1,6 @@
-// Agent Standup — VS Code extension host. Runs the local server in-process and shows it in a webview.
+// Agent Standup — VS Code extension host. Runs the local server in a process of its own and shows it in a webview.
 const vscode = require('vscode');
-const http = require('http'), fs = require('fs');
+const http = require('http'), fs = require('fs'), path = require('path');
 
 let panel = null, side = null, status = null, started = null;
 const logErr = (where, e) => { try { require('./server.js').logError(where, e); } catch {} };   // the local error log (see logError in server.js): nothing is sent
@@ -16,19 +16,46 @@ const ping = (port) => new Promise((res) => {
   const r = http.get({ host: '127.0.0.1', port, path: '/api/current', timeout: 1500 }, (m) => { m.resume(); res(m.statusCode === 200); });
   r.on('error', () => res(false)); r.on('timeout', () => { r.destroy(); res(false); });
 });
+const getJson = (port, p) => new Promise((res, rej) => {   // what the server knows (the board, the sessions), asked over HTTP: it runs in another process
+  const r = http.get({ host: '127.0.0.1', port, path: p, timeout: 10000 }, (m) => { let b = ''; m.setEncoding('utf8'); m.on('data', (d) => (b += d)); m.on('end', () => { try { res(JSON.parse(b)); } catch (e) { rej(e); } }); });
+  r.on('error', rej); r.on('timeout', () => { r.destroy(); rej(new Error('timeout')); });
+});
 
 // Each window runs its own server on a free port (a fixed port can be set; if that port already serves Agent Standup it is reused).
 // Reusing someone else's server by default caused trouble: it may run without the right environment (e.g. no way to call `claude`).
+// The server runs in a process of its own (the editor's own runtime, as a plain Node): in the extension host, which every extension shares, reading a large session held them all,
+// Claude Code's included, for a second or more. If that process cannot be started, or ends three times in a minute, the server runs in the extension host as it used to.
+let lastPort = 0, crashes = [], inHost = false;
+function hostServer(wanted, resolve) {
+  const srv = require('./server.js').start(wanted);
+  srv.once('listening', () => resolve({ port: (lastPort = srv.address().port), server: srv }));
+  srv.once('error', async () => resolve((await ping(wanted)) ? { port: wanted } : { port: wanted, error: true }));
+}
 function ensureServer() {
   if (started) return started;
-  const wanted = cfg().get('port') || 0;
-  started = new Promise((resolve) => {
-    const srv = require('./server.js').start(wanted);
-    srv.once('listening', () => resolve({ port: srv.address().port, server: srv }));
-    srv.once('error', async () => resolve((await ping(wanted)) ? { port: wanted } : { port: wanted, error: true }));
-  });
+  const wanted = cfg().get('port') || lastPort || 0;   // lastPort: a server that ended comes back on the same port, so the open panels find it again
+  const mine = (started = new Promise((resolve) => {
+    if (inHost) return hostServer(wanted, resolve);
+    let kid, done = false, ours = false;
+    try { kid = require('child_process').fork(path.join(__dirname, 'server.js'), [], { env: { ...process.env, ...serverEnv(), PORT: String(wanted), ELECTRON_RUN_AS_NODE: '1' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] }); }
+    catch (e) { logErr('server process', e); inHost = true; return hostServer(wanted, resolve); }
+    const late = setTimeout(() => { if (!done) { logErr('server process', new Error('no answer in 8 s')); done = true; inHost = true; try { kid.kill(); } catch {} hostServer(wanted, resolve); } }, 8000);   // an editor whose runtime cannot run as Node: the extension host it is
+    kid.on('message', async (m) => {
+      clearTimeout(late);
+      if (done) return;
+      if (m && m.port) { done = ours = true; resolve({ port: (lastPort = m.port), kid }); }
+      else if (m && m.error) { done = true; resolve(m.error === 'EADDRINUSE' && (await ping(wanted)) ? { port: wanted } : { port: wanted, error: true }); }   // the port set in the settings is taken: by another window's server (used) or by something else (said)
+    });
+    kid.on('error', (e) => { logErr('server process', e); if (!done) { inHost = true; done = true; hostServer(wanted, resolve); } });
+    kid.on('exit', () => {
+      clearTimeout(late);
+      if (!done) { done = true; inHost = true; return hostServer(wanted, resolve); }   // it ended before it listened: the extension host it is
+      if (ours && started === mine && !stopping) { started = null; const now = Date.now(); crashes = crashes.filter((t) => now - t < 60000).concat(now); if (crashes.length >= 3) inHost = true; }   // the next poll starts it again
+    });
+  }));
   return started;
 }
+let stopping = false;
 async function url() {
   const { port, error } = await ensureServer();
   if (error) throw new Error(`Port ${port} is busy and not serving Agent Standup. Set agentStandup.port to 0 (automatic) or another port.`);
@@ -78,15 +105,15 @@ const sidebar = {
 // VS Code tells a tab's label, not its session. Claude Code names a tab after the title of its session, cut after 24 characters: the label is looked up among the recent sessions,
 // this workspace's first, the most recent first (two conversations whose titles start with the same 24 characters cannot be told apart: the label is all there is). A tab that has no title yet ("Claude Code") or matches nothing changes nothing. The sidebar chat and a terminal are not tabs: nothing says which session they show.
 let tabKey = '';
-function followTab() {
+async function followTab() {
   try {
     if (!panel && !side) return; const g = vscode.window.tabGroups.activeTabGroup, t = g && g.activeTab, vt = t && t.input && t.input.viewType;
     if (typeof vt !== 'string' || !vt.includes('claudeVSCodePanel')) return;   // any other tab (a file, the call itself): the call stays where it is
     const key = g.viewColumn + '|' + t.label; if (key === tabKey) return; tabKey = key;   // only when you change tab: the call may have been moved by hand since
     const one = (x) => String(x).replace(/\s+/g, ' ').trim(), cut = /…$/.test(t.label), label = one(t.label.replace(/…$/, '')); if (!label || t.label === 'Claude Code') return;
     const f = vscode.workspace.workspaceFolders, ws = f && f.length ? f[0].uri.fsPath.replace(/[^a-zA-Z0-9]/g, '-') : '';
-    const srv = require('./server.js'), named = (list) => list.filter((r) => typeof r.title === 'string' && (cut ? one(r.title).startsWith(label) : one(r.title) === label));
-    let rows = named(srv.boardRows()); if (!rows.length) rows = named(srv.sessionRows());   // a conversation of another day is no longer among the sessions of the moment: it is looked up in the whole list
+    const { port, error } = await ensureServer(); if (error) return; const named = (list) => list.filter((r) => typeof r.title === 'string' && (cut ? one(r.title).startsWith(label) : one(r.title) === label));
+    let rows = named(await getJson(port, '/api/board')); if (!rows.length) rows = named(await getJson(port, '/api/sessions'));   // a conversation of another day is no longer among the sessions of the moment: it is looked up in the whole list
     const r = rows.find((x) => ws && (x.proj === ws || x.proj.startsWith(ws + '-'))) || rows[0]; if (!r) return;
     for (const w of [panel, side]) if (w) w.webview.postMessage({ agentStandup: 'pin', id: r.id, proj: r.proj, tab: true });
   } catch (e) { logErr('follow tab', e); }
@@ -163,11 +190,13 @@ function noteUse(st = extCtx && extCtx.globalState, day = new Date().toISOString
     }, () => {});
   } catch (err) { logErr('rating', err); }
 }
+let codex0, vibe0;   // what the environment asked for, put back when the setting is on
+const serverEnv = () => ({ AGENT_STANDUP_CLAUDE: cfg().get('claudePath') || '', AGENT_STANDUP_CHARACTERS: cfg().get('charactersPath') || '', AGENT_STANDUP_CODEX: cfg().get('codex') === false ? 'off' : codex0, AGENT_STANDUP_VIBE: cfg().get('vibe') === false ? 'off' : vibe0 });   // undefined: not set
 function activate(ctx) {
   extCtx = ctx; pingActive(ctx);
   try { process.env.AGENT_STANDUP_HOST = `${vscode.env.appName || 'editor'} ${vscode.version || ''}`.trim(); } catch {}   // named in a problem report: VS Code, Cursor, VSCodium…
-  const codex0 = process.env.AGENT_STANDUP_CODEX, vibe0 = process.env.AGENT_STANDUP_VIBE;   // what the environment asked for, put back when the setting is on
-  const applyPath = () => { process.env.AGENT_STANDUP_CLAUDE = cfg().get('claudePath') || ''; process.env.AGENT_STANDUP_CHARACTERS = cfg().get('charactersPath') || ''; if (cfg().get('codex') === false) process.env.AGENT_STANDUP_CODEX = 'off'; else if (codex0 === undefined) delete process.env.AGENT_STANDUP_CODEX; else process.env.AGENT_STANDUP_CODEX = codex0; if (cfg().get('vibe') === false) process.env.AGENT_STANDUP_VIBE = 'off'; else if (vibe0 === undefined) delete process.env.AGENT_STANDUP_VIBE; else process.env.AGENT_STANDUP_VIBE = vibe0; };
+  codex0 = process.env.AGENT_STANDUP_CODEX; vibe0 = process.env.AGENT_STANDUP_VIBE;
+  const applyPath = () => { const e = serverEnv(); for (const [k, v] of Object.entries(e)) { if (v == null) delete process.env[k]; else process.env[k] = v; } if (started) started.then((s) => { if (s.kid && s.kid.connected) s.kid.send({ env: Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v === undefined ? null : v])) }); }).catch(() => {}); };   /* null: unset there too (JSON leaves out undefined) */   // here (the characters folder, a server in the extension host) and in the server's process
   applyPath(); ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration((ev) => { if (ev.affectsConfiguration('agentStandup.claudePath') || ev.affectsConfiguration('agentStandup.charactersPath') || ev.affectsConfiguration('agentStandup.codex') || ev.affectsConfiguration('agentStandup.vibe')) applyPath(); }));
   ctx.subscriptions.push(
     vscode.commands.registerCommand('agentStandup.open', openPanel),
@@ -181,11 +210,14 @@ function activate(ctx) {
   status.show(); ctx.subscriptions.push(status);
   // Glanceable state without opening anything: counts for this workspace, red when an agent may need you. Reads the session files directly (no server needed).
   let target = null;
-  const poll = () => {
+  let polling = false;
+  const poll = async () => {
+    if (polling) return; polling = true;
     try {
       if (!cfg().get('statusBar')) { if (status.text !== '$(device-camera-video) Agent Standup') { status.text = '$(device-camera-video) Agent Standup'; status.backgroundColor = undefined; status.tooltip = tt('Open the live Agent Standup call'); } return; }   // counts off: the plain button stays
       if (!vscode.window.state.focused) return;
-      const key = projKey(), rows = require('./server.js').boardRows().filter((r) => (key ? r.proj === key || r.dir === key : !r.tmp)), now = Date.now();
+      const { port, error } = await ensureServer(); if (error) return;
+      const key = projKey(), rows = (await getJson(port, '/api/board')).filter((r) => (key ? r.proj === key || r.dir === key : !r.tmp)), now = Date.now();
       const act = rows.filter((r) => r.state !== 'idle' || now - r.mtime < 15 * 60e3), cnt = (st) => act.filter((r) => r.state === st).length;
       const blocked = cnt('blocked'), working = cnt('working') + cnt('waiting'), turn = cnt('turn');
       const parts = []; if (blocked) parts.push('$(warning) ' + tt('{0} needs you', blocked)); if (working) parts.push('$(sync~spin) ' + tt('{0} working', working)); if (!blocked && !working && turn) parts.push('$(check) ' + tt('your turn'));
@@ -193,7 +225,7 @@ function activate(ctx) {
       status.backgroundColor = blocked ? new vscode.ThemeColor('statusBarItem.errorBackground') : undefined;
       const best = act.find((r) => r.state === 'blocked') || act.find((r) => r.state === 'working') || act.find((r) => r.state === 'waiting') || act[0] || null; target = best ? { id: best.id, proj: best.proj } : null;
       status.tooltip = act.length ? act.slice(0, 6).map((r) => `${{ blocked: '✋', working: '⚙', waiting: '🔗', turn: '✓', idle: '💤' }[r.state]} ${r.title}`).join('\n') + '\n\n' + tt('Click to open the call') : tt('Open the live Agent Standup call');
-    } catch (e) { logErr('status bar', e); }
+    } catch (e) { if (!/ECONNREFUSED|ECONNRESET|timeout/.test(String(e && e.message))) logErr('status bar', e); } finally { polling = false; }   // a server that is starting again is not an error
   };
   ctx.subscriptions.push(vscode.commands.registerCommand('agentStandup.openStatus', () => openPanel(target)));
   status.command = 'agentStandup.openStatus';
@@ -201,9 +233,9 @@ function activate(ctx) {
   try { ctx.subscriptions.push(vscode.window.tabGroups.onDidChangeTabs(followTab), vscode.window.tabGroups.onDidChangeTabGroups(followTab)); } catch {}
   const pollT = setInterval(poll, 4000); poll(); ctx.subscriptions.push({ dispose: () => clearInterval(pollT) });
   // If another VS Code window was serving the port and closes, take over so this window keeps working.
-  const watch = setInterval(async () => { try { if (!started) return; const s = await started; if (!s.error && !(s.server ? s.server.listening : await ping(s.port))) { started = null; ensureServer(); } } catch { started = null; } }, 5000);
-  ctx.subscriptions.push({ dispose: () => clearInterval(watch) });   // its own server is asked whether it still listens, not pinged: a ping missed while a large session is read would start a second server and leave the first one running
+  const watch = setInterval(async () => { try { if (!started) return; const s = await started; if (!s.error && !(s.kid ? s.kid.exitCode === null : s.server ? s.server.listening : await ping(s.port))) { started = null; ensureServer(); } } catch { started = null; } }, 5000);
+  ctx.subscriptions.push({ dispose: () => clearInterval(watch) });   // its own server is asked whether it still runs, not pinged: a ping missed while a large session is read would start a second server and leave the first one running
   if (cfg().get('autoOpen')) openPanel();
 }
-async function deactivate() { try { if (started) { const s = await started; s.server && s.server.close(); } require('./server.js').shutdown(); } catch {} }
-module.exports = { activate, deactivate, _pingActive: pingActive, _noteUse: noteUse, _ratePages: RATE_PAGES, _askUsage: askUsage, _pingWeek: pingWeek, _mondayOf: mondayOf, _net: net };
+async function deactivate() { stopping = true; try { if (started) { const s = await started; if (s.kid) s.kid.kill(); if (s.server) { s.server.close(); require('./server.js').shutdown(); } } } catch {} }
+module.exports = { activate, deactivate, _server: () => started, _pingActive: pingActive, _noteUse: noteUse, _ratePages: RATE_PAGES, _askUsage: askUsage, _pingWeek: pingWeek, _mondayOf: mondayOf, _net: net };

@@ -18,7 +18,7 @@ function standIn({ tabGroups = true } = {}) {
   const webview = (where) => ({ options: {}, html: '', onDidReceiveMessage: (f) => { v.relay = f; return { dispose() {} }; }, postMessage: (m) => { v.sent.push({ where, ...m }); return Promise.resolve(true); } });
   const settings = { port: 0, statusBar: true, onlyThisWorkspace: true, autoOpen: false, claudePath: '', charactersPath: '', shareUsage: false };
   v.vscode = {
-    workspace: { getConfiguration: () => ({ get: (k) => settings[k] }), workspaceFolders: [{ uri: { fsPath: '/work/app' } }], onDidChangeConfiguration: () => ({ dispose() {} }) },
+    workspace: { getConfiguration: () => ({ get: (k) => settings[k] }), workspaceFolders: [{ uri: { fsPath: '/work/app' } }], onDidChangeConfiguration: (f) => { v.conf = f; return { dispose() {} }; } },
     commands: { registerCommand: (n, f) => { v.cmds[n] = f; return { dispose() {} }; }, executeCommand: async () => {} },
     window: { state: { focused: true }, showErrorMessage: (m) => v.errors.push(m), showInformationMessage: () => {}, onDidChangeWindowState: () => ({ dispose() {} }),
       registerWebviewViewProvider: (id, p) => { v.provider = p; return { dispose() {} }; },
@@ -29,7 +29,8 @@ function standIn({ tabGroups = true } = {}) {
     Uri: { parse: (s) => ({ toString: () => s }), file: (s) => ({ fsPath: s, toString: () => 'file://' + s }) },
     ViewColumn: { Beside: -2 }, StatusBarAlignment: { Right: 2 }, ThemeColor: class { constructor(id) { this.id = id; } },
   };
-  v.go = (tab, column = 1) => { v.active = tab === undefined ? null : { viewColumn: column, activeTab: tab }; const n = v.sent.length; for (const f of v.tabs) f({}); return v.sent.slice(n); };   // you go to this tab: what the call is sent
+  v.settings = settings;
+  v.go = async (tab, column = 1) => { v.active = tab === undefined ? null : { viewColumn: column, activeTab: tab }; const n = v.sent.length; await Promise.all(v.tabs.map((f) => f({}))); return v.sent.slice(n); };   // the sessions are asked of the server, which runs in a process of its own   // you go to this tab: what the call is sent
   return v;
 }
 const claude = (label) => ({ label, input: { viewType: 'mainThreadWebview-claudeVSCodePanel' } });
@@ -40,6 +41,19 @@ async function activated(v, first) {   // a fresh copy of the extension for each
   try { ext.activate(ctx); await v.cmds['agentStandup.open'](first); await v.provider.resolveWebviewView({ webview: (v.side = { options: {}, html: '', onDidReceiveMessage: () => ({ dispose() {} }), postMessage: (m) => { v.sent.push({ where: 'side', ...m }); return Promise.resolve(true); } }), onDidDispose() {} }); } finally { console.log = log; Module._load = load; }
   return { ext, close: async () => { for (const s of ctx.subscriptions) try { s.dispose && s.dispose(); } catch {} await ext.deactivate(); } };
 }
+
+test('the server runs in a process of its own, not in the extension host every extension shares; a setting changed in the editor reaches it, and it ends with the extension', async () => {
+  const v = standIn(), x = await activated(v), srv = await x.ext._server();
+  try {
+    assert.ok(srv.kid && srv.kid.pid !== process.pid, 'a process of its own'); assert.equal(srv.server, undefined);
+    const get = (p) => new Promise((res) => require('http').get({ host: '127.0.0.1', port: srv.port, path: p }, (m) => { let b = ''; m.on('data', (d) => (b += d)); m.on('end', () => res(JSON.parse(b))); }));
+    const dir = path.join(tmp, 'my-characters'); v.settings.charactersPath = dir; v.conf({ affectsConfiguration: (k) => k === 'agentStandup.charactersPath' });
+    let seen = ''; for (let i = 0; i < 50 && seen !== dir; i++) { seen = (await get('/api/characters')).dir; if (seen !== dir) await new Promise((r) => setTimeout(r, 50)); }
+    assert.equal(seen, dir, 'the new folder, in the server');
+  } finally { await x.close(); }
+  for (let i = 0; i < 50 && srv.kid.exitCode === null && srv.kid.signalCode === null; i++) await new Promise((r) => setTimeout(r, 50));
+  assert.ok(srv.kid.exitCode !== null || srv.kid.signalCode !== null, 'ended with the extension');
+});
 
 test('the extension registers its commands, its panel and its sidebar view, also on a VS Code that has no tab groups', async () => {
   const v = standIn({ tabGroups: false }), x = await activated(v);
@@ -106,19 +120,19 @@ test('the call is sent to the Claude Code tab you go to: found by its title, who
   const v = standIn(), x = await activated(v), to = (id, proj) => ['panel', 'side'].map((where) => ({ where, agentStandup: 'pin', id, proj, tab: true }));
   try {
     assert.equal(v.tabs.length, 1); assert.equal(v.groups.length, 1);
-    assert.deepEqual(v.go({ label: 'server.js', input: { uri: {} } }), [], 'a file');
-    assert.deepEqual(v.go({ label: 'Agent Standup', input: { viewType: 'mainThreadWebview-agentStandup' } }), [], 'the call itself');
-    assert.deepEqual(v.go({ label: 'Welcome' }), [], 'a tab that says nothing of what it shows'); assert.deepEqual(v.go(undefined), [], 'no tab at all');
-    assert.deepEqual(v.go(claude('Claude Code')), [], 'a conversation that has no title yet');
-    assert.deepEqual(v.go(claude('No session has this title')), [], 'a title no recent session has');
-    assert.deepEqual(v.go(claude('Short title')), to('short', '-work-app'), 'a whole title: the panel and the sidebar view are both told');
-    assert.deepEqual(v.go(claude('Short title')), [], 'the same tab again: the call may have been moved by hand since');
-    assert.deepEqual(v.go(claude('Short')), [], 'a whole label is a whole title, not the start of one');
-    assert.deepEqual(v.go(claude('Fix the login page and i…')), to('long', '-work-app'), 'a title cut after 24 characters: this workspace before a more recent session elsewhere');
-    assert.deepEqual(v.go(claude('Two spaces and a tab in …')), to('spaced', '-work-app'), 'spaces are told apart by neither side');
-    assert.deepEqual(v.go(claude('Only in another folder')), to('away', '-other'), 'a session of another folder, when this workspace has none by that title');
-    assert.deepEqual(v.go(claude('Short title'), 2), to('short', '-work-app'), 'the same title in another column is another tab');
-    assert.equal(require('../server.js').boardRows().some((r) => r.id === 'lastweek'), false); assert.deepEqual(v.go(claude('A conversation of last w…')), to('lastweek', '-work-app'), 'a conversation of another day is no longer among the sessions of the moment: it is found in the whole list');
+    assert.deepEqual(await v.go({ label: 'server.js', input: { uri: {} } }), [], 'a file');
+    assert.deepEqual(await v.go({ label: 'Agent Standup', input: { viewType: 'mainThreadWebview-agentStandup' } }), [], 'the call itself');
+    assert.deepEqual(await v.go({ label: 'Welcome' }), [], 'a tab that says nothing of what it shows'); assert.deepEqual(await v.go(undefined), [], 'no tab at all');
+    assert.deepEqual(await v.go(claude('Claude Code')), [], 'a conversation that has no title yet');
+    assert.deepEqual(await v.go(claude('No session has this title')), [], 'a title no recent session has');
+    assert.deepEqual(await v.go(claude('Short title')), to('short', '-work-app'), 'a whole title: the panel and the sidebar view are both told');
+    assert.deepEqual(await v.go(claude('Short title')), [], 'the same tab again: the call may have been moved by hand since');
+    assert.deepEqual(await v.go(claude('Short')), [], 'a whole label is a whole title, not the start of one');
+    assert.deepEqual(await v.go(claude('Fix the login page and i…')), to('long', '-work-app'), 'a title cut after 24 characters: this workspace before a more recent session elsewhere');
+    assert.deepEqual(await v.go(claude('Two spaces and a tab in …')), to('spaced', '-work-app'), 'spaces are told apart by neither side');
+    assert.deepEqual(await v.go(claude('Only in another folder')), to('away', '-other'), 'a session of another folder, when this workspace has none by that title');
+    assert.deepEqual(await v.go(claude('Short title'), 2), to('short', '-work-app'), 'the same title in another column is another tab');
+    assert.equal(require('../server.js').boardRows().some((r) => r.id === 'lastweek'), false); assert.deepEqual(await v.go(claude('A conversation of last w…')), to('lastweek', '-work-app'), 'a conversation of another day is no longer among the sessions of the moment: it is found in the whole list');
     v.active = null; assert.doesNotThrow(() => v.groups[0]({}));
   } finally { await x.close(); }
 });

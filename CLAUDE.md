@@ -9,7 +9,7 @@ Agent Standup shows the Claude Code, Codex, Mistral Vibe and Cowork sessions of 
 | `codex.js`, `vibe.js` | Readers for Codex and Mistral Vibe. Each lists its sessions under one made-up project (`SOURCES` in server.js). Cowork is read like Claude Code, from the desktop app's folder (`coworkHomes`). |
 | `kokoro.js`, `kokoro-worker.js` | Natural voices (Kokoro TTS), installed on demand. |
 | `public/index.html` | The whole page: one inline `<script>`, about 3000 lines. `public/locales/*.json` holds the 10 languages of the page. |
-| `extension.js` | The VS Code extension: starts the server, webview, status bar, commands, tab following. `l10n/` and `package.nls.*.json` hold its texts. |
+| `extension.js` | The VS Code extension. It forks `server.js` into a process of its own (the editor's runtime with `ELECTRON_RUN_AS_NODE`), and falls back to running it in the extension host if that fails. It also handles the webview, the status bar (via `/api/board`), commands and tab following. `l10n/` and `package.nls.*.json` hold its texts. |
 | `bin/agent-standup.js` | The CLI (`status`, `statusline`, `--open`). `scripts/build-cli.js` builds it into `dist-cli/`. |
 | `desktop/` | Electron app (`main.js`). `scripts/build-desktop.js` builds it. |
 | `plugin/` | The Claude Code plugin (skills `open`, `status`). `scripts/sync-plugin.js` keeps its version in step. |
