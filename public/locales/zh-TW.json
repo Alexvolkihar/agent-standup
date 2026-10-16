@@ -334,5 +334,13 @@
  "⭐ Star it": "⭐ 加星",
  "Enjoying Agent Standup? A star on GitHub helps other people find it.": "喜歡 Agent Standup 嗎？在 GitHub 上加顆星能幫助更多人發現它。",
  "Later": "以後再說",
- "No thanks": "不用了"
+ "No thanks": "不用了",
+ "Model": "模型",
+ "Repeated work": "重複的工作",
+ "repeated work": "重複的工作",
+ "read again: {0}": "再次讀取：{0}",
+ "already read by {0}: {1}": "{0} 已讀過：{1}",
+ "same search again: {0}": "再次進行相同的搜尋：{0}",
+ "same search as {0}: {1}": "與 {0} 相同的搜尋：{1}",
+ "reran a failing command: {0}": "重新執行失敗的指令：{0}"
 }

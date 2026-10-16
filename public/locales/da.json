@@ -333,5 +333,13 @@
  "⭐ Star it": "⭐ Giv en stjerne",
  "Enjoying Agent Standup? A star on GitHub helps other people find it.": "Kan du lide Agent Standup? En stjerne på GitHub hjælper andre med at finde det.",
  "Later": "Senere",
- "No thanks": "Nej tak"
+ "No thanks": "Nej tak",
+ "Model": "Model",
+ "Repeated work": "Gentaget arbejde",
+ "repeated work": "gentaget arbejde",
+ "read again: {0}": "læst igen: {0}",
+ "already read by {0}: {1}": "allerede læst af {0}: {1}",
+ "same search again: {0}": "samme søgning igen: {0}",
+ "same search as {0}: {1}": "samme søgning som {0}: {1}",
+ "reran a failing command: {0}": "kørte en fejlet kommando igen: {0}"
 }

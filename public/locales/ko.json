@@ -334,5 +334,13 @@
  "⭐ Star it": "⭐ 별 주기",
  "Enjoying Agent Standup? A star on GitHub helps other people find it.": "Agent Standup이 마음에 드시나요? GitHub에 별을 남겨 주시면 다른 분들이 찾는 데 도움이 됩니다.",
  "Later": "나중에",
- "No thanks": "괜찮습니다"
+ "No thanks": "괜찮습니다",
+ "Model": "모델",
+ "Repeated work": "반복된 작업",
+ "repeated work": "반복된 작업",
+ "read again: {0}": "다시 읽음: {0}",
+ "already read by {0}: {1}": "{0}이(가) 이미 읽음: {1}",
+ "same search again: {0}": "같은 검색을 다시: {0}",
+ "same search as {0}: {1}": "{0}와(과) 같은 검색: {1}",
+ "reran a failing command: {0}": "실패한 명령을 다시 실행: {0}"
 }

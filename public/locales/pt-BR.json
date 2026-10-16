@@ -334,5 +334,13 @@
  "⭐ Star it": "⭐ Dar uma estrela",
  "Enjoying Agent Standup? A star on GitHub helps other people find it.": "Está gostando do Agent Standup? Uma estrela no GitHub ajuda outras pessoas a encontrá-lo.",
  "Later": "Mais tarde",
- "No thanks": "Não, obrigado"
+ "No thanks": "Não, obrigado",
+ "Model": "Modelo",
+ "Repeated work": "Trabalho repetido",
+ "repeated work": "trabalho repetido",
+ "read again: {0}": "lido de novo: {0}",
+ "already read by {0}: {1}": "já lido por {0}: {1}",
+ "same search again: {0}": "mesma busca de novo: {0}",
+ "same search as {0}: {1}": "mesma busca que {0}: {1}",
+ "reran a failing command: {0}": "repetiu um comando que falhou: {0}"
 }

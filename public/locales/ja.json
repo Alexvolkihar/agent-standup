@@ -334,5 +334,13 @@
  "⭐ Star it": "⭐ スターを付ける",
  "Enjoying Agent Standup? A star on GitHub helps other people find it.": "Agent Standup を気に入っていただけましたか？GitHub でスターを付けていただけると、ほかの人が見つけやすくなります。",
  "Later": "後で",
- "No thanks": "結構です"
+ "No thanks": "結構です",
+ "Model": "モデル",
+ "Repeated work": "重複した作業",
+ "repeated work": "重複した作業",
+ "read again: {0}": "再読み込み: {0}",
+ "already read by {0}: {1}": "{0} が既に読んだファイル: {1}",
+ "same search again: {0}": "同じ検索をもう一度: {0}",
+ "same search as {0}: {1}": "{0} と同じ検索: {1}",
+ "reran a failing command: {0}": "失敗したコマンドを再実行: {0}"
 }

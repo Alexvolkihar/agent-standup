@@ -329,5 +329,13 @@
  "Your purchase code, to install the pack on another computer:": "Your purchase code, to install the pack on another computer:",
  "Your settings moved: the everyday ones are here, the rest in “All settings”.": "Your settings moved: the everyday ones are here, the rest in “All settings”.",
  "your turn": "your turn",
- "Yours": "Yours"
+ "Yours": "Yours",
+ "Model": "Model",
+ "Repeated work": "Repeated work",
+ "repeated work": "repeated work",
+ "read again: {0}": "read again: {0}",
+ "already read by {0}: {1}": "already read by {0}: {1}",
+ "same search again: {0}": "same search again: {0}",
+ "same search as {0}: {1}": "same search as {0}: {1}",
+ "reran a failing command: {0}": "reran a failing command: {0}"
 }
