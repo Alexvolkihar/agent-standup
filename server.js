@@ -563,10 +563,19 @@ function sessionMtime(proj, id) {
   let m = sx ? r.mtime : mtimeOf(path.join(projDir(proj, id), id + '.jsonl')); if (!m) return 0; const subs = subFilesOf(proj, id);
   for (const x of subs) m = Math.max(m, mtimeOf(x.file)); for (const d of subs.dirs) m = Math.max(m, mtimeOf(d)); return m;   // the folders too: a new file in them is activity, as when every file around the transcripts was looked at
 }
+// A project of Claude Code is named after its folder with every character other than a letter or digit made a dash: -Users-a-app-old may be app/old (inside app) or app-old (beside it).
+// Which one is told by the folder its sessions were started in (the cwd of its first records), read once per project. Not found (an empty project): counted as before, by its name.
+const projCwds = new Map(), dirKey = (d) => String(d || '').replace(/[^a-zA-Z0-9]/g, '-');
+function projCwd(proj) {
+  if (projCwds.has(proj)) return projCwds.get(proj);
+  let cwd = ''; for (const { id } of transcripts(proj).slice(0, 3)) { try { const m = /"cwd":"((?:[^"\\]|\\.)*)"/.exec(readHead(path.join(projDir(proj, id), id + '.jsonl'), 64 * 1024)); if (m) { cwd = JSON.parse('"' + m[1] + '"'); break; } } catch {} }
+  if (cwd && dirKey(cwd) === proj) projCwds.set(proj, cwd); return cwd && dirKey(cwd) === proj ? cwd : '';   // kept once it is sure: the folder whose name is the project's
+}
+const inFolder = (proj, key) => { if (proj === key) return true; if (!proj.startsWith(key + '-')) return false; const cwd = projCwd(proj); if (!cwd) return true; for (let d = cwd; d;) { if (dirKey(d) === key) return true; const up = path.dirname(d); if (up === d) return false; d = up; } return false; };
 function currentSession(projFilter, pick, stick, anyTmp) {   // pick: { proj, id, since } the session you went to by hand, and the latest order there was then · stick: the session the call is in · anyTmp: sessions in the temporary folder count too (see tmpKey)
   const safe = (x) => typeof x === 'string' && /^[\w.\-]+$/.test(x) && x !== '..', now = Date.now();
   const there = (c) => !!c && safe(c.id) && safe(c.proj) && (sourceOf(c.proj) ? !!guard(() => sourceOf(c.proj).fileOf(c.id), null) : fs.existsSync(path.join(projDir(c.proj, c.id), c.id + '.jsonl')));
-  const inScope = (c) => (!projFilter ? anyTmp || !tmpSession(c.proj, c.id) : c.proj === projFilter || c.proj.startsWith(projFilter + '-') || !!(sourceOf(c.proj) && guard(() => sourceOf(c.proj).inProject(c.id, projFilter), false)));   // a Codex or Vibe session counts for a project when it was started in that folder
+  const inScope = (c) => (!projFilter ? anyTmp || !tmpSession(c.proj, c.id) : inFolder(c.proj, projFilter) || !!(sourceOf(c.proj) && guard(() => sourceOf(c.proj).inProject(c.id, projFilter), false)));   // a Codex or Vibe session counts for a project when it was started in that folder
   const same = (a, b) => !!a && !!b && a.proj === b.proj && a.id === b.id, all = boardRows(), rows = all.filter(inScope), mine = there(pick) ? all.find((r) => same(r, pick)) : null;
   const asked = Math.max(0, (mine && mine.asked) || 0, ...rows.map((r) => r.asked || 0));   // the latest order, in the folder the call follows or in the session you went to
   const moved = pick && pick.pin ? Math.max(0, ...rows.filter((r) => !same(r, pick)).map((r) => r.asked || 0)) : asked;   // pick.pin: a call pinned by a click on its tab (📌) is left for an order typed in another session only; what you type in it keeps it there
@@ -579,7 +588,7 @@ function currentSession(projFilter, pick, stick, anyTmp) {   // pick: { proj, id
   const consider = (proj, id, m) => { if (!best || m > best.mtime) best = { proj, id, mtime: m }; };
   for (const m of SOURCES) for (const r of guard(() => m.sessions(), [])) if (inScope({ proj: m.PROJ, id: r.id })) consider(m.PROJ, r.id, r.mtime);
   for (const proj of projects()) {
-    if (projFilter ? proj !== projFilter && !proj.startsWith(projFilter + '-') : !anyTmp && tmpKey(proj)) continue;   // the folder itself, or a folder inside it (a Cowork session is in no folder of yours: it counts when the call looks everywhere, or at Cowork)
+    if (projFilter ? !inFolder(proj, projFilter) : !anyTmp && tmpKey(proj)) continue;   // the folder itself, or a folder inside it (a Cowork session is in no folder of yours: it counts when the call looks everywhere, or at Cowork)
     for (const { id } of transcripts(proj)) { const m = sessionMtime(proj, id); if (m) consider(proj, id, m); }   // 0: a link to a transcript that is gone
   }
   if (!best && projFilter) return { ...currentSession('', null, stick), wide: 1 };

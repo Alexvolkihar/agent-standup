@@ -30,6 +30,9 @@ const OLD = path.join(PROJECTS, '-work-old'), oid = (c) => `${c.repeat(8)}-${c.r
 oput(oid('a'), [user('Deploy', 10800e3), call('Bash', { command: './deploy.sh' }, 7200e3)], 7200e3); fs.writeFileSync(path.join(SESSIONS, '111.json'), JSON.stringify({ pid: process.pid, sessionId: oid('a'), status: 'waiting', waitingFor: 'permission prompt', statusUpdatedAt: now - 7195e3 }));   // a menu left open two hours ago
 oput(oid('b'), [user('Release notes', 360e3), say('Here they are.', 240e3)], 240e3);   // the session you were in, done four minutes ago
 
+const folder = (key, cwd, c, ago) => { const d = path.join(PROJECTS, key); fs.mkdirSync(d, { recursive: true }); const f = path.join(d, oid(c) + '.jsonl'); fs.writeFileSync(f, [{ ...user('Hello', ago + 60e3), cwd }, { ...say('Done.', ago), cwd }].map((r) => JSON.stringify(r)).join('\n') + '\n'); const t = new Date(now - ago); fs.utimesSync(f, t, t); };
+folder('-work-app', '/work/app', 'c', 900e3); folder('-work-app-sub', '/work/app/sub', 'd', 600e3); folder('-work-app-old', '/work/app-old', 'e', 300e3);   // the folder, one inside it, and the newest beside it
+
 test('a Bash approval needs you, with the command, since the menu opened, apart from the time it worked', () => {
   const core = require('../server.js'), rows = core.boardRows(), row = (n) => rows.find((r) => r.id === id(n));
   assert.equal(row(MENU).state, 'blocked'); assert.equal(row(MENU).tool, 'Bash'); assert.equal(row(MENU).ask, 'Bash(npm run build --prod)');   // on one line, the way Claude Code shows it
@@ -58,5 +61,12 @@ test('a menu left open for more than half an hour still needs you on the board, 
   const core = require('../server.js'), rows = core.boardRows();
   assert.equal(rows.find((r) => r.id === oid('a')).state, 'blocked');
   assert.equal(core.currentSession('-work-old', null, { proj: '-work-old', id: oid('b') }).id, oid('b'));   // it used to move the call to the menu of two hours ago
+  core.shutdown();
+});
+
+test('the call of a folder takes the sessions of the folder and of the folders inside it, never those of a folder beside it whose name starts the same', () => {
+  const core = require('../server.js');
+  assert.equal(core.currentSession('-work-app', null, null).id, oid('d'), 'app/sub, not app-old, which is newer');   // -work-app-old used to count as a folder inside -work-app
+  assert.equal(core.currentSession('-work-app-old', null, null).id, oid('e'));
   core.shutdown();
 });
