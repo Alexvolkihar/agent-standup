@@ -2,7 +2,7 @@
 
 # Agent Standup
 
-**See who is waiting on whom, and who is blocked — across all your Claude Code, Codex and Mistral Vibe sessions — at zero token cost.** Agent Standup turns the session files Claude Code, Codex and Mistral Vibe already write into a live team call (and a board of every session): it only reads local files and never calls Claude unless you turn on French translation or the jokes.
+**See which of your agents is working, stuck, waiting on another one, or burning tokens — across all your Claude Code, Codex and Mistral Vibe sessions, at zero token cost.** Agent Standup turns the session files Claude Code, Codex and Mistral Vibe already write into a live team call (and a board of every session): it only reads local files and never calls Claude unless you turn on French translation or the jokes.
 
 **Your Claude Code, Codex or Mistral Vibe session as a live team call.** The lead gives orders, sub-agents join the call, work at their desks, share their screen and report back — with voices, expressions and a view of the real work as it happens.
 
@@ -26,13 +26,13 @@ _A fictional team fixing a slow login page — the built-in demo (⚙ → Source
 
 ## Halloween pack (optional)
 
-<a href="https://agent-standup.com/shop/"><img src="https://agent-standup.com/thanks/cast.jpg" width="640" alt="The Halloween pack: eight characters drawn by hand, each in its own room"></a>
+<a href="https://agent-standup.com/shop/?ref=readme"><img src="https://agent-standup.com/thanks/cast.jpg" width="640" alt="The Halloween pack: eight characters drawn by hand, each in its own room"></a>
 
 Eight characters drawn by hand by [Fabien Coupas](https://www.instagram.com/fabien_coupas/), each in its own room: a pumpkin leads the call, you are a vampire, and a ghost, a cat, a bat, a wolf, a witch and a crowd of skeletons do the work.
 
 **It is entirely optional.** Agent Standup is and stays free and MIT licensed, and nothing in it is locked behind the pack: every feature and the default characters stay as they are, and the vampire is free for everyone. Buying the pack (2 €, or more if you like) is simply a way to support the artist who drew it and the developer who makes the app; the money is shared between them.
 
-[See the pack](https://agent-standup.com/shop/), or in the app: ⚙ → Characters → Halloween pack. The pack's pictures are not part of the open-source code: they remain the artist's work.
+[See the pack](https://agent-standup.com/shop/?ref=readme), or in the app: ⚙ → Characters → Halloween pack. The pack's pictures are not part of the open-source code: they remain the artist's work.
 
 [![Buy me a coffee](https://img.shields.io/badge/-Buy%20the%20(replaced)%20dev%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/bored_dev_and_his_robots)
 
