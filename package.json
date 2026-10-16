@@ -172,5 +172,8 @@
   "bugs": {
     "url": "https://github.com/Atoll92/agent-standup/issues"
   },
+  "sponsor": {
+    "url": "https://www.buymeacoffee.com/bored_dev_and_his_robots"
+  },
   "l10n": "./l10n"
 }
