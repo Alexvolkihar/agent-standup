@@ -577,7 +577,9 @@ function currentSession(projFilter, pick, stick, anyTmp) {   // pick: { proj, id
   const safe = (x) => typeof x === 'string' && /^[\w.\-]+$/.test(x) && x !== '..', now = Date.now();
   const there = (c) => !!c && safe(c.id) && safe(c.proj) && (sourceOf(c.proj) ? !!guard(() => sourceOf(c.proj).fileOf(c.id), null) : fs.existsSync(path.join(projDir(c.proj, c.id), c.id + '.jsonl')));
   const inScope = (c) => (!projFilter ? anyTmp || !tmpSession(c.proj, c.id) : inFolder(c.proj, projFilter) || !!(sourceOf(c.proj) && guard(() => sourceOf(c.proj).inProject(c.id, projFilter), false)));   // a Codex or Vibe session counts for a project when it was started in that folder
-  const same = (a, b) => !!a && !!b && a.proj === b.proj && a.id === b.id, all = boardRows(), rows = all.filter(inScope), mine = there(pick) ? all.find((r) => same(r, pick)) : null;
+  const same = (a, b) => !!a && !!b && a.proj === b.proj && a.id === b.id; let all = boardRows();
+  if (there(pick) && !all.some((r) => same(r, pick)) && sessionMtime(pick.proj, pick.id) > boardMemo.at - 1500) { boardMemo.at = 0; all = boardRows(); }   // the session you went to was written after the list shared for 1.2 s was made: without it, its order read as none, and the next answer dropped your pick
+  const rows = all.filter(inScope), mine = there(pick) ? all.find((r) => same(r, pick)) : null;
   const asked = Math.max(0, (mine && mine.asked) || 0, ...rows.map((r) => r.asked || 0));   // the latest order, in the folder the call follows or in the session you went to
   const moved = pick && pick.pin ? Math.max(0, ...rows.filter((r) => !same(r, pick)).map((r) => r.asked || 0)) : asked;   // pick.pin: a call pinned by a click on its tab (📌) is left for an order typed in another session only; what you type in it keeps it there
   if (there(pick) && !(moved > pick.since)) return { proj: pick.proj, id: pick.id, mtime: now, asked, pick: 1 };   // no "since" on the first question after a pick: the answer gives it (asked), and the page sends it back from then on

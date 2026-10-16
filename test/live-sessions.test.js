@@ -7,7 +7,7 @@ let nId = 1e6;   // the ids of the messages written by hand below, apart from th
 test('live call: sessions, tabs and replays', { skip: missing || false, timeout: 600000 }, async (t) => {
   await start(t);
 
-  // first of its file on purpose: right after another call, the list of sessions the server shares for 1.2 s can be older than this session; the first answer after goSession() then says no order yet (asked 0), the next one says there was one since, and the call is no longer kept in 's': the click this case waits for never comes. A race of the app, which this case is not about
+  // this case found a race of the app: right after another call, the list of sessions the server shares for 1.2 s could be older than this session, the first answer after goSession() said no order yet (asked 0), and the next one dropped the pick. currentSession now makes the list again for a session written after it (8 runs out of 8 since, 2 failures in 8 before)
   await t.test('a click that sends the call elsewhere is not undone by an answer that was already on its way', async () => {
     const s = session(), old = path.join(tmp, 'projects', s.proj, 'old.jsonl'), ago = Date.now() - 45 * 60000; s.user('hello'); s.say('Ready.', { end: true });
     fs.writeFileSync(old, [{ type: 'user', message: { role: 'user', content: 'an older conversation' } }, { type: 'assistant', message: { id: 'o1', role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text: 'Done.' }] } }].map((r) => JSON.stringify({ timestamp: new Date(ago).toISOString(), ...r })).join('\n') + '\n'); fs.utimesSync(old, ago / 1000, ago / 1000);

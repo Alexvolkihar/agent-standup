@@ -16,13 +16,13 @@ Agent Standup shows the Claude Code, Codex, Mistral Vibe and Cowork sessions of 
 | `api/` | Vercel functions of agent-standup.com: Stripe checkout, pack download, sales page. They have no dependencies. |
 | `website/` | agent-standup.com (Vercel; a push to main deploys it). `npm run website` builds `website/dist`. |
 | `landing/` → `docs/` | The GitHub Pages landing (`npm run landing`). Do not redesign it without asking. |
-| `test/` | `node:test` suites. `live.test.js` drives the real page in Chrome through puppeteer-core. |
+| `test/` | `node:test` suites. `live-*.test.js` drive the real page in Chrome through puppeteer-core, each with its own server and browser; their shared setup is `live-helpers.js`, which must be required before `server.js`. |
 | `examples/` | Character packs. `cats/` and `vampire/` ship with the app. |
 
 ## Run and test
 - `node server.js` → http://localhost:4747 (`PORT=…`). `?live=0` opens the replay picker, `?proj=<dir>` limits the call to one project.
 - To run against chosen data, set `AGENT_STANDUP_PROJECTS` (sessions folder), `AGENT_STANDUP_PREFS` (settings file), `AGENT_STANDUP_CHARACTERS`, `AGENT_STANDUP_PACKS`, `AGENT_STANDUP_KOKORO_DIR`, `AGENT_STANDUP_COWORK=off`, `AGENT_STANDUP_CODEX=0`, `AGENT_STANDUP_VIBE=0`, `AGENT_STANDUP_CLAUDE` (a stand-in `claude` for translation) and `AGENT_STANDUP_STORE` (the shop; `scripts/shop-dev.js` is a pretend one). Never point a test server at the user's real prefs.
-- `npm test` takes about 8 to 9 minutes, mostly browser tests. While iterating, run one file: `node --test test/server.test.js`.
+- `npm test` takes about 2.5 minutes: the four browser files run side by side. While iterating, run one file: `node --test test/server.test.js`.
 - `npm run i18n` checks that every language has every key, and rebuilds the website and landing locale files.
 - The app leaves out sessions in temporary folders. Put throwaway sessions and test copies under `reports/` (git-ignored), not `/tmp`.
 
