@@ -308,5 +308,22 @@
  "2 € minimum: you can pay more on the payment page if you like.": "Mindst 2 €: du kan betale mere på betalingssiden, hvis du vil.",
  "worked": "arbejdede",
  "waiting on you for": "venter på dig i",
- "working for": "arbejder i"
+ "working for": "arbejder i",
+ "(one or more)": "(et eller flere)",
+ "(pick one)": "(vælg ét)",
+ "Answer it in Claude Code": "Svar i Claude Code",
+ "asks permission to use": "beder om lov til at bruge",
+ "asks to edit this file": "beder om at redigere denne fil",
+ "asks to open this page": "beder om at åbne denne side",
+ "asks to run this command": "beder om at køre denne kommando",
+ "has a question for you": "har et spørgsmål til dig",
+ "has several questions for you": "har flere spørgsmål til dig",
+ "Hide until the next question": "Skjul indtil næste spørgsmål",
+ "may be waiting for your go-ahead on this command": "venter måske på dit OK til denne kommando",
+ "may be waiting for your go-ahead to edit this file": "venter måske på dit OK til at redigere denne fil",
+ "proposes this plan": "foreslår denne plan",
+ "the numbers match the menu": "numrene svarer til menuen",
+ "What the session is waiting for from you": "Hvad sessionen venter på fra dig",
+ "is waiting for your answer": "venter på dit svar",
+ "A menu is open in Claude Code.": "En menu er åben i Claude Code."
 }

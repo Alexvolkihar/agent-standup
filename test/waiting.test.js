@@ -12,12 +12,17 @@ const file = (n) => path.join(PROJECTS, '-work-shop', id(n) + '.jsonl'), put = (
 const status = (k, n, pid, st, ago) => fs.writeFileSync(path.join(SESSIONS, k + '.json'), JSON.stringify({ pid, sessionId: id(n), status: st, statusUpdatedAt: now - ago, updatedAt: now - ago }));
 const gone = spawnSync(process.execPath, ['-e', '0']).pid;   // a process that has ended: its file is left behind, as after a crash
 
-const MENU = 1, STALE = 2, BUSY = 3, LONG = 4, TURN = 5, GUESS = 6;
-put(MENU, [user('Build it', 300e3), call('Bash', { command: 'npm run build\n  --prod' }, 40e3)], 40e3); status(101, MENU, process.pid, 'waiting', 35e3);
+const MENU = 1, STALE = 2, BUSY = 3, LONG = 4, TURN = 5, GUESS = 6, ASK = 7, PLAN = 8, OTHER = 9;
+const PLANS = path.join(tmp, '.claude', 'plans'), PF = path.join(PLANS, 'tidy-plan.md'); fs.mkdirSync(PLANS, { recursive: true }); fs.writeFileSync(PF, '# Plan\n1. Check\n2. Write hello.txt\n');
+put(MENU, [user('Build it', 300e3), call('Bash', { command: 'npm run build\n  --prod', description: 'Build for production' }, 40e3)], 40e3); status(101, MENU, process.pid, 'waiting', 35e3);
 put(STALE, [user('Migrate', 90e3), call('Bash', { command: 'npm run migrate' }, 20e3)], 20e3); status(102, STALE, gone, 'waiting', 20e3);
 put(BUSY, [user('Test', 90e3), call('Bash', { command: 'npm test' }, 20e3)], 20e3); status(103, BUSY, process.pid, 'busy', 20e3);
 put(LONG, [user('Deploy', 3000e3), call('Bash', { command: './deploy.sh' }, 2700e3)], 2700e3); status(104, LONG, process.pid, 'waiting', 2690e3);
 put(TURN, [user('Release notes', 900e3), say('Here are the notes.', 600e3)], 600e3);
+put(ASK, [user('Plan the menu', 60e3), call('AskUserQuestion', { questions: [{ question: 'Which fruits?', header: 'Fruit', multiSelect: true, options: [{ label: 'Apple', description: 'Crisp' }, { label: 'Banana', description: '' }] }, { question: 'Which drink?', options: [{ label: 'Tea' }, { label: 'Coffee' }] }] }, 30e3)], 30e3); status(107, ASK, process.pid, 'waiting', 28e3);
+const done = (name, ago) => ({ type: 'user', timestamp: iso(ago), message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_' + name + ago, content: 'ok' }] } });
+put(PLAN, [user('Plan it', 90e3), call('Write', { file_path: PF, content: 'old' }, 60e3), done('Write', 60e3)], 50e3); status(108, PLAN, process.pid, 'waiting', 45e3);   // the plan menu is open, its call not written yet
+put(OTHER, [user('Go on', 90e3), say('Ok.', 80e3)], 80e3); status(109, OTHER, process.pid, 'waiting', 30e3);   // a menu the transcript does not record
 put(GUESS, [user('Fix the header', 100e3), call('Edit', { file_path: '/work/shop/src/header.js', old_string: 'a', new_string: 'b' }, 20e3)], 20e3);
 
 test('a Bash approval needs you, with the command, since the menu opened, apart from the time it worked', () => {
@@ -29,5 +34,16 @@ test('a Bash approval needs you, with the command, since the menu opened, apart 
   assert.equal(row(BUSY).state, 'working'); assert.equal(row(BUSY).since, undefined);   // a command that runs is not a question
   assert.equal(row(TURN).state, 'turn'); assert.equal(row(TURN).since, now - 600e3); assert.equal(row(TURN).ran, 300e3);
   assert.equal(row(GUESS).state, 'blocked'); assert.equal(row(GUESS).ask, 'Edit(header.js)'); assert.equal(row(GUESS).since, now - 20e3);   // no status file: still the guess from a file edit left pending
+  core.shutdown();
+});
+
+test('a session that waits on a menu says what the menu shows, word for word: the questions with their options in order, the command, the file', () => {
+  const core = require('../server.js'), rows = core.boardRows(), row = (n) => rows.find((r) => r.id === id(n));
+  assert.deepEqual(row(MENU).menu, { id: 'toolu_Bash40000', tool: 'Bash', kind: 'command', cmd: 'npm run build\n  --prod', about: 'Build for production', sure: 1 });   // the command as written, its lines kept
+  assert.deepEqual(row(ASK).menu, { id: 'toolu_AskUserQuestion30000', tool: 'AskUserQuestion', kind: 'question', sure: 1, questions: [{ q: 'Which fruits?', multi: true, options: [{ label: 'Apple', about: 'Crisp' }, { label: 'Banana', about: '' }] }, { q: 'Which drink?', multi: false, options: [{ label: 'Tea', about: '' }, { label: 'Coffee', about: '' }] }] });
+  assert.deepEqual(row(GUESS).menu, { id: 'toolu_Edit20000', tool: 'Edit', kind: 'edit', file: '/work/shop/src/header.js' });   // no status file: a guess, not said as sure
+  assert.equal(row(BUSY).menu, undefined); assert.equal(row(TURN).menu, undefined);   // nothing waits on you there
+  assert.equal(row(PLAN).state, 'blocked'); assert.deepEqual(row(PLAN).menu, { id: 'w' + (now - 45e3), tool: 'ExitPlanMode', kind: 'plan', text: '# Plan\n1. Check\n2. Write hello.txt', sure: 1 });   // read from the plan file as it is now, not as first written
+  assert.equal(row(OTHER).state, 'blocked'); assert.deepEqual(row(OTHER).menu, { id: 'w' + (now - 30e3), tool: '', kind: 'menu', sure: 1 });
   core.shutdown();
 });

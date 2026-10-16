@@ -309,5 +309,22 @@
  "2 € minimum: you can pay more on the payment page if you like.": "最低 2 歐元：如果願意，可以在付款頁面多付一些。",
  "worked": "工作了",
  "waiting on you for": "已等你",
- "working for": "已工作"
+ "working for": "已工作",
+ "(one or more)": "（可複選）",
+ "(pick one)": "（單選）",
+ "Answer it in Claude Code": "請在 Claude Code 中回答",
+ "asks permission to use": "請求使用",
+ "asks to edit this file": "請求編輯此檔案",
+ "asks to open this page": "請求開啟此頁面",
+ "asks to run this command": "請求執行此命令",
+ "has a question for you": "有一個問題要問你",
+ "has several questions for you": "有幾個問題要問你",
+ "Hide until the next question": "隱藏到下一個問題",
+ "may be waiting for your go-ahead on this command": "可能在等你核准這條命令",
+ "may be waiting for your go-ahead to edit this file": "可能在等你核准編輯此檔案",
+ "proposes this plan": "提出了這個計畫",
+ "the numbers match the menu": "編號與選單一致",
+ "What the session is waiting for from you": "工作階段在等你做什麼",
+ "is waiting for your answer": "在等你的回答",
+ "A menu is open in Claude Code.": "Claude Code 中有一個開啟的選單。"
 }

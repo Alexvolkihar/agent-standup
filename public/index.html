@@ -45,6 +45,12 @@
   .stab.on { flex-shrink:0; max-width:min(320px,62vw); background:var(--panel2); color:var(--text); font-weight:600; border-color:var(--accent) } .stab.turn:not(.on) { color:var(--accent) } .stab.blocked:not(.on) { color:#fff; background:#c0392b; border-color:#ff8a80; font-weight:600 } .stab.all { flex:none; min-width:0; padding:2px 8px }   /* a narrow panel: the tabs keep a readable width and the row scrolls */
   #visit { position:absolute; right:12px; bottom:14px; z-index:6; display:none; align-items:flex-end; gap:8px; max-width:min(380px,calc(100% - 24px)); cursor:pointer } #visit.on { display:flex; animation:visit .45s cubic-bezier(.2,1.3,.4,1) } @keyframes visit { from { transform:translateX(120%) } } body.react #visit { bottom:140px }
   #visit .vsay { position:relative; min-width:0; background:#fff; color:#1b1d27; border-radius:11px 11px 2px 11px; padding:7px 10px; font-size:12.5px; line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,.4); overflow-wrap:anywhere } #visit .vsay small { display:block; color:#5a6072; font-size:11px; margin-bottom:2px } #visit .vgo { display:inline-block; margin-top:5px; padding:1px 10px; border-radius:99px; background:var(--accent); color:#0b1020; font-weight:600; font-size:11.5px }
+  #askc { position:absolute; left:12px; bottom:14px; z-index:6; display:none; align-items:flex-end; gap:8px; max-width:min(460px,calc(100% - 24px)) } #askc.on { display:flex; animation:askc .45s cubic-bezier(.2,1.3,.4,1) } @keyframes askc { from { transform:translateX(-120%) } } @media (prefers-reduced-motion:reduce) { #askc.on { animation:none } } body.react #askc { bottom:140px } #center:has(#visit.on) #askc { bottom:118px } #center:has(#askc.on) #pcap { display:none }   /* the menu the session waits on, in the lead's words, until it is answered */
+  #askc .awho { flex:none; width:72px; height:54px; border-radius:12px; overflow:hidden; border:2px solid #ff5252; box-shadow:0 4px 14px rgba(0,0,0,.45); background:#222 } #askc .awho svg { width:100%; height:100%; display:block }
+  #askc .asay { position:relative; min-width:0; max-height:min(52vh,420px); overflow:auto; background:#fff; color:#1b1d27; border-radius:11px 11px 11px 2px; padding:8px 30px 9px 12px; font-size:13px; line-height:1.4; box-shadow:0 4px 14px rgba(0,0,0,.4); overflow-wrap:anywhere } #askc small { display:block; color:#5a6072; font-size:11px; margin-bottom:3px } #askc .ak-t { color:#c62828; font-weight:600 }
+  #askc .aq { font-weight:600; margin:3px 0 3px } #askc .ahow { color:#5a6072; font-weight:400; font-size:11.5px } #askc ol { margin:0 0 4px; padding-left:22px } #askc li { margin:1px 0 } #askc li span { color:#5a6072; font-size:11.5px } #askc .aab { margin:2px 0 }
+  #askc pre { margin:4px 0; padding:6px 8px; background:#f1f2f6; border-radius:6px; font:12px/1.4 ui-monospace,Menlo,Consolas,monospace; white-space:pre-wrap; max-height:180px; overflow:auto } #askc .afoot { margin-top:6px; padding-top:5px; border-top:1px solid #e6e7ee; color:#5a6072; font-size:11.5px }
+  #askc .ax { position:absolute; top:4px; right:4px; width:24px; height:24px; border:0; border-radius:50%; background:transparent; color:#5a6072; cursor:pointer; font-size:13px; line-height:24px } #askc .ax:hover { background:#eceef4 } #askc .ax:focus-visible { outline:2px solid var(--accent); outline-offset:1px }
   #visit .vwho { flex:none; width:88px; height:66px; border-radius:12px; overflow:hidden; border:2px solid var(--accent); box-shadow:0 4px 14px rgba(0,0,0,.45); background:#222 } #visit.blocked .vwho { border-color:#ff5252 } #visit.speaking .vwho { box-shadow:0 0 0 3px rgba(124,156,255,.4), 0 4px 14px rgba(0,0,0,.45) } #visit .vwho svg { width:100%; height:100%; display:block }
   #visit .vx { position:absolute; top:-9px; left:-9px; width:20px; height:20px; border-radius:50%; background:var(--panel2); border:1px solid var(--line); color:var(--dim); font-size:11px; line-height:18px } #visit .vx:hover { color:var(--text) }
   @keyframes pulse { 50% { opacity:.3 } }
@@ -98,7 +104,7 @@
   #fpop { position:absolute; left:10px; z-index:8; width:min(360px,calc(100% - 20px)); max-height:min(46vh,340px); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 14px 40px rgba(0,0,0,.55); padding:6px; animation:fadein .15s }
   #fpop h4 { margin:6px 10px 4px; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); font-weight:600 }
   .sfr { display:grid; grid-template-columns:auto 1fr; gap:0 9px; align-items:center; width:100%; text-align:left; padding:6px 10px; border-radius:8px } .sfr:hover { background:var(--panel2) } .sfr i { font-style:normal; grid-row:span 2 } .sfr b, .sfr em { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap } .sfr b { font-size:12.5px; font-weight:600 } .sfr em { font-style:normal; font-size:11px; color:var(--dim) }
-  body:not(.replay) #center:has(#files.on) #toasts { bottom:46px } body:not(.replay):not(.react) #center:has(#files.on) #visit { bottom:48px }   /* live: the line is the bottom of the call, and what pops up there stays above it */
+  body:not(.replay) #center:has(#files.on) #toasts { bottom:46px } body:not(.replay):not(.react) #center:has(#files.on) #visit, body:not(.replay):not(.react) #center:has(#files.on) #askc { bottom:48px }   /* live: the line is the bottom of the call, and what pops up there stays above it */
   .tbadge .l { color:#ff9f1c } .tbadge span { font-size:11px } .tbadge .q { color:#b4bcd4 }
   .ic:active, .btn:active { transform:scale(.96) } .rr, .ic, .bcard { transition:background .15s var(--ease), border-color .15s var(--ease), transform .15s var(--ease) }
   .meet { font-size:11.5px; color:var(--dim); white-space:nowrap; display:flex; gap:8px; align-items:center } .meet i { width:8px; height:8px; border-radius:50%; background:#ff4d4d; animation:pulse 1.6s infinite }
@@ -389,7 +395,7 @@
     <div id="files"></div>
     <div id="hl"></div>
     <canvas id="gantt" height="90"></canvas>
-    <div id="toasts" role="status" aria-live="polite"><div class="toast offer" id="vOffer" style="display:none"><span id="vOfferT"></span><button class="btn" id="vOfferB"></button><button class="ic" id="vOfferX" aria-label="Close">✕</button></div><div class="toast offer" id="packNote" style="display:none"><span id="packNoteT"></span><button class="btn" id="packNoteB"></button><button class="ic" id="packNoteX" aria-label="Close">✕</button></div><div class="toast offer" id="trNote" style="display:none"><span id="trNoteT"></span><button class="btn" id="trNoteOk"></button><button class="btn" id="trNoteOff"></button></div></div><div id="visit" role="status" aria-live="polite"></div>
+    <div id="toasts" role="status" aria-live="polite"><div class="toast offer" id="vOffer" style="display:none"><span id="vOfferT"></span><button class="btn" id="vOfferB"></button><button class="ic" id="vOfferX" aria-label="Close">✕</button></div><div class="toast offer" id="packNote" style="display:none"><span id="packNoteT"></span><button class="btn" id="packNoteB"></button><button class="ic" id="packNoteX" aria-label="Close">✕</button></div><div class="toast offer" id="trNote" style="display:none"><span id="trNoteT"></span><button class="btn" id="trNoteOk"></button><button class="btn" id="trNoteOff"></button></div></div><div id="visit" role="status" aria-live="polite"></div><div id="askc" role="region" aria-live="polite"></div>
     <div id="empty"><h2 id="eT"></h2><p id="eP"></p><button class="cta" id="eDemo"></button></div>
     <div id="gate"><h2 id="gT"></h2><p id="gP"></p><button class="cta" id="gB"></button></div>
     <div id="detail"><div class="hd"><b id="dname"></b><button class="ic" id="dclose">✕</button></div><div id="dbody"></div></div>
@@ -1373,6 +1379,30 @@ function agentState(id, now) {
   return { k: 'working', txt: '⚙ ' + (S.act[id] || L('au travail', 'working')) };
 }
 const STATE_CLASSES = ['working', 'waiting', 'blocked', 'stalled', 'done'];
+// The menu the followed session waits on, in the lead's words, word for word: the questions and their options numbered as in the menu, the command, the file, the plan.
+// It stays until the menu is answered (where Claude Code runs: nothing is answered from here); ✕ puts it away until the next one.
+const ASKC = { off: '' };
+function askHtml(m, p) {
+  const who = esc(p.name), pre = (x) => (x ? '<pre>' + esc(x) + '</pre>' : ''); let head, body = '';
+  if (m.kind === 'question') { head = '💬 ' + who + ' ' + (m.questions.length > 1 ? L('vous pose plusieurs questions', 'has several questions for you') : L('vous pose une question', 'has a question for you'));
+    body = m.questions.map((q) => '<div class="aq">' + esc(q.q) + ' <span class="ahow">' + (q.multi ? L('(un ou plusieurs choix)', '(one or more)') : L('(un seul choix)', '(pick one)')) + '</span></div>' + (q.options.length ? '<ol>' + q.options.map((o) => '<li>' + esc(o.label) + (o.about ? ' <span>— ' + esc(o.about) + '</span>' : '') + '</li>').join('') + '</ol>' : '')).join(''); }
+  else if (m.kind === 'plan') { head = '📋 ' + who + ' ' + L('vous propose ce plan', 'proposes this plan'); body = pre(m.text); }
+  else if (m.kind === 'command') { head = '🔐 ' + who + ' ' + (m.sure ? L('demande à lancer cette commande', 'asks to run this command') : L('attend peut-être votre feu vert pour cette commande', 'may be waiting for your go-ahead on this command')); body = (m.about ? '<div class="aab">' + esc(m.about) + '</div>' : '') + pre(m.cmd); }
+  else if (m.kind === 'edit') { head = '🔐 ' + who + ' ' + (m.sure ? L('demande à modifier ce fichier', 'asks to edit this file') : L('attend peut-être votre feu vert pour modifier ce fichier', 'may be waiting for your go-ahead to edit this file')); body = pre(m.file); }
+  else if (m.kind === 'menu') { head = '✋ ' + who + ' ' + L('attend votre réponse', 'is waiting for your answer'); body = '<div class="aab">' + L('Un menu est ouvert dans Claude Code.', 'A menu is open in Claude Code.') + '</div>'; }
+  else if (m.kind === 'fetch') { head = '🔐 ' + who + ' ' + L('demande à ouvrir cette page', 'asks to open this page'); body = pre(m.url); }
+  else { head = '🔐 ' + who + ' ' + L('demande la permission d\'utiliser', 'asks permission to use') + ' ' + esc(m.tool || ''); }
+  const foot = L('À répondre dans Claude Code', 'Answer it in Claude Code') + (m.kind === 'question' ? ' · ' + L('les numéros sont ceux du menu', 'the numbers match the menu') : '');
+  return '<div class="awho">' + avatarSVG(p, undefined, 'ak' + p.gid + '_') + '</div><div class="asay"><button class="ax" aria-label="' + esc(L('Masquer jusqu\'à la prochaine question', 'Hide until the next question')) + '">✕</button><small>' + head + ' · <span class="ak-t"></span></small>' + body + '<div class="afoot">' + foot + '</div></div>';
+}
+function paintAsk(now) {
+  const el = $('#askc'); if (!el) return; let row = null; try { row = rowOf(S.cur); } catch {}
+  const m = row && row.menu, p = S.agents.main, show = !!(m && p && S.live && !S.demo && ASKC.off !== m.id && agentState('main', now).k === 'blocked');
+  if (!show) { if (el.dataset.k) { el.className = ''; el.innerHTML = ''; el.dataset.k = ''; } return; }
+  if (el.dataset.k !== m.id) { el.dataset.k = m.id; el.className = 'on'; el.setAttribute('aria-label', L('Ce que la session attend de vous', 'What the session is waiting for from you')); el.innerHTML = askHtml(m, p); }   // built once per menu, so it is announced once
+  const t = el.querySelector('.ak-t'); if (t) t.textContent = fmtShort(Math.max(0, now - (row.since || now)));
+}
+$('#askc').onclick = (e) => { if (e.target.closest('.ax')) { ASKC.off = $('#askc').dataset.k; paintAsk(Date.now()); } };
 function paintStates() {
   const now = Date.now(), n = { working: 0, waiting: 0, blocked: 0, stalled: 0, done: 0 }, ros = [], attn = [];
   for (const p of Object.values(S.agents)) {
@@ -1391,7 +1421,7 @@ function paintStates() {
   paintPill();
   const b = $('#board'), parts = [['working', '⚙', L('au travail', 'working')], ['waiting', '🔗', L('en attente', 'waiting')], ['blocked', '✋', L('vous attendent', 'need you')], ['stalled', '⚠', L('bloqués', 'stalled')], ['done', '✓', L('terminés', 'done')]]
     .filter(([k]) => n[k] && !S.pillSess).map(([k, i, l]) => `<span class="${k}" title="${n[k]} ${l}">${i} ${n[k]}<em> ${l}</em></span>`).join('');
-  if (b.innerHTML !== parts) b.innerHTML = parts; fitBoard(); S.nBlocked = n.blocked + n.stalled; S.attn = attn; paintRoster(ros); paintFiles(); return n;
+  if (b.innerHTML !== parts) b.innerHTML = parts; fitBoard(); S.nBlocked = n.blocked + n.stalled; S.attn = attn; paintRoster(ros); paintFiles(); paintAsk(now); return n;
 }
 function fitBoard(force) {   // the chips lose their words when they do not all fit (a long language, a narrower window): a chip is never cut mid-word. Tried again with the words only when the window or the texts around have changed
   const b = $('#board'), key = innerWidth + '|' + b.textContent.length + '|' + $('#pill').textContent.length + '|' + $('#subtitle').textContent.length;

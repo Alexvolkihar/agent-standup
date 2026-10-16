@@ -309,5 +309,22 @@
  "2 € minimum: you can pay more on the payment page if you like.": "Mínimo de 2 €: você pode pagar mais na página de pagamento, se quiser.",
  "worked": "trabalhou",
  "waiting on you for": "esperando por você há",
- "working for": "trabalhando há"
+ "working for": "trabalhando há",
+ "(one or more)": "(uma ou mais)",
+ "(pick one)": "(escolha uma)",
+ "Answer it in Claude Code": "Responda no Claude Code",
+ "asks permission to use": "pede permissão para usar",
+ "asks to edit this file": "pede para editar este arquivo",
+ "asks to open this page": "pede para abrir esta página",
+ "asks to run this command": "pede para executar este comando",
+ "has a question for you": "tem uma pergunta para você",
+ "has several questions for you": "tem várias perguntas para você",
+ "Hide until the next question": "Ocultar até a próxima pergunta",
+ "may be waiting for your go-ahead on this command": "talvez espere seu sinal verde para este comando",
+ "may be waiting for your go-ahead to edit this file": "talvez espere seu sinal verde para editar este arquivo",
+ "proposes this plan": "propõe este plano",
+ "the numbers match the menu": "os números são os do menu",
+ "What the session is waiting for from you": "O que a sessão espera de você",
+ "is waiting for your answer": "espera sua resposta",
+ "A menu is open in Claude Code.": "Há um menu aberto no Claude Code."
 }

@@ -309,5 +309,22 @@
  "2 € minimum: you can pay more on the payment page if you like.": "最低2ユーロ。お望みなら支払いページでそれ以上の金額も選べます。",
  "worked": "作業時間",
  "waiting on you for": "あなたを待って",
- "working for": "作業中"
+ "working for": "作業中",
+ "(one or more)": "（複数選択可）",
+ "(pick one)": "（1つ選択）",
+ "Answer it in Claude Code": "Claude Code で回答してください",
+ "asks permission to use": "が使用の許可を求めています：",
+ "asks to edit this file": "がこのファイルの編集を求めています",
+ "asks to open this page": "がこのページを開く許可を求めています",
+ "asks to run this command": "がこのコマンドの実行を求めています",
+ "has a question for you": "から質問があります",
+ "has several questions for you": "から複数の質問があります",
+ "Hide until the next question": "次の質問まで非表示",
+ "may be waiting for your go-ahead on this command": "がこのコマンドの許可を待っているかもしれません",
+ "may be waiting for your go-ahead to edit this file": "がこのファイル編集の許可を待っているかもしれません",
+ "proposes this plan": "がこのプランを提案しています",
+ "the numbers match the menu": "番号はメニューと同じです",
+ "What the session is waiting for from you": "セッションがあなたに求めていること",
+ "is waiting for your answer": "があなたの回答を待っています",
+ "A menu is open in Claude Code.": "Claude Code でメニューが開いています。"
 }
