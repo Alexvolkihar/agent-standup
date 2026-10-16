@@ -773,9 +773,12 @@ function findClaude() {
   const found = cands.find(exists) || bundledClaude() || null;
   return (claudeCache = found);
 }
+// Through cmd.exe, Node joins the arguments with spaces and quotes none: the empty value of --tools vanished and the system prompt became one argument per word. Quoted, each stays whole
+// (a line break or a double quote inside would end it: there are none in what is sent, and they are made harmless anyway).
+const winArg = (a) => '"' + String(a).replace(/[\r\n]+/g, ' ').replace(/"/g, "'") + '"';
 function spawnClaude(args, opts) {
   const bin = findClaude(); if (!bin) { lastTrError = 'not-found'; return null; }
-  const p = process.platform === 'win32' && /\.(cmd|bat)$/i.test(bin) ? spawn('"' + bin + '"', args, { ...opts, shell: true, windowsHide: true }) : spawn(bin, args, { ...opts, windowsHide: true });   // npm's Windows shims need a shell
+  const p = process.platform === 'win32' && /\.(cmd|bat)$/i.test(bin) ? spawn('"' + bin + '"', args.map(winArg), { ...opts, shell: true, windowsHide: true }) : spawn(bin, args, { ...opts, windowsHide: true });   // npm's Windows shims need a shell, which takes the arguments as they are: each one is quoted
   if (p.stdin) p.stdin.on('error', () => {});   // a claude that exits before reading its prompt (not signed in, an old version): EPIPE would otherwise end the whole server
   return p;
 }
@@ -1168,7 +1171,7 @@ function start(port = PORT) {
   } catch (e) { logError(req.method + ' ' + url.pathname, e); if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });
 }
-module.exports = { start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, packsDir, installPack, logError, _reveal: reveal, _scrub: { tidy, homeRe }, _artifact: { page: artifactPage, csp: artifactCsp } };
+module.exports = { _winArg: winArg, start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, packsDir, installPack, logError, _reveal: reveal, _scrub: { tidy, homeRe }, _artifact: { page: artifactPage, csp: artifactCsp } };
 if (require.main === module && typeof process.send === 'function') {   // started by the VS Code extension in a process of its own (see extension.js): reading a large session no longer stops the editor's extensions
   const srv = start(+process.env.PORT || 0), tell = (m) => { try { process.send(m); } catch {} };
   srv.on('listening', () => tell({ port: srv.address().port })).on('error', (e) => { tell({ error: e.code || String(e) }); process.exit(1); });

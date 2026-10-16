@@ -33,6 +33,12 @@ test('one window at a time plays sound, also when each window has its own server
   } finally { a.close(); b.close(); }
 });
 
+test('on Windows, a claude installed with npm gets each argument whole through cmd.exe: the empty value of --tools and the system prompt stay one argument each', () => {
+  const q = require('../server.js')._winArg;
+  assert.equal(['-p', '--tools', '', '--system-prompt', 'Translate it, as a colleague would say it.'].map(q).join(' '), '"-p" "--tools" "" "--system-prompt" "Translate it, as a colleague would say it."');
+  assert.equal(q('a "quote"\nand a line'), '"a \'quote\' and a line"');
+});
+
 test('pictures returned by tools are counted in the timeline and served from the transcript only', async () => {
   const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', pic = (type, data) => ({ type: 'image', source: { type: 'base64', media_type: type, data } });
   const rec = (id, content) => [{ type: 'assistant', timestamp: '2026-01-01T00:00:00Z', message: { content: [{ type: 'tool_use', id, name: 'Read', input: { file_path: '/x/shot.png' } }] } }, { type: 'user', timestamp: '2026-01-01T00:00:01Z', message: { content: [{ type: 'tool_result', tool_use_id: id, content }] } }].map((r) => JSON.stringify(r)).join('\n') + '\n';
