@@ -424,6 +424,15 @@ function boardRows() {
   if (Date.now() - boardMemo.at < 1200) return boardMemo.rows;   // several windows polling at once share one scan
   const out = withDone(boardRows0()); boardMemo = { at: Date.now(), rows: out }; return out;
 }
+// How many sessions the list keeps, newest first, of each kind (Claude Code, each other tool, Cowork): `most` of them, and whatever the count, the PER_FOLDER newest of each folder, so that
+// sessions written elsewhere never push the ones of a folder out. That is what happened with only a count: the Claude Code session of the folder the call follows left the list, and with it its
+// tab and the call, behind 40 sessions a desktop app had just written in temporary folders (issue #9). Sessions started in a temporary folder (see tmpKey) have places of their own, TMP_ROWS at most.
+const PER_FOLDER = 3, TMP_ROWS = 10;
+function capRows(list, most, folderOf) {   // list: newest first
+  const real = list.filter((r) => !tmpKey(folderOf(r))), keep = new Set(real.slice(0, most)), per = new Map();
+  for (const r of real) { const k = folderOf(r), n = per.get(k) || 0; if (n < PER_FOLDER) { keep.add(r); per.set(k, n + 1); } }
+  return real.filter((r) => keep.has(r)).concat(list.filter((r) => tmpKey(folderOf(r))).slice(0, TMP_ROWS));
+}
 function boardRows0() {
   const now = Date.now(), rows = [];
   for (const m of SOURCES) for (const r of guard(() => m.sessions(), [])) if (now - r.mtime < 12 * 3600e3) rows.push({ proj: m.PROJ, id: r.id, st: { mtimeMs: r.mtime, size: r.size }, cx: r, src: m });
@@ -431,7 +440,8 @@ function boardRows0() {
     for (const { id, file } of transcripts(proj)) { try { const st = fs.statSync(file); if (now - st.mtimeMs < 12 * 3600e3) rows.push({ proj, id, st }); } catch {} }
   }
   rows.sort((a, b) => b.st.mtimeMs - a.st.mtimeMs);
-  return rows.filter((r) => !r.cx && r.proj !== COWORK).slice(0, 40).concat(...SOURCES.map((m) => rows.filter((r) => r.src === m).slice(0, 20)), rows.filter((r) => r.proj === COWORK).slice(0, 20)).sort((a, b) => b.st.mtimeMs - a.st.mtimeMs).map(({ proj, id, st, cx, src }) => {
+  const own = (r) => r.proj, folder = (r) => String(r.cx.key || r.cx.dir || '');   // a Claude Code session is listed under its folder; a Codex or Vibe one says which folder it was started in
+  return capRows(rows.filter((r) => !r.cx && r.proj !== COWORK), 40, own).concat(...SOURCES.map((m) => capRows(rows.filter((r) => r.src === m), 20, folder)), rows.filter((r) => r.proj === COWORK).slice(0, 20)).sort((a, b) => b.st.mtimeMs - a.st.mtimeMs).map(({ proj, id, st, cx, src }) => {
     if (cx) { const r = guard(() => src.boardRow(cx, now), null); if (r && tmpKey(r.dir)) r.tmp = 1; return r; }   // tmp: started in the temporary folder (see tmpKey)
     const file = path.join(projDir(proj, id), id + '.jsonl'); let p; try { p = parseTail(file, st); } catch { p = { pending: [] }; }
     const age = now - st.mtimeMs, lp = (p.pending || [])[(p.pending || []).length - 1]; let state = 'idle', tool = '', ageMs = age;

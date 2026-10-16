@@ -527,6 +527,21 @@ test('sessions started in the temporary folder: the call that looks everywhere l
   } finally { stop(); }
 });
 
+test('a session of the folder the call follows stays in the list however many sessions are written elsewhere: in temporary folders, or in other projects', async () => {
+  const mine = '-Users-xxxx-DEV-cap-workflow', s0 = Math.floor((Date.now() - Date.UTC(2026, 0, 1)) / 1000), now = Date.now();
+  const put = (proj, id, s, recs, ago) => { const d = path.join(tmp, 'projects', proj), file = path.join(d, id + '.jsonl'); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(file, recs.map(line).join('')); fs.utimesSync(file, (now - ago) / 1000, (now - ago) / 1000); };
+  put(mine, 'mine', s0 - 70, [typed(s0 - 70, 'Write the feature'), used(s0 - 69, 'toolu_cap', 'Bash', { command: 'npm test' })], 60000);   // at work, its order the latest; then 45 sessions in temporary folders and 50 in other projects are written after it
+  for (let i = 0; i < 45; i++) put('-private-var-folders-zz-ab12cd-T-neutral-cap' + i, 's', s0 - 200, [typed(s0 - 200, 'Say OK'), said(s0 - 199, 'OK', { stop: 'end_turn' })], 30000 - i * 100);
+  for (let i = 0; i < 50; i++) put('-Users-xxxx-DEV-other' + i, 's', s0 - 300, [typed(s0 - 300, 'Older work'), said(s0 - 299, 'Done.', { stop: 'end_turn' })], 20000 - i * 100);
+  const { port, stop } = await serve();
+  try {
+    await wait(1300); const rows = JSON.parse((await get(port, '/api/board')).body);
+    assert.ok(rows.some((r) => r.proj === mine), 'the session of the folder is in the list'); assert.ok(rows.filter((r) => r.tmp).length <= 10, 'sessions in temporary folders have a few places of their own');
+    assert.equal(rows.filter((r) => /^-Users-xxxx-DEV-other/.test(r.proj)).length, 50, 'and every other project keeps its newest sessions');   // one each here
+    assert.equal(JSON.parse((await get(port, '/api/current?proj=' + mine + '&sproj=-Users-xxxx-DEV-other0&sid=s')).body).id, 'mine', 'the call goes to it');
+  } finally { stop(); }
+});
+
 test('the call is translated into the language the page asks for: French when it says nothing, Spanish and Brazilian Portuguese by name', { skip: process.platform === 'win32' }, async () => {
   const key = process.env.ANTHROPIC_API_KEY; delete process.env.ANTHROPIC_API_KEY;   // with a key the server would call the real API
   const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;

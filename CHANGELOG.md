@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.35.1
+- **Your session no longer drops out of the call when many sessions are written elsewhere.** The app keeps a list of recent sessions, and for Claude Code it was the 40 most recent across all your projects. On a machine where a desktop app or a script writes many sessions in temporary folders, or with many projects at work, the Claude Code session of the folder you follow could leave that list: no tab, and the call stayed on another session, such as a Mistral Vibe one in the same folder, which has places of its own. Every folder now keeps its newest sessions in the list whatever is written elsewhere, and sessions in temporary folders have a few places of their own.
+
 ## 1.35.0
 - **Artifacts made from a claude.ai template are shown in the call.** When Claude builds a design or a document from one of claude.ai's Artifact types (a Claude Design booklet, for instance), the window used to say “No preview here” for the whole session. It now shows each page as Claude publishes it, a few seconds each, under the name the canvas gives it (“03 · Day 1 – Session”). claude.ai lets no other page show its own, so each page is put together from the session file, as for any artifact; its scripts do not run and nothing is fetched unless you load its libraries.
 - **The whole document, once it is made.** When the lead says it is done, the window shows every page of the document at once. Click it in the line of files and it opens laid out as on the claude.ai canvas, rows and titles included, at the width of the window, to scroll through.
