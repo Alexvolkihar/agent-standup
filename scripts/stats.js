@@ -26,12 +26,31 @@ async function collect() {
     }
     return { stars: r.stargazers_count, forks: r.forks_count, files, active, week, landing };
   });
-  return { d: new Date().toISOString().slice(0, 10), mp, ovsx, npm, hub };
+  const yt = await soft(youtube);
+  return { d: new Date().toISOString().slice(0, 10), mp, ovsx, npm, hub, ...(yt ? { yt } : {}) };
+}
+// The YouTube channel's public counts: subscribers, and the views of each video and Short, read from the channel's own pages (the consent cookie skips the EU consent page)
+async function youtube() {
+  const get = async (tab) => { const r = await fetch('https://www.youtube.com/@Agent_Standup/' + tab, { headers: { 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36', 'accept-language': 'en-US,en;q=0.9', cookie: 'SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg; CONSENT=YES+cb' }, signal: AbortSignal.timeout(20000) }); const m = (await r.text()).match(/var ytInitialData = (\{.*?\});<\/script>/s); return m ? JSON.parse(m[1]) : null; };
+  const num = (t) => { const m = /([\d.,]+)\s*([KM])?/.exec(String(t || '')); return m ? Math.round(parseFloat(m[1].replace(/,/g, '')) * (m[2] === 'K' ? 1e3 : m[2] === 'M' ? 1e6 : 1)) : 0; };
+  const videos = [], walk = (o, short) => { if (!o || typeof o !== 'object') return;
+    if (o.lockupViewModel) { const t = o.lockupViewModel.metadata && o.lockupViewModel.metadata.lockupMetadataViewModel, parts = JSON.stringify((t && t.metadata) || {}).match(/"content":"([^"]*)"/g) || []; if (t) videos.push({ title: t.title && t.title.content, views: num((parts[0] || '').slice(11, -1)) }); }
+    if (o.shortsLockupViewModel) { const m = o.shortsLockupViewModel.overlayMetadata || {}; videos.push({ title: m.primaryText && m.primaryText.content, views: num(m.secondaryText && m.secondaryText.content), short: 1 }); }
+    for (const k in o) walk(o[k], short); };
+  const v = await get('videos'), sh = await get('shorts'); if (!v && !sh) return null; walk(v); walk(sh);
+  const subs = /"(\d[\d.,]*[KM]?) subscribers?"/.exec(JSON.stringify(v || sh)); return { subs: subs ? num(subs[1]) : null, views: videos.reduce((n, x) => n + x.views, 0), videos };
+}
+// The website's visits, from Vercel Web Analytics through the Vercel command line (needs `npx vercel login` on this computer; the daily job on GitHub has no login and skips it)
+function website() {
+  const q = (...a) => { const out = execFileSync('npx', ['-y', 'vercel@latest', 'metrics', 'vercel.analytics.page_view.count', '--scope', 'dg-team-fe3d9cf0', '-p', 'agent-standup', '--prod', '--json', ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 120000 }); return JSON.parse(out.slice(out.indexOf('{'))); };
+  const days = q('--since', '7d', '-g', '1d').data.map((r) => [r.timestamp.slice(5, 10), Object.entries(r).find(([k]) => k !== 'timestamp')[1]]).filter(([, n]) => n);
+  const top = (dim) => { const j = q('--since', '3d', '--group-by', dim, '-l', '6'), by = {}; for (const r of j.data || []) { const k = r[dim] || '(direct)', n = Object.entries(r).find(([x]) => x !== dim && /count/.test(x)); if (n) by[k] = (by[k] || 0) + n[1]; } return Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 6); };
+  return { days, sources: top('referrerHostname'), countries: top('country') };
 }
 const flat = (x) => ({ 'Marketplace installs': x.mp && x.mp.installs, 'Marketplace downloads': x.mp && x.mp.downloads, 'Marketplace updates': x.mp && x.mp.updates, 'Marketplace ratings': x.mp && x.mp.ratings,
   'Open VSX downloads': x.ovsx && x.ovsx.downloads, 'Open VSX reviews': x.ovsx && x.ovsx.reviews, 'npm downloads': x.npm, 'GitHub stars': x.hub && x.hub.stars, 'GitHub forks': x.hub && x.hub.forks,
   'GitHub: extension files': x.hub && x.hub.files && x.hub.files.vsix, 'GitHub: desktop app (Mac / Windows / Linux)': x.hub && x.hub.files && [x.hub.files.mac, x.hub.files.windows, x.hub.files.linux].join(' / '), 'GitHub: command line file': x.hub && x.hub.files && x.hub.files.cli,
-  'Opt-in active installs (1 request a day each)': x.hub && x.hub.active, 'Opt-in people who opened the call (1 request a week each)': x.hub && x.hub.week });
+  'Opt-in active installs (1 request a day each)': x.hub && x.hub.active, 'Opt-in people who opened the call (1 request a week each)': x.hub && x.hub.week, 'YouTube subscribers': x.yt && x.yt.subs, 'YouTube views (all videos)': x.yt && x.yt.views });
 const lines = (text) => text.split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((x) => x && x.d);
 
 (async () => {
@@ -58,6 +77,8 @@ const lines = (text) => text.split('\n').filter(Boolean).map((l) => { try { retu
   for (const x of lines(hist).filter((x) => x.d !== now.d).concat(now)) { const n = x.hub && x.hub.week; if (typeof n !== 'number') continue; const m = monday(x.d), w = wk[wk.length - 1]; if (w && w.m === m) w.n = n; else wk.push({ m, n, from: w ? w.n : null }); }
   if (wk.length) console.log('\nPeople who opened the call, week by week (opt-in):\n' + wk.map((w, i) => `  week of ${w.m}  ${w.from == null ? 'counting starts at ' + w.n : w.n - w.from}${i === wk.length - 1 ? ' so far' : ''}`).join('\n'));
   if (days.length < 3) console.log('\n  The daily job on GitHub adds one line a day: the trend is worth reading after a week or two.');
+  if (now.yt && now.yt.videos.length) console.log('\nYouTube (public counts):\n' + now.yt.videos.map((x) => '  ' + String(x.views).padStart(6) + '  ' + (x.short ? '[Short] ' : '') + x.title).join('\n'));
+  if (!process.env.STATS_NO_WEBSITE) { try { const w = website(); console.log('\nWebsite agent-standup.com (Vercel Web Analytics, page views):\n  per day: ' + w.days.map(([d, n]) => d + ' ' + n).join(' · ') + '\n  last 3 days, by source: ' + w.sources.map(([k, n]) => k + ' ' + n).join(', ') + '\n  last 3 days, by country: ' + w.countries.map(([k, n]) => k + ' ' + n).join(', ')); } catch { console.log('\nWebsite: not read (the Vercel command line needs `npx vercel login` on this computer)'); } }
   console.log('\nThe funnel of the Marketplace page (views, then installs, per day) is only in your publisher account: https://marketplace.visualstudio.com/manage (Acquisition tab).');
   fs.writeFileSync(snap, JSON.stringify({ at: new Date().toISOString().slice(0, 16).replace('T', ' '), f }));
 })().catch((e) => { console.error(e.message || e); process.exit(1); });
