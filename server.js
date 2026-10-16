@@ -1040,7 +1040,10 @@ const reveal = {   // run and stat: replaced in the tests, which must not open a
   },
   run(file) { const go = (list) => { const c = list[0]; if (!c) return; try { execFile(c[0], c[1], c[2] || {}, (err) => { if (err) go(list.slice(1)); }); } catch { go(list.slice(1)); } }; go(reveal.cmds(file)); },
 };
-let audioOwner = { id: null, seen: 0 };
+// Which window plays sound, in a file next to the settings: each VS Code window has its own server, and two windows with the call open both spoke.
+const AUDIO = path.join(path.dirname(PREFS), 'audio.json');
+const audioOwner = () => { try { const a = JSON.parse(fs.readFileSync(AUDIO, 'utf8')); if (a && typeof a.id === 'string') return { id: a.id, seen: +a.seen || 0 }; } catch {} return { id: null, seen: 0 }; };
+const audioSave = (a) => { try { fs.mkdirSync(path.dirname(AUDIO), { recursive: true }); const t = AUDIO + '.' + process.pid; fs.writeFileSync(t, JSON.stringify(a)); fs.renameSync(t, AUDIO); } catch {} };   // whole or not at all: another server may read it at that moment
 function start(port = PORT) {
   return http.createServer((req, res) => {
   let url; try { url = new URL(req.url, 'http://x'); } catch { res.writeHead(400); return res.end('bad request'); }   // "GET //" is not an address: answered, where it used to stop the whole server
@@ -1071,10 +1074,11 @@ function start(port = PORT) {
     }
     if (url.pathname === '/api/audio') {   // only one window at a time plays sound: the last one that claimed it (expires if that window stops answering)
       const cid = url.searchParams.get('cid') || '', ok = /^[\w-]{4,40}$/.test(cid);
-      if (ok && url.searchParams.get('claim')) audioOwner = { id: cid, seen: Date.now() };
-      else if (ok && audioOwner.id === cid) audioOwner.seen = Date.now();
-      if (audioOwner.id && Date.now() - audioOwner.seen > 6000) audioOwner = { id: null, seen: 0 };
-      return json({ owner: audioOwner.id });
+      const now = Date.now(); let a = audioOwner();
+      if (ok && url.searchParams.get('claim')) audioSave((a = { id: cid, seen: now }));
+      else if (ok && a.id === cid && now - a.seen > 2000) audioSave((a = { id: cid, seen: now }));   // the owner says it is still there, written every 2 s at most
+      if (a.id && now - a.seen > 6000) a = { id: null, seen: 0 };
+      return json({ owner: a.id });
     }
     if (url.pathname === '/api/health') return json({ claude: findClaude(), apiKey: !!process.env.ANTHROPIC_API_KEY, trError: lastTrError, platform: process.platform });
     if (url.pathname === '/api/warm') { const lang = trLang(url.searchParams.get('lang')); trWorkers.forEach((w) => { if (!w.p) w.start(lang); }); return json({ ok: true }); }

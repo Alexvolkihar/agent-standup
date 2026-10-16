@@ -22,6 +22,17 @@ test('settings are kept in a file; cross-site writes are refused', async () => {
     assert.equal((await get(port, '/api/kokoro/install', { 'sec-fetch-site': 'cross-site' }, 'POST')).status, 403);
   } finally { srv.close(); require('../server.js').shutdown(); }
 });
+test('one window at a time plays sound, also when each window has its own server (one per VS Code window): the last that claimed it, until it stops answering', async () => {
+  const a = require('../server.js').start(0), b = require('../server.js').start(0); await Promise.all([a, b].map((x) => new Promise((r) => x.once('listening', r))));
+  const owner = async (srv, q) => JSON.parse((await get(srv.address().port, '/api/audio?' + q)).body).owner;
+  try {
+    assert.equal(await owner(a, 'cid=win-one&claim=1'), 'win-one'); assert.equal(await owner(b, 'cid=win-two'), 'win-one', 'the other server knows it too');
+    assert.equal(await owner(b, 'cid=win-two&claim=1'), 'win-two'); assert.equal(await owner(a, 'cid=win-one'), 'win-two');
+    const f = path.join(path.dirname(process.env.AGENT_STANDUP_PREFS), 'audio.json'); fs.writeFileSync(f, JSON.stringify({ id: 'win-two', seen: Date.now() - 7000 }));   // win-two has not answered for 7 s
+    assert.equal(await owner(a, 'cid=win-one'), null);
+  } finally { a.close(); b.close(); }
+});
+
 test('pictures returned by tools are counted in the timeline and served from the transcript only', async () => {
   const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', pic = (type, data) => ({ type: 'image', source: { type: 'base64', media_type: type, data } });
   const rec = (id, content) => [{ type: 'assistant', timestamp: '2026-01-01T00:00:00Z', message: { content: [{ type: 'tool_use', id, name: 'Read', input: { file_path: '/x/shot.png' } }] } }, { type: 'user', timestamp: '2026-01-01T00:00:01Z', message: { content: [{ type: 'tool_result', tool_use_id: id, content }] } }].map((r) => JSON.stringify(r)).join('\n') + '\n';
