@@ -306,5 +306,8 @@
  "Got it": "了解",
  "Reset to defaults": "初期設定に戻す",
  "Your settings moved: the everyday ones are here, the rest in “All settings”.": "設定の場所が変わりました。よく使うものはここに、それ以外は「すべての設定」にあります。",
- "2 € minimum: you can pay more on the payment page if you like.": "最低2ユーロ。お望みなら支払いページでそれ以上の金額も選べます。"
+ "2 € minimum: you can pay more on the payment page if you like.": "最低2ユーロ。お望みなら支払いページでそれ以上の金額も選べます。",
+ "worked": "作業時間",
+ "waiting on you for": "あなたを待って",
+ "working for": "作業中"
 }

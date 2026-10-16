@@ -1357,8 +1357,9 @@ function agentState(id, now) {
   let s = S.status[id]; const r = S.run[id], w = S.waitOn[id], la = S.lastAct[id];
   if (id === 'main' && !s) {   // the lead is at work until the message that closes its turn, even while it thinks, and from its first turn on (the server says which transcripts carry that mark); one without it falls back on "quiet for 25 s", and a turn cut short on 3 minutes of silence
     const open = S.live && la && (S.sawEnd ? !S.turnOver && now - la < 180000 : now - la < 25000);
-    if (r || (w && w.size) || open) s = 'working'; else if (S.live && la) return { k: 'done', txt: '✓ ' + L('à vous', 'your turn') };
+    if (r || (w && w.size) || open) s = 'working'; else if (S.live && la) return { k: 'done', txt: '✓ ' + L('à vous', 'your turn') + ' · ' + fmtShort(Math.max(0, now - la)) };
   }
+  if (id === 'main' && S.live && atTail()) { const row = rowOf(S.cur); if (row && row.state === 'blocked' && row.since && !(la > S.rowsAt)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(Math.max(0, now - row.since)), ask: row.ask || '' }; }   // what the server knows: a menu open in the session (a Bash approval looks like a running command here), and the question or command it waits on; unless the session moved since that answer
   if (s === 'done') return { k: 'done', txt: '✓ ' + L('terminé', 'done') };
   if (!s) return { k: 'idle', txt: '' };
   if (S.live && atTail() && r && r.ts && r.name && NEEDS_OK.test(r.name)) { const age = now - r.ts; if (age > (ASKS.test(r.name) ? 4000 : 15000)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(age) }; }
@@ -2464,10 +2465,12 @@ const BGROUP = ['blocked', 'turn', 'working', 'waiting', 'idle'];   // the board
 let boardBusy = false, boardAll = null, boardDoneOpen = false;
 const isDone = (r) => !!r.done;   // put away by you, until the session moves again: the server says so, to every window
 function bcard(r, now, done) {
-  const [ic, en, fr] = BSTATE[r.state], extra = r.state === 'blocked' ? ` · ${r.ask ? '' : esc(r.tool) + ' '}${agoStr(r.ageMs)}` : r.state === 'working' && r.tool ? ` · ${esc(r.tool)}` : r.state === 'idle' || r.state === 'turn' ? ` · ${agoStr(now - r.mtime)}` : '';
+  const [ic, en, fr] = BSTATE[r.state], waited = r.since ? now - r.since : r.state === 'blocked' ? r.ageMs : now - r.mtime, mine = r.state === 'blocked' || r.state === 'turn';   // how long it has waited on you
+  const head = r.state === 'blocked' ? [r.ask ? '' : esc(r.tool), r.ran ? '' : agoStr(waited)].filter(Boolean).join(' ') : r.state === 'working' && r.tool ? esc(r.tool) : r.state === 'idle' || (r.state === 'turn' && !r.ran) ? agoStr(waited) : '', extra = head ? ' · ' + head : '';
+  const took = mine && r.ran ? `⏱ ${L('a travaillé', 'worked')} ${agoStr(r.ran)} · ${L('vous attend depuis', 'waiting on you for')} ${agoStr(waited)}` : r.state === 'working' && r.asked ? `⏱ ${L('au travail depuis', 'working for')} ${agoStr(Math.max(0, now - r.asked))}` : '';   // the time it worked, apart from the time it has waited on you
   const pr = r.pr ? `<button class="bpr" data-url="${esc(r.pr.url)}" title="${esc(L('Ouvrir la pull request', 'Open the pull request'))}">PR #${+r.pr.n} ↗</button>` : '';
   const put = done ? `<button class="bdo" data-undo="1" title="${esc(L('Rouvrir', 'Reopen'))}" aria-label="${esc(L('Rouvrir', 'Reopen'))}">↩</button>` : r.state === 'turn' || r.state === 'idle' ? `<button class="bdo" title="${esc(L('Marquer comme traitée', 'Mark as done'))}" aria-label="${esc(L('Marquer comme traitée', 'Mark as done'))}">✓</button>` : '';
-  return `<div class="bcard ${r.state}" tabindex="0" role="button" data-p="${esc(r.proj)}" data-i="${esc(r.id)}"><div class="bh"><span class="stc ${r.state}">${ic} ${L(fr, en)}${extra}</span>${pr}${put}</div><div class="bt">${esc(/^[0-9a-f]{8}-[0-9a-f-]{27}$/.test(r.title) ? L('Session sans titre', 'Untitled session') : r.title)}</div>${r.ask ? `<div class="bq">${esc(r.ask)}</div>` : ''}<div class="bp">${esc(niceProj(r.proj))}</div>${r.subTotal ? `<div class="bm">👥 ${r.subActive}/${r.subTotal} ${L('sous-agents actifs', 'sub-agents active')}</div>` : ''}</div>`;
+  return `<div class="bcard ${r.state}" tabindex="0" role="button" data-p="${esc(r.proj)}" data-i="${esc(r.id)}"><div class="bh"><span class="stc ${r.state}">${ic} ${L(fr, en)}${extra}</span>${pr}${put}</div><div class="bt">${esc(/^[0-9a-f]{8}-[0-9a-f-]{27}$/.test(r.title) ? L('Session sans titre', 'Untitled session') : r.title)}</div>${r.ask ? `<div class="bq">${esc(r.ask)}</div>` : ''}<div class="bp">${esc(niceProj(r.proj))}</div>${took ? `<div class="bm">${took}</div>` : ''}${r.subTotal ? `<div class="bm">👥 ${r.subActive}/${r.subTotal} ${L('sous-agents actifs', 'sub-agents active')}</div>` : ''}</div>`;
 }
 function paintBoard() {
   if (!boardAll || !document.body.classList.contains('board')) return; const now = Date.now(), recent = (a, b) => b.mtime - a.mtime;
@@ -2580,7 +2583,7 @@ async function visitSay(v, token) {
 $('#visit').onclick = (e) => { const v = S.visit; if (!v) return; if (e.target.closest('.vx')) hideVisit(); else goSession(v.r.proj, v.r.id); };
 async function sessPoll() {
   if (!S.live || S.demo || document.hidden || sessPoll.busy) return; sessPoll.busy = true;
-  try { const rows = await (await fetch('/api/board')).json(); if (Array.isArray(rows) && S.live && !S.demo) { S.rows = rows; knocks(); paintTabs(); } } catch {} finally { sessPoll.busy = false; }
+  try { const t0 = Date.now(), rows = await (await fetch('/api/board')).json(); if (Array.isArray(rows) && S.live && !S.demo) { S.rows = rows; S.rowsAt = t0; knocks(); paintTabs(); } } catch {} finally { sessPoll.busy = false; }
 }
 setInterval(sessPoll, 3000);
 async function setMode(m) {
@@ -2879,7 +2882,7 @@ function paintPill() {
     sess = true; const st = {}, by = { working: [], waiting: [], blocked: [], stalled: [], done: [], idle: [] };
     for (const id in S.agents) if (id !== 'user' && !S.gone.has(id) && (id === 'main' || S.status[id])) { st[id] = agentState(id, now); by[st[id].k].push(id); }
     const what = (id) => `${nameOf(id)} — ${st[id].txt.replace(/^\S+\s/, '')}`, more = (a) => (a.length > 1 ? ` +${a.length - 1}` : ''), lead = st.main || { k: 'idle' };
-    if (by.blocked.length) { cls = 'blocked'; to = by.blocked[0]; txt = '✋ ' + what(to) + more(by.blocked); }
+    if (by.blocked.length) { cls = 'blocked'; to = by.blocked[0]; const q = st[to].ask || ''; txt = '✋ ' + what(to) + more(by.blocked) + (q ? ' · ' + (q.length > 110 ? q.slice(0, 108).replace(/\s+\S*$/, '') + '…' : q) : ''); if (q) tip = q; }   // the question or the command it waits on, next to its timer
     else if (by.stalled.length) { cls = 'stalled'; to = by.stalled[0]; txt = '⚠ ' + what(to) + more(by.stalled); }
     else if (by.working.length || by.waiting.length) {   // "2 working · Margot — waiting on Ken, Mira", or what the only one at work is doing
       const w = by.working, wt = lead.k === 'waiting' ? 'main' : w.length ? '' : by.waiting[0]; cls = 'working'; to = wt || (w.length === 1 ? w[0] : 'main');

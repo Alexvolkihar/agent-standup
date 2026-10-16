@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.35.1
+- **A Bash command waiting for your go-ahead now says “needs you?”.** In the transcript, a command waiting for your approval looks just like one that runs, so the call and the board said “working” while the session waited on you. Recent Claude Code also notes, for each open session, when a menu waits for your answer: the app reads it, and a permission or a question shows “needs you?” the moment it opens, even one left open for an hour, with the command or the question next to its timer in the header (“Margot — needs you? 2 min · Bash(npm run build)”) and on its card.
+- **Time waiting on you, apart from time spent working.** A card that waits for you says how long the session worked and how long it has waited since (“worked 25 min · waiting on you for 12 min”): a session that looks slow may have finished the hard part ten minutes ago and need one answer. A card at work says how long it has been at it, and the lead’s “your turn” in the call how long ago its turn ended.
 - **Your session no longer drops out of the call when many sessions are written elsewhere.** The app keeps a list of recent sessions, and for Claude Code it was the 40 most recent across all your projects. On a machine where a desktop app or a script writes many sessions in temporary folders, or with many projects at work, the Claude Code session of the folder you follow could leave that list: no tab, and the call stayed on another session, such as a Mistral Vibe one in the same folder, which has places of its own. Every folder now keeps its newest sessions in the list whatever is written elsewhere, and sessions in temporary folders have a few places of their own.
 
 ## 1.35.0

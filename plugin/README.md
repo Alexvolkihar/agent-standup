@@ -34,7 +34,7 @@ Both skills run one command, pinned to an exact version of the app's npm package
 
 ## Data
 
-The app reads the session files Claude Code writes in `~/.claude/projects`, the ones Codex writes in `~/.codex/sessions`, the ones Mistral Vibe writes in `~/.vibe/logs/session`, and those of Cowork (a tab of the Claude desktop app) in that app’s own folder. It never writes to them. By default it sends nothing anywhere: the page is served from your machine (`127.0.0.1`) to your browser.
+The app reads the session files Claude Code writes in `~/.claude/projects` (and the status it keeps for each open session in `~/.claude/sessions`), the ones Codex writes in `~/.codex/sessions`, the ones Mistral Vibe writes in `~/.vibe/logs/session`, and those of Cowork (a tab of the Claude desktop app) in that app’s own folder. It never writes to them. By default it sends nothing anywhere: the page is served from your machine (`127.0.0.1`) to your browser.
 
 On your machine it keeps your settings in one small file, the list of sessions you put away as done, a log of its own errors, a character pack if you buy one, and, when voices are on, the spoken lines as sound files in a private temporary folder, deleted after a day.
 
