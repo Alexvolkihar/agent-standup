@@ -12,7 +12,7 @@ const file = (n) => path.join(PROJECTS, '-work-shop', id(n) + '.jsonl'), put = (
 const status = (k, n, pid, st, ago) => fs.writeFileSync(path.join(SESSIONS, k + '.json'), JSON.stringify({ pid, sessionId: id(n), status: st, statusUpdatedAt: now - ago, updatedAt: now - ago }));
 const gone = spawnSync(process.execPath, ['-e', '0']).pid;   // a process that has ended: its file is left behind, as after a crash
 
-const MENU = 1, STALE = 2, BUSY = 3, LONG = 4, TURN = 5, GUESS = 6, ASK = 7, PLAN = 8, OTHER = 9;
+const MENU = 1, STALE = 2, BUSY = 3, LONG = 4, TURN = 5, GUESS = 6, ASK = 7, PLAN = 8, OTHER = 9, DIALOG = 0;
 const PLANS = path.join(tmp, '.claude', 'plans'), PF = path.join(PLANS, 'tidy-plan.md'); fs.mkdirSync(PLANS, { recursive: true }); fs.writeFileSync(PF, '# Plan\n1. Check\n2. Write hello.txt\n');
 put(MENU, [user('Build it', 300e3), call('Bash', { command: 'npm run build\n  --prod', description: 'Build for production' }, 40e3)], 40e3); status(101, MENU, process.pid, 'waiting', 35e3);
 put(STALE, [user('Migrate', 90e3), call('Bash', { command: 'npm run migrate' }, 20e3)], 20e3); status(102, STALE, gone, 'waiting', 20e3);
@@ -24,6 +24,7 @@ const done = (name, ago) => ({ type: 'user', timestamp: iso(ago), message: { rol
 put(PLAN, [user('Plan it', 90e3), call('Write', { file_path: PF, content: 'old' }, 60e3), done('Write', 60e3)], 50e3); status(108, PLAN, process.pid, 'waiting', 45e3);   // the plan menu is open, its call not written yet
 put(OTHER, [user('Go on', 90e3), say('Ok.', 80e3)], 80e3); status(109, OTHER, process.pid, 'waiting', 30e3);   // a menu the transcript does not record
 put(GUESS, [user('Fix the header', 100e3), call('Edit', { file_path: '/work/shop/src/header.js', old_string: 'a', new_string: 'b' }, 20e3)], 20e3);
+put(DIALOG, [user('Thanks', 90e3), say('Done.', 80e3)], 80e3); fs.writeFileSync(path.join(SESSIONS, '110.json'), JSON.stringify({ pid: process.pid, sessionId: id(DIALOG), status: 'waiting', waitingFor: 'dialog open', statusUpdatedAt: now - 20e3 }));   // /model, /config… opened by you in a session whose turn is over
 
 test('a Bash approval needs you, with the command, since the menu opened, apart from the time it worked', () => {
   const core = require('../server.js'), rows = core.boardRows(), row = (n) => rows.find((r) => r.id === id(n));
@@ -45,5 +46,6 @@ test('a session that waits on a menu says what the menu shows, word for word: th
   assert.equal(row(BUSY).menu, undefined); assert.equal(row(TURN).menu, undefined);   // nothing waits on you there
   assert.equal(row(PLAN).state, 'blocked'); assert.deepEqual(row(PLAN).menu, { id: 'w' + (now - 45e3), tool: 'ExitPlanMode', kind: 'plan', text: '# Plan\n1. Check\n2. Write hello.txt', sure: 1 });   // read from the plan file as it is now, not as first written
   assert.equal(row(OTHER).state, 'blocked'); assert.deepEqual(row(OTHER).menu, { id: 'w' + (now - 30e3), tool: '', kind: 'menu', sure: 1 });
+  assert.equal(row(DIALOG).state, 'turn'); assert.equal(row(DIALOG).menu, undefined);   // a dialog you opened yourself is not a question for you
   core.shutdown();
 });

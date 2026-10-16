@@ -441,6 +441,7 @@ const PREF_DEFAULTS = { ...prefs };   // for ⚙ → All settings → Reset to d
 { let loc = {}; try { loc = JSON.parse(localStorage.getItem('cc.prefs') || '{}') || {}; } catch {}   // the settings file (shared by every window) and this origin's copy: the more recent one wins
   const sv = window.SAVED_PREFS && typeof window.SAVED_PREFS === 'object' ? window.SAVED_PREFS : {}; Object.assign(prefs, (sv._t || 0) > (loc._t || 0) ? sv : loc); }
 const HAD_PREFS = !!prefs._t;   // someone who used the app before this page: shown once where the settings went
+if (!HAD_PREFS) prefs.menuTipSeen = true;   // a first visit: the menu was never anywhere else for this person, so the tip is not shown on the next visits either
 if (prefs.vstyle === 'babble') prefs.vstyle = 'animal', prefs.vstyleChosen = true;
 // Two styles since 1.32.0: the natural voices (the model, the default, which babble until they are installed) and the Animal Crossing babble. The cartoon voices, Simlish and the plain system voices are no longer offered:
 // whoever had Simlish is on the other babble, everyone else on the natural voices. The cartoon voices read the words with no install, so the call offers the real ones once more to who had closed that line.
@@ -1361,11 +1362,11 @@ const NEEDS_OK = /^(Edit|Write|MultiEdit|NotebookEdit|AskUserQuestion|ExitPlanMo
 const atTail = () => S.idx >= S.events.length - 3;   // only trust wall-clock ages when playback has caught up with the live end
 function agentState(id, now) {
   let s = S.status[id]; const r = S.run[id], w = S.waitOn[id], la = S.lastAct[id];
+  if (id === 'main' && S.live && atTail()) { const row = rowOf(S.cur); if (row && row.state === 'blocked' && row.since && !(la > S.rowsAt)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(Math.max(0, now - row.since)), ask: row.ask || '' }; }   // what the server knows: a menu open in the session (a Bash approval looks like a running command here), and the question or command it waits on; unless the session moved since that answer. Before "your turn": a menu left open for longer than the lead's quiet time still needs you
   if (id === 'main' && !s) {   // the lead is at work until the message that closes its turn, even while it thinks, and from its first turn on (the server says which transcripts carry that mark); one without it falls back on "quiet for 25 s", and a turn cut short on 3 minutes of silence
     const open = S.live && la && (S.sawEnd ? !S.turnOver && now - la < 180000 : now - la < 25000);
     if (r || (w && w.size) || open) s = 'working'; else if (S.live && la) return { k: 'done', txt: '✓ ' + L('à vous', 'your turn') + ' · ' + fmtShort(Math.max(0, now - la)) };
   }
-  if (id === 'main' && S.live && atTail()) { const row = rowOf(S.cur); if (row && row.state === 'blocked' && row.since && !(la > S.rowsAt)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(Math.max(0, now - row.since)), ask: row.ask || '' }; }   // what the server knows: a menu open in the session (a Bash approval looks like a running command here), and the question or command it waits on; unless the session moved since that answer
   if (s === 'done') return { k: 'done', txt: '✓ ' + L('terminé', 'done') };
   if (!s) return { k: 'idle', txt: '' };
   if (S.live && atTail() && r && r.ts && r.name && NEEDS_OK.test(r.name)) { const age = now - r.ts; if (age > (ASKS.test(r.name) ? 4000 : 15000)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(age) }; }
@@ -1492,7 +1493,7 @@ function activityLabel(t) {   // the short "what is on their screen" tag
     case 'read': return L('Lit ', 'Reading ') + f;
     case 'edit': return L('Modifie ', 'Editing ') + f;
     case 'write': return L('Crée ', 'Writing ') + f;
-    case 'cmd': { const n = (d.note || '').trim(); if (n) return n.slice(0, 36); return L('Exécute ', 'Running ') + d.text.trim().split(/\s+/).slice(0, 2).join(' ').slice(0, 26); }
+    case 'cmd': { const n = (d.note || '').trim(), w = d.text.trim().split(/\s+/); if (n) return n.length > 36 ? n.slice(0, 36).replace(/\s+\S*$/, '') + '…' : n; return L('Exécute ', 'Running ') + w.slice(0, 2).join(' ').slice(0, 26) + (w.length > 2 ? '…' : ''); }   /* cut at a word, and said to be cut */
     case 'grep': return L('Cherche « ', 'Searching “') + String(d.pattern || '').slice(0, 22) + L(' »', '”');
     case 'glob': return L('Liste ', 'Listing ') + String(d.pattern || '').slice(0, 24);
     case 'todo': return L('Met à jour sa todo', 'Updating todo list');
@@ -2726,6 +2727,7 @@ async function exportVideo(from = 0, to = 0, clip = 0) {   // clip: length in ms
 // =====================================================================
 function applyLang() {
   renderCharInfo(); packNote(); menuTip();
+  try { for (const id in S.act) { const b = S.term[id], t = b && b[b.length - 1]; if (t && t.tool) S.act[id] = activityLabel(t.tool); } if (S.live) fillProjects(); } catch {}   // what each agent is doing, and the list of projects, were written in the language before
   document.documentElement.lang = (LANGS.find((l) => l[0] === prefs.lang) || LANGS[0])[2];
   document.querySelectorAll('[data-fr]').forEach((el) => (el.textContent = FR() ? el.dataset.fr : tr(el.dataset.en)));
   document.querySelectorAll('#viewSeg button').forEach((b) => { b.title = b.textContent; });   // in a narrow window they are icons: the name stays as a tooltip

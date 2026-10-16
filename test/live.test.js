@@ -3,7 +3,7 @@
 // Needs puppeteer-core (npm i) and a Chrome (CHROME_PATH, or the usual places); skipped with a note when they are missing, except in CI where that is a failure.
 const test = require('node:test'), assert = require('node:assert'), fs = require('fs'), os = require('os'), path = require('path');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'as-live-'));
-process.env.AGENT_STANDUP_PREFS = path.join(tmp, 'prefs.json'); process.env.AGENT_STANDUP_KOKORO_DIR = path.join(tmp, 'kokoro'); process.env.AGENT_STANDUP_PROJECTS = path.join(tmp, 'projects');
+process.env.AGENT_STANDUP_CC_SESSIONS = path.join(tmp, 'sessions'); process.env.AGENT_STANDUP_PREFS = path.join(tmp, 'prefs.json'); process.env.AGENT_STANDUP_KOKORO_DIR = path.join(tmp, 'kokoro'); process.env.AGENT_STANDUP_PROJECTS = path.join(tmp, 'projects');
 fs.writeFileSync(process.env.AGENT_STANDUP_PREFS, JSON.stringify({ lang: 'en', voice: false, chat: 'normal', banter: true, _t: Date.now() }));   // no voice: a line lasts as long as its text, on every machine
 // A stand-in for Claude Code, so that no test starts the real one: asked for Spanish it answers a Spanish sentence with the text in brackets, for any other language the name of that language.
 process.env.AGENT_STANDUP_CLAUDE = path.join(tmp, 'claude'); delete process.env.ANTHROPIC_API_KEY;
@@ -390,6 +390,17 @@ test('live call', { skip: missing || false, timeout: 600000 }, async (t) => {
     assert.equal(await c.page.evaluate(async () => { const g = document.querySelector('#gate'), o = document.querySelector('#vOffer'); o.style.display = ''; g.classList.add('on'); const under = getComputedStyle(o).display; g.classList.remove('on'); const after = getComputedStyle(o).display; o.style.display = 'none'; return under + ' ' + after; }), 'none flex', 'a line that offers something is not shown over the join screen: in a small panel it covered the button');
     assert.deepEqual(await c.page.evaluate(() => ['Ich habe die Funktion korrigiert und die Tests laufen jetzt alle durch.', '関数を修正し、テストはすべて通りました。', '함수를 수정했고 테스트가 모두 통과합니다.', '我修复了函数，所有测试都通过了。', 'Jeg har rettet funktionen, og alle testene kører nu igennem.', 'I fixed the function and all the tests pass now.'].map(langOf)), ['de', 'ja', 'ko', 'zh', 'da', 'en']);
     assert.deepEqual(await c.page.evaluate(() => { TTS.engine = 'kokoro'; TTS.pool.en = ['af_heart']; TTS.pool.de = ['Anna']; TTS.pool.ja = []; const p = { id: 'main', vi: 0 }; return [babbles(), TTS.voiceFor(p, 'de'), TTS.voiceFor(p, 'ja'), TTS.voiceFor(p, 'en')]; }), [false, 'Anna', 'af_heart', 'af_heart'], 'once the real voices are there: a German line to a German system voice, a language with no voice at all to the English one');
+    await c.close();
+  });
+
+  await t.test('a menu left open for minutes, the call opened on it: the lead needs you and shows what it asks, not "your turn"', async () => {
+    const s = session(), at = Date.now() - 300000, CC = process.env.AGENT_STANDUP_CC_SESSIONS; s.user('Build it', at - 60000); s.tool('Bash', { command: 'npm run build', description: 'Build' }, { at });
+    fs.mkdirSync(CC, { recursive: true }); fs.writeFileSync(path.join(CC, '1.json'), JSON.stringify({ pid: process.pid, sessionId: 's', status: 'waiting', waitingFor: 'permission prompt', statusUpdatedAt: at + 5000 }));   // what Claude Code writes while its permission menu is open
+    const c = await open(s);
+    try {
+      await c.until(() => document.querySelector('#askc').classList.contains('on'), null, 20000);   // the page used to say "✓ your turn · 5 min" past 3 minutes of quiet, with no card
+      assert.match(await c.page.evaluate(() => agentState('main', Date.now()).txt), /needs you\? 5 min/); assert.match(await c.page.evaluate(() => document.querySelector('#askc').innerText), /npm run build/);
+    } finally { fs.rmSync(path.join(CC, '1.json'), { force: true }); }   // every session of this file is called s
     await c.close();
   });
 });
