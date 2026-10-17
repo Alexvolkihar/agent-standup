@@ -310,8 +310,6 @@
  "worked": "工作了",
  "waiting on you for": "已等你",
  "working for": "已工作",
- "(one or more)": "（可複選）",
- "(pick one)": "（單選）",
  "Answer it in Claude Code": "請在 Claude Code 中回答",
  "asks permission to use": "請求使用",
  "asks to edit this file": "請求編輯此檔案",
@@ -357,5 +355,8 @@
  "Gone quiet": "安靜下來了",
  "No activity for {0}.": "已有 {0} 沒有活動。",
  "{0} failures in a row": "連續失敗 {0} 次",
- "{0} times in a row": "連續 {0} 次"
+ "{0} times in a row": "連續 {0} 次",
+ "pick one": "單選",
+ "one or more": "可複選",
+ "A card with what the session asks you": "用卡片顯示工作階段向你提出的問題"
 }

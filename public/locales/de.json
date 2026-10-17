@@ -310,8 +310,6 @@
  "worked": "hat gearbeitet",
  "waiting on you for": "wartet seit",
  "working for": "arbeitet seit",
- "(one or more)": "(eine oder mehrere)",
- "(pick one)": "(eine Wahl)",
  "Answer it in Claude Code": "In Claude Code beantworten",
  "asks permission to use": "bittet um Erlaubnis für",
  "asks to edit this file": "möchte diese Datei bearbeiten",
@@ -357,5 +355,8 @@
  "Gone quiet": "Still geworden",
  "No activity for {0}.": "Keine Aktivität seit {0}.",
  "{0} failures in a row": "{0} Fehlschläge in Folge",
- "{0} times in a row": "{0}-mal in Folge"
+ "{0} times in a row": "{0}-mal in Folge",
+ "pick one": "eine Wahl",
+ "one or more": "eine oder mehrere",
+ "A card with what the session asks you": "Eine Karte mit dem, was die Sitzung dich fragt"
 }

@@ -309,8 +309,6 @@
  "worked": "arbejdede",
  "waiting on you for": "venter på dig i",
  "working for": "arbejder i",
- "(one or more)": "(et eller flere)",
- "(pick one)": "(vælg ét)",
  "Answer it in Claude Code": "Svar i Claude Code",
  "asks permission to use": "beder om lov til at bruge",
  "asks to edit this file": "beder om at redigere denne fil",
@@ -356,5 +354,8 @@
  "Gone quiet": "Blevet stille",
  "No activity for {0}.": "Ingen aktivitet i {0}.",
  "{0} failures in a row": "{0} fejl i træk",
- "{0} times in a row": "{0} gange i træk"
+ "{0} times in a row": "{0} gange i træk",
+ "pick one": "vælg ét",
+ "one or more": "et eller flere",
+ "A card with what the session asks you": "Et kort med det, sessionen spørger dig om"
 }

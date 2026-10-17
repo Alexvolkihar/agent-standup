@@ -377,7 +377,7 @@ const planFile = (f) => PLAN_FILE.test(f) || (!!PLAN_DIR && f.startsWith(PLAN_DI
 const planText = (f) => { try { const st = fs.statSync(f); if (!st.isFile() || st.size > 262144) return ''; return clip(fs.readFileSync(f, 'utf8').trim(), 1200); } catch { return ''; } };
 const menuOf = (b) => {   // what a menu waiting for you shows, from the call it waits on, word for word: the questions and their options in their order (the terminal numbers them the same way), the command, the file, the plan
   const i = b.input || {}, t = (x, n) => (typeof x === 'string' ? clip(x.trim(), n) : '');
-  if (b.name === 'AskUserQuestion') return { kind: 'question', questions: (Array.isArray(i.questions) ? i.questions : []).slice(0, 4).map((q) => ({ q: t(q && q.question, 300), multi: !!(q && q.multiSelect), options: (q && Array.isArray(q.options) ? q.options : []).slice(0, 8).map((o) => ({ label: t(o && o.label, 80), about: t(o && o.description, 140) })).filter((o) => o.label) })).filter((q) => q.q) };
+  if (b.name === 'AskUserQuestion') return { kind: 'question', questions: (Array.isArray(i.questions) ? i.questions : []).slice(0, 4).map((q) => ({ q: t(q && q.question, 300), head: t(q && q.header, 30), multi: !!(q && q.multiSelect), options: (q && Array.isArray(q.options) ? q.options : []).slice(0, 8).map((o) => ({ label: t(o && o.label, 80), about: t(o && o.description, 140) })).filter((o) => o.label) })).filter((q) => q.q) };
   if (b.name === 'ExitPlanMode') return { kind: 'plan', text: t(i.plan, 1200) };
   if (b.name === 'Bash') return { kind: 'command', cmd: t(i.command, 600), about: t(i.description, 160) };
   if (/^(Edit|Write|MultiEdit|NotebookEdit)$/.test(b.name)) return { kind: 'edit', file: t(i.file_path || i.notebook_path, 300) };

@@ -310,8 +310,6 @@
  "worked": "작업",
  "waiting on you for": "기다리는 중",
  "working for": "작업 중",
- "(one or more)": "(여러 개 선택)",
- "(pick one)": "(하나 선택)",
  "Answer it in Claude Code": "Claude Code에서 답하세요",
  "asks permission to use": "— 사용 권한 요청:",
  "asks to edit this file": "— 이 파일을 수정하려고 합니다",
@@ -357,5 +355,8 @@
  "Gone quiet": "조용해짐",
  "No activity for {0}.": "{0} 동안 활동 없음.",
  "{0} failures in a row": "{0}번 연속 실패",
- "{0} times in a row": "{0}번 연속"
+ "{0} times in a row": "{0}번 연속",
+ "pick one": "하나 선택",
+ "one or more": "여러 개 선택",
+ "A card with what the session asks you": "세션이 묻는 내용을 카드로 표시"
 }

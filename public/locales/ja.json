@@ -310,8 +310,6 @@
  "worked": "作業時間",
  "waiting on you for": "あなたを待って",
  "working for": "作業中",
- "(one or more)": "（複数選択可）",
- "(pick one)": "（1つ選択）",
  "Answer it in Claude Code": "Claude Code で回答してください",
  "asks permission to use": "が使用の許可を求めています：",
  "asks to edit this file": "がこのファイルの編集を求めています",
@@ -357,5 +355,8 @@
  "Gone quiet": "静かになった",
  "No activity for {0}.": "{0} 間アクティビティなし。",
  "{0} failures in a row": "{0} 回連続で失敗",
- "{0} times in a row": "{0} 回連続"
+ "{0} times in a row": "{0} 回連続",
+ "pick one": "1つ選択",
+ "one or more": "複数選択可",
+ "A card with what the session asks you": "セッションからの質問をカードで表示"
 }
