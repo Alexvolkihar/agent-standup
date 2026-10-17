@@ -1,19 +1,20 @@
 # Agent Standup: notes for coding agents
 
-Agent Standup shows the Claude Code, Codex, Mistral Vibe and Cowork sessions of a computer as a live video call: drawn characters, voices, a board, a sessions list. Its local Node server only reads the session files those tools already write. It has no runtime dependencies, and it calls Claude only to translate the call: the user's own `claude`, or the Anthropic API when `ANTHROPIC_API_KEY` is set. It ships as a VS Code extension (Marketplace and Open VSX), an npm CLI (`@double_geste/agent-standup`), a Claude Code plugin, and a macOS app. The repository is public (MIT).
+Agent Standup shows the Claude Code, Codex, Mistral Vibe and Cowork sessions of a computer as a live video call: drawn characters, voices, a board, a sessions list. Its local Node server only reads the session files those tools already write. It has no runtime dependencies, and it calls Claude only to translate the call and, when turned on, for the jokes: the user's own `claude`, or the Anthropic API when `ANTHROPIC_API_KEY` is set. It ships as a VS Code extension (Marketplace and Open VSX), an npm CLI (`@double_geste/agent-standup`), a Claude Code plugin, and a macOS app. The repository is public (MIT).
 
 ## Map
 | Path | What |
 |---|---|
 | `server.js` | The whole backend: reads `~/.claude/projects/**/*.jsonl` incrementally, merges sub-agents, serves `/api/*` and `public/`. Also handles translation, prefs, characters, packs and the shop client. |
 | `codex.js`, `vibe.js` | Readers for Codex and Mistral Vibe. Each lists its sessions under one made-up project (`SOURCES` in server.js). Cowork is read like Claude Code, from the desktop app's folder (`coworkHomes`). |
+| `demo.js` | The built-in demo: a made-up session (English and French) that `server.js` serves. |
 | `kokoro.js`, `kokoro-worker.js` | Natural voices (Kokoro TTS), installed on demand. |
-| `public/index.html` | The whole page: one inline `<script>`, about 3000 lines. `public/locales/*.json` holds the 10 languages of the page. |
+| `public/index.html` | The whole page: one inline `<script>`, about 3000 lines. `public/locales/*.json` holds the page's other eight languages and the generated `en.json`; French and English are written in the page itself (`L(fr, en)`). |
 | `extension.js` | The VS Code extension. It forks `server.js` into a process of its own (the editor's runtime with `ELECTRON_RUN_AS_NODE`), and falls back to running it in the extension host if that fails. The process starts when the call is opened; the status bar reads the ends of the transcripts in the extension host itself (`boardRows()`), so a window whose call is never opened runs no server. It also handles the webview, commands and tab following (via `/api/board` and `/api/sessions`). `l10n/` and `package.nls.*.json` hold its texts. |
 | `bin/agent-standup.js` | The CLI (`status`, `statusline`, `--open`). `scripts/build-cli.js` builds it into `dist-cli/`. |
 | `desktop/` | Electron app (`main.js`). `scripts/build-desktop.js` builds it. |
 | `plugin/` | The Claude Code plugin (skills `open`, `status`). `scripts/sync-plugin.js` keeps its version in step. |
-| `api/` | Vercel functions of agent-standup.com: Stripe checkout, pack download, sales page. They have no dependencies. |
+| `api/` | Vercel functions of agent-standup.com: Stripe checkout, pack download, the sales page (`sales.js`) and the growth dashboard (`stats.js` with `_growth.js`, at `/api/stats/?k=<STATS_KEY>`). They have no dependencies. |
 | `website/` | agent-standup.com (Vercel; a push to main deploys it). `npm run website` builds `website/dist`. |
 | `landing/` → `docs/` | The GitHub Pages landing (`npm run landing`). Do not redesign it without asking. |
 | `test/` | `node:test` suites. `live-*.test.js` drive the real page in Chrome through puppeteer-core, each with its own server and browser; their shared setup is `live-helpers.js`, which must be required before `server.js`. |
@@ -21,7 +22,7 @@ Agent Standup shows the Claude Code, Codex, Mistral Vibe and Cowork sessions of 
 
 ## Run and test
 - `node server.js` → http://localhost:4747 (`PORT=…`). `?live=0` opens the replay picker, `?proj=<dir>` limits the call to one project.
-- To run against chosen data, set `AGENT_STANDUP_PROJECTS` (sessions folder), `AGENT_STANDUP_PREFS` (settings file), `AGENT_STANDUP_CHARACTERS`, `AGENT_STANDUP_PACKS`, `AGENT_STANDUP_KOKORO_DIR`, `AGENT_STANDUP_COWORK=off`, `AGENT_STANDUP_CODEX=0`, `AGENT_STANDUP_VIBE=0`, `AGENT_STANDUP_CLAUDE` (a stand-in `claude` for translation) and `AGENT_STANDUP_STORE` (the shop; `scripts/shop-dev.js` is a pretend one). Never point a test server at the user's real prefs.
+- To run against chosen data, set `AGENT_STANDUP_PROJECTS` (sessions folder), `AGENT_STANDUP_PREFS` (settings file), `AGENT_STANDUP_CC_SESSIONS` (Claude Code's per-session status folder, `~/.claude/sessions`), `AGENT_STANDUP_CHARACTERS`, `AGENT_STANDUP_PACKS`, `AGENT_STANDUP_KOKORO_DIR`, `AGENT_STANDUP_COWORK=off`, `AGENT_STANDUP_CODEX=0`, `AGENT_STANDUP_VIBE=0`, `AGENT_STANDUP_CLAUDE` (a stand-in `claude` for translation) and `AGENT_STANDUP_STORE` (the shop; `scripts/shop-dev.js` is a pretend one). Never point a test server at the user's real prefs.
 - `npm test` takes about 2.5 minutes: the four browser files run side by side. While iterating, run one file: `node --test test/server.test.js`.
 - `npm run i18n` checks that every language has every key, and rebuilds the website and landing locale files.
 - The app leaves out sessions in temporary folders. Put throwaway sessions and test copies under `reports/` (git-ignored), not `/tmp`.

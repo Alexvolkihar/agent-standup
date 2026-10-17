@@ -1,6 +1,6 @@
 # Privacy
 
-Last updated: 14 October 2026.
+Last updated: 17 October 2026.
 
 This page covers Agent Standup in all its forms (the VS Code extension, the `agent-standup` command, the desktop app, the Claude Code plugin) and its website. Agent Standup is published by Double Geste, an individual developer. It is an unofficial community project, not affiliated with Anthropic, OpenAI or Mistral AI.
 
@@ -10,14 +10,15 @@ Agent Standup runs on your own computer. It reads files that are already there, 
 
 ## What it reads
 
-- **Your session files.** The ones Claude Code writes in `~/.claude/projects` (and the status it keeps for each open session in `~/.claude/sessions`: busy, idle or waiting for your answer), the ones Codex writes in `~/.codex/sessions` the ones Mistral Vibe writes in `~/.vibe/logs/session`, and the ones Cowork (a tab of the Claude desktop app) writes in that app's own folder (`local-agent-mode-sessions`), with the title the app noted beside each of them. They hold what you typed, what the agents answered and what they ran, so they can contain personal or confidential information. Agent Standup only reads them. It never changes or deletes them. Reading Codex sessions, reading Mistral Vibe sessions and reading Cowork sessions can each be turned off. A page a session published on claude.ai (an artifact) is shown from what the session file holds of it; it is not read from your disk nor fetched from claude.ai.
+- **Your session files.** The ones Claude Code writes in `~/.claude/projects` (and the status it keeps for each open session in `~/.claude/sessions`: busy, idle or waiting for your answer; and the plan files a session names in `~/.claude/plans`, to show a plan that waits for your approval), the ones Codex writes in `~/.codex/sessions` (with the names Codex gives them in `~/.codex/session_index.jsonl`), the ones Mistral Vibe writes in `~/.vibe/logs/session`, and the ones Cowork (a tab of the Claude desktop app) writes in that app's own folder (`local-agent-mode-sessions`), with the title the app noted beside each of them. They hold what you typed, what the agents answered and what they ran, so they can contain personal or confidential information. Agent Standup only reads them. It never changes or deletes them. Reading Codex sessions, reading Mistral Vibe sessions and reading Cowork sessions can each be turned off. A page a session published on claude.ai (an artifact) is shown from what the session file holds of it; it is not read from your disk nor fetched from claude.ai.
 - **Your own character images**, if you put some in its characters folder.
 
 ## What it keeps on your computer
 
-- **Your settings**, in one small file in your user configuration folder. In the desktop app and from the command line, it also holds, for the one time the app asks for a star on GitHub, the number of days the page was in view, the last of those days and your answer.
-- **Spoken lines, for a day.** When voices are on, each line is turned into a sound file in a private temporary folder so it does not have to be made twice. Files older than a day are deleted.
+- **Your settings**, in one small file in your user configuration folder. In every form, it also holds, for the one time the call asks for a coffee, the first day the call was in view and the day it asked. In the desktop app and from the command line, it also holds, for the one time the app asks for a star on GitHub, the number of days the page was in view, the last of those days and your answer.
+- **Spoken lines, for a day.** When voices are on, each line is turned into a sound file in a private folder (a temporary one on macOS and Windows, `~/.cache/agent-standup/tts` on Linux) so it does not have to be made twice. Files older than a day are deleted.
 - **The natural voice model**, only if you install it.
+- **Which window plays sound**, in a file named `audio.json` beside your settings: a random name for that window and a time.
 - **The sessions you put away as done**, in a file named `done.json` beside your settings: for each one, the name of its project folder, its id and a time. Nothing of what was said in it.
 - **A log of the app's own errors**, in a file named `errors.log` beside your settings. Each line holds the date, the app's version, where the error happened, its message and the first lines of its stack trace. The path of your home folder is replaced by `~`, and the address of the page (which names the project) by the word `page`. An error message can still name a file or a project of yours, or hold a few characters of what the app was reading when it failed. The file is cut down when it passes 256 KB, and it is never sent anywhere by the app.
 - **A character pack you bought**, in a `packs` folder beside your characters folder (`~/.agent-standup/packs`): its pictures, and in a file named `codes.json` the code of the purchase, which is the reference Stripe gave it. The code is kept so that the app can show it to you: it is what installs the pack on another computer.
