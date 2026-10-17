@@ -344,5 +344,18 @@
  "same search as {0}: {1}": "与 {0} 相同的搜索：{1}",
  "reran a failing command: {0}": "重新运行失败的命令：{0}",
  "☕ Buy a coffee": "☕ 请喝杯咖啡",
- "{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)": "{0} 和团队已经完成。如果这次通话帮你跟上了这段长时间的工作，一杯咖啡能让 Agent Standup 继续下去。（我们只问这一次。）"
+ "{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)": "{0} 和团队已经完成。如果这次通话帮你跟上了这段长时间的工作，一杯咖啡能让 Agent Standup 继续下去。（我们只问这一次。）",
+ "Failed calls": "失败的调用",
+ "+ {0} earlier": "还有更早的 {0} 条",
+ "Spotted in the session itself, with no model call.": "直接从会话中发现，没有调用模型。",
+ "Read again": "再次读取",
+ "Already read by {0}": "{0} 已读过",
+ "Same search again": "重复的搜索",
+ "Same search as {0}": "与 {0} 相同的搜索",
+ "Reran a failing command": "重新运行了失败的命令",
+ "Long-running command": "长时间运行的命令",
+ "Gone quiet": "安静下来了",
+ "No activity for {0}.": "已有 {0} 没有活动。",
+ "{0} failures in a row": "连续失败 {0} 次",
+ "{0} times in a row": "连续 {0} 次"
 }

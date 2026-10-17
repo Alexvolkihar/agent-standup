@@ -344,5 +344,18 @@
  "same search as {0}: {1}": "misma búsqueda que {0}: {1}",
  "reran a failing command: {0}": "repitió un comando que falló: {0}",
  "☕ Buy a coffee": "☕ Invitar a un café",
- "{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)": "{0} y el equipo han terminado. Si la llamada te ayudó a seguir este trabajo largo, un café ayuda a que Agent Standup siga adelante. (Solo lo pedimos una vez.)"
+ "{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)": "{0} y el equipo han terminado. Si la llamada te ayudó a seguir este trabajo largo, un café ayuda a que Agent Standup siga adelante. (Solo lo pedimos una vez.)",
+ "Failed calls": "Llamadas fallidas",
+ "+ {0} earlier": "+ {0} anteriores",
+ "Spotted in the session itself, with no model call.": "Detectado en la propia sesión, sin llamar al modelo.",
+ "Read again": "Leído otra vez",
+ "Already read by {0}": "Ya leído por {0}",
+ "Same search again": "Misma búsqueda otra vez",
+ "Same search as {0}": "Misma búsqueda que {0}",
+ "Reran a failing command": "Repitió un comando que falló",
+ "Long-running command": "Comando largo",
+ "Gone quiet": "En silencio",
+ "No activity for {0}.": "Sin actividad desde hace {0}.",
+ "{0} failures in a row": "{0} fallos seguidos",
+ "{0} times in a row": "{0} veces seguidas"
 }

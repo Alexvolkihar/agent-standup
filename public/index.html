@@ -26,7 +26,14 @@
   .sp { flex:1 }
   .tok { font-size:11px; font-weight:600; padding:3px 9px; border-radius:99px; background:var(--panel2); color:#c3c6d4; white-space:nowrap } .tok:hover { color:#fff }
   .tbadge { position:absolute; top:30px; right:6px; display:flex; gap:4px; z-index:2; pointer-events:none } .tbadge span { font-size:10.5px; padding:1px 7px; border-radius:99px; background:rgba(14,15,24,.78); backdrop-filter:blur(6px) }
-  .tbadge .e { color:#ff7b72 } .tbadge .w { color:#79c0ff } .tbadge .s { color:#ffb347 } .tbadge .q { color:#9aa3bd }
+  .tbadge .e { color:#ff7b72 } .tbadge .w { color:#79c0ff } .tbadge .s { color:#ffb347 } .tbadge .q { color:#9aa3bd } .tbadge [data-tip] { pointer-events:auto; cursor:help }
+  #btip { position:fixed; z-index:30; top:0; left:0; width:max-content; max-width:min(360px, calc(100vw - 16px)); padding:12px 12px 10px; border-radius:12px; background:rgba(22,25,40,.97); border:1px solid rgba(255,255,255,.09); box-shadow:0 18px 48px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.3); backdrop-filter:blur(10px); color:var(--text); font-size:12.5px; line-height:1.45; pointer-events:none; opacity:0; transform:translateY(-4px); transition:opacity .14s ease, transform .14s ease; visibility:hidden }
+  #btip.on { opacity:1; transform:none; visibility:visible } #btip.k-e { --c:#ff7b72; --cb:rgba(255,123,114,.15) } #btip.k-w { --c:#79c0ff; --cb:rgba(121,192,255,.15) } #btip.k-l { --c:#d2a8ff; --cb:rgba(210,168,255,.15) } #btip.k-s { --c:#ffb347; --cb:rgba(255,179,71,.15) } #btip.k-q { --c:#9aa3bd; --cb:rgba(154,163,189,.15) }
+  #btip .bh { display:flex; align-items:center; gap:8px; padding:0 2px } #btip .bi { flex:none; width:24px; height:24px; border-radius:7px; display:grid; place-items:center; font-size:12.5px; background:var(--cb); color:var(--c) } #btip .bt { font-weight:650; font-size:13px; white-space:nowrap } #btip .bn { padding:0 7px; border-radius:99px; background:var(--cb); color:var(--c); font-size:11px; font-weight:700; line-height:18px } #btip .ba { margin-left:auto; padding-left:14px; color:var(--dim); font-size:11.5px; white-space:nowrap }
+  #btip ul { list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:6px } #btip li { padding:7px 9px 8px; border-radius:8px; background:rgba(255,255,255,.045); box-shadow:inset 2px 0 0 var(--c); min-width:0 } #btip .r1 { display:flex; align-items:center; gap:8px } #btip .rk { font-weight:600 } #btip .rn { min-width:0; color:var(--dim); font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap } #btip .rt { margin-left:auto; padding-left:10px; color:var(--dim); font-size:11px; font-variant-numeric:tabular-nums; white-space:nowrap }
+  #btip .pill { font-size:10.5px; font-weight:650; padding:1px 6px; border-radius:5px; background:rgba(255,255,255,.08); color:#cfd6e6 } #btip code { display:block; margin-top:3px; font:11.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:#d6dcea; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  #btip .ro { margin-top:5px; padding:5px 7px; border-radius:6px; background:rgba(255,123,114,.08); font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:#ffc1bb } #btip .ro div { overflow:hidden; text-overflow:ellipsis; white-space:nowrap } #btip .bf { margin:8px 2px 0; color:var(--dim); font-size:11px } #btip .bf + .bf { margin-top:2px }
+  @media (prefers-reduced-motion:reduce) { #btip { transition:none } }
   .tile.slow { border-color:#ff9f1c !important; animation:slowp 1.6s ease-in-out infinite } @keyframes slowp { 50% { box-shadow:0 0 0 4px rgba(255,159,28,.35) } }
   .tile.quiet { opacity:.72 }
   .tag .tk { color:#aab2c5; font-size:10px } .tag .tk:empty { display:none }
@@ -361,6 +368,7 @@
   <button class="mi" id="mReport"><span data-fr="🐞 Signaler un problème" data-en="🐞 Report a problem">🐞 Signaler un problème</span></button>
 </div>
 <div id="menuTip" role="status" style="display:none"><span id="menuTipT"></span><button class="btn" id="menuTipOk"></button></div>
+<div id="btip" role="tooltip"></div>
 <div id="coffeeTip" role="status" style="display:none"><span id="coffeeTipT"></span><div class="rtb"><button class="btn" id="coffeeNo"></button><button class="btn" id="coffeeYes"></button></div></div>
 <div id="rateTip" role="status" style="display:none"><span id="rateTipT"></span><div class="rtb"><button class="btn" id="rateNo"></button><button class="btn" id="rateLater"></button><button class="btn" id="rateYes"></button></div></div>
 <div id="prefs" role="dialog" aria-modal="true" aria-labelledby="prefsT"><div class="pbox">
@@ -1297,7 +1305,7 @@ const applyStatus = (ev) => {
 };
 function recomputeStatus(upTo) {
   S.files = new Map(); S.cands = new Map(); S.turnN = 0; S.turnSaid = ''; S.arts = new Map(); S.artCalls = new Map();
-  S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.lastTool = {}; S.mainBusyAt = 0; S.turnOver = false; S.th = {}; S.ctx = {}; S.model = {}; S.cw = {}; S.compacts = {}; S.ctxWarned = {}; S.rep = {}; S.loops = {}; S.wst = {}; S.recomputing = true; document.querySelectorAll('.tile').forEach((t) => { clearTimeout(t._byeT); t.classList.remove('bye'); }); hidePresent();
+  S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.lastTool = {}; S.mainBusyAt = 0; S.turnOver = false; S.th = {}; S.ctx = {}; S.model = {}; S.cw = {}; S.compacts = {}; S.ctxWarned = {}; S.rep = {}; S.loops = {}; S.wst = {}; S.errList = {}; S.callById = new Map(); S.recomputing = true; document.querySelectorAll('.tile').forEach((t) => { clearTimeout(t._byeT); t.classList.remove('bye'); }); hidePresent();
   S.status = {}; S.tc = {}; S.doneAt = {}; S.gone.clear(); S.leaving.clear(); document.querySelectorAll('.tile.vanishing').forEach((t) => t.classList.remove('vanishing')); const doneIdx = {}; document.querySelectorAll('.ticker').forEach((x) => { x.classList.remove('on'); x.innerHTML = ''; });
   for (let i = 0; i < upTo; i++) {
     const e = S.events[i]; applyStatus(e); tally(e); if (e.kind === 'tools') S.tc[e.agent] = (S.tc[e.agent] || 0) + e.tools.length;
@@ -1316,7 +1324,7 @@ function syncUI() {
 
 // ---------- tool ticker, shared screen, flying messages ----------
 // ---------- what each agent is doing: tool calls with their real outputs ----------
-S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.ctx = {}; S.model = {}; S.cw = {}; S.compacts = {}; S.ctxWarned = {}; S.rep = {}; S.loops = {}; S.wst = {}; S.present = null; S.camFor = null; let presentTimer = null;
+S.term = {}; S.todos = {}; S.run = {}; S.act = {}; S.usage = {}; S.errs = {}; S.lastAct = {}; S.waitOn = {}; S.orderTs = {}; S.prevState = {}; S.ctx = {}; S.model = {}; S.cw = {}; S.compacts = {}; S.ctxWarned = {}; S.rep = {}; S.loops = {}; S.wst = {}; S.errList = {}; S.callById = new Map(); S.present = null; S.camFor = null; let presentTimer = null;
 S.files = new Map(); S.cands = new Map(); S.turnN = 0; S.turnSaid = ''; S.fgone = new Set(); S.fmade = new Map(); S.arts = new Map(); S.artCalls = new Map(); S.artOk = new Map(); S.artPin = null; S.artWhole = null; S.wholeSeen = new Set();   // files: path → the Write call that created it, in the order they were written · cands: the documents the commands name (see candFile) · turnN: how many orders you gave so far · turnSaid: what you and the lead said in this turn · fgone: the files found missing on a click · fmade: what the server answered about a document a command names
 const later = (k, fn, ms = 160) => { later.p = later.p || {}; if (later.p[k]) return; later.p[k] = setTimeout(() => { later.p[k] = 0; fn(); }, ms); };   // coalesce bursts of repaints
 const fmtTok = (n) => (n < 1000 ? String(n) : n < 1e6 ? (n / 1000).toFixed(n < 1e4 ? 1 : 0) + 'k' : (n / 1e6).toFixed(n < 1e7 ? 2 : 1) + 'M');
@@ -1336,7 +1344,7 @@ function ctxWin(model, ctx) { const base = WIN1M.test(model || '') ? 1e6 : 2e5; 
 const fileOf = (f) => String(f || '').split(/[\\/]/).pop();
 function wasteStep(W, ev) {   // W: the session's state (S.wst, or a fresh one for the recap); true when something was noted
   if (!W.reads) { const N = () => Object.create(null); Object.assign(W, { reads: N(), finds: N(), calls: N(), failed: N(), items: N() }); }   /* no prototype: a file or a search named __proto__ is just a name */
-  const a = ev.agent; let hit = false; const note = (it) => { const l = (W.items[a] = W.items[a] || []); l.push(it); if (l.length > 60) l.shift(); hit = true; };
+  const a = ev.agent; let hit = false; const note = (it) => { const l = (W.items[a] = W.items[a] || []); l.push({ ...it, ts: ev.ts }); if (l.length > 60) l.shift(); hit = true; };
   if (ev.kind === 'tools') for (const t of ev.tools) { const d = t.d || {};
     if (d.kind === 'read' && d.file) { const m = (W.reads[d.file] = W.reads[d.file] || Object.create(null)), part = (d.offset || '') + ':' + (d.limit || ''), o = Object.keys(m).find((x) => x !== a);   /* a part of a long file is another read */
       if (m[a] && m[a].has(part)) note({ k: 'again', f: d.file }); else if (o) note({ k: 'other', f: d.file, by: o }); (m[a] = m[a] || new Set()).add(part); }
@@ -1351,10 +1359,53 @@ function wasteStep(W, ev) {   // W: the session's state (S.wst, or a fresh one f
 const wasteLine = (it) => it.k === 'again' ? L('relu : {0}', 'read again: {0}').replace('{0}', () => fileOf(it.f)) : it.k === 'other' ? L('déjà lu par {0} : {1}', 'already read by {0}: {1}').replace('{0}', () => nameOf(it.by)).replace('{1}', () => fileOf(it.f))
   : it.k === 'find' ? L('même recherche relancée : {0}', 'same search again: {0}').replace('{0}', () => '“' + it.q + '”') : it.k === 'findOther' ? L('même recherche que {0} : {1}', 'same search as {0}: {1}').replace('{0}', () => nameOf(it.by)).replace('{1}', () => '“' + it.q + '”')
   : L('relance une commande qui a échoué : {0}', 'reran a failing command: {0}').replace('{0}', () => it.c);
+// The badges' card: on hover (or a tap), what is behind ✗ ♻ 🔁 ⏳ 💤, read from the session alone.
+function noteCalls(ev) {
+  if (!S.callById) { S.callById = new Map(); S.errList = {}; }
+  if (ev.kind === 'tools') for (const t of ev.tools) { S.callById.set(t.id, { name: t.name, arg: t.arg, d: t.d, ts: ev.ts }); if (S.callById.size > 3000) S.callById.delete(S.callById.keys().next().value); }
+  else if (ev.kind === 'results') for (const it of ev.items) { if (it.err) { const l = (S.errList[ev.agent] = S.errList[ev.agent] || []); l.push({ ts: ev.ts, call: S.callById.get(it.id), out: it.out }); if (l.length > 40) l.shift(); } S.callById.delete(it.id); }
+}
+var BT = { el: null, h: 0 }; const toolShort = (n) => (String(n || '').startsWith('mcp__') ? String(n).split('__').pop() : String(n || ''));
+const clockOf = (ts) => { try { return ts ? new Date(ts).toLocaleTimeString(document.documentElement.lang || undefined, { hour: '2-digit', minute: '2-digit' }) : ''; } catch { return ''; } };
+const callText = (c) => String((c && ((c.d && (c.d.text || c.d.file || c.d.pattern || c.d.url || c.d.query)) || c.arg)) || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+const errBit = (o) => { const ls = String(o || '').replace(/\x1b\[[0-9;]*m/g, '').split('\n').map((x) => x.trim()).filter(Boolean), i = Math.max(0, ls.findIndex((x) => /error|fail|denied|not found|no such|exception|cannot|refused|invalid|expected|✗|●/i.test(x))); return ls.slice(i, i + 3).map((x) => x.slice(0, 160)); };
+const wasteParts = (it) => { const path = String(it.f || '').split(/[\\/]/).slice(-2).join('/');
+  return it.k === 'again' ? [L('Relu', 'Read again'), path] : it.k === 'other' ? [L('Déjà lu par {0}', 'Already read by {0}').replace('{0}', () => nameOf(it.by)), path]
+    : it.k === 'find' ? [L('Même recherche relancée', 'Same search again'), '“' + it.q + '”'] : it.k === 'findOther' ? [L('Même recherche que {0}', 'Same search as {0}').replace('{0}', () => nameOf(it.by)), '“' + it.q + '”'] : [L('Relance une commande en échec', 'Reran a failing command'), it.c || '']; };
+function tipHtml(k, id) {
+  const head = (icon, title, n) => `<div class="bh"><span class="bi">${icon}</span><span class="bt">${esc(title)}</span>${n ? `<span class="bn">${esc(String(n))}</span>` : ''}<span class="ba">${esc(nameOf(id))}</span></div>`;
+  const foot = (t) => (t ? `<div class="bf">${esc(t)}</div>` : ''), more = (n) => foot(n > 0 ? L('+ {0} plus tôt', '+ {0} earlier').replace('{0}', () => n) : '');
+  const row = (name, time, txt, extra) => `<li><div class="r1">${name}<span class="rt">${esc(time)}</span></div>${txt ? `<code>${esc(txt)}</code>` : ''}${extra || ''}</li>`;
+  if (k === 'e') { const l = (S.errList && S.errList[id]) || [], n = S.errs[id] || l.length, sh = l.slice(-4).reverse(); if (!n) return '';
+    return head('✗', L('Appels en échec', 'Failed calls'), n) + (sh.length ? `<ul>${sh.map((x) => { const bit = errBit(x.out); return row((x.call && x.call.name ? `<span class="pill">${esc(toolShort(x.call.name))}</span>` : '') + (x.call && x.call.d && x.call.d.note ? `<span class="rn">${esc(x.call.d.note)}</span>` : ''), clockOf(x.ts), callText(x.call), bit.length ? `<div class="ro">${bit.map((x) => `<div>${esc(x)}</div>`).join('')}</div>` : ''); }).join('')}</ul>` : '') + more(n - sh.length); }
+  if (k === 'w') { const l = (S.wst.items && S.wst.items[id]) || [], sh = l.slice(-5).reverse(); if (!l.length) return '';
+    return head('♻', L('Travail répété', 'Repeated work'), l.length) + `<ul>${sh.map((it) => { const [lab, sub] = wasteParts(it); return row(`<span class="rk">${esc(lab)}</span>`, clockOf(it.ts), sub); }).join('')}</ul>` + more(l.length - sh.length) + foot(L('Repéré dans la session elle-même, sans appel au modèle.', 'Spotted in the session itself, with no model call.')); }
+  if (k === 'l') { const x = S.loops[id]; if (!x) return ''; const errs = x.kind === 'errors';
+    return head('🔁', errs ? L('Échecs répétés', 'Repeated failures') : L('Même appel répété', 'Same call repeated'), '×' + x.n) + foot((errs ? L('{0} échecs d’affilée', '{0} failures in a row') : L('{0} fois d’affilée', '{0} times in a row')).replace('{0}', () => x.n) + (x.tool ? ' · ' + toolShort(x.tool) : '')); }
+  if (k === 's') { const r = S.run[id]; if (!r) return ''; const c = S.callById && S.callById.get(r.id);
+    return head('⏳', L('Commande longue', 'Long-running command'), r.ts ? fmtShort(Date.now() - r.ts) : '') + `<ul>${row(r.name ? `<span class="pill">${esc(toolShort(r.name))}</span>` : '', clockOf(r.ts), callText(c) || (c && c.d && c.d.note) || '')}</ul>`; }
+  if (k === 'q') return S.lastAct[id] ? head('💤', L('Silencieux', 'Gone quiet'), '') + foot(L('Aucune activité depuis {0}.', 'No activity for {0}.').replace('{0}', () => fmtShort(Date.now() - S.lastAct[id]))) : '';
+  return '';
+}
+function showTip(el) {
+  const t = el.closest('.tile'), b = $('#btip'); if (!t) return; const id = t.id.slice(2), k = el.dataset.tip, h = tipHtml(k, id); if (!h) return hideTip();
+  clearTimeout(BT.h); const was = b.classList.contains('on') && BT.el; BT.el = el; if (b.innerHTML !== h) b.innerHTML = h; b.className = 'k-' + k + (was ? ' on' : ''); placeTip(); if (!was) requestAnimationFrame(() => BT.el && b.classList.add('on'));
+}
+function placeTip() {
+  const b = $('#btip'), r = BT.el.getBoundingClientRect(), w = b.offsetWidth, h = b.offsetHeight;
+  let top = r.bottom + 8; if (top + h > innerHeight - 8 && r.top - h - 8 > 8) top = r.top - h - 8;
+  b.style.left = Math.round(Math.max(8, Math.min(r.right - w, innerWidth - w - 8))) + 'px'; b.style.top = Math.round(Math.max(8, top)) + 'px';
+}
+function hideTip() { clearTimeout(BT.h); BT.el = null; $('#btip').classList.remove('on'); }
+function refreshTip() { const k = BT.el.dataset.tip, t = document.getElementById(BT.el._tile || ''), el = BT.el.isConnected ? BT.el : t && t.querySelector('.tbadge [data-tip="' + k + '"]'); if (el) { el._tile = BT.el._tile; showTip(el); } else hideTip(); }   /* the badges were drawn again: follow the new one, or close */
+document.addEventListener('mouseover', (e) => { const el = e.target.closest && e.target.closest('.tbadge [data-tip]'); if (el) { el._tile = el.closest('.tile') && el.closest('.tile').id; showTip(el); } });
+document.addEventListener('mouseout', (e) => { const el = e.target.closest && e.target.closest('.tbadge [data-tip]'); if (el && !(e.relatedTarget && el.contains(e.relatedTarget))) { clearTimeout(BT.h); BT.h = setTimeout(hideTip, 120); } });
+document.addEventListener('click', (e) => { const el = e.target.closest && e.target.closest('.tbadge [data-tip]'); if (el) { e.stopPropagation(); e.preventDefault(); el._tile = el.closest('.tile') && el.closest('.tile').id; showTip(el); } else if (BT.el) hideTip(); }, true);   /* a tap shows it on a touch screen, and does not open the agent */
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && BT.el) hideTip(); }); addEventListener('resize', () => BT.el && hideTip()); addEventListener('scroll', () => BT.el && hideTip(), true);
 function tally(ev) {   // numbers that pile up over a session: token usage, errors, last sign of life, the files it created
   noteFiles(ev);
   if (ev.kind === 'compact') { S.compacts[ev.agent] = (S.compacts[ev.agent] || 0) + 1; delete S.ctxWarned[ev.agent]; }
-  if (wasteStep(S.wst, ev)) later('badges', renderBadges, 300);
+  noteCalls(ev); if (wasteStep(S.wst, ev)) later('badges', renderBadges, 300);
   const det = loopStep(S.rep, ev); if (det) { S.loops[ev.agent] = det; later('badges', renderBadges, 300); } else if (S.loops[ev.agent] && (ev.kind === 'results' ? (S.loops[ev.agent].kind === 'errors' && ev.items.every((it) => !it.err)) : (ev.kind === 'tools' && S.rep[ev.agent].n < 2))) { delete S.loops[ev.agent]; later('badges', renderBadges, 300); }
   if (ev.kind === 'usage') { const c = ev.u.i + ev.u.r + ev.u.w; if (c > 0 && ev.model !== '<synthetic>') { S.ctx[ev.agent] = c; S.model[ev.agent] = ev.model; if (ev.cw) S.cw[ev.agent] = ev.cw; } const u = (S.usage[ev.agent] = S.usage[ev.agent] || { i: 0, o: 0, r: 0, w: 0 }); u.i += ev.u.i; u.o += ev.u.o; u.r += ev.u.r; u.w += ev.u.w; later('tok', renderTokens, 300); }   // which also redraws the context chips. Asking for those first, under the same name, left this one unasked: the counts on the tiles and in the header stood still during a live call
   else if (ev.kind === 'results') ev.items.forEach((it) => { if (it.err) { S.errs[ev.agent] = (S.errs[ev.agent] || 0) + 1; later('badges', renderBadges, 300); oops(ev.agent); noteTrouble(ev.agent, false); } else noteTrouble(ev.agent, true); });
@@ -1478,16 +1529,17 @@ function renderBadges() {   // per tile: failed tool calls, a command that has b
   const now = Date.now();
   for (const id in S.agents) {
     const t = $('#t-' + id); if (!t) continue; const b = t.querySelector('.tbadge'), parts = []; let slow = false, quiet = false;
-    if (S.errs[id]) parts.push(`<span class="e">✗ ${S.errs[id]}</span>`);
-    const ws = S.wst.items && S.wst.items[id]; if (ws && ws.length) parts.push(`<span class="w" title="${esc(L('Travail répété', 'Repeated work') + '\n' + ws.slice(-12).map(wasteLine).join('\n'))}">♻ ${ws.length}</span>`);
-    if (S.loops[id]) parts.push(`<span class="l" title="${esc(S.loops[id].kind === 'errors' ? L('Échecs répétés', 'Repeated failures') : L('Même appel répété', 'Same call repeated'))}">🔁 ×${S.loops[id].n}</span>`);
+    if (S.errs[id]) parts.push(`<span class="e" title="" data-tip="e">✗ ${S.errs[id]}</span>`);
+    const ws = S.wst.items && S.wst.items[id]; if (ws && ws.length) parts.push(`<span class="w" title="" data-tip="w">♻ ${ws.length}</span>`);
+    if (S.loops[id]) parts.push(`<span class="l" title="" data-tip="l">🔁 ×${S.loops[id].n}</span>`);
     if (S.live && S.status[id] === 'working') {
       const r = S.run[id];
-      if (r && r.ts && atTail() && now - r.ts > 60000) { slow = true; parts.push(`<span class="s">⏳ ${fmtShort(now - r.ts)}</span>`); }
-      else if (!r && S.lastAct[id] && now - S.lastAct[id] > 180000) { quiet = true; parts.push(`<span class="q">💤 ${fmtShort(now - S.lastAct[id])}</span>`); }
+      if (r && r.ts && atTail() && now - r.ts > 60000) { slow = true; parts.push(`<span class="s" title="" data-tip="s">⏳ ${fmtShort(now - r.ts)}</span>`); }
+      else if (!r && S.lastAct[id] && now - S.lastAct[id] > 180000) { quiet = true; parts.push(`<span class="q" title="" data-tip="q">💤 ${fmtShort(now - S.lastAct[id])}</span>`); }
     }
     t.classList.toggle('slow', slow); t.classList.toggle('quiet', quiet); const h = parts.join(''); if (b.innerHTML !== h) b.innerHTML = h;
   }
+  if (BT && BT.el) refreshTip();
 }
 const fmtShort = (ms) => { const s = Math.round(ms / 1000); return s < 90 ? `${s}s` : `${Math.round(s / 60)} min`; };
 function askNotify() { try { if (!EMBED && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch {} AUD.init(); AUD.alert(); }
