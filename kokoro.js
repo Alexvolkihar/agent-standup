@@ -45,7 +45,8 @@ function install() {
   const npm = findNpm(); if (!npm) { lastError = 'npm not found'; return status(); }
   fs.mkdirSync(DIR, { recursive: true }); lastError = '';
   const out = fs.openSync(LOG, 'w'), args = ['install', '--prefix', DIR, '--no-audit', '--no-fund', PKG, G2P];
-  job = WIN && /\.(cmd|bat)$/i.test(npm) ? spawn('"' + npm + '"', args.map((a) => (a === DIR ? '"' + a + '"' : a)), { shell: true, stdio: ['ignore', out, out], windowsHide: true }) : spawn(npm, args, { stdio: ['ignore', out, out], windowsHide: true });
+  const env = { ...process.env }, pk = Object.keys(env).find((k) => k.toUpperCase() === 'PATH') || 'PATH'; env[pk] = path.dirname(npm) + path.delimiter + (env[pk] || '');   // npm starts with `#!/usr/bin/env node`: an editor or app opened from the Dock has a PATH without node's folder (exit 127, issue #11), and node sits next to npm
+  job = WIN && /\.(cmd|bat)$/i.test(npm) ? spawn('"' + npm + '"', args.map((a) => (a === DIR ? '"' + a + '"' : a)), { shell: true, env, stdio: ['ignore', out, out], windowsHide: true }) : spawn(npm, args, { env, stdio: ['ignore', out, out], windowsHide: true });
   const done = (why) => { job = null; try { fs.closeSync(out); } catch {} if (why) lastError = why; else warm(); };
   job.on('error', (e) => done('npm: ' + e.message));
   job.on('close', (code) => done(code === 0 && installed() ? '' : 'npm install failed (exit ' + code + ')'));
