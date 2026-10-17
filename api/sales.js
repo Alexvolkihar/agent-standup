@@ -42,6 +42,7 @@ module.exports = async function sales(req, res) {
   }
   res.statusCode = 200; res.setHeader('content-type', 'text/html; charset=utf-8'); res.end(PAGE);
 };
+module.exports.rows = rows;   // the growth dashboard (api/stats.js) shows the totals too
 
 const PAGE = `<!doctype html>
 <html lang="en">
