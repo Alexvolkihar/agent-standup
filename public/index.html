@@ -1196,7 +1196,7 @@ function pieces(text) {
 const capTimers = new Map();   // agent id → timers that advance its subtitle
 function captionClear(id) { (capTimers.get(id) || []).forEach(clearTimeout); capTimers.delete(id); }
 function setCaption(id, text) {
-  const t = $('#t-' + id), b = t && t.querySelector('.bubble'), say = S.say[id]; if (!b || !say) return;
+  const t = document.getElementById('t-' + id), b = t && t.querySelector('.bubble'), say = S.say[id]; if (!b || !say) return;   // by id: a visitor's id holds a session path (":" and "/"), which a selector cannot take
   b.innerHTML = (say.label ? `<small>${esc(say.label)}</small>` : '') + esc(text); if (S.present === id) $('#pcap').textContent = text;
 }
 function captionRun(id, text, totalMs, from = 0) {   // from: how far into the line the voice already is, when the timing is corrected along the way
