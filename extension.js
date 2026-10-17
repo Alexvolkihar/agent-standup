@@ -87,7 +87,7 @@ const relay = (webview) => webview.onDidReceiveMessage((m) => {
   if (m.agentStandup === 'openBrowser') openBrowser();
   if (m.agentStandup === 'openCharacters') openCharacters();
   if (m.agentStandup === 'rate') rateNow();
-  if (m.agentStandup === 'notify' && typeof m.text === 'string' && !(m.text.includes('✋') && cfg().get('notifyNeedsYou') !== false && !callInView())) vscode.window.showInformationMessage('Agent Standup: ' + m.text.slice(0, 120));   // the page's own "may be waiting for you ✋", from a call out of view: the notification that names the session says it (see needsYou)
+  if (m.agentStandup === 'notify' && typeof m.text === 'string' && !(m.text.includes('✋') && cfg().get('notifyNeedsYou') !== false && !callInView() && Date.now() - needsTold < 60e3)) vscode.window.showInformationMessage('Agent Standup: ' + m.text.slice(0, 120));   // the page's own "may be waiting for you ✋", from a call out of view, a minute after the notification that names the session (see needsYou): the same news twice. Otherwise it is the only word of it (a stalled agent, a sub-agent's approval, a session of another folder)
   if (m.agentStandup === 'openExternal') { try { const u = new URL(m.url); if (u.protocol === 'https:' && (DONATE_HOSTS.test(u.hostname) || SHOP_HOSTS.test(u.hostname) || (u.hostname === 'claude.ai' && ARTIFACT_PATH.test(u.pathname)))) vscode.env.openExternal(u.search || u.hash ? u.toString() : vscode.Uri.parse(u.toString())); } catch {} }
 });
 
@@ -123,6 +123,7 @@ async function followTab() {
 // "Needs you": a notification when a session the status bar counts starts to wait on you (a question, an approval, a plan), naming it and what it asks (agentStandup.notifyNeedsYou).
 // Once when it starts to wait, once more ("Still waiting") if it still waits 5 minutes later, then nothing until it waits again. Not while the call is in view (the page alerts itself),
 // nor while you are on that session's Claude Code tab (its question is in front of you). Windows on the same folder share a mark in the extension's folder: the first to tell it tells it.
+let needsTold = 0;   // when needsYou last showed a notification (the clock, not the scan's time)
 const REMIND_MS = 5 * 60e3, needsSeen = new Map();   // "proj/id" → { ep, at, reminded }: the sessions that wait on you, since when this window has known it
 const callInView = () => !!((panel && panel.visible) || (side && side.visible));
 const oneLine = (x) => String(x).replace(/\s+/g, ' ').trim(), clip = (s, n) => { s = oneLine(s); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
@@ -155,7 +156,7 @@ function needsYou(rows, now = Date.now()) {   // rows: those the status bar coun
     else if (s.reminded || now - s.at < REMIND_MS) continue;
     if (callInView() || onTabOf(r)) continue;   // seen: the call or its tab shows it; a reminder may still come later
     if (again) s.reminded = true; if (!claimNeeds(k, s.ep, again ? 'again' : 'first')) continue;
-    const text = needsText(r), go = tt('Go to session'), call = tt('Open call');
+    const text = needsText(r), go = tt('Go to session'), call = tt('Open call'); needsTold = Date.now();
     Promise.resolve(vscode.window.showInformationMessage('✋ ' + (again ? tt('Still waiting: {0}', text) : text), go, call)).then((a) => { if (a === go) return openPanel({ id: r.id, proj: r.proj }); if (a === call) return openPanel(); }, () => {});   // go: what the status bar does for that session
   }
   for (const k of [...needsSeen.keys()]) if (!here.has(k)) needsSeen.delete(k);   // answered (or the setting off): the next wait is told again

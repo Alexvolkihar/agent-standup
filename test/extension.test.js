@@ -222,11 +222,12 @@ test('no "needs you" notification when the setting is off, when the call is in v
     v.settings.notifyNeedsYou = true; v.panelObj.visible = true; x.ext._needsYou([waits()], T); assert.equal(told.length, 0, 'the call is in view: the page alerts itself');
     v.relay({ agentStandup: 'notify', text: 'An agent may be waiting for you ✋' }); assert.equal(told.length, 1, 'the page\'s own alert, call in view');
     v.panelObj.visible = false; x.ext._needsYou([waits()], T + 60e3); assert.equal(told.length, 1, 'already seen in the call');
-    v.relay({ agentStandup: 'notify', text: 'An agent may be waiting for you ✋' }); v.relay({ agentStandup: 'notify', text: 'Your agents are done 🎉' }); assert.deepEqual(told.slice(1).map((t) => t[0]), ['Agent Standup: Your agents are done 🎉'], 'call out of view: the page\'s generic ✋ gives way to the notification that names the session');
-    answer = 0; const n = v.sent.length; x.ext._needsYou([waits()], T + 5 * 60e3); assert.match(told[2][0], /^✋ Still waiting: Fix the login page/, 'the reminder, once the call is out of view');
+    v.relay({ agentStandup: 'notify', text: 'An agent may be waiting for you ✋' }); v.relay({ agentStandup: 'notify', text: 'Your agents are done 🎉' }); assert.deepEqual(told.slice(1).map((t) => t[0]), ['Agent Standup: An agent may be waiting for you ✋', 'Agent Standup: Your agents are done 🎉'], 'call out of view and nothing told by the extension: the page\'s ✋ is the only word of it (a stalled agent, a sub-agent, another folder)');
+    answer = 0; const n = v.sent.length; x.ext._needsYou([waits()], T + 5 * 60e3); assert.match(told[3][0], /^✋ Still waiting: Fix the login page/, 'the reminder, once the call is out of view');
+    v.relay({ agentStandup: 'notify', text: 'An agent may be waiting for you ✋' }); assert.equal(told.length, 4, 'right after the notification that names the session, the page\'s generic ✋ is the same news: not shown');
     await tick(); await tick(); assert.deepEqual(v.sent.slice(n), [{ where: 'panel', agentStandup: 'pin', id: 'wait-1', proj: '-work-app' }], 'Go to session: what the status bar does for it');
-    v.active = { viewColumn: 1, activeTab: claude('Fix the login page and i…') }; x.ext._needsYou([waits({ id: 'tab', title: 'Fix the login page and its tests' })], T); assert.equal(told.length, 3, 'you are on its tab');
-    x.ext._needsYou([waits({ id: 'tab', title: 'Fix the login page and its tests' }), waits({ id: 'other', title: 'Another one' })], T); assert.equal(told.length, 4, 'another session is told');
+    v.active = { viewColumn: 1, activeTab: claude('Fix the login page and i…') }; x.ext._needsYou([waits({ id: 'tab', title: 'Fix the login page and its tests' })], T); assert.equal(told.length, 4, 'you are on its tab');
+    x.ext._needsYou([waits({ id: 'tab', title: 'Fix the login page and its tests' }), waits({ id: 'other', title: 'Another one' })], T); assert.equal(told.length, 5, 'another session is told');
   } finally { await x.close(); }
 });
 

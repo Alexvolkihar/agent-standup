@@ -1506,7 +1506,7 @@ function paintStates() {
     if (p.id === 'user') continue; const t = $('#t-' + p.id); if (!t) continue;
     const st = agentState(p.id, now), shown = t.style.display !== 'none'; if (shown && n[st.k] !== undefined && !S.gone.has(p.id)) { n[st.k]++; if (st.k === 'blocked' || st.k === 'stalled') attn.push(p.id); }
     STATE_CLASSES.forEach((c) => t.classList.toggle(c, st.k === c));
-    const el = t.querySelector('.status'); if (el.textContent !== st.txt) { el.textContent = st.txt; const tb = t.querySelector('.tbadge'); if (tb) tb.style.top = el.offsetHeight > 26 ? el.offsetTop + el.offsetHeight + 4 + 'px' : ''; }   // a status on two lines: the badges under it move down el.className = 'status ' + st.k + (isTurn(p.id, st) ? ' turn' : '');
+    const el = t.querySelector('.status'); if (el.textContent !== st.txt) { el.textContent = st.txt; const tb = t.querySelector('.tbadge'); if (tb) tb.style.top = el.offsetHeight > 26 ? el.offsetTop + el.offsetHeight + 4 + 'px' : ''; } /* a status on two lines: the badges under it move down */ el.className = 'status ' + st.k + (isTurn(p.id, st) ? ' turn' : '');
     const pr = t.querySelector('.prop'), want = { blocked: '✋', stalled: '😰', waiting: '⌛' }[st.k] || '', was = S.prevState[p.id];   // a raised hand, a sweat drop, an hourglass: the call metaphor for "needs you / stuck / waiting"
     if (st.k === 'done' && was && was !== 'done' && was !== 'idle') { pr.textContent = '🎉'; pr.className = 'prop cheer'; setTimeout(() => { if (pr.classList.contains('cheer')) { pr.textContent = ''; pr.className = 'prop'; } }, 1200); }
     else if (!pr.classList.contains('cheer')) { if (pr.textContent !== want) pr.textContent = want; pr.className = 'prop ' + (want ? st.k : ''); }
@@ -2069,7 +2069,7 @@ const coffeeMsg = () => L('Ce développeur a été remplacé par ses propres age
 function openExternal(url) { if (EMBED) window.parent.postMessage({ agentStandup: 'openExternal', url }, '*'); else window.open(url, '_blank', 'noopener'); }   // VS Code webviews must ask the extension
 function renderCoffee() {
   const on = !!SUPPORT.url, b = $('#mCoffee'); b.style.display = on ? '' : 'none'; $('#mCoffeeT').textContent = L('☕ Offrir un café au développeur', '☕ Buy the (replaced) dev a coffee'); b.title = coffeeMsg();
-  const h = $('#bCoffee'); h.style.display = on && !firstDay() ? '' : 'none';   // the gold cup in the header: not on the first day, which is for the call h.title = coffeeMsg(); h.setAttribute('aria-label', coffeeMsg());
+  const h = $('#bCoffee'); h.style.display = on && !firstDay() ? '' : 'none'; /* the gold cup in the header: not on the first day, which is for the call */ h.title = coffeeMsg(); h.setAttribute('aria-label', coffeeMsg());
   $('#mRateT').textContent = APP.kind === 'editor' ? L('⭐ Noter Agent Standup', '⭐ Rate Agent Standup') : L('⭐ Une étoile pour Agent Standup sur GitHub', '⭐ Star Agent Standup on GitHub');
 }
 $('#bCoffee').onclick = () => openExternal(SUPPORT.url);
@@ -3052,7 +3052,7 @@ function joinSound() {
 }
 $('#gB').onclick = joinSound;
 addEventListener('pointerdown', (e) => { if (S.hush && !(e.target.closest && e.target.closest('#bMute'))) joinSound(); }, true);
-addEventListener('keydown', (e) => { if (S.hush && !e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() !== 'm' && e.key !== 'Escape' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) joinSound(); }, true);
+addEventListener('keydown', (e) => { if (S.hush && !e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() !== 'm' && e.key !== 'Escape' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) { joinSound(); if (e.key === ' ') { e.preventDefault(); e.stopImmediatePropagation(); } } }, true);   // the first Space turns the sound on, as Join did, without pausing the call too
 // The strip under the header: what needs you, in the call's session first (its agents), then in the other sessions (the list the tabs come from). Live only, in every view.
 // Certain when Claude Code says a menu is open there (sure); a guess otherwise, from how long a call has waited ("may need you"). A click, or G, goes to the next one.
 function attnItems(now) {
