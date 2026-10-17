@@ -47,9 +47,11 @@ function session() {
 // ---- the call, watched ----
 async function open(s, join = true, more = '') {   // more: what else the address holds (&embed=1 for the page as VS Code shows it)
   const page = await browser.newPage(), errors = []; page.on('pageerror', (e) => errors.push(e.message));
+  await page.evaluateOnNewDocument(() => addEventListener('DOMContentLoaded', () => {   // before the page's first answer from the server: the live call plays from the moment it opens (the sound waits for a click, the lines do not)
+    window.__said = []; const o = window.startTalk; window.startTalk = function (id, line, label) { window.__said.push({ id, line: String(line), label: label || '' }); return o.apply(this, arguments); };
+    window.__voice = []; const v = window.speakLine; window.speakLine = function (text, p, primary, token, fr, always) { window.__voice.push({ id: p && p.id, text: String(text), silent: !!(S.hurry && !always) }); return v.apply(this, arguments); };   // silent: shown without a voice because the call is behind
+  }));
   await page.goto(`http://localhost:${port}/?proj=${s.proj}${more}`); await page.waitForFunction('typeof S !== "undefined" && S.cur', { timeout: 15000 });
-  await page.evaluate(() => { window.__said = []; const o = window.startTalk; window.startTalk = function (id, line, label) { window.__said.push({ id, line: String(line), label: label || '' }); return o.apply(this, arguments); }; });
-  await page.evaluate(() => { window.__voice = []; const o = window.speakLine; window.speakLine = function (text, p, primary, token, fr, always) { window.__voice.push({ id: p && p.id, text: String(text), silent: !!(S.hurry && !always) }); return o.apply(this, arguments); }; });   // silent: shown without a voice because the call is behind
   if (join) await page.click('#gB');
   const call = {
     page, errors,

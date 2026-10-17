@@ -482,7 +482,7 @@ function boardRows0() {
     let subActive = 0, subTotal = 0;
     for (const x of subFiles(proj, id)) { subTotal++; if (now - mtimeOf(x.file) < 90e3) subActive++; }
     const ran = since && p.asked && p.asked < since ? since - p.asked : 0, ask = state === 'blocked' && lp ? lp.q || lp.c : '';   // since: when it started to wait on you; ran: how long it worked, from your last order to then
-    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, asked: p.asked || 0, ...(since ? { since } : {}), ...(ran ? { ran } : {}), ...(p.pr ? { pr: p.pr } : {}), ...(ask ? { ask } : {}), ...(open ? { menu: open } : state === 'blocked' && lp && lp.m && !SUBTOOL.test(lp.name) ? { menu: { id: lp.id, tool: lp.name, ...lp.m, ...(w && w.status === 'waiting' ? { sure: 1 } : {}) } } : {}), ...(p.esc ? { cut: 1 } : {}), ...(tmpKey(proj) ? { tmp: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
+    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, asked: p.asked || 0, ...(since ? { since } : {}), ...(ran ? { ran } : {}), ...(p.pr ? { pr: p.pr } : {}), ...(ask ? { ask } : {}), ...(state === 'blocked' && w && w.status === 'waiting' ? { sure: 1 } : {}), ...(open ? { menu: open } : state === 'blocked' && lp && lp.m && !SUBTOOL.test(lp.name) ? { menu: { id: lp.id, tool: lp.name, ...lp.m, ...(w && w.status === 'waiting' ? { sure: 1 } : {}) } } : {}), ...(p.esc ? { cut: 1 } : {}), ...(tmpKey(proj) ? { tmp: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
   }).filter(Boolean);
 }
 // Settings live in a file, not only in the page's localStorage: the port changes between VS Code windows and reloads, and localStorage is per origin (port included).
@@ -590,11 +590,11 @@ function currentSession(projFilter, pick, stick, anyTmp) {   // pick: { proj, id
   const rows = all.filter(inScope), mine = there(pick) ? all.find((r) => same(r, pick)) : null;
   const asked = Math.max(0, (mine && mine.asked) || 0, ...rows.map((r) => r.asked || 0));   // the latest order, in the folder the call follows or in the session you went to
   const moved = pick && pick.pin ? Math.max(0, ...rows.filter((r) => !same(r, pick)).map((r) => r.asked || 0)) : asked;   // pick.pin: a call pinned by a click on its tab (📌) is left for an order typed in another session only; what you type in it keeps it there
-  if (there(pick) && !(moved > pick.since)) return { proj: pick.proj, id: pick.id, mtime: now, asked, pick: 1 };   // no "since" on the first question after a pick: the answer gives it (asked), and the page sends it back from then on
+  if (there(pick) && !(moved > pick.since)) return { proj: pick.proj, id: pick.id, mtime: now, asked, pick: 1, why: pick.pin ? 'pin' : 'pick' };   // no "since" on the first question after a pick: the answer gives it (asked), and the page sends it back from then on
   const live = rows.filter((r) => /^(working|waiting)$/.test(r.state) || (r.state === 'blocked' && !(now - (r.since || now) > MENU_LIVE_MS)) || r.subActive > 0 || now - r.mtime < STICK_MS), last = Math.max(0, ...live.map((r) => r.asked || 0)), top = live.filter((r) => (r.asked || 0) === last);
   const to = top.find((r) => same(r, stick)) || top.sort((a, b) => b.mtime - a.mtime)[0];   // two sessions whose last order is not known (or of the same instant): the call stays where it is
-  if (to) return { proj: to.proj, id: to.id, mtime: to.mtime, asked };
-  if (there(stick) && inScope(stick)) return { proj: stick.proj, id: stick.id, mtime: sessionMtime(stick.proj, stick.id), asked };   // nobody is at work: the call stays where it is
+  if (to) return { proj: to.proj, id: to.id, mtime: to.mtime, asked, why: last ? 'typed' : 'busy' };   // why: shown by the page, in the row of tabs
+  if (there(stick) && inScope(stick)) return { proj: stick.proj, id: stick.id, mtime: sessionMtime(stick.proj, stick.id), asked, why: 'stay' };   // nobody is at work: the call stays where it is
   let best = null;
   const consider = (proj, id, m) => { if (!best || m > best.mtime) best = { proj, id, mtime: m }; };
   for (const m of SOURCES) for (const r of guard(() => m.sessions(), [])) if (inScope({ proj: m.PROJ, id: r.id })) consider(m.PROJ, r.id, r.mtime);
@@ -604,7 +604,7 @@ function currentSession(projFilter, pick, stick, anyTmp) {   // pick: { proj, id
   }
   if (!best && projFilter) return { ...currentSession('', null, stick), wide: 1 };
   if (!best && !projFilter && !anyTmp) return currentSession('', pick, stick, true);   // nothing but sessions in the temporary folder: one of them rather than an empty call   // nothing in that folder (an editor open on another one than the sessions): the latest of anywhere, and the page is told, so its tabs follow the same rule
-  return best ? { ...best, asked } : {};   // a call that is opened while nobody is at work: the session that was written to last
+  return best ? { ...best, asked, why: 'latest' } : {};   // a call that is opened while nobody is at work: the session that was written to last
 }
 
 // ---- Incremental transcript reader: each .jsonl is parsed once, then only the bytes appended since are read.

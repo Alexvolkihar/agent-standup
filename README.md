@@ -10,7 +10,7 @@
 
 **Works with:** Claude Code · Codex · Mistral Vibe · Cowork — in VS Code, Cursor, Windsurf, any terminal, or as a desktop app.
 
-**Just installed the extension?** Click the Agent Standup icon in the Activity Bar (or run **Agent Standup: Open live call**), then press **Join**. No session yet: press **▶ Watch the demo**.
+**Just installed the extension?** Click the Agent Standup icon in the Activity Bar (or run **Agent Standup: Open live call**): the call starts at once, silent, and your first click in it turns the sound on. No session yet: press **▶ Watch the demo**.
 
 **→ Website & download: https://agent-standup.com**
 
@@ -167,21 +167,25 @@ Replace the drawn characters with your own pixel art. Drop PNG (or GIF, WebP, JP
 Your characters sit at the desk without the laptop (it would cover the bottom of the sprite); ⚙ → All settings → **Laptop in front of your own characters** puts a darker one back while they work. Press **Reload** in ⚙ → Characters to see changes. Three example images to start from are in [examples/characters](examples/characters) (in the repository, not shipped with the app), and the cat pack is in [examples/cats](examples/cats).
 
 ## Agents list
-On wide windows (900 px+), a fixed list sits left of the call: every agent with its role and one status line, **most urgent first** (needs you, stalled, working, waiting, done) and the lead pinned on top. It stays readable with dozens of agents, which a grid of tiles does not. Click a name to put that agent in the spotlight (kept for 25 s even when someone else speaks), double-click for details. Each line carries what the agent has used so far (⚡). An agent whose tile has left the stage keeps its line at the bottom, under “done”, with its count: click it for its details. Toggle it in ⚙ → All settings → Agents list (left).
+On wide windows (900 px+), a fixed list sits left of the call: every agent with its role and one status line, **most urgent first** (needs you, stalled, working, waiting, done) and the lead pinned on top. It stays readable with dozens of agents, which a grid of tiles does not. Click a name to put that agent in the spotlight (kept for 25 s even when someone else speaks), double-click for details. Each line carries what the agent has used so far (⚡). An agent whose tile has left the stage keeps its line at the bottom, under “done”, with its count: click it for its details. Toggle it in ⚙ → All settings → Agents list (left). A status that does not fit takes two lines, and the whole text is in the tooltip.
+
+**Focus layout.** ⚙ → All settings → **Focus layout** turns the characters into small cameras, with no big spotlight tile, and gives their room to the shared screen: the terminal, the page or the picture an agent works on. Off by default.
 
 ## All your sessions (Sessions view)
-The **Sessions** tab lists every session active in the last 12 hours, across all projects, in sections by state, what waits for you first: needs you?, your turn, working, waiting on sub-agents, idle (a card also says how many sub-agents are active). A session that waits for you says for how long, apart from how long it worked before (“worked 25 min · waiting on you for 12 min”), and one at work how long it has been at it. It refreshes every few seconds and reads only the end of each transcript, so thirty parallel sessions stay cheap. Click a card to follow that session in the call.
+The **Sessions** tab lists every session active in the last 12 hours, across all projects, in sections by state, what waits for you first: needs you, your turn, working, waiting on sub-agents, and idle, folded into one line until you open it (a card also says how many sub-agents are active). When sessions of two tools or more are listed, buttons at the top show one tool only (Claude Code, Codex, Mistral Vibe, Cowork). A session that waits for you says for how long, apart from how long it worked before (“worked 25 min · waiting on you for 12 min”), and one at work how long it has been at it. It refreshes every few seconds and reads only the end of each transcript, so thirty parallel sessions stay cheap. Click a card to follow that session in the call.
 
 - **The question on the card.** A session that stopped on a question shows the question itself, so you can tell what it wants without opening it.
 - **Done.** ✓ on a card whose turn is over, or that is idle, puts it away in a **Done** section at the bottom, closed until you open it. It comes back by itself when the session moves again; ↩ brings it back at once. Its tab leaves the row of tabs of the call too, unless the call is in that session. This is kept in a small file beside your settings, so every window agrees within a few seconds. The indicators (menu bar, status bar) still count the session.
 - **Its pull request.** When Claude Code noted a pull request for a session, the card has a **PR #n** button that opens it on GitHub. Only pull requests on github.com are offered.
 
-**Several sessions at once.** When a second session is active, a row of tabs appears under the header of the live call: it names the session the call is in and the others, each with its state. With a single session there is no row. The call is in the session you last touched: start a session or type in one, and the call goes there. Click a tab to pin the call there (📌): it stays while you go through the Claude Code tabs of your editor and while you type in it, until you ask something in another session, which takes the call there, or until you click that tab again. What the agents write does not move the call, so two sessions at work do not pull it back and forth. One case moves it without you: when the session you last typed in has finished and been quiet for a minute and a half while another one is still at work, the call goes to that one (a session you went to by a click is not left that way). When another session stops for you (a question, an edit that waits for your go-ahead, or its turn is over), a visitor leans in at the edge of the call, says which one, and takes you there on a click (⚙ → All settings → Display to turn it off). In VS Code the call also goes to the Claude Code tab you switch to, so a conversation and its call can sit side by side; a tab is matched by its title, so a conversation that has no title yet, the sidebar chat and a terminal do not move the call. Switching tab counts as going there by hand: the call stays with that conversation until you type somewhere else.
+**Several sessions at once.** When a second session is active, a row of tabs appears under the header of the live call: it names the session the call is in and the others, each with its state. With a single session there is no row. The call is in the session you last touched: start a session or type in one, and the call goes there. The end of the row says why the call is in that session (where you last typed, where the work is, you went there, pinned by you…). Click a tab to pin the call there (📌): it stays while you go through the Claude Code tabs of your editor and while you type in it, until you ask something in another session, which takes the call there, or until you click that tab again. What the agents write does not move the call, so two sessions at work do not pull it back and forth. One case moves it without you: when the session you last typed in has finished and been quiet for a minute and a half while another one is still at work, the call goes to that one (a session you went to by a click is not left that way). When another session stops for you (a question, an edit that waits for your go-ahead, or its turn is over), a visitor leans in at the edge of the call, says which one, and takes you there on a click (⚙ → All settings → Display to turn it off). In VS Code the call also goes to the Claude Code tab you switch to, so a conversation and its call can sit side by side; a tab is matched by its title, so a conversation that has no title yet, the sidebar chat and a terminal do not move the call. Switching tab counts as going there by hand: the call stays with that conversation until you type somewhere else.
+
+**What needs you, in one line.** In the live call, when an agent of this session or another session waits for you, a red line under the header says who, what it asks and for how long, in the Call, Tree and Sessions views alike; “+2” counts the others. Click it, or press **G**, to go there (again for the next one). It says “needs you” when Claude Code reports a menu open in the session, and “may need you” when it is a guess from how long a call has waited.
 
 **Files made for you.** When a turn ends, the files the session created for you show in one line under the call: those the lead names, else the documents (a report, a picture, a spreadsheet), not every source file it wrote. A document made by a command (an export, a report written by a script) shows too when the lead names it. Click one to see it in its folder; nothing is read and nothing is run. The whole list is behind “+N” (⚙ → All settings → Display to turn the line off).
 
 ## At a glance
-Every tile carries one status: **working** (with what it is doing), **waiting on another agent** (who), **needs you?** (a permission or a question is open in the session, or a file edit or write has been pending for 15 s+), with how long it has waited and, in the header, the question or the command it waits on, **stalled** (waiting on an agent that has been silent for 2 min+), or **done**. A summary sits in the header, and the tab title shows how many agents need you. Recent Claude Code notes in `~/.claude/sessions` when a menu waits for your answer (a permission, a question), and the app reads it: a Bash command waiting for your go-ahead shows “needs you?” as soon as the menu opens, with the command (`Bash(npm run build)`), where the transcript alone makes it look like a command that runs. With ⚙ → All settings → **A card with what the session asks you** on (it is off by default), while such a menu is open in the session the call follows, the lead shows what it is, word for word, in a card beside the call until you answer it in Claude Code: each question with its number, its short label and “pick one” or “one or more”, each option on its own row with what it means under it, the command and what it is for, the file, or the plan to approve (a question Claude Code has not written down yet shows as "a menu is open" until it is). Where Claude Code does not note it, the signal is a heuristic: commands are not flagged because they can legitimately run for minutes (they get a ⏳ badge after 1 min instead), and edits that stay pending for 15 s+ are rare on real sessions, so it is mostly right.
+Every tile carries one status: **working** (with what it is doing), **waiting on another agent** (who), **needs you** (a permission or a question is open in the session, as Claude Code reports it; with a question mark, **needs you?**, when it is a guess: a file edit or write pending for 15 s+), with how long it has waited and, in the header, the question or the command it waits on, **stalled** (waiting on an agent that has been silent for 2 min+), or **done**. A summary sits in the header, and the tab title shows how many agents need you. Recent Claude Code notes in `~/.claude/sessions` when a menu waits for your answer (a permission, a question), and the app reads it: a Bash command waiting for your go-ahead shows “needs you” as soon as the menu opens, with the command (`Bash(npm run build)`), where the transcript alone makes it look like a command that runs. With ⚙ → All settings → **A card with what the session asks you** on (it is off by default), while such a menu is open in the session the call follows, the lead shows what it is, word for word, in a card beside the call until you answer it in Claude Code: each question with its number, its short label and “pick one” or “one or more”, each option on its own row with what it means under it, the command and what it is for, the file, or the plan to approve (a question Claude Code has not written down yet shows as "a menu is open" until it is). Where Claude Code does not note it, the signal is a heuristic: commands are not flagged because they can legitimately run for minutes (they get a ⏳ badge after 1 min instead), and edits that stay pending for 15 s+ are rare on real sessions, so it is mostly right.
 
 ## Voices
 With the real voices, each line is read with a voice of its own language (English, French, Spanish or Portuguese), whatever language the interface is in. A line in a language the model does not speak (German, Danish, Japanese, Korean, Chinese) is read by a system voice of that language when your computer has one.
@@ -209,13 +213,13 @@ Four ways in — pick one (details in [Works with your tools](#works-with-your-t
 ### Option 0 — from the Marketplace (easiest)
 In VS Code: Extensions view → search **Agent Standup** → Install. Or: https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup
 
-Then click the Agent Standup icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
+Then click the Agent Standup icon in the Activity Bar (or run **Agent Standup: Open live call**): the call starts by itself.
 
 ### Option A — from a GitHub Release
 1. Open the repository's **Releases** page and download `agent-standup-<version>.vsix` (don't send it by email: Gmail and others block `.vsix` files).
 2. In VS Code: Extensions view → `…` menu (top right) → **Install from VSIX…** → pick the file.
    Or from a terminal: `code --install-extension agent-standup-<version>.vsix` (macOS: run *Shell Command: Install 'code' command in PATH* first if `code` isn't found).
-3. **Developer: Reload Window**, then click the Agent Standup icon in the Activity Bar (or run **Agent Standup: Open live call**) and press **Join**.
+3. **Developer: Reload Window**, then click the Agent Standup icon in the Activity Bar (or run **Agent Standup: Open live call**): the call starts by itself.
 
 Direct download of the latest version: https://github.com/Atoll92/agent-standup/releases/latest/download/agent-standup.vsix  
 Or with the GitHub CLI: `gh release download --repo Atoll92/agent-standup --pattern "*.vsix"`, then the `code --install-extension` line above.
@@ -232,7 +236,7 @@ To hack on it instead: open the folder in VS Code and press **F5** (launches an 
 ### Option C — no extension
 After cloning the repository (Option B): `node server.js` and open http://localhost:4747 (see *Standalone* below). Without cloning: `npx @double_geste/agent-standup --open`.
 
-The first click on **Join** is required by browsers to allow sound.
+Browsers allow sound only after a click: the call plays from the start, silent, and your first click or key in it (or **🔊 Turn on sound** at the top) turns the sound on.
 
 ### Commands
 
@@ -249,6 +253,7 @@ The first click on **Join** is required by browsers to allow sound.
 |---|---|---|
 | `agentStandup.port` | `0` | Local port of the server. `0` = a free port is picked automatically for each VS Code window (recommended) |
 | `agentStandup.statusBar` | `true` | Live counts in the VS Code status bar (needs you / working / your turn) for this workspace |
+| `agentStandup.notifyNeedsYou` | `true` | A notification when a session of this workspace starts to wait for you, with its name and what it asks, and **Go to session** / **Open call**; once more if it still waits 5 minutes later. Not while the call is in view, nor while you are on that session's Claude Code tab; with several windows on one folder, one of them tells it |
 | `agentStandup.shareUsage` | `false` | Opt-in, anonymous: one empty request a day (when the editor starts) and at most one a week (when you open the call) to 1-pixel files on GitHub, to count how many people use it. Asked once, the first time you open the call; ignored when VS Code telemetry is off |
 | `agentStandup.charactersPath` | _(empty)_ | Folder with your own character images (default `~/.agent-standup/characters`) |
 | `agentStandup.codex` | `true` | Also show Codex sessions (read from `~/.codex/sessions`, or `$CODEX_HOME`). Turn off to show Claude Code sessions only |
@@ -273,11 +278,11 @@ In Replay and in the demo, a slider and a speed control appear at the bottom, an
 
 ## Office music
 
-Turn on **Office music** in ⚙ → All settings and pick a station (FIP, Groove, Jazz, Electro, Reggae, Rock, Nouveautés, Pop) and a volume. The stream is played live from Radio France's public Icecast servers directly in the page; it starts when you press **Join** (browsers require a click). When any agent speaks, the music drops to ~15 % within a fraction of a second and returns slowly after the last line. Muting (🔊 / M) stops the stream. Music is for your ears only: it is **never included in video exports**. Stations are for personal listening; nothing is stored or redistributed.
+Turn on **Office music** in ⚙ → All settings and pick a station (FIP, Groove, Jazz, Electro, Reggae, Rock, Nouveautés, Pop) and a volume. The stream is played live from Radio France's public Icecast servers directly in the page; it starts with your first click in the call (browsers require one). When any agent speaks, the music drops to ~15 % within a fraction of a second and returns slowly after the last line. Muting (🔊 / M) stops the stream. Music is for your ears only: it is **never included in video exports**. Stations are for personal listening; nothing is stored or redistributed.
 
 ## One window talks at a time
 
-If several Agent Standup windows are open on the same machine (sidebar, editor panel, browser tab), only the last one where you pressed **Join / Play / 🔊** plays sound; the others stay silent and show 🔈 (click it to take the sound back). This avoids hearing the same call twice, possibly in two languages. A window that stops answering releases the sound after a few seconds.
+If several Agent Standup windows are open on the same machine (sidebar, editor panel, browser tab), only the last one where you turned the sound on (a first click, Play or 🔊) plays sound; the others stay silent and show 🔈 (click it to take the sound back). This avoids hearing the same call twice, possibly in two languages. A window that stops answering releases the sound after a few seconds.
 
 ## System voices (per OS)
 
@@ -324,7 +329,7 @@ The website at agent-standup.com counts its visits, and the clicks on its button
 - **Nothing happens / "Waiting for a session"** — start Claude Code in the open folder; with `onlyThisWorkspace` the call follows that folder.
 - **Panel is blank** — use **Open in browser**; if you set a fixed `agentStandup.port` it may be taken (use `0`).
 - **Two voices at once (e.g. French and English)** — update to ≥ 1.8.1: only one window plays sound now. A line that could not be translated in time is read by an English voice, not by a French voice reading English.
-- **No sound** — press **Join** (or Play) once; check 🔊 isn't muted and *Agent voices* is on in ⚙.
+- **No sound** — click once in the call (or press **🔊 Turn on sound**); check 🔊 isn't muted and *Agent voices* is on in ⚙.
 - **French is read in English / hint about translation** — Agent Standup looks for Claude Code in your `PATH`, the usual install folders (Homebrew, npm, nvm, `~/.local/bin`, Windows `%APPDATA%\npm`) and the copy bundled with the official VS Code *Claude Code* extension. If none is found the app quietly stays in English; set `agentStandup.claudePath`, or run `claude` once in a terminal to sign in. If VS Code itself was started from inside a Claude Code session, restart it normally.
 - **Characters or backgrounds look empty** — update to ≥ 1.2.1 (fixed a duplicate SVG id bug).
 - **Terminal output missing for a command** — the call is still running (spinner), or it is an internal call (sub-agent launch / message); outputs are only recorded once a call finishes.
@@ -349,14 +354,14 @@ Several ideas in 1.23 (settings kept in a file, session stickiness, subtitles th
 MIT
 
 ## Support the project / work with me
-This dev was replaced by his own agents. If Agent Standup made your sessions more fun, you can [buy him a coffee](https://www.buymeacoffee.com/bored_dev_and_his_robots) ☕ — there is also a ☕ line in the ⚙ menu and at the end of each recap.
+This dev was replaced by his own agents. If Agent Standup made your sessions more fun, you can [buy him a coffee](https://www.buymeacoffee.com/bored_dev_and_his_robots) ☕ — there is also a ☕ line in the ⚙ menu and at the end of each recap. The app asks for something (a star, a coffee, a look at the Halloween pack) at most once a day, and never on the first day you use it.
 
 Agent Standup is free and MIT licensed. I'm also available for work around AI agents and developer tooling: reach me through my GitHub profile, [Atoll92](https://github.com/Atoll92).
 
 ## Settings menu and shortcuts
 ⚙ has sections that fold (and remember it), a search box, and **All settings** for the rest (display, alerts, ambience and music). “Notify me when agents finish” is on by default (change it in ⚙ → All settings → Sound and alerts). The **?** help also explains what each status means.
 
-Press **?** in the app for the full list. Highlights: **Space** pause, **M** mute, **T** tree view, **J / K** next agent that needs you, **Cmd/Ctrl+K** go to a session, and in replay **← / →** step, **N** next highlight.
+Press **?** in the app for the full list. Highlights: **Space** pause, **M** mute, **T** tree view, **G** go to what needs you (here or in another session), **J / K** next agent that needs you, **Cmd/Ctrl+K** go to a session, and in replay **← / →** step, **N** next highlight.
 
 ## Name and logo
 The code is MIT licensed: use it, change it, fork it. The name, the logo and the characters are how people recognise this project, and they are not there to brand something else. [TRADEMARKS.md](TRADEMARKS.md) says what is fine (writing about it, building on it, shipping it unmodified) and what needs asking first (releasing a fork under this name, using the logo or the characters for another product). The artwork and its colours are in [brand/](brand/).

@@ -87,7 +87,7 @@ const relay = (webview) => webview.onDidReceiveMessage((m) => {
   if (m.agentStandup === 'openBrowser') openBrowser();
   if (m.agentStandup === 'openCharacters') openCharacters();
   if (m.agentStandup === 'rate') rateNow();
-  if (m.agentStandup === 'notify' && typeof m.text === 'string') vscode.window.showInformationMessage('Agent Standup: ' + m.text.slice(0, 120));
+  if (m.agentStandup === 'notify' && typeof m.text === 'string' && !(m.text.includes('✋') && cfg().get('notifyNeedsYou') !== false && !callInView())) vscode.window.showInformationMessage('Agent Standup: ' + m.text.slice(0, 120));   // the page's own "may be waiting for you ✋", from a call out of view: the notification that names the session says it (see needsYou)
   if (m.agentStandup === 'openExternal') { try { const u = new URL(m.url); if (u.protocol === 'https:' && (DONATE_HOSTS.test(u.hostname) || SHOP_HOSTS.test(u.hostname) || (u.hostname === 'claude.ai' && ARTIFACT_PATH.test(u.pathname)))) vscode.env.openExternal(u.search || u.hash ? u.toString() : vscode.Uri.parse(u.toString())); } catch {} }
 });
 
@@ -118,6 +118,47 @@ async function followTab() {
     const r = rows.find((x) => ws && (x.proj === ws || x.proj.startsWith(ws + '-'))) || rows[0]; if (!r) return;
     for (const w of [panel, side]) if (w) w.webview.postMessage({ agentStandup: 'pin', id: r.id, proj: r.proj, tab: true });
   } catch (e) { if (!/ECONNREFUSED|ECONNRESET|socket hang up|timeout|JSON/.test(String(e && e.message))) logErr('follow tab', e); }   // a server that is starting again is not an error
+}
+
+// "Needs you": a notification when a session the status bar counts starts to wait on you (a question, an approval, a plan), naming it and what it asks (agentStandup.notifyNeedsYou).
+// Once when it starts to wait, once more ("Still waiting") if it still waits 5 minutes later, then nothing until it waits again. Not while the call is in view (the page alerts itself),
+// nor while you are on that session's Claude Code tab (its question is in front of you). Windows on the same folder share a mark in the extension's folder: the first to tell it tells it.
+const REMIND_MS = 5 * 60e3, needsSeen = new Map();   // "proj/id" → { ep, at, reminded }: the sessions that wait on you, since when this window has known it
+const callInView = () => !!((panel && panel.visible) || (side && side.visible));
+const oneLine = (x) => String(x).replace(/\s+/g, ' ').trim(), clip = (s, n) => { s = oneLine(s); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
+function onTabOf(r) {   // the same match as followTab: the tab's label, whole or cut after 24 characters, against the session's title
+  try {
+    const g = vscode.window.tabGroups && vscode.window.tabGroups.activeTabGroup, t = g && g.activeTab, vt = t && t.input && t.input.viewType;
+    if (typeof vt !== 'string' || !vt.includes('claudeVSCodePanel') || typeof t.label !== 'string' || typeof r.title !== 'string' || t.label === 'Claude Code') return false;
+    const cut = /…$/.test(t.label), label = oneLine(t.label.replace(/…$/, '')); return !!label && (cut ? oneLine(r.title).startsWith(label) : oneLine(r.title) === label);
+  } catch { return false; }
+}
+function claimNeeds(k, ep, kind) {   // true: this window is the first to tell it (no folder of its own, as in the tests: always)
+  try {
+    const dir = extCtx && extCtx.globalStorageUri && extCtx.globalStorageUri.fsPath; if (!dir) return true; const d = path.join(dir, 'needs'), now = Date.now(); fs.mkdirSync(d, { recursive: true });
+    if (now - claimNeeds.tidy > 3600e3) { claimNeeds.tidy = now; for (const f of fs.readdirSync(d)) try { if (now - fs.statSync(path.join(d, f)).mtimeMs > 864e5) fs.unlinkSync(path.join(d, f)); } catch {} }   // marks older than a day
+    fs.closeSync(fs.openSync(path.join(d, require('crypto').createHash('sha1').update(k + '\n' + ep).digest('hex').slice(0, 24) + '-' + kind), 'wx')); return true;
+  } catch (e) { return !(e && e.code === 'EEXIST'); }
+}
+claimNeeds.tidy = 0;
+function needsText(r) {
+  const plan = r.tool === 'ExitPlanMode' || (r.menu && r.menu.kind === 'plan'), what = r.ask || (plan ? tt('a plan to approve') : /^(AskUserQuestion)?$/.test(r.tool || '') ? '' : r.tool), name = clip(r.title || r.id, 60);
+  return what ? tt('{0} is waiting for you: {1}', name, clip(what, 80)) : tt('{0} is waiting for you', name);
+}
+function needsYou(rows, now = Date.now()) {   // rows: those the status bar counts, read in a focused window
+  const on = cfg().get('notifyNeedsYou') !== false, here = new Set();
+  for (const r of on ? rows : []) {
+    if (r.state !== 'blocked') continue;
+    const k = r.proj + '/' + r.id, ep = String(r.since || r.mtime || 0); here.add(k);
+    let s = needsSeen.get(k); const again = !!s;   // a session that waits on and on is one wait, even when what says since when changes
+    if (!s) needsSeen.set(k, (s = { ep, at: now, reminded: false }));
+    else if (s.reminded || now - s.at < REMIND_MS) continue;
+    if (callInView() || onTabOf(r)) continue;   // seen: the call or its tab shows it; a reminder may still come later
+    if (again) s.reminded = true; if (!claimNeeds(k, s.ep, again ? 'again' : 'first')) continue;
+    const text = needsText(r), go = tt('Go to session'), call = tt('Open call');
+    Promise.resolve(vscode.window.showInformationMessage('✋ ' + (again ? tt('Still waiting: {0}', text) : text), go, call)).then((a) => { if (a === go) return openPanel({ id: r.id, proj: r.proj }); if (a === call) return openPanel(); }, () => {});   // go: what the status bar does for that session
+  }
+  for (const k of [...needsSeen.keys()]) if (!here.has(k)) needsSeen.delete(k);   // answered (or the setting off): the next wait is told again
 }
 
 // The folder where the person drops their own pixel art (lead.png, you.png, others for the sub-agents, name-talk.png for an open mouth).
@@ -228,9 +269,11 @@ function activate(ctx) {
   const poll = async () => {
     if (polling) return; polling = true;
     try {
-      if (!cfg().get('statusBar')) { if (status.text !== '$(device-camera-video) Agent Standup') { status.text = '$(device-camera-video) Agent Standup'; status.backgroundColor = undefined; status.tooltip = tt('Open the live Agent Standup call'); } return; }   // counts off: the plain button stays
+      const bar = cfg().get('statusBar'), tell = cfg().get('notifyNeedsYou') !== false;
+      if (!bar) { if (status.text !== '$(device-camera-video) Agent Standup') { status.text = '$(device-camera-video) Agent Standup'; status.backgroundColor = undefined; status.tooltip = tt('Open the live Agent Standup call'); } if (!tell) return needsYou([]); }   // counts off: the plain button stays (and the notifications, unless they are off too)
       if (!vscode.window.state.focused) return;
       const key = projKey(), rows = require('./server.js').boardRows().filter((r) => (key ? r.proj === key || r.dir === key : !r.tmp)), now = Date.now();   // read here, as before (the ends of the transcripts only): no server process for a window whose call is never opened
+      needsYou(rows, now); if (!bar) return;
       const act = rows.filter((r) => r.state !== 'idle' || now - r.mtime < 15 * 60e3), cnt = (st) => act.filter((r) => r.state === st).length;
       const blocked = cnt('blocked'), working = cnt('working') + cnt('waiting'), turn = cnt('turn'); if (act.length) noteUse();   // a day of use towards the rating, call opened or not
       const parts = []; if (blocked) parts.push('$(warning) ' + tt('{0} needs you', blocked)); if (working) parts.push('$(sync~spin) ' + tt('{0} working', working)); if (!blocked && !working && turn) parts.push('$(check) ' + tt('your turn'));
@@ -251,4 +294,4 @@ function activate(ctx) {
   if (cfg().get('autoOpen')) openPanel();
 }
 async function deactivate() { stopping = true; try { if (started) { const s = await started; if (s.kid) s.kid.kill(); if (s.server) { s.server.close(); require('./server.js').shutdown(); } } } catch {} }
-module.exports = { activate, deactivate, _server: () => started, _pingActive: pingActive, _noteUse: noteUse, _rateNow: rateNow, _ratePages: RATE_PAGES, _askUsage: askUsage, _pingWeek: pingWeek, _mondayOf: mondayOf, _net: net };
+module.exports = { activate, deactivate, _server: () => started, _pingActive: pingActive, _noteUse: noteUse, _rateNow: rateNow, _ratePages: RATE_PAGES, _askUsage: askUsage, _pingWeek: pingWeek, _mondayOf: mondayOf, _net: net, _needsYou: needsYou };

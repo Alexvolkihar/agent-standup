@@ -141,7 +141,7 @@ test('live call: sessions, tabs and replays', { skip: missing || false, timeout:
       await c.until(() => agentState('main', Date.now()).k === 'blocked', null, 20000); await wait(1500); assert.ok(!(await c.page.evaluate(() => document.querySelector('#askc').classList.contains('on'))), 'no card unless asked for in the settings');
       await c.page.evaluate(() => document.querySelector('#prefs .mi[data-t=askCard]').click());
       await c.until(() => document.querySelector('#askc').classList.contains('on'), null, 20000);   // the page used to say "✓ your turn · 5 min" past 3 minutes of quiet, with no card
-      assert.match(await c.page.evaluate(() => agentState('main', Date.now()).txt), /needs you\? 5 min/); assert.match(await c.page.evaluate(() => document.querySelector('#askc').innerText), /npm run build/);
+      assert.match(await c.page.evaluate(() => agentState('main', Date.now()).txt), /needs you 5 min/, 'Claude Code says a menu is open: certain, no question mark'); assert.match(await c.page.evaluate(() => document.querySelector('#askc').innerText), /npm run build/);
       await c.page.evaluate(() => document.querySelector('#prefs .mi[data-t=askCard]').click());
     } finally { fs.rmSync(path.join(CC, '1.json'), { force: true }); }   // every session of this file is called s
     await c.close();

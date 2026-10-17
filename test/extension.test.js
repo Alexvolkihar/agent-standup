@@ -16,13 +16,13 @@ titled('-other', 'twin', 'Fix the login page and its tests', 1); titled('-other'
 function standIn({ tabGroups = true } = {}) {
   const v = { cmds: {}, provider: null, sent: [], tabs: [], groups: [], panels: 0, errors: [], active: null, opened: [], relay: null };
   const webview = (where) => ({ options: {}, html: '', onDidReceiveMessage: (f) => { v.relay = f; return { dispose() {} }; }, postMessage: (m) => { v.sent.push({ where, ...m }); return Promise.resolve(true); } });
-  const settings = { port: 0, statusBar: true, onlyThisWorkspace: true, autoOpen: false, claudePath: '', charactersPath: '', shareUsage: false };
+  const settings = { port: 0, statusBar: true, onlyThisWorkspace: true, autoOpen: false, claudePath: '', charactersPath: '', shareUsage: false, notifyNeedsYou: true };
   v.vscode = {
     workspace: { getConfiguration: () => ({ get: (k) => settings[k] }), workspaceFolders: [{ uri: { fsPath: '/work/app' } }], onDidChangeConfiguration: (f) => { v.conf = f; return { dispose() {} }; } },
     commands: { registerCommand: (n, f) => { v.cmds[n] = f; return { dispose() {} }; }, executeCommand: async () => {} },
     window: { state: { focused: true }, showErrorMessage: (m) => v.errors.push(m), showInformationMessage: () => {}, onDidChangeWindowState: () => ({ dispose() {} }),
       registerWebviewViewProvider: (id, p) => { v.provider = p; return { dispose() {} }; },
-      createWebviewPanel: () => { v.panels++; return { webview: (v.panel = webview('panel')), reveal() {}, onDidDispose() {} }; },
+      createWebviewPanel: () => { v.panels++; return (v.panelObj = { webview: (v.panel = webview('panel')), reveal() {}, onDidDispose() {} }); },   // panelObj: a test can put it in view (visible)
       createStatusBarItem: () => ({ show() {}, dispose() {}, text: '', tooltip: '' }),
       ...(tabGroups ? { tabGroups: { get activeTabGroup() { return v.active; }, onDidChangeTabs: (f) => { v.tabs.push(f); return { dispose() {} }; }, onDidChangeTabGroups: (f) => { v.groups.push(f); return { dispose() {} }; } } } : {}) },
     env: { isTelemetryEnabled: false, asExternalUri: async (u) => u, openExternal: async (u) => { v.opened.push(u); return true; } },
@@ -194,4 +194,60 @@ test('a link the page asks for is opened on a known site only; the draft of a pr
     const art = 'https://claude.ai/artifact/AbCdEf123456'; ask(art); ask('https://claude.ai/code/artifact/0f81abdd-8134-4fc0-889a-28c4fe7dbb8f'); ask('https://claude.ai/settings'); ask('https://claude.ai.example.com/artifact/AbCdEf123456'); ask('https://claude.ai/artifact/../settings');   // an artifact the call shows: that page of claude.ai, and no other
     assert.equal(v.opened.length, 5); assert.equal(v.opened[3].toString(), art);
   } finally { await x.close(); }
+});
+
+// ---- "needs you": a notification when a session starts to wait on you, naming it and what it asks ----
+const waits = (over = {}) => ({ proj: '-work-app', id: 'wait-1', title: 'Fix the  login\tpage', state: 'blocked', since: 1e12, mtime: 1e12, tool: 'Bash', ask: 'Bash(npm test)', ...over });
+const tick = () => new Promise((r) => setImmediate(r));
+
+test('a session that starts to wait on you is told once, naming it and what it asks; once more 5 minutes later if it still waits, then not again until it waits again', async () => {
+  const v = standIn(), told = [], x = await activated(v, undefined, { noOpen: true }), T = 1e12;
+  v.vscode.window.showInformationMessage = (m, ...b) => { told.push([m, ...b]); return Promise.resolve(undefined); };
+  try {
+    x.ext._needsYou([waits()], T); assert.deepEqual(told, [['✋ Fix the login page is waiting for you: Bash(npm test)', 'Go to session', 'Open call']]);
+    x.ext._needsYou([waits()], T + 4000); x.ext._needsYou([waits()], T + 5 * 60e3 - 1); assert.equal(told.length, 1, 'not at every scan');
+    x.ext._needsYou([waits()], T + 5 * 60e3); assert.deepEqual(told[1], ['✋ Still waiting: Fix the login page is waiting for you: Bash(npm test)', 'Go to session', 'Open call']);
+    x.ext._needsYou([waits()], T + 6 * 60e3); x.ext._needsYou([waits()], T + 60 * 60e3); assert.equal(told.length, 2, 'one reminder only');
+    x.ext._needsYou([waits({ state: 'working' })], T + 61 * 60e3); x.ext._needsYou([waits({ since: T + 62 * 60e3 })], T + 62 * 60e3); assert.equal(told.length, 3, 'answered, then waiting again: told again');
+    x.ext._needsYou([waits({ id: 'q', title: 'Pick a name', tool: 'AskUserQuestion', ask: 'Which name do you want for the new command, the short one or the long one that says exactly what it does?' }), waits({ id: 'p', title: 'Plan it', tool: 'ExitPlanMode', ask: undefined }), waits({ id: 'm', title: 'A menu', tool: '', ask: undefined }), waits({ id: 'w', state: 'working' })], T);
+    assert.deepEqual(told.slice(3).map((t) => t[0]), ['✋ Pick a name is waiting for you: Which name do you want for the new command, the short one or the long one that…', '✋ Plan it is waiting for you: a plan to approve', '✋ A menu is waiting for you'], 'one per session; the question cut to about 80 characters');
+  } finally { await x.close(); }
+});
+
+test('no "needs you" notification when the setting is off, when the call is in view, or on that session\'s Claude Code tab; "Go to session" opens the call on it', async () => {
+  const v = standIn(), told = [], x = await activated(v), T = 1e12; let answer;
+  v.vscode.window.showInformationMessage = (m, ...b) => { told.push([m, ...b]); return Promise.resolve(answer == null ? undefined : b[answer]); };
+  try {
+    v.settings.notifyNeedsYou = false; x.ext._needsYou([waits()], T); x.ext._needsYou([waits()], T + 5 * 60e3); assert.equal(told.length, 0, 'setting off');
+    v.settings.notifyNeedsYou = true; v.panelObj.visible = true; x.ext._needsYou([waits()], T); assert.equal(told.length, 0, 'the call is in view: the page alerts itself');
+    v.relay({ agentStandup: 'notify', text: 'An agent may be waiting for you ✋' }); assert.equal(told.length, 1, 'the page\'s own alert, call in view');
+    v.panelObj.visible = false; x.ext._needsYou([waits()], T + 60e3); assert.equal(told.length, 1, 'already seen in the call');
+    v.relay({ agentStandup: 'notify', text: 'An agent may be waiting for you ✋' }); v.relay({ agentStandup: 'notify', text: 'Your agents are done 🎉' }); assert.deepEqual(told.slice(1).map((t) => t[0]), ['Agent Standup: Your agents are done 🎉'], 'call out of view: the page\'s generic ✋ gives way to the notification that names the session');
+    answer = 0; const n = v.sent.length; x.ext._needsYou([waits()], T + 5 * 60e3); assert.match(told[2][0], /^✋ Still waiting: Fix the login page/, 'the reminder, once the call is out of view');
+    await tick(); await tick(); assert.deepEqual(v.sent.slice(n), [{ where: 'panel', agentStandup: 'pin', id: 'wait-1', proj: '-work-app' }], 'Go to session: what the status bar does for it');
+    v.active = { viewColumn: 1, activeTab: claude('Fix the login page and i…') }; x.ext._needsYou([waits({ id: 'tab', title: 'Fix the login page and its tests' })], T); assert.equal(told.length, 3, 'you are on its tab');
+    x.ext._needsYou([waits({ id: 'tab', title: 'Fix the login page and its tests' }), waits({ id: 'other', title: 'Another one' })], T); assert.equal(told.length, 4, 'another session is told');
+  } finally { await x.close(); }
+});
+
+test('the status bar\'s scan tells the sessions of this workspace that wait on you, once', async () => {
+  const dir = path.join(tmp, 'projects', '-work-app'), file = path.join(dir, 'asking.jsonl'), at = Date.now() - 20000, told = [];
+  fs.writeFileSync(file, [{ type: 'user', message: { role: 'user', content: 'name it' } }, { type: 'custom-title', customTitle: 'Name the command' }, { type: 'assistant', message: { id: 'm2', role: 'assistant', stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'tu1', name: 'AskUserQuestion', input: { questions: [{ question: 'Short or long name?', header: 'Name', options: [{ label: 'Short' }, { label: 'Long' }] }] } }] } }].map((r) => JSON.stringify({ timestamp: new Date(at).toISOString(), ...r })).join('\n') + '\n');
+  fs.utimesSync(file, at / 1000, at / 1000); await new Promise((r) => setTimeout(r, 1300));   // past the scan the other tests shared
+  const v = standIn(); v.vscode.window.showInformationMessage = (m, ...b) => { told.push(m); return Promise.resolve(undefined); };
+  const x = await activated(v, undefined, { noOpen: true });
+  try {
+    await tick(); assert.deepEqual(told, ['✋ Name the command is waiting for you: Short or long name?']);
+    await new Promise((r) => setTimeout(r, 4300)); assert.equal(told.length, 1, 'the next scan says nothing');
+  } finally { await x.close(); fs.unlinkSync(file); }
+});
+
+test('two windows on the same folder tell a wait once between them, and its reminder once', async () => {
+  const dir = path.join(tmp, 'storage-needs'), told = [], xs = [], T = 1e12;
+  try {
+    for (let i = 0; i < 2; i++) { const v = standIn(); xs.push(await activated(v, undefined, { globalStorageUri: { fsPath: dir }, noOpen: true })); v.vscode.window.showInformationMessage = (m) => { told.push([i, m]); return Promise.resolve(undefined); }; }
+    for (const x of xs) x.ext._needsYou([waits()], T); assert.equal(told.length, 1);
+    for (const x of xs) x.ext._needsYou([waits()], T + 5 * 60e3); assert.equal(told.length, 2); assert.match(told[1][1], /Still waiting/);
+    for (const x of xs) { x.ext._needsYou([], T + 6 * 60e3); x.ext._needsYou([waits({ since: T + 7 * 60e3 })], T + 7 * 60e3); } assert.equal(told.length, 3, 'a new wait');
+  } finally { for (const x of xs) await x.close(); }
 });
