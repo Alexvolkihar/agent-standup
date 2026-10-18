@@ -371,9 +371,15 @@ const APPROVAL = /^(Edit|Write|MultiEdit|NotebookEdit)/, ASKS = /^(AskUserQuesti
 // later on, "I couldn't" is mostly a caveat on work that was done ("Done. I couldn't test on Windows"), and so is a first sentence that says what worked before a "but". On 1,676 real ends of turn
 // this flags 11, each a real "could not". A turn that ended on an error Claude Code wrote itself (the API, the login, the limit) is one too; "No response requested." is not.
 const GAVE = /\b(?:I|we) (?:couldn't|could not|can't|cannot|wasn't able to|was unable to|am unable to|'m unable to|was not able to|failed to|did not manage|didn't manage)\b|\b(?:gave up|giving up|unable to (?:proceed|continue|complete))\b|je n'ai pas (?:pu|réussi)|\bimpossible de\b|\bje ne (?:peux|parviens|suis pas parvenu)|je n'arrive pas|\bno (?:pude|he podido|puedo|logré)\b|\bnão (?:consegui|posso|pude)\b|\bich (?:konnte|kann) (?:\S+ )?nicht\b/i;
+// "I couldn't find any bugs", "I can't see a problem with it", "I can't reproduce it: it already works": a check that came out clean, not work left undone.
+const CLEAN = /^\s+(?:(?:find|see|spot|detect|identify|trouver|voir|repérer|détecter|relever)\b[^.!?,;:]{0,30}?\b(?:bugs?|issues?|problems?|errors?|regressions?|mistakes?|flaws?|faults?|wrong|problèmes?|erreurs?|soucis|anomalies?|fautes?)\b|(?:reproduce|reproduire)\b[^.!?]{0,60}?\b(?:works|working|passes|already|fonctionne|marche|déjà|passent)\b)/i;
 function gaveUp(text) {   // the first sentence when it says it could not, else ''
-  const s = String(text || '').replace(/[’‘]/g, "'").replace(/^[#>*\s]+/, '').replace(/\*\*/g, ''), m = s.match(/^[\s\S]{0,240}?[.!?:](?:\s|$)/), lead = (m ? m[0] : s.slice(0, 240)).trim(), f = GAVE.exec(lead);
-  return f && !/\b(?:but|though|however|mais|cependant|pero|mas|aber)\b|;/i.test(lead.slice(0, f.index)) ? lead.replace(/\s+/g, ' ').replace(/\s*:$/, '') : '';
+  const s = String(text || '').replace(/[’‘]/g, "'").replace(/^[#>*\s]+/, '').replace(/\*\*/g, ''), m = s.match(/^[\s\S]{0,240}?[.!?:](?:\s|$)/), lead = (m ? m[0] : s.slice(0, 240)).trim(), all = new RegExp(GAVE.source, 'gi');
+  for (let f; (f = all.exec(lead));) {   // each "could not" of the sentence: one that is a clean check does not count, the next one may
+    if (CLEAN.test(s.slice(f.index + f[0].length, f.index + f[0].length + 200))) continue;   /* s, not lead: "I can't reproduce it: it already works" goes on after the colon (s and lead start at the same place) */
+    return /\b(?:but|though|however|mais|cependant|pero|mas|aber)\b|;/i.test(lead.slice(0, f.index)) ? '' : lead.replace(/\s+/g, ' ').replace(/\s*:$/, '');
+  }
+  return '';
 }
 const boardCache = new Map();   // file → { sig, parsed, title }
 let boardMemo = { at: 0, rows: [] }, boardForced = 0;
