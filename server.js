@@ -367,6 +367,14 @@ const feedSince = (entry, after) => { const ev = entry.tl.events, sq = entry.sq,
 const readTail = (file, bytes) => { const fd = fs.openSync(file, 'r'); try { const sz = fs.fstatSync(fd).size, n = Math.min(bytes, sz), buf = Buffer.alloc(n); fs.readSync(fd, buf, 0, n, sz - n); return { text: buf.toString('utf8'), cut: sz > bytes }; } finally { fs.closeSync(fd); } };
 const readHead = (file, bytes) => { const fd = fs.openSync(file, 'r'); try { const n = Math.min(bytes, fs.fstatSync(fd).size), buf = Buffer.alloc(n); fs.readSync(fd, buf, 0, n, 0); return buf.toString('utf8'); } finally { fs.closeSync(fd); } };
 const APPROVAL = /^(Edit|Write|MultiEdit|NotebookEdit)/, ASKS = /^(AskUserQuestion|ExitPlanMode)/, SUBTOOL = /^(Task|Agent)$/;
+// A turn that ended without doing what was asked ("I couldn't verify how old the posts were, so 0 drafts"): to the eye, the same "your turn" as one that did. It says so in its first sentence;
+// later on, "I couldn't" is mostly a caveat on work that was done ("Done. I couldn't test on Windows"), and so is a first sentence that says what worked before a "but". On 1,676 real ends of turn
+// this flags 11, each a real "could not". A turn that ended on an error Claude Code wrote itself (the API, the login, the limit) is one too; "No response requested." is not.
+const GAVE = /\b(?:I|we) (?:couldn't|could not|can't|cannot|wasn't able to|was unable to|am unable to|'m unable to|was not able to|failed to|did not manage|didn't manage)\b|\b(?:gave up|giving up|unable to (?:proceed|continue|complete))\b|je n'ai pas (?:pu|réussi)|\bimpossible de\b|\bje ne (?:peux|parviens|suis pas parvenu)|je n'arrive pas|\bno (?:pude|he podido|puedo|logré)\b|\bnão (?:consegui|posso|pude)\b|\bich (?:konnte|kann) (?:\S+ )?nicht\b/i;
+function gaveUp(text) {   // the first sentence when it says it could not, else ''
+  const s = String(text || '').replace(/[’‘]/g, "'").replace(/^[#>*\s]+/, '').replace(/\*\*/g, ''), m = s.match(/^[\s\S]{0,240}?[.!?:](?:\s|$)/), lead = (m ? m[0] : s.slice(0, 240)).trim(), f = GAVE.exec(lead);
+  return f && !/\b(?:but|though|however|mais|cependant|pero|mas|aber)\b|;/i.test(lead.slice(0, f.index)) ? lead.replace(/\s+/g, ' ').replace(/\s*:$/, '') : '';
+}
 const boardCache = new Map();   // file → { sig, parsed, title }
 let boardMemo = { at: 0, rows: [] }, boardForced = 0;
 const PR_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+$/;   // nothing else is given to the page as a link to open
@@ -412,7 +420,7 @@ function typedBefore(file) {   // the first look at a session whose last order i
 function parseTail(file, st) {
   const sig = st.mtimeMs + ':' + st.size, hit = boardCache.get(file); if (hit && hit.sig === sig) return hit;
   const { text, cut } = readTail(file, 192 * 1024), lines = text.split('\n'); if (cut) lines.shift();
-  const pend = new Map(); let lastType = null, lastTool = false, lastStop = null, stops = false, esc = false, lastTs = 0, custom = (hit && hit.custom) || null, ai = (hit && hit.ai) || null, first = hit ? hit.first : undefined, pr = (hit && hit.pr) || null, asked = (hit && hit.asked) || 0, plan = (hit && hit.plan) || null;
+  const pend = new Map(); let lastType = null, lastTool = false, lastStop = null, stops = false, esc = false, lastTs = 0, custom = (hit && hit.custom) || null, ai = (hit && hit.ai) || null, first = hit ? hit.first : undefined, pr = (hit && hit.pr) || null, asked = (hit && hit.asked) || 0, plan = (hit && hit.plan) || null, say = '', err = '';   // say: the first text since the last call or message of yours, the start of what closes the turn; err: an error that closed it
   for (const l of lines) try {   // one odd record costs that record, not the whole card
     if (!l) continue; let r; try { r = JSON.parse(l); } catch { continue; }
     const a = typedAt(r); if (a > asked) asked = a;
@@ -421,6 +429,8 @@ function parseTail(file, st) {
     const t = Date.parse(r.timestamp) || 0, bl = blocks(r);
     if (r.type === 'assistant' || r.type === 'user') { lastType = r.type; lastTool = bl.some((b) => b.type === 'tool_use'); lastStop = (r.type === 'assistant' && r.message && r.message.stop_reason) || null; if (lastStop) stops = true; if (t) lastTs = t;
       esc = r.type === 'user' && bl.some((b) => b.type === 'text' && /^\s*\[Request interrupted/i.test(b.text || '')); if (esc) pend.clear(); }   // Esc: the turn stops there, and no call is waited for any more
+    if (r.type === 'user' || (r.type === 'assistant' && lastTool)) { say = ''; err = ''; }
+    else if (r.type === 'assistant' && !r.isSidechain) { const tx = bl.filter((b) => b.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('\n').trim(), m = r.message || {}; err = (r.isApiErrorMessage || m.model === '<synthetic>') && tx && !/^No response requested/i.test(tx) ? tx : ''; if (tx && !say) say = tx; }
     for (const b of bl) if (b.type === 'tool_use' && /^(Write|Edit|MultiEdit)$/.test(b.name) && b.input && planFile(String(b.input.file_path || ''))) plan = { file: String(b.input.file_path), ts: t };   // the plan, written in its own file before it is shown for approval
     for (const b of bl) { if (b.type === 'tool_use') pend.set(b.id, { id: String(b.id || ''), name: b.name, ts: t, q: askOf(b), c: callOf(b), m: menuOf(b) }); else if (b.type === 'tool_result') pend.delete(b.tool_use_id); }
   } catch {}
@@ -430,7 +440,7 @@ function parseTail(file, st) {
   }
   if (!custom && !ai && first == null) first = firstPrompt(file) || (st.size > 64 * 1024 ? '' : null);   // '' = looked for and not there; a file that has just been created is looked at again
   if (!hit && !asked && cut) asked = typedBefore(file);
-  const out = { sig, title: custom || ai || first || null, custom, ai, first, pr, lastType, lastTool, lastStop, stops, esc, lastTs, pending: [...pend.values()] };   // a title the person typed wins over the generated one, and both over the first prompt
+  const out = { sig, title: custom || ai || first || null, custom, ai, first, pr, lastType, lastTool, lastStop, stops, esc, lastTs, pending: [...pend.values()], ...(lastType === 'assistant' && (err || gaveUp(say)) ? { gave: (err || gaveUp(say)).replace(/\s+/g, ' ').slice(0, 240) } : {}) };   // a title the person typed wins over the generated one, and both over the first prompt
   out.asked = asked; out.plan = plan; boardCache.set(file, out); if (boardCache.size > 3 * ROWS_MAX) boardCache.delete(boardCache.keys().next().value); return out;   // more than the list can hold: a full list never pushes its own rows out, which read every row again at each scan
 }
 function firstPrompt(file) {   // the first thing the person typed, read record by record: a pattern over the raw text ran from a user record into the assistant's first answer and took that as the title
@@ -482,7 +492,7 @@ function boardRows0() {
     let subActive = 0, subTotal = 0;
     for (const x of subFiles(proj, id)) { subTotal++; if (now - mtimeOf(x.file) < 90e3) subActive++; }
     const ran = since && p.asked && p.asked < since ? since - p.asked : 0, ask = state === 'blocked' && lp ? lp.q || lp.c : '';   // since: when it started to wait on you; ran: how long it worked, from your last order to then
-    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, asked: p.asked || 0, ...(since ? { since } : {}), ...(ran ? { ran } : {}), ...(p.pr ? { pr: p.pr } : {}), ...(ask ? { ask } : {}), ...(state === 'blocked' && w && w.status === 'waiting' ? { sure: 1 } : {}), ...(open ? { menu: open } : state === 'blocked' && lp && lp.m && !SUBTOOL.test(lp.name) ? { menu: { id: lp.id, tool: lp.name, ...lp.m, ...(w && w.status === 'waiting' ? { sure: 1 } : {}) } } : {}), ...(p.esc ? { cut: 1 } : {}), ...(tmpKey(proj) ? { tmp: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
+    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, asked: p.asked || 0, ...(since ? { since } : {}), ...(ran ? { ran } : {}), ...(p.pr ? { pr: p.pr } : {}), ...(ask ? { ask } : {}), ...(state === 'blocked' && w && w.status === 'waiting' ? { sure: 1 } : {}), ...(open ? { menu: open } : state === 'blocked' && lp && lp.m && !SUBTOOL.test(lp.name) ? { menu: { id: lp.id, tool: lp.name, ...lp.m, ...(w && w.status === 'waiting' ? { sure: 1 } : {}) } } : {}), ...(state === 'turn' && p.gave ? { gave: p.gave } : {}), ...(p.esc ? { cut: 1 } : {}), ...(tmpKey(proj) ? { tmp: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
   }).filter(Boolean);
 }
 // Settings live in a file, not only in the page's localStorage: the port changes between VS Code windows and reloads, and localStorage is per origin (port included).

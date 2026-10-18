@@ -256,6 +256,20 @@ test('the list of sessions: a line that goes on with a tool call is not the end 
     fs.mkdirSync(path.join(tmp, 'projects', '-b2'), { recursive: true }); fs.writeFileSync(path.join(tmp, 'projects', '-b2', 's.jsonl'), [typed(0, 'Hello'), said(1, 'A session that never says why its messages stop.')].map(line).join('')); assert.equal(await state('-b2'), 'turn');   // as before
   } finally { stop(); }
 });
+test('the list of sessions: a turn that ends saying it could not do the work, or on an error, is flagged; a caveat on work that was done is not', async () => {
+  const dir = path.join(tmp, 'projects', '-g'), f = path.join(dir, 's.jsonl'); fs.mkdirSync(dir, { recursive: true });
+  const { port, stop } = await serve(), row = async () => { await wait(1300); return JSON.parse((await get(port, '/api/board')).body).find((r) => r.proj === '-g'); };
+  try {
+    fs.writeFileSync(f, [typed(0, 'Draft replies to these posts'), used(1, 'toolu_a', 'WebFetch', { url: 'https://example.com' }), result(2, 'toolu_a', 'no date'), said(3, "**I couldn't verify how old the target posts were**, so I wrote 0 drafts. The pages give no date.", { stop: 'end_turn' })].map(line).join(''));
+    let r = await row(); assert.equal(r.state, 'turn'); assert.equal(r.gave, "I couldn't verify how old the target posts were, so I wrote 0 drafts.");
+    fs.appendFileSync(f, line(typed(4, 'Try again')) + line(said(5, "Done: 12 drafts are in drafts.md. I couldn't check the two oldest posts.", { stop: 'end_turn' }))); r = await row(); assert.equal(r.state, 'turn'); assert.equal(r.gave, undefined);   // a caveat after the work
+    fs.appendFileSync(f, line(typed(6, 'And the rest?')) + line(said(7, "The tests pass, but I couldn't run the browser ones.", { stop: 'end_turn' }))); assert.equal((await row()).gave, undefined);   // what worked comes first
+    fs.appendFileSync(f, line(typed(8, 'Encore')) + line(said(9, "Je n'ai pas pu me connecter au serveur : il refuse la connexion.", { stop: 'end_turn' }))); assert.equal((await row()).gave, "Je n'ai pas pu me connecter au serveur");
+    fs.appendFileSync(f, line(typed(10, 'Go on')) + line({ ...said(11, "API Error: 529 Overloaded. This is a server-side issue, usually temporary — try again in a moment.", { stop: 'stop_sequence' }), isApiErrorMessage: true })); assert.match((await row()).gave, /^API Error: 529/);
+    fs.appendFileSync(f, line(typed(12, 'Hi')) + line({ ...said(13, 'No response requested.', { stop: 'stop_sequence' }), message: { ...said(13, 'No response requested.', { stop: 'stop_sequence' }).message, model: '<synthetic>' } })); assert.equal((await row()).gave, undefined);
+    fs.appendFileSync(f, line(typed(14, 'Fix it')) + line(said(15, "I couldn't find the file, let me search.", { stop: 'tool_use' })) + line(used(16, 'toolu_b', 'Bash', { command: 'sleep 60' }))); r = await row(); assert.equal(r.state, 'working'); assert.equal(r.gave, undefined);   // said on the way: the turn goes on
+  } finally { stop(); }
+});
 test('a document a command names is a file of the session when it was written since that command: an export, a report a script made; not one it only read, listed or removed', async () => {
   const dir = path.join(tmp, 'projects', '-c'), work = path.join(tmp, 'work'), out = path.join(work, 'out'); fs.mkdirSync(dir, { recursive: true }); fs.mkdirSync(out, { recursive: true });
   const T = (s) => Date.parse(at(s)), touch = (f, s) => { fs.writeFileSync(f, 'x'); fs.utimesSync(f, T(s) / 1000, T(s) / 1000); }, here = (r) => ({ ...r, cwd: work });   // each record says in which folder the session was
