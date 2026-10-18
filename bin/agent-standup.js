@@ -29,7 +29,8 @@ Options
   --vibe DIR        where Mistral Vibe keeps its files (default ~/.vibe, or $VIBE_HOME); "off" to leave Vibe sessions out
   --cowork DIR      where the Claude desktop app keeps its Cowork sessions (default: its local-agent-mode-sessions folder); "off" to leave them out
   --characters DIR  folder with your own pixel-art characters (default ~/.agent-standup/characters)
-  --from plugin     how the Claude Code plugin starts it (its usage, if you agree to share it, is counted apart)
+  --from plugin     how the Claude Code plugin starts it (its usage, if you agree to share it, is counted apart); also AGENT_STANDUP_FROM=plugin,
+                    which older versions ignore instead of refusing
   --here            status: only sessions of the current folder (matched on its real path, as Claude Code names it)
   --json            status: machine-readable output (add --titles to include session titles)
 `;
@@ -45,7 +46,7 @@ if (flags.port !== undefined) {   // a real port number or nothing: no silent fa
   if (!/^\d+$/.test(String(flags.port)) || +flags.port < 1 || +flags.port > 65535) { console.error(`Invalid --port "${flags.port}": use a number between 1 and 65535.`); process.exit(2); }
   process.env.PORT = String(+flags.port);
 }
-process.env.AGENT_STANDUP_HOST = flags.from === 'plugin' ? 'claude code plugin' : 'command line';   // named in a problem report (⚙ › Report a problem), and what the usage count counts (--from plugin: the Claude Code plugin's commands)
+process.env.AGENT_STANDUP_HOST = (flags.from || process.env.AGENT_STANDUP_FROM) === 'plugin' ? 'claude code plugin' : 'command line';   // named in a problem report (⚙ › Report a problem), and what the usage count counts (--from plugin or AGENT_STANDUP_FROM=plugin: the Claude Code plugin's commands; the plugin uses the variable, since a version without --from refuses the flag)
 const server = require('../server.js');
 const projKey = (dir) => String(dir || '').replace(/[^a-zA-Z0-9]/g, '-');   // Claude Code's project folder naming
 
