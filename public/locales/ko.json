@@ -375,5 +375,9 @@
  "waits for your answer or approval (with “?”: probably, from how long it has waited)": "답변이나 승인을 기다려요 (“?”가 있으면: 기다린 시간으로 본 추정)",
  "where the work is": "작업이 진행 중인 곳",
  "where you last typed": "마지막으로 입력한 곳",
- "you went there": "직접 이동한 곳"
+ "you went there": "직접 이동한 곳",
+ "Help count how many people use Agent Standup? When you open the call, at most once a week, the app would load an empty 1-pixel file from GitHub: no identifier, nothing about you or your sessions. GitHub sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "Agent Standup을 쓰는 사람 수를 세는 데 도움을 주시겠어요? 통화를 열 때 최대 일주일에 한 번, 앱이 GitHub에서 빈 1픽셀 파일을 불러옵니다. 식별자도 없고, 사용자나 세션에 대한 정보도 없습니다. 다른 다운로드와 마찬가지로 GitHub는 IP 주소를 볼 수 있습니다. ⚙ › 모든 설정에서 언제든지 끌 수 있습니다.",
+ "Count me in": "참여하기",
+ "Privacy policy": "개인정보 처리방침",
+ "Help count users (1 request a week)": "사용자 수 세기 돕기 (일주일에 요청 1번)"
 }

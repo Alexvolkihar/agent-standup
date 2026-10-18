@@ -28,14 +28,37 @@ test('the page is told where it runs, for ⚙ › Rate: the store page the edito
   const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port, h0 = process.env.AGENT_STANDUP_HOST, r0 = process.env.AGENT_STANDUP_RATE;
   const app = async () => JSON.parse((await get(port, '/api/prefs.js')).body.match(/window\.AS_APP = (.*);$/)[1]), GH = 'https://github.com/Atoll92/agent-standup', MP = 'https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup&ssr=false#review-details';
   try {
-    delete process.env.AGENT_STANDUP_HOST; delete process.env.AGENT_STANDUP_RATE; assert.deepEqual(await app(), { kind: '', rate: GH });
-    process.env.AGENT_STANDUP_HOST = 'desktop app'; process.env.AGENT_STANDUP_RATE = MP; assert.deepEqual(await app(), { kind: 'desktop', rate: GH });   // the desktop app has no store
-    process.env.AGENT_STANDUP_HOST = 'command line'; assert.deepEqual(await app(), { kind: 'cli', rate: GH });
-    process.env.AGENT_STANDUP_HOST = 'Cursor 1.2'; assert.deepEqual(await app(), { kind: 'editor', rate: MP });
-    process.env.AGENT_STANDUP_RATE = 'https://example.com/'; assert.deepEqual(await app(), { kind: 'editor', rate: GH });   // only the two stores
+    delete process.env.AGENT_STANDUP_HOST; delete process.env.AGENT_STANDUP_RATE; assert.deepEqual(await app(), { kind: '', rate: GH, track: true });
+    process.env.AGENT_STANDUP_HOST = 'desktop app'; process.env.AGENT_STANDUP_RATE = MP; assert.deepEqual(await app(), { kind: 'desktop', rate: GH, track: true });   // the desktop app has no store
+    process.env.AGENT_STANDUP_HOST = 'command line'; assert.deepEqual(await app(), { kind: 'cli', rate: GH, track: true });
+    process.env.AGENT_STANDUP_HOST = 'claude code plugin'; assert.deepEqual(await app(), { kind: 'plugin', rate: GH, track: true });   // the plugin's commands: agent-standup --from plugin
+    process.env.AGENT_STANDUP_HOST = 'Cursor 1.2'; assert.deepEqual(await app(), { kind: 'editor', rate: MP, track: true });
+    process.env.AGENT_STANDUP_RATE = 'https://example.com/'; assert.deepEqual(await app(), { kind: 'editor', rate: GH, track: true });   // only the two stores
   } finally {
     for (const [k, v] of [['AGENT_STANDUP_HOST', h0], ['AGENT_STANDUP_RATE', r0]]) { if (v == null) delete process.env[k]; else process.env[k] = v; }
     srv.close(); require('../server.js').shutdown();
+  }
+});
+
+test('usage, for those who said yes in the desktop app, the command line and the plugin: one empty request a week for the counter of that kind, none for the editor, none with DO_NOT_TRACK', async () => {
+  const hits = [], sink = http.createServer((q, r) => { hits.push(q.url); r.end('GIF89a'); }); await new Promise((r) => sink.listen(0, '127.0.0.1', r));
+  const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port, keep = ['AGENT_STANDUP_HOST', 'AGENT_STANDUP_PING_BASE', 'DO_NOT_TRACK'].map((k) => [k, process.env[k]]);
+  const send = async () => JSON.parse((await get(port, '/api/usage', { origin: `http://localhost:${port}` }, 'POST')).body), wait = () => new Promise((r) => setTimeout(r, 300)), dir = path.dirname(process.env.AGENT_STANDUP_PREFS);
+  const app = async () => JSON.parse((await get(port, '/api/prefs.js')).body.match(/window\.AS_APP = (.*);$/)[1]);
+  try {
+    process.env.AGENT_STANDUP_PING_BASE = `http://127.0.0.1:${sink.address().port}/stats/`; delete process.env.DO_NOT_TRACK;
+    for (const f of fs.readdirSync(dir)) if (f.startsWith('sent-')) fs.unlinkSync(path.join(dir, f));
+    process.env.AGENT_STANDUP_HOST = 'Visual Studio Code 1.99'; assert.equal((await send()).sent, false, 'the editor counts itself (extension.js)');
+    process.env.AGENT_STANDUP_HOST = 'command line'; const a = await send(); assert.equal(a.sent, true); assert.match(a.week, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal((await send()).sent, false, 'once a week'); await wait(); assert.deepEqual(hits, ['/stats/cli-week.gif']);
+    process.env.AGENT_STANDUP_HOST = 'claude code plugin'; assert.equal((await send()).sent, true); process.env.AGENT_STANDUP_HOST = 'desktop app'; assert.equal((await send()).sent, true);
+    await wait(); assert.deepEqual(hits.slice().sort(), ['/stats/cli-week.gif', '/stats/desktop-week.gif', '/stats/plugin-week.gif'], 'a counter for each kind, nothing else in the request');
+    for (const f of fs.readdirSync(dir)) if (f.startsWith('sent-')) fs.unlinkSync(path.join(dir, f));
+    process.env.DO_NOT_TRACK = '1'; assert.equal((await send()).sent, false, 'DO_NOT_TRACK'); assert.equal((await app()).track, false, 'and the page does not ask'); await wait(); assert.equal(hits.length, 3);
+    assert.equal((await get(port, '/api/usage', { 'sec-fetch-site': 'cross-site' }, 'POST')).status, 403, 'another site cannot make it count');
+  } finally {
+    for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+    srv.close(); sink.close(); require('../server.js').shutdown();
   }
 });
 

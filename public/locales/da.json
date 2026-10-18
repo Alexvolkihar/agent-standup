@@ -374,5 +374,9 @@
  "waits for your answer or approval (with “?”: probably, from how long it has waited)": "venter på dit svar eller din godkendelse (med “?”: sandsynligvis, ud fra hvor længe den har ventet)",
  "where the work is": "hvor arbejdet foregår",
  "where you last typed": "hvor du sidst skrev",
- "you went there": "du gik derhen"
+ "you went there": "du gik derhen",
+ "Help count how many people use Agent Standup? When you open the call, at most once a week, the app would load an empty 1-pixel file from GitHub: no identifier, nothing about you or your sessions. GitHub sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "Vil du hjælpe med at tælle, hvor mange der bruger Agent Standup? Når du åbner opkaldet, højst én gang om ugen, henter appen en tom fil på 1 pixel fra GitHub: ingen identifikator, intet om dig eller dine sessioner. GitHub ser din IP-adresse, som ved enhver download. Du kan slå det fra når som helst under ⚙ › Alle indstillinger.",
+ "Count me in": "Tæl mig med",
+ "Privacy policy": "Privatlivspolitik",
+ "Help count users (1 request a week)": "Hjælp med at tælle brugere (1 forespørgsel om ugen)"
 }

@@ -554,8 +554,30 @@ function logError(where, e) {
 const RATE_STORES = /^https:\/\/(marketplace\.visualstudio\.com|open-vsx\.org)\//, GITHUB_REPO = 'https://github.com/Atoll92/agent-standup';
 function appKind() {
   const h = String(process.env.AGENT_STANDUP_HOST || ''), rate = String(process.env.AGENT_STANDUP_RATE || '');
-  const kind = h === 'desktop app' ? 'desktop' : h === 'command line' ? 'cli' : h ? 'editor' : '';
-  return { kind, rate: kind === 'editor' && RATE_STORES.test(rate) ? rate : GITHUB_REPO };
+  const kind = h === 'desktop app' ? 'desktop' : h === 'command line' ? 'cli' : h === 'claude code plugin' ? 'plugin' : h ? 'editor' : '';
+  return { kind, rate: kind === 'editor' && RATE_STORES.test(rate) ? rate : GITHUB_REPO, track: !noTrack() };   // track: false when DO_NOT_TRACK is set, and the page does not ask about usage
+}
+// Usage, counted only for those who said yes, in the desktop app, the command line and the Claude Code plugin (the editor counts itself: extension.js, pingWeek). The page asks once
+// (prefs.shareUsage); when the call is opened it asks this server, which sends at most one empty request a week (weeks from Monday, UTC) for the 1-pixel file of its kind in the "stats"
+// release on GitHub: the requests of a week are the people who opened the call that week from there. Nothing is sent in a request: no id, no path, no content. Never with DO_NOT_TRACK set.
+// A file per week beside the settings (sent-<kind>-week-<monday>) makes several servers and pages send it once. AGENT_STANDUP_PING_BASE: where the tests receive it.
+const USAGE_PIXELS = { desktop: 'desktop-week.gif', cli: 'cli-week.gif', plugin: 'plugin-week.gif' };
+const noTrack = () => /^(1|true|yes)$/i.test(String(process.env.DO_NOT_TRACK || '').trim());
+const mondayOf = (d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7))).toISOString().slice(0, 10);
+function usageWeek(now = new Date()) {
+  const kind = appKind().kind, name = USAGE_PIXELS[kind]; if (!name || noTrack()) return { sent: false };
+  const week = mondayOf(now), dir = path.dirname(PREFS), mine = 'sent-' + kind + '-week-' + week;
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    for (const f of fs.readdirSync(dir)) if (f.startsWith('sent-' + kind + '-week-') && f !== mine) try { fs.unlinkSync(path.join(dir, f)); } catch {}
+    fs.closeSync(fs.openSync(path.join(dir, mine), 'wx'));
+  } catch (e) { if (!(e && e.code === 'EEXIST')) logError('usage', e); return { sent: false, week }; }
+  try {
+    const u = new URL(name, process.env.AGENT_STANDUP_PING_BASE || 'https://github.com/Atoll92/agent-standup/releases/download/stats/');
+    const r = require(u.protocol === 'http:' ? 'http' : 'https').get(u, { headers: { 'user-agent': 'agent-standup' }, timeout: 5000 }, (m) => { m.resume(); m.destroy(); });
+    r.on('error', () => {}); r.on('timeout', () => r.destroy());
+  } catch (e) { logError('usage', e); }
+  return { sent: true, week };
 }
 function errorReport() {   // what ⚙ › Report a problem shows: the app, the system and the last errors of the log
   let errors = []; try { errors = fs.readFileSync(ERRLOG, 'utf8').split('\n').filter(Boolean).slice(-40).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((x) => x && typeof x === 'object'); } catch {}
@@ -1122,7 +1144,7 @@ function start(port = PORT) {
       if (url.searchParams.get('engine') === 'kokoro') { const st = kokoro.status(); if (st.installed && !st.gaveUp) kokoro.warm(); return json({ available: st.installed && !st.gaveUp, ready: st.ready, voices: kokoro.voices(), platform: process.platform, engine: 'kokoro' }); }
       return loadVoices().then((v) => json(v));
     }
-    if (url.pathname === '/api/kokoro/install' && req.method === 'POST') return json(kokoro.install());
+    if (url.pathname === '/api/kokoro/install' && req.method === 'POST') return json(kokoro.install()); if (url.pathname === '/api/usage' && req.method === 'POST') return json(usageWeek());
     if (url.pathname === '/api/kokoro') return json(kokoro.status());
     if (url.pathname === '/api/tts') {
       return tts(url.searchParams.get('text') || '', url.searchParams.get('voice'), url.searchParams.get('rate'), url.searchParams.get('engine'), url.searchParams.get('fb'))

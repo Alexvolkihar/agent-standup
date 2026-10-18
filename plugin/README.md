@@ -47,7 +47,9 @@ Only these can leave your computer, each when you turn it on or start it yoursel
 - **Report a problem:** opens a draft issue on GitHub with the app’s version, your system, browser and language, and its last errors. Nothing is sent unless you submit it on GitHub yourself.
 - **Artifact libraries:** when you ask for them, an artifact shown in the call loads the scripts and fonts it names from the servers claude.ai lets artifacts use. The page runs in a frame that cannot send anything out.
 
-Running the app with `npx` downloads its package from the npm registry. This app has no usage counter (only the VS Code extension has one, opt-in).
+- **Usage count:** the page asks once whether you would help count how many people use it. If you say yes, it loads an empty 1-pixel file from GitHub at most once a week, when you open the call: no identifier, nothing about you or your sessions. It is never asked, and nothing is sent, when the `DO_NOT_TRACK` environment variable is set; ⚙ › All settings turns it off.
+
+Running the app with `npx` downloads its package from the npm registry.
 
 ## Privacy
 

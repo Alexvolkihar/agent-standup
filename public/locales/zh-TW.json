@@ -375,5 +375,9 @@
  "waits for your answer or approval (with “?”: probably, from how long it has waited)": "等待你的回答或核准（帶「?」：依等待時間推測）",
  "where the work is": "正在工作的地方",
  "where you last typed": "你最後輸入的地方",
- "you went there": "你去過那裡"
+ "you went there": "你去過那裡",
+ "Help count how many people use Agent Standup? When you open the call, at most once a week, the app would load an empty 1-pixel file from GitHub: no identifier, nothing about you or your sessions. GitHub sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "願意幫忙統計有多少人在用 Agent Standup 嗎？開啟通話時，每週最多一次，應用程式會從 GitHub 載入一個 1 像素的空檔案：沒有任何識別碼，也不涉及你或你的工作階段。和任何下載一樣，GitHub 會看到你的 IP 位址。你可以隨時在 ⚙ › 全部設定 中關閉。",
+ "Count me in": "參與統計",
+ "Privacy policy": "隱私權政策",
+ "Help count users (1 request a week)": "幫忙統計使用者（每週 1 次請求）"
 }

@@ -375,5 +375,9 @@
  "waits for your answer or approval (with “?”: probably, from how long it has waited)": "espera tu respuesta o tu aprobación (con “?”: probablemente, por el tiempo que lleva esperando)",
  "where the work is": "donde se trabaja",
  "where you last typed": "donde escribiste por última vez",
- "you went there": "fuiste allí"
+ "you went there": "fuiste allí",
+ "Help count how many people use Agent Standup? When you open the call, at most once a week, the app would load an empty 1-pixel file from GitHub: no identifier, nothing about you or your sessions. GitHub sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "¿Nos ayudas a contar cuántas personas usan Agent Standup? Cuando abres la llamada, como mucho una vez por semana, la app cargaría un archivo vacío de 1 píxel desde GitHub: ningún identificador, nada sobre ti ni sobre tus sesiones. GitHub ve tu dirección IP, como en cualquier descarga. Puedes desactivarlo cuando quieras en ⚙ › Todos los ajustes.",
+ "Count me in": "Cuenta conmigo",
+ "Privacy policy": "Política de privacidad",
+ "Help count users (1 request a week)": "Ayudar a contar usuarios (1 petición por semana)"
 }

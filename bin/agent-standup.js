@@ -10,7 +10,7 @@ const argv = process.argv.slice(2), flags = {}, rest = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i], val = () => argv[++i];
   if (a === '--port') flags.port = val(); else if (a === '--projects') flags.projects = val(); else if (a === '--codex') flags.codex = val(); else if (a === '--vibe') flags.vibe = val(); else if (a === '--cowork') flags.cowork = val(); else if (a === '--characters') flags.characters = val(); else if (a === '--config-dir') flags.config = val();
-  else if (a === '--open') flags.open = true; else if (a === '--here') flags.here = true; else if (a === '--json') flags.json = true; else if (a === '--titles') flags.titles = true;
+  else if (a === '--from') flags.from = val(); else if (a === '--open') flags.open = true; else if (a === '--here') flags.here = true; else if (a === '--json') flags.json = true; else if (a === '--titles') flags.titles = true;
   else if (a === '-h' || a === '--help') flags.help = true; else if (a === '-v' || a === '--version') flags.version = true; else rest.push(a);
 }
 const cmd = rest[0] || 'serve';
@@ -29,6 +29,7 @@ Options
   --vibe DIR        where Mistral Vibe keeps its files (default ~/.vibe, or $VIBE_HOME); "off" to leave Vibe sessions out
   --cowork DIR      where the Claude desktop app keeps its Cowork sessions (default: its local-agent-mode-sessions folder); "off" to leave them out
   --characters DIR  folder with your own pixel-art characters (default ~/.agent-standup/characters)
+  --from plugin     how the Claude Code plugin starts it (its usage, if you agree to share it, is counted apart)
   --here            status: only sessions of the current folder (matched on its real path, as Claude Code names it)
   --json            status: machine-readable output (add --titles to include session titles)
 `;
@@ -44,7 +45,7 @@ if (flags.port !== undefined) {   // a real port number or nothing: no silent fa
   if (!/^\d+$/.test(String(flags.port)) || +flags.port < 1 || +flags.port > 65535) { console.error(`Invalid --port "${flags.port}": use a number between 1 and 65535.`); process.exit(2); }
   process.env.PORT = String(+flags.port);
 }
-process.env.AGENT_STANDUP_HOST = 'command line';   // named in a problem report (⚙ › Report a problem)
+process.env.AGENT_STANDUP_HOST = flags.from === 'plugin' ? 'claude code plugin' : 'command line';   // named in a problem report (⚙ › Report a problem), and what the usage count counts (--from plugin: the Claude Code plugin's commands)
 const server = require('../server.js');
 const projKey = (dir) => String(dir || '').replace(/[^a-zA-Z0-9]/g, '-');   // Claude Code's project folder naming
 
