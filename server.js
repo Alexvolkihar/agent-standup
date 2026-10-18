@@ -558,14 +558,14 @@ function appKind() {
   return { kind, rate: kind === 'editor' && RATE_STORES.test(rate) ? rate : GITHUB_REPO, track: !noTrack() };   // track: false when DO_NOT_TRACK is set, and the page does not ask about usage
 }
 // Usage, counted only for those who said yes, in the desktop app, the command line and the Claude Code plugin (the editor counts itself: extension.js, pingWeek). The page asks once
-// (prefs.shareUsage); when the call is opened it asks this server, which sends at most one empty request a week (weeks from Monday, UTC) for the 1-pixel file of its kind in the "stats"
+// (prefs.shareUsage, which this server reads again in the settings file before it sends anything); when the call is opened it asks this server, which sends at most one empty request a week (weeks from Monday, UTC) for the 1-pixel file of its kind in the "stats"
 // release on GitHub: the requests of a week are the people who opened the call that week from there. Nothing is sent in a request: no id, no path, no content. Never with DO_NOT_TRACK set.
 // A file per week beside the settings (sent-<kind>-week-<monday>) makes several servers and pages send it once. AGENT_STANDUP_PING_BASE: where the tests receive it.
 const USAGE_PIXELS = { desktop: 'desktop-week.gif', cli: 'cli-week.gif', plugin: 'plugin-week.gif' };
 const noTrack = () => /^(1|true|yes)$/i.test(String(process.env.DO_NOT_TRACK || '').trim());
 const mondayOf = (d) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7))).toISOString().slice(0, 10);
 function usageWeek(now = new Date()) {
-  const kind = appKind().kind, name = USAGE_PIXELS[kind]; if (!name || noTrack()) return { sent: false };
+  const kind = appKind().kind, name = USAGE_PIXELS[kind]; if (!name || noTrack() || (readPrefs() || {}).shareUsage !== true) return { sent: false };   // the answer is read here too, from the settings file: the page asking is not enough
   const week = mondayOf(now), dir = path.dirname(PREFS), mine = 'sent-' + kind + '-week-' + week;
   try {
     fs.mkdirSync(dir, { recursive: true });

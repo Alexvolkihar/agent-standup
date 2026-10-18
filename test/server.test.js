@@ -40,15 +40,17 @@ test('the page is told where it runs, for ⚙ › Rate: the store page the edito
   }
 });
 
-test('usage, for those who said yes in the desktop app, the command line and the plugin: one empty request a week for the counter of that kind, none for the editor, none with DO_NOT_TRACK', async () => {
+test('usage, for those who said yes (in the settings file, not only in the page) in the desktop app, the command line and the plugin: one empty request a week for the counter of that kind, none for the editor, none with DO_NOT_TRACK', async () => {
   const hits = [], sink = http.createServer((q, r) => { hits.push(q.url); r.end('GIF89a'); }); await new Promise((r) => sink.listen(0, '127.0.0.1', r));
   const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port, keep = ['AGENT_STANDUP_HOST', 'AGENT_STANDUP_PING_BASE', 'DO_NOT_TRACK'].map((k) => [k, process.env[k]]);
   const send = async () => JSON.parse((await get(port, '/api/usage', { origin: `http://localhost:${port}` }, 'POST')).body), wait = () => new Promise((r) => setTimeout(r, 300)), dir = path.dirname(process.env.AGENT_STANDUP_PREFS);
-  const app = async () => JSON.parse((await get(port, '/api/prefs.js')).body.match(/window\.AS_APP = (.*);$/)[1]);
+  const app = async () => JSON.parse((await get(port, '/api/prefs.js')).body.match(/window\.AS_APP = (.*);$/)[1]), saved0 = fs.existsSync(process.env.AGENT_STANDUP_PREFS) ? fs.readFileSync(process.env.AGENT_STANDUP_PREFS, 'utf8') : null;
   try {
     process.env.AGENT_STANDUP_PING_BASE = `http://127.0.0.1:${sink.address().port}/stats/`; delete process.env.DO_NOT_TRACK;
     for (const f of fs.readdirSync(dir)) if (f.startsWith('sent-')) fs.unlinkSync(path.join(dir, f));
-    process.env.AGENT_STANDUP_HOST = 'Visual Studio Code 1.99'; assert.equal((await send()).sent, false, 'the editor counts itself (extension.js)');
+    const P = process.env.AGENT_STANDUP_PREFS, saved = fs.existsSync(P) ? fs.readFileSync(P, 'utf8') : null, said = (yes) => fs.writeFileSync(P, JSON.stringify({ ...JSON.parse(saved || '{}'), shareUsage: yes }));
+    process.env.AGENT_STANDUP_HOST = 'command line'; said(false); assert.equal((await send()).sent, false, 'no yes in the settings file: nothing, whatever the page asks'); await wait(); assert.deepEqual(hits, []);
+    said(true); process.env.AGENT_STANDUP_HOST = 'Visual Studio Code 1.99'; assert.equal((await send()).sent, false, 'the editor counts itself (extension.js)');
     process.env.AGENT_STANDUP_HOST = 'command line'; const a = await send(); assert.equal(a.sent, true); assert.match(a.week, /^\d{4}-\d{2}-\d{2}$/);
     assert.equal((await send()).sent, false, 'once a week'); await wait(); assert.deepEqual(hits, ['/stats/cli-week.gif']);
     process.env.AGENT_STANDUP_HOST = 'claude code plugin'; assert.equal((await send()).sent, true); process.env.AGENT_STANDUP_HOST = 'desktop app'; assert.equal((await send()).sent, true);
@@ -58,6 +60,7 @@ test('usage, for those who said yes in the desktop app, the command line and the
     assert.equal((await get(port, '/api/usage', { 'sec-fetch-site': 'cross-site' }, 'POST')).status, 403, 'another site cannot make it count');
   } finally {
     for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+    if (saved0 == null) { try { fs.unlinkSync(process.env.AGENT_STANDUP_PREFS); } catch {} } else fs.writeFileSync(process.env.AGENT_STANDUP_PREFS, saved0);
     srv.close(); sink.close(); require('../server.js').shutdown();
   }
 });
