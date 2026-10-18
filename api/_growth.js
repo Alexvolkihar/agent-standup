@@ -30,13 +30,13 @@ async function npm() {
 // The repository, the files of every release, the opt-in counters, and the history file the daily job writes (.github/workflows/stats.yml)
 async function github() {
   const [r, rels] = await Promise.all([json('https://api.github.com/repos/' + REPO, { headers: ghHeaders() }), json('https://api.github.com/repos/' + REPO + '/releases?per_page=100', { headers: ghHeaders() })]);
-  const files = { vsix: 0, mac: 0, windows: 0, linux: 0, cli: 0 }, landing = {}; let active = 0, week = 0, hist = '';
+  const files = { vsix: 0, mac: 0, windows: 0, linux: 0, cli: 0 }, landing = {}, weeks = {}; let active = 0, week = 0, hist = '';
   for (const rel of rels) for (const a of rel.assets) {
-    if (rel.tag_name === 'stats') { if (a.name === 'app-active.gif') active = a.download_count; else if (a.name === 'app-week.gif') week = a.download_count; else if (/^pixel-.*\.gif$/.test(a.name)) landing[a.name.slice(6, -4)] = a.download_count; else if (a.name === 'history.jsonl') hist = a.browser_download_url; continue; }
+    if (rel.tag_name === 'stats') { if (a.name === 'app-active.gif') active = a.download_count; else if (a.name === 'app-week.gif') week = a.download_count; else if (/^(plugin|cli|desktop)-week\.gif$/.test(a.name)) weeks[a.name.split('-')[0]] = a.download_count; else if (/^pixel-.*\.gif$/.test(a.name)) landing[a.name.slice(6, -4)] = a.download_count; else if (a.name === 'history.jsonl') hist = a.browser_download_url; continue; }
     files[/\.vsix$/.test(a.name) ? 'vsix' : /mac/.test(a.name) ? 'mac' : /windows/.test(a.name) ? 'windows' : /linux/.test(a.name) ? 'linux' : 'cli'] += a.download_count;
   }
   const history = hist ? await soft(async () => { const t = await fetch(hist, { signal: AbortSignal.timeout(15000) }); if (!t.ok) throw new Error('history ' + t.status); return lines(await t.text()); }) : null;
-  return { stars: r.stargazers_count, forks: r.forks_count, issues: r.open_issues_count, files, active, week, landing, history: history || [] };
+  return { stars: r.stargazers_count, forks: r.forks_count, issues: r.open_issues_count, files, active, week, weeks, landing, history: history || [] };   // week: VS Code; weeks: plugin, cli, desktop
 }
 // The channel's public counts, read from its own pages (the consent cookie skips the EU consent page)
 async function youtube() {

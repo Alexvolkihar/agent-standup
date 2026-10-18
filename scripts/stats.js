@@ -19,12 +19,12 @@ async function collect() {
   const ovsx = await soft(async () => { const j = await json('https://open-vsx.org/api/' + ext.replace('.', '/')); return { downloads: j.downloadCount || 0, reviews: j.reviewCount || 0 }; });
   const npm = await soft(async () => (await json('https://api.npmjs.org/downloads/point/last-year/' + pkg)).downloads);   // a year back: the whole life of the package for a long while
   const hub = await soft(async () => {
-    const r = gh(['api', `repos/${repo}`]), files = { vsix: 0, mac: 0, windows: 0, linux: 0, cli: 0 }, landing = {}; let active = 0, week = 0;
+    const r = gh(['api', `repos/${repo}`]), files = { vsix: 0, mac: 0, windows: 0, linux: 0, cli: 0 }, landing = {}, weeks = {}; let active = 0, week = 0;
     for (const rel of gh(['api', `repos/${repo}/releases`, '--paginate'])) for (const a of rel.assets) {
-      if (rel.tag_name === 'stats') { if (a.name === 'app-active.gif') active = a.download_count; else if (a.name === 'app-week.gif') week = a.download_count; else if (/^pixel-.*\.gif$/.test(a.name)) landing[a.name.slice(6, -4)] = a.download_count; continue; }   // the history file sits there too and is not a counter
+      if (rel.tag_name === 'stats') { if (a.name === 'app-active.gif') active = a.download_count; else if (a.name === 'app-week.gif') week = a.download_count; else if (/^(plugin|cli|desktop)-week\.gif$/.test(a.name)) weeks[a.name.split('-')[0]] = a.download_count; else if (/^pixel-.*\.gif$/.test(a.name)) landing[a.name.slice(6, -4)] = a.download_count; continue; }   // the history file sits there too and is not a counter
       files[/\.vsix$/.test(a.name) ? 'vsix' : /mac/.test(a.name) ? 'mac' : /windows/.test(a.name) ? 'windows' : /linux/.test(a.name) ? 'linux' : 'cli'] += a.download_count;
     }
-    return { stars: r.stargazers_count, forks: r.forks_count, files, active, week, landing };
+    return { stars: r.stargazers_count, forks: r.forks_count, files, active, week, weeks, landing };   // week: the VS Code extension; weeks: the plugin, the command line and the desktop app (server.js, usageWeek)
   });
   const yt = await soft(youtube);
   return { d: new Date().toISOString().slice(0, 10), mp, ovsx, npm, hub, ...(yt ? { yt } : {}) };
@@ -35,6 +35,7 @@ async function youtube() {
   const num = (t) => { const m = /([\d.,]+)\s*([KM])?/.exec(String(t || '')); return m ? Math.round(parseFloat(m[1].replace(/,/g, '')) * (m[2] === 'K' ? 1e3 : m[2] === 'M' ? 1e6 : 1)) : 0; };
   const videos = [], walk = (o, short) => { if (!o || typeof o !== 'object') return;
     if (o.lockupViewModel) { const t = o.lockupViewModel.metadata && o.lockupViewModel.metadata.lockupMetadataViewModel, parts = JSON.stringify((t && t.metadata) || {}).match(/"content":"([^"]*)"/g) || []; if (t) videos.push({ title: t.title && t.title.content, views: num((parts[0] || '').slice(11, -1)) }); }
+    if (o.videoRenderer && o.videoRenderer.title) { const v = o.videoRenderer, t = (v.title.runs && v.title.runs[0] && v.title.runs[0].text) || v.title.simpleText; if (t) videos.push({ title: t, views: num((v.viewCountText && (v.viewCountText.simpleText || (v.viewCountText.runs || []).map((x) => x.text).join(''))) || '') }); }   /* the older layout of the videos page, still served at times */
     if (o.shortsLockupViewModel) { const m = o.shortsLockupViewModel.overlayMetadata || {}; videos.push({ title: m.primaryText && m.primaryText.content, views: num(m.secondaryText && m.secondaryText.content), short: 1 }); }
     for (const k in o) walk(o[k], short); };
   const v = await get('videos'), sh = await get('shorts'); if (!v && !sh) return null; walk(v); walk(sh);
@@ -78,7 +79,7 @@ function printWebsite(w) {
 const flat = (x) => ({ 'Marketplace installs': x.mp && x.mp.installs, 'Marketplace downloads': x.mp && x.mp.downloads, 'Marketplace updates': x.mp && x.mp.updates, 'Marketplace ratings': x.mp && x.mp.ratings,
   'Open VSX downloads': x.ovsx && x.ovsx.downloads, 'Open VSX reviews': x.ovsx && x.ovsx.reviews, 'npm downloads': x.npm, 'GitHub stars': x.hub && x.hub.stars, 'GitHub forks': x.hub && x.hub.forks,
   'GitHub: extension files': x.hub && x.hub.files && x.hub.files.vsix, 'GitHub: desktop app (Mac / Windows / Linux)': x.hub && x.hub.files && [x.hub.files.mac, x.hub.files.windows, x.hub.files.linux].join(' / '), 'GitHub: command line file': x.hub && x.hub.files && x.hub.files.cli,
-  'Opt-in active installs (1 request a day each)': x.hub && x.hub.active, 'Opt-in people who opened the call (1 request a week each)': x.hub && x.hub.week, 'YouTube subscribers': x.yt && x.yt.subs, 'YouTube views (all videos)': x.yt && x.yt.views });
+  'Opt-in active installs (1 request a day each)': x.hub && x.hub.active, 'Opt-in people who opened the call (1 request a week each)': x.hub && x.hub.week, 'the same from the plugin / command line / desktop app': x.hub && x.hub.weeks ? ['plugin', 'cli', 'desktop'].map((k) => x.hub.weeks[k] || 0).join(' / ') : null, 'YouTube subscribers': x.yt && x.yt.subs, 'YouTube views (all videos)': x.yt && x.yt.views });
 const lines = (text) => text.split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((x) => x && x.d);
 
 (async () => {
@@ -102,8 +103,13 @@ const lines = (text) => text.split('\n').filter(Boolean).map((l) => { try { retu
   // The number to follow: how many people opened the call, week by week (only those who said yes to "share usage"). A week runs from Monday (UTC); the daily job reads the counter early
   // in the morning, so the first hours of a Monday are counted in the week before.
   const monday = (d) => { const t = Date.parse(d + 'T00:00:00Z'); return new Date(t - ((new Date(t).getUTCDay() + 6) % 7) * 864e5).toISOString().slice(0, 10); }, wk = [];
-  for (const x of lines(hist).filter((x) => x.d !== now.d).concat(now)) { const n = x.hub && x.hub.week; if (typeof n !== 'number') continue; const m = monday(x.d), w = wk[wk.length - 1]; if (w && w.m === m) w.n = n; else wk.push({ m, n, from: w ? w.n : null }); }
-  if (wk.length) console.log('\nPeople who opened the call, week by week (opt-in):\n' + wk.map((w, i) => `  week of ${w.m}  ${w.from == null ? 'counting starts at ' + w.n : w.n - w.from}${i === wk.length - 1 ? ' so far' : ''}`).join('\n'));
+  // Each kind has its counter (VS Code since 1.34, the plugin, the command line and the desktop app since 1.39): a week is the last count of the week minus the last count of the week before;
+  // a counter's first week counts from zero, since each started at zero.
+  const KINDS = [['VS Code', (x) => x.hub && x.hub.week], ['plugin', (x) => x.hub && x.hub.weeks && x.hub.weeks.plugin], ['command line', (x) => x.hub && x.hub.weeks && x.hub.weeks.cli], ['desktop app', (x) => x.hub && x.hub.weeks && x.hub.weeks.desktop]], byWeek = {};
+  for (const [name, get] of KINDS) { const kw = []; for (const x of lines(hist).filter((x) => x.d !== now.d).concat(now)) { const n = get(x); if (typeof n !== 'number') continue; const m = monday(x.d), w = kw[kw.length - 1]; if (w && w.m === m) w.n = n; else kw.push({ m, n, from: w ? w.n : 0 }); }
+    for (const w of kw) (byWeek[w.m] = byWeek[w.m] || {})[name] = w.n - w.from; }
+  for (const m of Object.keys(byWeek).sort()) wk.push({ m, by: byWeek[m], n: Object.values(byWeek[m]).reduce((t, v) => t + v, 0) });
+  if (wk.length) console.log('\nPeople who opened the call, week by week (opt-in):\n' + wk.map((w, i) => `  week of ${w.m}  ${w.n}${i === wk.length - 1 ? ' so far' : ''}  (${Object.entries(w.by).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ') || 'none'})`).join('\n'));
   if (days.length < 3) console.log('\n  The daily job on GitHub adds one line a day: the trend is worth reading after a week or two.');
   if (now.yt && now.yt.videos.length) console.log('\nYouTube (public counts):\n' + now.yt.videos.map((x) => '  ' + String(x.views).padStart(6) + '  ' + (x.short ? '[Short] ' : '') + x.title).join('\n'));
   if (!process.env.STATS_NO_WEBSITE) { try { printWebsite(await website()); } catch { console.log('\nWebsite: not read (the Vercel command line needs `npx vercel login` on this computer)'); } }
