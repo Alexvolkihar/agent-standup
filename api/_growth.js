@@ -7,7 +7,7 @@
 const REPO = 'Atoll92/agent-standup', EXT = 'DoubleGeste.agent-standup', PKG = '@double_geste/agent-standup';
 const TEAM = process.env.VERCEL_TEAM || 'team_jz9SDQBcNGP3p0ylwU1PcxNN', PROJECT = process.env.VERCEL_PROJECT || 'prj_gi6WoJ9EOm5BOdnoZkhh9hxURRVe';
 // The website's numbers start when Vercel Web Analytics did; clicks are counted since WEB_CLICKS_SINCE. A day of WEB_MARKS splits the summary (to compare a change of the home page).
-const WEB_SINCE = '2026-10-13', WEB_CLICKS_SINCE = '2026-10-17', WEB_MARKS = { '2026-10-17': 'new hero "Stop checking on your agents."', '2026-10-19': 'hero: the "Stop babysitting" video' };
+const WEB_SINCE = '2026-10-13', WEB_CLICKS_SINCE = '2026-10-17', WEB_MARKS = { '2026-10-17': 'new hero "Stop checking on your agents."', '2026-10-19': 'hero: the "Stop babysitting" video; the coffee section moved up, right under Install' };
 const INSTALL_CLICKS = /^(Install VS Code|Install Open VSX|Download|Copy command)$/, HOME = /^\/([a-z]{2}(-[a-z]{2,4})?\/?)?$/i;
 
 const json = async (url, init = {}) => { const r = await fetch(url, { ...init, signal: AbortSignal.timeout(15000) }); if (!r.ok) { const e = new Error(url.split('?')[0] + ' ' + r.status); e.status = r.status; throw e; } return r.json(); };
