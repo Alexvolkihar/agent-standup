@@ -28,7 +28,7 @@ It needs Node.js 18 or later and works where Claude Code runs on your own comput
 
 Both skills run one command, pinned to an exact version of the app's npm package:
 
-    npx -y @double_geste/agent-standup@1.39.0
+    npx -y @double_geste/agent-standup@1.39.1
 
 `npx` downloads that package from the npm registry the first time. The package has no dependencies. `open` starts a web server that listens on your own machine only (`127.0.0.1`); `status` starts nothing and exits.
 

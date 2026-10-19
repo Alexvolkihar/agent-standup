@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.39.1
+- **The call no longer makes VS Code flicker.** The characters’ small endless motions (breathing, blinking, typing, the twinkling screens, the coffee steam, the spinner of a running command) now move in small steps instead of redrawing the page 60 times a second; in VS Code every one of those redraws went through the editor’s own window, which could flicker. The call now draws less than half as often, with the same characters. The red “live” dot no longer starts its pulse over every second.
+- **The coffee line** now says Agent Standup is free and made by one person.
+
 ## 1.39.0
 - **“⚠ gave up?” when an agent stops without doing the work.** A session whose agent ends its turn saying it could not do what was asked (“I couldn’t verify…”), or on an error, now reads “⚠ gave up?” in amber with its own first sentence, in the header, its tile, its tab and its card, instead of a plain “your turn”. A check that came out clean (“I couldn’t find any bugs”, “I can’t reproduce it: it already works”) still reads as done. An agent that starts waiting on you takes the spotlight as soon as nobody is talking.
 - **The Claude Code plugin opens the call again.** The plugin’s `open` skill passed a flag the version it pins did not know, which stopped it with “Unknown command”.
