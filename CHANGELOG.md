@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.39.2
+- **Smooth again, and still light.** In 1.39.1 the characters’ small motions moved in visible steps. They are smooth again: one clock moves them all together 25 times a second, instead of the browser redrawing the page 60 times a second, so the call stays light in VS Code.
+- **The hourglass no longer makes VS Code flicker.** The turning ⌛ of an agent that waits on others (the lead while its sub-agents work) and the slow drift of the backgrounds were left out of 1.39.1, and kept the page redrawing 60 times a second. They now move with the rest.
+
 ## 1.39.1
 - **The call no longer makes VS Code flicker.** The characters’ small endless motions (breathing, blinking, typing, the twinkling screens, the coffee steam, the spinner of a running command) now move in small steps instead of redrawing the page 60 times a second; in VS Code every one of those redraws went through the editor’s own window, which could flicker. The call now draws less than half as often, with the same characters. The red “live” dot no longer starts its pulse over every second.
 - **The coffee line** now says Agent Standup is free and made by one person.
