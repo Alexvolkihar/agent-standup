@@ -48,6 +48,7 @@
  "The interface in <b>10 languages</b>: English, Français, 繁體中文, 简体中文, Español, Deutsch, Dansk, Português, 日本語, 한국어.": "界面提供 <b>10 种语言</b>：English, Français, 繁體中文, 简体中文, Español, Deutsch, Dansk, Português, 日本語, 한국어。",
  "Is it serious?": "这是认真的吗？",
  "Mostly for fun. A little for clarity: when eight sub-agents are working at once, seeing who’s doing what, and what’s on their screen, is easier than scrolling through a log.": "主要是为了好玩，也有一点是为了看得清楚：八个子代理同时开工时，直接看到谁在做什么、屏幕上是什么，比翻日志轻松。",
+ "<b>Does it cost credits?</b> No. It reads the session files your agents already write and runs no model of its own, so it spends none of your tokens, credits or plan limits. (Only a call translated into French, Spanish or Portuguese, and the jokes, use a little Claude Haiku, through your own login.)": "<b>会消耗额度吗？</b>不会。它只读取你的智能体本来就会写下的会话文件，自己不运行任何模型，所以不会占用你的 token、额度或套餐用量上限。（只有翻译成法语、西班牙语或葡萄牙语的通话，以及玩笑功能，会通过你自己的登录用到少量 Claude Haiku。）",
  "<b>Is my code sent anywhere?</b> No. Everything runs on your machine and reads the session files Claude Code, Codex, Mistral Vibe and Cowork already write. (Only if you choose French, Spanish or Portuguese as the language, or turn on the jokes, short lines go through your own Claude login.)": "<b>我的代码会被发送到别处吗？</b>不会。一切都在你的电脑上运行，读取的是 Claude Code、Codex、Mistral Vibe 和 Cowork 本来就会写下的会话文件。（只有当你选择法语、西班牙语或葡萄牙语作为语言，或开启玩笑功能时，才会有简短的句子通过你自己的 Claude 登录发送。）",
  "Made by a bored dev and his robots.": "由一位闲得发慌的开发者和他的机器人们制作。",
  "☕ Buy him a coffee": "☕ 请他喝杯咖啡",
