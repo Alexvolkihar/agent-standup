@@ -6,7 +6,8 @@ const assert = require('node:assert'), fs = require('fs'), os = require('os'), p
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'as-live-'));
 process.env.AGENT_STANDUP_PING_BASE = 'http://127.0.0.1:9/';   /* the usage count of a test page goes nowhere */
 process.env.AGENT_STANDUP_CC_SESSIONS = path.join(tmp, 'sessions'); process.env.AGENT_STANDUP_PREFS = path.join(tmp, 'prefs.json'); process.env.AGENT_STANDUP_KOKORO_DIR = path.join(tmp, 'kokoro'); process.env.AGENT_STANDUP_PROJECTS = path.join(tmp, 'projects');
-fs.writeFileSync(process.env.AGENT_STANDUP_PREFS, JSON.stringify({ lang: 'en', voice: false, chat: 'normal', banter: true, _t: Date.now() }));   // no voice: a line lasts as long as its text, on every machine
+process.env.AGENT_STANDUP_PACKS = path.join(tmp, 'packs'); process.env.AGENT_STANDUP_CHARACTERS = path.join(tmp, 'characters');   /* not the packs and pictures of the machine the tests run on: the same call here as in CI */
+fs.writeFileSync(process.env.AGENT_STANDUP_PREFS, JSON.stringify({ lang: 'en', voice: false, chat: 'normal', banter: true, packSeen: 2, _t: Date.now() }));   // no voice: a line lasts as long as its text, on every machine; packSeen: the Halloween line done for the season, else in October it goes before the lines the tests look for
 // A stand-in for Claude Code, so that no test starts the real one: asked for Spanish it answers a Spanish sentence with the text in brackets, for any other language the name of that language.
 process.env.AGENT_STANDUP_CLAUDE = path.join(tmp, 'claude'); delete process.env.ANTHROPIC_API_KEY;
 fs.writeFileSync(process.env.AGENT_STANDUP_CLAUDE, `#!/usr/bin/env node
