@@ -44,7 +44,7 @@ async function youtube() {
 // The website, from Vercel Web Analytics through the Vercel command line (needs `npx vercel login` on this computer; the daily job on GitHub has no login and skips it).
 // Per UTC day: page views, the visitors who saw a home page (any language), how many of them saw only that one page (bounce: Vercel's visitor id lasts a day),
 // and the clicks on the install buttons (counted since WEB_CLICKS_SINCE). The days of WEB_MARKS split the summary, to compare a change of the home page with what came before.
-const WEB_SINCE = '2026-10-13', WEB_CLICKS_SINCE = '2026-10-17', WEB_MARKS = { '2026-10-17': 'new hero "Stop checking on your agents."' };
+const WEB_SINCE = '2026-10-13', WEB_CLICKS_SINCE = '2026-10-17', WEB_MARKS = { '2026-10-17': 'new hero "Stop checking on your agents."', '2026-10-19': 'hero: the "Stop babysitting" video' };
 const INSTALL_CLICKS = /^(Install VS Code|Install Open VSX|Download|Copy command)$/, HOME = /^\/([a-z]{2}(-[a-z]{2,4})?\/?)?$/i;
 async function website() {
   const run = (metric, ...a) => new Promise((ok, no) => execFile('npx', ['-y', 'vercel@latest', 'metrics', metric, '--scope', 'dg-team-fe3d9cf0', '-p', 'agent-standup', '--prod', '--json', ...a], { encoding: 'utf8', timeout: 180000, maxBuffer: 64e6 }, (err, out) => {
@@ -60,7 +60,7 @@ async function website() {
   const [perDay, sources, countries, evDay, evAll] = await Promise.all([pool(days.map((d) => () => homeDay(d))), top('referrerHostname'), top('country'),
     run(EV, '--since', since, '-g', '1d', '--group-by', 'eventName', '-l', '50').catch(() => ({ data: [] })), run(EV, '--since', '7d', '--group-by', 'eventName', '--group-by', 'eventData', '-l', '200').catch(() => ({ data: [] }))]);
   const clicks = {}; for (const r of evDay.data || []) if (INSTALL_CLICKS.test(r.eventName || '')) clicks[r.timestamp.slice(0, 10)] = (clicks[r.timestamp.slice(0, 10)] || 0) + num(r);
-  const ev = {}; for (const r of evAll.data || []) { if (!r.eventName || !num(r)) continue; let dt = r.eventData; try { if (typeof dt === 'string') dt = JSON.parse(dt); } catch { dt = {}; } const e = (ev[r.eventName] = ev[r.eventName] || { n: 0, where: {}, what: {} }); e.n += num(r); if (dt && dt.where) e.where[dt.where] = (e.where[dt.where] || 0) + num(r); if (dt && dt.what) e.what[dt.what] = (e.what[dt.what] || 0) + num(r); }
+  const ev = {}; for (const r of evAll.data || []) { if (!r.eventName || !num(r)) continue; let dt = r.eventData; const key = typeof dt === 'string' && !/^\s*\{/.test(dt) ? dt : null; if (key && key !== 'where') continue; if (key) dt = {}; else try { if (typeof dt === 'string') dt = JSON.parse(dt); } catch { dt = {}; } const e = (ev[r.eventName] = ev[r.eventName] || { n: 0, where: {}, what: {} }); e.n += num(r); if (dt && dt.where) e.where[dt.where] = (e.where[dt.where] || 0) + num(r); if (dt && dt.what) e.what[dt.what] = (e.what[dt.what] || 0) + num(r); }
   return { perDay: perDay.map((x) => ({ ...x, clicks: x.d >= WEB_CLICKS_SINCE ? clicks[x.d] || 0 : null })), sources, countries, events: Object.entries(ev).sort((a, b) => b[1].n - a[1].n) };
 }
 function printWebsite(w) {
@@ -74,7 +74,7 @@ function printWebsite(w) {
     console.log('  ' + p[0].d.slice(5) + ' to ' + p[p.length - 1].d.slice(5) + ' (' + p.length + ' day' + (p.length > 1 ? 's' : '') + (WEB_MARKS[p[0].d] ? ', ' + WEB_MARKS[p[0].d] : '') + '): ' + Math.round(home / p.length) + ' home visitors a day, bounce ' + pct(one, home) + (c.length ? ', ' + per100(cl, ch) + ' install clicks per 100 home visitors' : '')); }
   console.log('  last 3 days, by source: ' + w.sources.map(([k, n]) => k + ' ' + n).join(', ') + '\n  last 3 days, by country: ' + w.countries.map(([k, n]) => k + ' ' + n).join(', '));
   const top3 = (o) => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => k + ' ' + n).join(', ');
-  console.log('  clicks, last 7 days' + (w.events.length ? ':\n' + w.events.map(([k, e]) => '    ' + k.padEnd(18) + String(e.n).padStart(5) + '   where: ' + top3(e.where) + (Object.keys(e.what).length ? '   · ' + top3(e.what) : '')).join('\n') : ': none yet (counted since ' + WEB_CLICKS_SINCE + ')'));
+  console.log('  clicks, last 7 days' + (w.events.length ? ':\n' + w.events.map(([k, e]) => '    ' + k.padEnd(18) + String(e.n).padStart(5) + (Object.keys(e.where).length ? '   where: ' + top3(e.where) : '') + (Object.keys(e.what).length ? '   · ' + top3(e.what) : '')).join('\n') : ': none yet (counted since ' + WEB_CLICKS_SINCE + ')'));
 }
 const flat = (x) => ({ 'Marketplace installs': x.mp && x.mp.installs, 'Marketplace downloads': x.mp && x.mp.downloads, 'Marketplace updates': x.mp && x.mp.updates, 'Marketplace ratings': x.mp && x.mp.ratings,
   'Open VSX downloads': x.ovsx && x.ovsx.downloads, 'Open VSX reviews': x.ovsx && x.ovsx.reviews, 'npm downloads': x.npm, 'GitHub stars': x.hub && x.hub.stars, 'GitHub forks': x.hub && x.hub.forks,
