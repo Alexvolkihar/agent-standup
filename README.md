@@ -34,7 +34,7 @@ Eight characters drawn by hand by [Fabien Coupas](https://www.instagram.com/fabi
 
 [See the pack](https://agent-standup.com/shop/?ref=readme), or in the app: ⚙ → Characters → Halloween pack. The pack's pictures are not part of the open-source code: they remain the artist's work.
 
-[![Buy me a coffee](https://img.shields.io/badge/-Buy%20the%20(replaced)%20dev%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/bored_dev_and_his_robots)
+[![Buy me a coffee](https://img.shields.io/badge/-Buy%20the%20dev%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/bored_dev_and_his_robots)
 
 > Unofficial community project, not affiliated with or endorsed by Anthropic, OpenAI or Mistral AI. "Claude" is a trademark of Anthropic; "Codex" is a trademark of OpenAI; "Mistral" is a trademark of Mistral AI.
 
@@ -354,7 +354,7 @@ Several ideas in 1.23 (settings kept in a file, session stickiness, subtitles th
 MIT
 
 ## Support the project / work with me
-This dev was replaced by his own agents. If Agent Standup made your sessions more fun, you can [buy him a coffee](https://www.buymeacoffee.com/bored_dev_and_his_robots) ☕ — there is also a ☕ line in the ⚙ menu and at the end of each recap. The app asks for something (a star, a coffee, a look at the Halloween pack) at most once a day, and never on the first day you use it.
+Agent Standup is free and made by one person. If it made your sessions more fun, you can [buy him a coffee](https://www.buymeacoffee.com/bored_dev_and_his_robots) ☕ — there is also a ☕ line in the ⚙ menu and at the end of each recap. The app asks for something (a star, a coffee, a look at the Halloween pack) at most once a day, and never on the first day you use it.
 
 Agent Standup is free and MIT licensed. I'm also available for work around AI agents and developer tooling: reach me through my GitHub profile, [Atoll92](https://github.com/Atoll92).
 
