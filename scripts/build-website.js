@@ -1,7 +1,7 @@
 // Builds the website of Agent Standup into website/dist/ (ignored by git; the host runs this at each deployment, see vercel.json).
 //   npm run website        then open website/dist/index.html, or serve the folder
 // It is a site of its own, beside the landing page in docs/ (GitHub Pages), which this script never touches.
-// Sources: website/src/home.html and style.css, website/locales/ (the languages other than English and French), website/static/ (fonts, recorded media), the logo files of the app, and PRIVACY.md and TRADEMARKS.md for two plain pages.
+// Sources: website/src/home.html, shop.html and style.css, website/locales/ (the languages other than English and French), website/static/ (fonts, recorded media), the logo files of the app, and PRIVACY.md and TRADEMARKS.md for two plain pages.
 // website/site.json: "url" is the address the site answers on (for the canonical link and the link preview); "waitlist" is the address of a form
 // that takes an email, and the "For teams" section stays out of the page while it is empty.
 const fs = require('fs'), path = require('path');
@@ -58,7 +58,6 @@ const backers = supporters.read(), people = backers.length, coffees = backers.re
 
 fs.rmSync(dist, { recursive: true, force: true });
 fs.cpSync(path.join(src, 'static'), dist, { recursive: true });
-for (const f of ['shop/index.html']) { const fp = path.join(dist, f); fs.writeFileSync(fp, hwPin(fs.readFileSync(fp, 'utf8'))); }   // the shop shows the Halloween video once it is online
 if (fs.existsSync(path.join(src, 'supporters'))) fs.cpSync(path.join(src, 'supporters'), path.join(dist, 'supporters'), { recursive: true, filter: (f) => !f.endsWith('.json') });
 copy('website/src/style.css', 'style.css');
 copy('media/icon.png', 'brand/icon.png'); copy('public/favicon.svg', 'brand/favicon.svg'); copy('brand/team-strip.svg', 'brand/team-strip.svg'); copy('docs/media/social.jpg', 'brand/social.jpg');
@@ -66,26 +65,31 @@ copy('media/icon.png', 'brand/icon.png'); copy('public/favicon.svg', 'brand/favi
 let home = hwPin(read('website/src/home.html'));
 home = waitlist ? home.replace(/<!--\/?WAITLIST-->\n?/g, '').replace(/__WAITLIST__/g, () => esc(waitlist)) : home.replace(/<!--WAITLIST-->[\s\S]*?<!--\/WAITLIST-->\n?/, '');
 home = supporters.fill(home, backers).replace(/__VERSION__/g, version).replace(/__SITE__/g, site).replace('<!--ANALYTICS-->', () => analytics);
-// ---- one page per language, written here and not by the browser, so that each has its own address for search engines: / in English, /fr/, /de/…
+// ---- one page per language, written here and not by the browser, so that each has its own address for search engines: / and /shop/ in English, /fr/ and /fr/shop/, /de/…
 // English and French come from the page (data-en / data-fr), the others from website/locales/<code>.json (see scripts/site-locales.js); a missing text stays in English.
 const locales = load('website');
 const pick = "(ls) => { for (const l of ls) { const s = String(l).toLowerCase(), b = s.split('-')[0]; if (b === 'zh') return /hant|tw|hk|mo/.test(s) ? 'zh-TW' : 'zh-CN'; if (b === 'pt') return 'pt-BR'; if (['en', 'fr', 'es', 'de', 'da', 'ja', 'ko'].includes(b)) return b; } return 'en'; }";
+// slug: '' for the home page, whose links are relative, or 'shop/' for the shop, whose links all start with /
+function languages(source, slug) {
 for (const [code, name, label, htmlLang, dir] of LANGS) {
-  const cat = locales[code] || {}, up = dir ? '../' : '', t = (en, fr) => (code === 'en' ? en : code === 'fr' && fr != null ? fr : cat[en] || en);
-  const menu = `<details class="langs"><summary aria-label="${esc(t('Language', 'Langue'))}">${label}</summary><div>${LANGS.map(([c, n, , hl, d]) => `<a href="${(up + d) || './'}" hreflang="${c}" lang="${hl}" data-lang="${c}"${c === code ? ' aria-current="true"' : ''}>${n}</a>`).join('')}</div></details>`;
-  const alternates = LANGS.map(([c, , , , d]) => `<link rel="alternate" hreflang="${c}" href="${site}${d}">`).join('\n') + `\n<link rel="alternate" hreflang="x-default" href="${site}">`;
-  // on the English page only: a visitor who chose another language before, or whose browser asks for one the site has, goes to that page
-  const redirect = code !== 'en' ? '' : `<script>try { const to = ${JSON.stringify(Object.fromEntries(LANGS.slice(1).map((l) => [l[0], l[4]])))}, want = localStorage.getItem('as.site.lang') || (${pick})(navigator.languages || [navigator.language || '']); if (to[want]) location.replace(to[want] + location.search + location.hash); } catch {}</script>`;
-  write(dir + 'index.html', home
+  const cat = locales[code] || {}, up = dir ? '../' : '', at = (d) => (slug ? '/' + d + slug : (up + d) || './'), t = (en, fr) => (code === 'en' ? en : code === 'fr' && fr != null ? fr : cat[en] || en);
+  const menu = `<details class="langs"><summary aria-label="${esc(t('Language', 'Langue'))}">${label}</summary><div>${LANGS.map(([c, n, , hl, d]) => `<a href="${at(d)}" hreflang="${c}" lang="${hl}" data-lang="${c}"${c === code ? ' aria-current="true"' : ''}>${n}</a>`).join('')}</div></details>`;
+  const alternates = LANGS.map(([c, , , , d]) => `<link rel="alternate" hreflang="${c}" href="${site}${d}${slug}">`).join('\n') + `\n<link rel="alternate" hreflang="x-default" href="${site}${slug}">`;
+  // on the English pages only: a visitor who chose another language before, or whose browser asks for one the site has, goes to that page
+  const redirect = code !== 'en' ? '' : `<script>try { const to = ${JSON.stringify(Object.fromEntries(LANGS.slice(1).map((l) => [l[0], slug ? '/' + l[4] + slug : l[4]])))}, want = localStorage.getItem('as.site.lang') || (${pick})(navigator.languages || [navigator.language || '']); if (to[want]) location.replace(to[want] + location.search + location.hash); } catch {}</script>`;
+  write(dir + slug + 'index.html', source
     .replace(/<([a-z0-9]+)((?:\s[^<>]*?)?)\sdata-en="([^"]*)"\sdata-fr="([^"]*)"([^<>]*)>[\s\S]*?<\/\1>/g, (m, tag, a, en, fr, b) => `<${tag}${a}${b}>${t(decode(en), decode(fr))}</${tag}>`)
     .replace(/\ssrc="[^"]*"\sdata-en-src="([^"]*)"\sdata-fr-src="([^"]*)"/g, (m, en, fr) => ` src="${code === 'fr' ? fr : en}"`)
     .replace(/\{\{([^{}]+)\}\}/g, (m, en) => esc(t(en)))
-    .replace(/\b(href|src|poster)=(["'])(?!https?:|#|\/|mailto:|data:|\.\/["'])/g, (m, attr, q) => `${attr}=${q}${up}`)   // a language page is one folder down
-    .replace('<html lang="en">', `<html lang="${htmlLang}">`).replace(/__PAGE__/g, site + dir)
+    .replace(/\b(href|src|poster)=(["'])(?!https?:|#|\/|mailto:|data:|\.\/["']|shop\/)/g, (m, attr, q) => (slug ? m : `${attr}=${q}${up}`))   // a language page is one folder down; its shop is beside it (/fr/shop/)
+    .replace('<html lang="en">', `<html lang="${htmlLang}">`).replace(/__PAGE__/g, site + dir + slug).replace(/__HOME__/g, '/' + dir)
     .replace('<!--HREFLANG-->', alternates).replace('<!--REDIRECT-->\n', redirect ? redirect + '\n' : '').replace('<!--LANGS-->', menu)
     .replace('__COPY__', () => JSON.stringify(COPY.map(([en, fr]) => t(en, fr))))
     .replace(/\{people\}/g, people).replace(/\{coffees\}/g, coffees));
 }
+}
+languages(home, '');
+languages(hwPin(read('website/src/shop.html')), 'shop/');   // the shop shows the Halloween video once it is online
 
 // ---- two plain pages. Just enough Markdown for what those files use: titles, paragraphs, lists, one table, bold, code, links.
 const inline = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" rel="noopener">$1</a>').replace(/(^|[\s(])(https?:\/\/[^\s<)]+[^\s<).,])/g, '$1<a href="$2" rel="noopener">$2</a>');
@@ -136,6 +140,6 @@ page('website/guides/codex-sessions.md', 'codex-sessions', 'Codex session viewer
 page('website/guides/mistral-vibe-sessions.md', 'mistral-vibe-sessions', 'Mistral Vibe session viewer', 'Follow and replay your Mistral Vibe sessions and sub-agents as a live call, in both of Vibe\'s log formats. Free, local, zero tokens.');
 page('TRADEMARKS.md', 'name-and-logo', 'Name and logo', 'The code of Agent Standup is MIT licensed. What you may and may not do with its name, its logo and its characters.');
 write('robots.txt', `User-agent: *\nAllow: /\nSitemap: ${site}sitemap.xml\n`);
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...LANGS.map((l) => l[4]), 'shop/', 'claude-code-subagents/', 'codex-sessions/', 'mistral-vibe-sessions/', 'privacy/', 'terms/', 'name-and-logo/'].map((p) => `  <url><loc>${site}${p}</loc></url>`).join('\n')}\n</urlset>\n`);
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...LANGS.map((l) => l[4]), ...LANGS.map((l) => l[4] + 'shop/'), 'claude-code-subagents/', 'codex-sessions/', 'mistral-vibe-sessions/', 'privacy/', 'terms/', 'name-and-logo/'].map((p) => `  <url><loc>${site}${p}</loc></url>`).join('\n')}\n</urlset>\n`);
 const size = (d) => fs.readdirSync(d, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? size(path.join(d, e.name)) : fs.statSync(path.join(d, e.name)).size), 0);
 console.log(`website built for ${site} in website/dist (v${version}, ${(size(dist) / 1048576).toFixed(1)} MB${waitlist ? ', waitlist on' : ', no waitlist form yet'}, ${people} supporter(s))`);
