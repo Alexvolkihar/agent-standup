@@ -95,8 +95,8 @@ details { margin:14px 0 0; color:var(--dim) } details summary { cursor:pointer; 
 .langs { color:var(--dim); font-size:15px }
 p a, .fine a, li a { color:var(--accent) } p a:hover, .fine a:hover, li a:hover { text-decoration:underline }
 /* character animation: all state-driven from the tile's classes */
-  .fig { transform-origin:50px 76px; animation:bob 4.4s ease-in-out infinite; animation-delay:var(--d,0s) } @keyframes bob { 50% { transform:translateY(-.9px) } }
-  .tile.speaking .fig { animation:talk .46s ease-in-out infinite } .tile.speaking .fig.still { animation:bob 4.4s ease-in-out infinite; animation-delay:var(--d,0s) }   /* a character with a head of its own: the body does not squash, the head nods */
+  .fig { transform-origin:50px 76px; animation:bob 4.4s steps(3) infinite; animation-delay:var(--d,0s) }   /* the endless motions move in steps: a smooth one redraws the page 60 times a second, and in VS Code the editor's whole window with it (it flickered) */ @keyframes bob { 50% { transform:translateY(-.9px) } }
+  .tile.speaking .fig { animation:talk .46s ease-in-out infinite } .tile.speaking .fig.still { animation:bob 4.4s steps(3) infinite; animation-delay:var(--d,0s) }   /* a character with a head of its own: the body does not squash, the head nods */
   .chead { transform-origin:50px 44px } .tile.speaking .chead, #pcam.speaking .chead { animation:nod .6s ease-in-out infinite } @keyframes nod { 35% { transform:rotate(-.25deg) translateY(-.18px) } 75% { transform:rotate(.15deg) } }   /* very light: the mouth does the talking */ @keyframes talk { 50% { transform:scale(1.025,.985) translateY(-.5px) } }
   .tile.vanishing { pointer-events:none; z-index:3; animation:vanish 1.2s cubic-bezier(.45,0,.75,.35) forwards }
   @keyframes vanish { 0% { filter:none; transform:none; opacity:1 } 16% { filter:brightness(1.7) saturate(1.5); transform:scale(1.05) } 55% { filter:brightness(2.3) blur(1.5px); transform:scale(.88) rotate(-3deg); opacity:.85 } 100% { filter:brightness(3.4) blur(11px); transform:scale(.12) rotate(11deg); opacity:0 } }
@@ -107,20 +107,20 @@ p a, .fine a, li a { color:var(--accent) } p a:hover, .fine a:hover, li a:hover 
   .toast.offer { pointer-events:auto; animation:none; display:flex; align-items:center; gap:8px; padding:4px 6px 4px 12px; order:9 } .toast.offer .btn { padding:3px 10px; font-size:12px; white-space:nowrap } .toast.offer .ic { font-size:11px; padding:2px 6px }
 #packNoteI { width:48px; height:36px; border-radius:4px; object-fit:cover; flex:none; cursor:pointer; margin-left:-6px }   /* the offer of the real voices: stays until answered, under the passing toasts */
   .toast { background:rgba(27,29,39,.92); border:1px solid var(--line); border-radius:99px; padding:5px 12px; font-size:12px; animation:toast 3s ease forwards } @keyframes toast { 0% { opacity:0; transform:translateY(6px) } 10%, 80% { opacity:1; transform:none } 100% { opacity:0 } }
-  .eye { transform-box:fill-box; transform-origin:center; animation:blink 4.6s infinite; animation-delay:var(--d,0s) } @keyframes blink { 0%,94%,100% { transform:scaleY(1) } 97% { transform:scaleY(.08) } }
+  .eye { transform-box:fill-box; transform-origin:center; animation:blink 4.6s steps(1) infinite; animation-delay:var(--d,0s) } @keyframes blink { 0%,94%,100% { transform:scaleY(1) } 97% { transform:scaleY(.08) } }
   .brow { transform-box:fill-box; transform-origin:center; transition:transform .25s } .tile.speaking .brow { animation:brow .7s ease-in-out infinite } @keyframes brow { 50% { transform:translateY(-1.1px) } }
   .tile.working .brow.l { transform:rotate(13deg) translateY(.5px) } .tile.working .brow.r { transform:rotate(-13deg) translateY(.5px) } .tile.working .pupil { transform:translateY(1.2px) }
   .arm.l { transform-origin:27px 48px } .arm.r { transform-origin:73px 48px } .tile.speaking .arm.r { animation:wave .7s ease-in-out infinite } @keyframes wave { 50% { transform:rotate(-34deg) } }
   .tile.working .arm { display:none } .tile .laptop, .tile .hands, .tile .sparks, .tile .grin, .tile .eyes-happy, .tile .mouth { display:none }
   .tile.working .laptop, .tile.working .hands, .tile.done .sparks, .tile.done .eyes-happy { display:inline } .tile.done .eyes-open { display:none }
   .tile.speaking .mouth { display:inline } .tile.speaking .smile, .tile.speaking .grin { display:none } .tile.done:not(.speaking) .smile { display:none } .tile.done:not(.speaking) .grin { display:inline }
-  .hand { animation:type .34s ease-in-out infinite } .hand.r { animation-delay:-.17s } .tile.working .chand { animation:type .34s ease-in-out infinite } .tile.working .chand.r { animation-delay:-.17s }
+  .hand { animation:type .34s steps(1) infinite } .hand.r { animation-delay:-.17s } .tile.working .chand { animation:type .34s steps(1) infinite } .tile.working .chand.r { animation-delay:-.17s }
   .claptop { display:none } .claptop.on, .tile.lap .claptop { display:inline } .tile.lap .claptop { animation:lapin .5s cubic-bezier(.2,.8,.3,1) } .tile.lapout .claptop { animation:lapout .45s ease-in forwards }   /* a laptop pulled out from under the desk, and put away */
   @keyframes lapin { from { transform:translateY(16px) } } @keyframes lapout { to { transform:translateY(18px) } } @keyframes type { 50% { transform:translateY(-1.3px) } }
-  .tw { animation:tw 3.2s ease-in-out infinite } .pulse { animation:tw 1.7s ease-in-out infinite } @keyframes tw { 50% { opacity:.25 } }
+  .tw { animation:tw 3.2s steps(2) infinite } .pulse { animation:tw 1.7s steps(2) infinite } @keyframes tw { 50% { opacity:.25 } }
   .drift { animation:drift 24s ease-in-out infinite alternate } @keyframes drift { to { transform:translateX(9px) } }
-  .steam { animation:steam 2.6s ease-in-out infinite } @keyframes steam { 50% { transform:translateY(-1.4px); opacity:.25 } }
-  .tile.done .sparks path { animation:tw 1.6s ease-in-out infinite }
+  .steam { animation:steam 2.6s steps(3) infinite } @keyframes steam { 50% { transform:translateY(-1.4px); opacity:.25 } }
+  .tile.done .sparks path { animation:tw 1.6s steps(2) infinite }
   @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none !important; transition:none !important } .confetti, .fly { display:none !important } }
 </style>
 </head>
@@ -141,7 +141,7 @@ p a, .fine a, li a { color:var(--accent) } p a:hover, .fine a:hover, li a:hover 
 
     <p class="lead" data-en="It reads the session files Claude Code, Codex and Mistral Vibe already write, so it works <b>wherever you run them</b>: VS Code, Cursor, a plain terminal, the desktop app. Nothing to configure, nothing sent anywhere." data-fr="Il lit les fichiers de session que Claude Code, Codex et Mistral Vibe écrivent déjà : il marche donc <b>partout où vous les lancez</b> : VS Code, Cursor, un simple terminal, l’application de bureau. Rien à configurer, rien n’est envoyé.">It works wherever you run Claude Code, Codex or Mistral Vibe.</p>
     <div class="cta-row">
-      <a class="cta" id="ctaVsc" href="https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup" target="_blank" rel="noopener"><span data-en="Install in VS Code" data-fr="Installer dans VS Code">Install in VS Code</span><small id="dlS">v1.39.0</small></a>
+      <a class="cta" id="ctaVsc" href="https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup" target="_blank" rel="noopener"><span data-en="Install in VS Code" data-fr="Installer dans VS Code">Install in VS Code</span><small id="dlS">v1.39.1</small></a>
       <a class="cta ghost" href="#ways" data-en="No VS Code? Pick your way ↓" data-fr="Pas de VS Code ? Choisissez ↓">No VS Code? Pick your way ↓</a>
     </div>
     <p class="fine" data-en="Free · open source · Mac, Windows, Linux<br>Or in 30 seconds, no editor: <code style='white-space:nowrap'>npx @double_geste/agent-standup --open</code>" data-fr="Gratuit · open source · Mac, Windows, Linux<br>Ou en 30 secondes, sans éditeur : <code style='white-space:nowrap'>npx @double_geste/agent-standup --open</code>">Free · open source</p>
@@ -186,6 +186,7 @@ p a, .fine a, li a { color:var(--accent) } p a:hover, .fine a:hover, li a:hover 
 
     <h2 data-en="Is it serious?" data-fr="C’est sérieux ?">Is it serious?</h2>
     <p data-en="Mostly for fun. A little for clarity: when eight sub-agents are working at once, seeing who’s doing what, and what’s on their screen, is easier than scrolling through a log." data-fr="Surtout pour le plaisir. Un peu pour la clarté : quand huit sous-agents travaillent en même temps, voir qui fait quoi, et ce qu’il y a sur leur écran, est plus simple que de faire défiler un journal.">Mostly for fun.</p>
+    <p data-en="<b>Does it cost credits?</b> No. It reads the session files your agents already write and runs no model of its own, so it spends none of your tokens, credits or plan limits. (Only a call translated into French, Spanish or Portuguese, and the jokes, use a little Claude Haiku, through your own login.)" data-fr="<b>Est-ce que ça consomme des crédits ?</b> Non. Il lit les fichiers de session que vos agents écrivent déjà et ne fait tourner aucun modèle à lui : il ne dépense ni vos jetons, ni vos crédits, ni les limites de votre forfait. (Seuls un appel traduit en français, en espagnol ou en portugais et les blagues utilisent un peu de Claude Haiku, via votre propre connexion.)">No.</p>
     <p data-en="<b>Is my code sent anywhere?</b> No. Everything runs on your machine and reads the session files Claude Code, Codex, Mistral Vibe and Cowork already write. (Only if you choose French, Spanish or Portuguese as the language, or turn on the jokes, short lines go through your own Claude login.)" data-fr="<b>Mon code part-il quelque part ?</b> Non. Tout tourne sur votre machine et lit les fichiers de session que Claude Code, Codex, Mistral Vibe et Cowork écrivent déjà. (Si vous choisissez le français, l’espagnol ou le portugais comme langue, ou si vous activez les blagues, de courtes phrases passent par votre propre connexion Claude.)">No.</p>
 
     <div class="coffee" id="coffee">
