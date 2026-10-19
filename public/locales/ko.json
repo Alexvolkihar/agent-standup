@@ -382,5 +382,15 @@
  "Help count users (1 request a week)": "사용자 수 세기 돕기 (일주일에 요청 1번)",
  "Halloween is coming: dress your agents up as a pumpkin, a ghost, a witch or a skeleton, drawn by hand by Fabien Coupas.": "핼러윈이 다가옵니다: 에이전트에게 호박, 유령, 마녀, 해골 분장을 해 보세요. Fabien Coupas가 손으로 그렸습니다.",
  "Happy Halloween! Your agents can come to the call in costume.": "해피 핼러윈! 에이전트가 분장하고 통화에 올 수 있어요.",
- "Halloween is tomorrow: your agents can come to the call in costume.": "내일은 핼러윈: 에이전트가 분장하고 통화에 올 수 있어요."
+ "Halloween is tomorrow: your agents can come to the call in costume.": "내일은 핼러윈: 에이전트가 분장하고 통화에 올 수 있어요.",
+ "advised by": "조언자",
+ "At least: work went on after it last counted.": "최소 금액입니다: 마지막 집계 이후에도 작업이 계속되었습니다.",
+ "cost": "비용",
+ "Counted by Claude Code, sub-agents included": "Claude Code가 집계한 값(서브에이전트 포함)",
+ "effort": "사고 수준",
+ "extra high": "매우 높음",
+ "high": "높음",
+ "low": "낮음",
+ "max": "최대",
+ "medium": "중간"
 }

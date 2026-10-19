@@ -381,5 +381,15 @@
  "Help count users (1 request a week)": "Hjælp med at tælle brugere (1 forespørgsel om ugen)",
  "Halloween is coming: dress your agents up as a pumpkin, a ghost, a witch or a skeleton, drawn by hand by Fabien Coupas.": "Halloween nærmer sig: klæd dine agenter ud som græskar, spøgelse, heks eller skelet, tegnet i hånden af Fabien Coupas.",
  "Happy Halloween! Your agents can come to the call in costume.": "Glædelig Halloween! Dine agenter kan komme til opkaldet i kostume.",
- "Halloween is tomorrow: your agents can come to the call in costume.": "Det er Halloween i morgen: dine agenter kan komme til opkaldet i kostume."
+ "Halloween is tomorrow: your agents can come to the call in costume.": "Det er Halloween i morgen: dine agenter kan komme til opkaldet i kostume.",
+ "advised by": "rådgivet af",
+ "At least: work went on after it last counted.": "Mindst: arbejdet fortsatte efter den sidste optælling.",
+ "cost": "omkostning",
+ "Counted by Claude Code, sub-agents included": "Optalt af Claude Code, underagenter medregnet",
+ "effort": "indsats",
+ "extra high": "ekstra høj",
+ "high": "høj",
+ "low": "lav",
+ "max": "maks",
+ "medium": "middel"
 }

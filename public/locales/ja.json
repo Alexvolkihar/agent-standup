@@ -382,5 +382,15 @@
  "Help count users (1 request a week)": "利用者数のカウントに協力する（週に1回のリクエスト）",
  "Halloween is coming: dress your agents up as a pumpkin, a ghost, a witch or a skeleton, drawn by hand by Fabien Coupas.": "もうすぐハロウィン：エージェントをかぼちゃ、おばけ、魔女、がいこつに仮装させましょう。Fabien Coupas による手描きです。",
  "Happy Halloween! Your agents can come to the call in costume.": "ハッピーハロウィン！エージェントは仮装して通話に参加できます。",
- "Halloween is tomorrow: your agents can come to the call in costume.": "明日はハロウィン：エージェントは仮装して通話に参加できます。"
+ "Halloween is tomorrow: your agents can come to the call in costume.": "明日はハロウィン：エージェントは仮装して通話に参加できます。",
+ "advised by": "助言役",
+ "At least: work went on after it last counted.": "最低額です：最後の集計の後も作業が続きました。",
+ "cost": "コスト",
+ "Counted by Claude Code, sub-agents included": "Claude Code による集計（サブエージェントを含む）",
+ "effort": "思考レベル",
+ "extra high": "非常に高い",
+ "high": "高",
+ "low": "低",
+ "max": "最大",
+ "medium": "中"
 }

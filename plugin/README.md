@@ -24,6 +24,12 @@ In earlier versions, in two steps:
 
 It needs Node.js 18 or later and works where Claude Code runs on your own computer. In a chat on claude.ai there is no computer to run it on, so Claude will give you the command to run yourself.
 
+## A line above your prompt (optional)
+
+A second plugin, `agent-standup-band`, tells you inside Claude Code when another session needs you: a line above the prompt ("✋ web-shop (VS Code) needs an approval") and a toast when one starts waiting or finishes its turn. It reads only the status Claude Code keeps for each open session, needs no Node.js and sends nothing. In Claude Code 2.1.294 or later:
+
+    /plugin install agent-standup-band --marketplace Atoll92/agent-standup
+
 ## What it runs
 
 Both skills run one command, pinned to an exact version of the app's npm package:

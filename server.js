@@ -59,6 +59,7 @@ function transcripts(proj) {   // the sessions of a project: { id, file }
 }
 
 const blocks = (rec) => {
+  if (typeof rec.type === 'string' && rec.type.startsWith('api-request')) return [];   // a request Claude Code kept (2.1.300 on): its blocks repeat the conversation sent, calls and edits included, which happened once, in their own records
   const c = rec.message && rec.message.content;
   if (typeof c === 'string') return [{ type: 'text', text: c }];
   return Array.isArray(c) ? c : [];
@@ -366,6 +367,12 @@ const feedSince = (entry, after) => { const ev = entry.tl.events, sq = entry.sq,
 // ---- Board: one cheap row per recent session (state from the tail of its transcript), so many parallel sessions can be watched at once.
 const readTail = (file, bytes) => { const fd = fs.openSync(file, 'r'); try { const sz = fs.fstatSync(fd).size, n = Math.min(bytes, sz), buf = Buffer.alloc(n); fs.readSync(fd, buf, 0, n, sz - n); return { text: buf.toString('utf8'), cut: sz > bytes }; } finally { fs.closeSync(fd); } };
 const readHead = (file, bytes) => { const fd = fs.openSync(file, 'r'); try { const n = Math.min(bytes, fs.fstatSync(fd).size), buf = Buffer.alloc(n); fs.readSync(fd, buf, 0, n, 0); return buf.toString('utf8'); } finally { fs.closeSync(fd); } };
+// Since Claude Code 2.1.300 a transcript also keeps each request it sent (system prompt, tools, parameters) and a snapshot of the prompt: lines of 100 KB and more, about 40% of a new file.
+// A card reads the last 192 KB of the other records: further back when those fill it (3 MB at most). Right after an order, the order itself was out of the 192 KB 1 time in 20.
+const BULKY = /^\{"type":"api-request|"attachment":\{"type":"prompt_snapshot"/, TAIL = 192 * 1024;
+function boardTail(file) {
+  for (let n = TAIL; ; n *= 4) { const { text, cut } = readTail(file, n), lines = text.split('\n'); if (cut) lines.shift(); let rest = 0; for (const l of lines) if (!BULKY.test(l.slice(0, 200))) rest += l.length; if (!cut || rest >= TAIL || n >= 3 * 1024 * 1024) return { lines, cut }; }
+}
 const APPROVAL = /^(Edit|Write|MultiEdit|NotebookEdit)/, ASKS = /^(AskUserQuestion|ExitPlanMode)/, SUBTOOL = /^(Task|Agent)$/;
 // A turn that ended without doing what was asked ("I couldn't verify how old the posts were, so 0 drafts"): to the eye, the same "your turn" as one that did. It says so in its first sentence;
 // later on, "I couldn't" is mostly a caveat on work that was done ("Done. I couldn't test on Windows"), and so is a first sentence that says what worked before a "but". On 1,676 real ends of turn
@@ -428,20 +435,26 @@ function typedBefore(file) {   // the first look at a session whose last order i
 }
 function parseTail(file, st) {
   const sig = st.mtimeMs + ':' + st.size, hit = boardCache.get(file); if (hit && hit.sig === sig) return hit;
-  const { text, cut } = readTail(file, 192 * 1024), lines = text.split('\n'); if (cut) lines.shift();
-  const pend = new Map(); let lastType = null, lastTool = false, lastStop = null, stops = false, esc = false, lastTs = 0, custom = (hit && hit.custom) || null, ai = (hit && hit.ai) || null, first = hit ? hit.first : undefined, pr = (hit && hit.pr) || null, asked = (hit && hit.asked) || 0, plan = (hit && hit.plan) || null, say = '', err = '';   // say: the first text since the last call or message of yours, the start of what closes the turn; err: an error that closed it
+  const { lines, cut } = boardTail(file);
+  const pend = new Map(), bg = new Map(); let idle = false, lastType = null, lastTool = false, lastStop = null, stops = false, esc = false, lastTs = 0, custom = (hit && hit.custom) || null, ai = (hit && hit.ai) || null, first = hit ? hit.first : undefined, pr = (hit && hit.pr) || null, asked = (hit && hit.asked) || 0, plan = (hit && hit.plan) || null, say = '', err = '';   // say: the first text since the last call or message of yours, the start of what closes the turn; err: an error that closed it
   for (const l of lines) try {   // one odd record costs that record, not the whole card
     if (!l) continue; let r; try { r = JSON.parse(l); } catch { continue; }
     const a = typedAt(r); if (a > asked) asked = a;
     if (r.type === 'custom-title' && typeof r.customTitle === 'string') custom = r.customTitle; else if (r.type === 'ai-title' && typeof r.aiTitle === 'string') ai = r.aiTitle;   // a session is renamed, or named, long after its row was first shown: the latest one read wins
     if (r.type === 'pr-link' && PR_URL.test(r.prUrl)) pr = { n: +r.prUrl.slice(r.prUrl.lastIndexOf('/') + 1), url: r.prUrl };   // the pull request Claude Code noted for the session: the latest one, shown on its card
     const t = Date.parse(r.timestamp) || 0, bl = blocks(r);
-    if (r.type === 'assistant' || r.type === 'user') { lastType = r.type; lastTool = bl.some((b) => b.type === 'tool_use'); lastStop = (r.type === 'assistant' && r.message && r.message.stop_reason) || null; if (lastStop) stops = true; if (t) lastTs = t;
+    if (r.type === 'system' && r.subtype === 'compact_boundary') idle = /^idle/.test(String((r.compactMetadata && r.compactMetadata.trigger) || ''));   // Claude Code 2.1.299 compacts a large session left idle for about 54 minutes: nobody moved there
+    if (r.isCompactSummary) continue;   // the summary of a compaction is not a message: the turn stands as it was
+    if (r.type === 'assistant' || r.type === 'user') { idle = false; lastType = r.type; lastTool = bl.some((b) => b.type === 'tool_use'); lastStop = (r.type === 'assistant' && r.message && r.message.stop_reason) || null; if (lastStop) stops = true; if (t) lastTs = t;
       esc = r.type === 'user' && bl.some((b) => b.type === 'text' && /^\s*\[Request interrupted/i.test(b.text || '')); if (esc) pend.clear(); }   // Esc: the turn stops there, and no call is waited for any more
     if (r.type === 'user' || (r.type === 'assistant' && lastTool)) { say = ''; err = ''; }
     else if (r.type === 'assistant' && !r.isSidechain) { const tx = bl.filter((b) => b.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('\n').trim(), m = r.message || {}; err = (r.isApiErrorMessage || m.model === '<synthetic>') && tx && !/^No response requested/i.test(tx) ? tx : ''; if (tx && !say) say = tx; }
     for (const b of bl) if (b.type === 'tool_use' && /^(Write|Edit|MultiEdit)$/.test(b.name) && b.input && planFile(String(b.input.file_path || ''))) plan = { file: String(b.input.file_path), ts: t };   // the plan, written in its own file before it is shown for approval
     for (const b of bl) { if (b.type === 'tool_use') pend.set(b.id, { id: String(b.id || ''), name: b.name, ts: t, q: askOf(b), c: callOf(b), m: menuOf(b) }); else if (b.type === 'tool_result') pend.delete(b.tool_use_id); }
+    if (r.type === 'user' && !r.isSidechain) for (const b of bl) {   // the sub-agents the lead launched in the background, until the news that each one ended (Claude Code 2.1.302 runs them all in the background in VS Code and the desktop app)
+      if (b.type === 'tool_result') { const m = /^\s*Async agent launched[\s\S]*?agentId: ?([\w-]+)/i.exec(resultText(b.content)); if (m) bg.set(m[1], t); }
+      else if (b.type === 'text') for (const m of String(b.text || '').matchAll(/<task-notification>[\s\S]*?<task-id>([\w-]+)<\/task-id>/g)) bg.delete(m[1]);
+    }
   } catch {}
   if (!hit && !custom) {   // first look at this file: a little further back than the lines read above, and without needing whole lines
     const big = readTail(file, 256 * 1024).text, un = (m) => { try { return m ? JSON.parse('"' + m[1] + '"') : null; } catch { return null; } };
@@ -450,7 +463,7 @@ function parseTail(file, st) {
   if (!custom && !ai && first == null) first = firstPrompt(file) || (st.size > 64 * 1024 ? '' : null);   // '' = looked for and not there; a file that has just been created is looked at again
   if (!hit && !asked && cut) asked = typedBefore(file);
   const out = { sig, title: custom || ai || first || null, custom, ai, first, pr, lastType, lastTool, lastStop, stops, esc, lastTs, pending: [...pend.values()], ...(lastType === 'assistant' && (err || gaveUp(say)) ? { gave: (err || gaveUp(say)).replace(/\s+/g, ' ').slice(0, 240) } : {}) };   // a title the person typed wins over the generated one, and both over the first prompt
-  out.asked = asked; out.plan = plan; boardCache.set(file, out); if (boardCache.size > 3 * ROWS_MAX) boardCache.delete(boardCache.keys().next().value); return out;   // more than the list can hold: a full list never pushes its own rows out, which read every row again at each scan
+  out.asked = asked; out.plan = plan; out.bg = [...bg].filter(([, ts]) => ts >= asked); if (idle && lastTs) out.quiet = lastTs; boardCache.set(file, out); if (boardCache.size > 3 * ROWS_MAX) boardCache.delete(boardCache.keys().next().value); return out;   // more than the list can hold: a full list never pushes its own rows out, which read every row again at each scan
 }
 function firstPrompt(file) {   // the first thing the person typed, read record by record: a pattern over the raw text ran from a user record into the assistant's first answer and took that as the title
   const ONE = (t) => t.replace(/\s+/g, ' ').trim().slice(0, 90);
@@ -475,6 +488,14 @@ function capRows(list, most, folderOf) {   // list: newest first
   for (const r of real) { if (keep.size >= ROWS_MAX) break; const k = folderOf(r), n = per.get(k) || 0; if (n < PER_FOLDER) { keep.add(r); per.set(k, n + 1); } }
   return real.filter((r) => keep.has(r)).concat(list.filter((r) => tmpKey(folderOf(r))).slice(0, TMP_ROWS));
 }
+function bgAtWork(proj, id, bg, now) {   // bg: [agent id, launched at]. Still at work: not marked finished in its meta file (Claude Code 2.1.302 on) and written to, or launched, in the last 30 minutes
+  for (const [aid, ts] of bg || []) {
+    if (!/^[\w-]+$/.test(aid)) continue; const f = path.join(projDir(proj, id), id, 'subagents', 'agent-' + aid);
+    let done = false; try { done = JSON.parse(fs.readFileSync(f + '.meta.json', 'utf8')).finished === true; } catch {}
+    if (!done && now - Math.max(mtimeOf(f + '.jsonl'), ts || 0) < 30 * 60e3) return true;
+  }
+  return false;
+}
 function boardRows0() {
   const now = Date.now(), rows = [], live = liveStatus();
   for (const m of SOURCES) for (const r of guard(() => m.sessions(), [])) if (now - r.mtime < 12 * 3600e3) rows.push({ proj: m.PROJ, id: r.id, st: { mtimeMs: r.mtime, size: r.size }, cx: r, src: m });
@@ -486,14 +507,15 @@ function boardRows0() {
   return capRows(rows.filter((r) => !r.cx && r.proj !== COWORK), 40, own).concat(...SOURCES.map((m) => capRows(rows.filter((r) => r.src === m), 20, folder)), rows.filter((r) => r.proj === COWORK).slice(0, 20)).sort((a, b) => b.st.mtimeMs - a.st.mtimeMs).map(({ proj, id, st, cx, src }) => {
     if (cx) { const r = guard(() => src.boardRow(cx, now), null); if (r && tmpKey(r.dir)) r.tmp = 1; return r; }   // tmp: started in the temporary folder (see tmpKey)
     const file = path.join(projDir(proj, id), id + '.jsonl'); let p; try { p = parseTail(file, st); } catch { p = { pending: [] }; }
-    const age = now - st.mtimeMs, pend = p.pending || [], w = live.get(id), lp = (w && w.status === 'waiting' && pend.find((c) => !SUBTOOL.test(c.name))) || pend[pend.length - 1]; let state = 'idle', tool = '', ageMs = age, since = 0, open = null;   // lp: with a menu open and several calls waiting, Claude Code asks about the first of them
+    const moved = p.quiet || st.mtimeMs, age = now - moved, pend = p.pending || [], w = live.get(id), lp = (w && w.status === 'waiting' && pend.find((c) => !SUBTOOL.test(c.name))) || pend[pend.length - 1]; let state = 'idle', tool = '', ageMs = age, since = 0, open = null;   // lp: with a menu open and several calls waiting, Claude Code asks about the first of them
     if (w && w.status === 'waiting' && lp) { state = 'blocked'; tool = lp.name; since = w.since || lp.ts || st.mtimeMs; ageMs = now - since; }   // a menu is open in the session and a call waits on it: it needs you now, however long ago it was written
     else if (w && w.status === 'waiting') { state = 'blocked'; since = w.since || st.mtimeMs; ageMs = now - since; const pt = p.plan && p.plan.ts > (p.asked || 0) ? planText(p.plan.file) : ''; open = { id: 'w' + since, tool: pt ? 'ExitPlanMode' : '', ...(pt ? { kind: 'plan', text: pt } : { kind: 'menu' }), sure: 1 }; }   // a menu is open and the transcript has no call waiting on it: the plan to approve (Claude Code writes that call only once it is answered, the plan itself is in its file, written this turn), or a menu it does not record
     else if (age < 30 * 60e3) {
       if (lp) { ageMs = now - (lp.ts || st.mtimeMs); tool = lp.name;
         state = SUBTOOL.test(lp.name) ? 'waiting' : (ASKS.test(lp.name) && ageMs > 4000) || (APPROVAL.test(lp.name) && ageMs > 15000) ? 'blocked' : 'working'; if (state === 'blocked') since = lp.ts || st.mtimeMs; }   // still a guess from how long a call has waited: a session in VS Code asks in its panel, which may not say "waiting"
       else if (p.esc) state = 'turn';   // you stopped it (Esc): it is your turn there, not "working" for the next ten minutes
-      else if (p.lastType === 'assistant' && !p.lastTool && p.lastStop !== 'tool_use' && !(p.lastStop == null && p.stops && age < 45000)) state = 'turn';   // a line whose message goes on with a tool call is not the end of the turn: the call is written after it, a long one many seconds after.
+      else if (p.lastType === 'assistant' && !p.lastTool && p.lastStop !== 'tool_use' && !(p.lastStop == null && p.stops && age < 45000)) state = !p.gave && bgAtWork(proj, id, p.bg, now) ? 'waiting' : 'turn';   // a line whose message goes on with a tool call is not the end of the turn: the call is written after it, a long one many seconds after.
+      // A lead that ends its turn on "the agents are running, I'll wait" is not waiting for you: it goes on when they report (a sub-agent launched in the background, and not since an order of yours)
       // Claude Code up to 2.1.87 writes that line without saying why it stopped: in a transcript that does say it elsewhere, such a line is given 45 s for its call to come (1 in 100 takes longer than 25 s)
       else state = age < 10 * 60e3 ? 'working' : 'idle';
       if (state === 'turn') since = p.lastTs || st.mtimeMs;
@@ -501,7 +523,7 @@ function boardRows0() {
     let subActive = 0, subTotal = 0;
     for (const x of subFiles(proj, id)) { subTotal++; if (now - mtimeOf(x.file) < 90e3) subActive++; }
     const ran = since && p.asked && p.asked < since ? since - p.asked : 0, ask = state === 'blocked' && lp ? lp.q || lp.c : '';   // since: when it started to wait on you; ran: how long it worked, from your last order to then
-    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: st.mtimeMs, state, tool, ageMs, subActive, subTotal, asked: p.asked || 0, ...(since ? { since } : {}), ...(ran ? { ran } : {}), ...(p.pr ? { pr: p.pr } : {}), ...(ask ? { ask } : {}), ...(state === 'blocked' && w && w.status === 'waiting' ? { sure: 1 } : {}), ...(open ? { menu: open } : state === 'blocked' && lp && lp.m && !SUBTOOL.test(lp.name) ? { menu: { id: lp.id, tool: lp.name, ...lp.m, ...(w && w.status === 'waiting' ? { sure: 1 } : {}) } } : {}), ...(state === 'turn' && p.gave ? { gave: p.gave } : {}), ...(p.esc ? { cut: 1 } : {}), ...(tmpKey(proj) ? { tmp: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
+    return { proj, id, title: coworkTitle(proj, id) || p.title || id, mtime: moved, state, tool, ageMs, subActive, subTotal, asked: p.asked || 0, ...(since ? { since } : {}), ...(ran ? { ran } : {}), ...(p.pr ? { pr: p.pr } : {}), ...(ask ? { ask } : {}), ...(state === 'blocked' && w && w.status === 'waiting' ? { sure: 1 } : {}), ...(open ? { menu: open } : state === 'blocked' && lp && lp.m && !SUBTOOL.test(lp.name) ? { menu: { id: lp.id, tool: lp.name, ...lp.m, ...(w && w.status === 'waiting' ? { sure: 1 } : {}) } } : {}), ...(state === 'turn' && p.gave ? { gave: p.gave } : {}), ...(p.esc ? { cut: 1 } : {}), ...(tmpKey(proj) ? { tmp: 1 } : {}) };   // cut: stopped by you, which is no news to tell you
   }).filter(Boolean);
 }
 // Settings live in a file, not only in the page's localStorage: the port changes between VS Code windows and reloads, and localStorage is per origin (port included).
@@ -683,6 +705,7 @@ function parseRecord(st, r) {
   if (ts > (st.lastTs || 0)) st.lastTs = ts;
   if (st.journal) { if (r.type === 'result' && r.agentId) push({ ts: 0, agent, kind: 'wfdone', child: String(r.agentId).replace(/[^\w.-]/g, '_') }); return; }   // a workflow's journal: one line when an agent starts, one when it hands its result back (no time on them)
   if (r.type === 'system' && r.subtype === 'compact_boundary') { push({ ts, agent, kind: 'compact' }); return; }   // Claude Code compacted the conversation
+  if (r.type === 'cost-state') { const usd = Number(r.totalCostUSD); if (agent === 'main' && Number.isFinite(usd) && usd >= 0) st.cost = { usd, at: st.lastTs || 0 }; return; }   // Claude Code's own count of what the session cost, sub-agents included, written when its process ends or restarts (2.1.300 on): the latest one read
   if (r.type === 'queue-operation' && typeof r.content === 'string' && r.content.includes('<task-notification>')) {   // how Claude Code reports that a background sub-agent has stopped
     const id = (r.content.match(/<tool-use-id>([^<]+)<\/tool-use-id>/) || [])[1], status = (r.content.match(/<status>([^<]+)<\/status>/) || [])[1];
     if (id && status && status !== 'running') push({ ts, agent, kind: 'agentdone', toolId: id });
@@ -714,7 +737,8 @@ function parseRecord(st, r) {
     if (agent === 'main') { st.lead = 1; if (m.stop_reason) st.stops = 1; }   // this transcript says why each message stopped: its turns end with a mark, and until one comes the lead is at work (see marks, below)
     if (m.id && m.usage) {   // the same message is repeated once per content block with identical numbers: keep one per message id
       const u = m.usage, prev = st.msgUsage.get(m.id);
-      st.msgUsage.set(m.id, { ts: prev ? prev.ts : ts, u: { i: u.input_tokens || 0, o: u.output_tokens || 0, r: u.cache_read_input_tokens || 0, w: u.cache_creation_input_tokens || 0 }, model: m.model });
+      const ef = String(r.perTurnEffort || r.effort || ''), adv = String(r.advisorModel || '');   // the effort it worked at and the model it may ask for advice, when Claude Code wrote them (2.1.275 on)
+      st.msgUsage.set(m.id, { ts: prev ? prev.ts : ts, u: { i: u.input_tokens || 0, o: u.output_tokens || 0, r: u.cache_read_input_tokens || 0, w: u.cache_creation_input_tokens || 0 }, model: m.model, ...(/^[a-z]{2,12}$/.test(ef) ? { ef } : {}), ...(/^[\w.:\-\[\]]{1,80}$/.test(adv) && adv !== m.model ? { adv } : {}) });
     }
     const th = () => { const t = st.th; st.th = ''; return t ? { th: t } : {}; };   // what the agent was thinking before this line or call, when Claude Code kept it (most of the time it only keeps a signature): the call shows it as an inner thought
     for (const b of blocks(r)) {
@@ -775,6 +799,7 @@ function buildTimeline(proj, id, files = []) {
   let recentUntil = 0; for (const a of Object.values(agents)) if (a.id !== 'main' && a.mtime && now0 - a.mtime <= 240000) recentUntil = Math.max(recentUntil, a.mtime + 241000);
   for (const a of Object.values(agents)) if (a.id !== 'main' && now0 - (a.mtime || 0) > 240000) finished.add(a.id);   // old transcripts without a completion record: silent for 4 min counts as finished
   const events = [], parent = {}, doneSeen = new Set(), lastTs = {}; for (const st of states) if (st) lastTs[st.agent] = st.lastTs || 0;
+  const usageBy = new Map(); for (const st of states) if (st) for (const [mid, mu] of st.msgUsage) { const o = usageBy.get(mid); if (!o || mu.ts < o.msgUsage.get(mid).ts || (mu.ts === o.msgUsage.get(mid).ts && st.agent === 'main')) usageBy.set(mid, st); }   // a fork (on by default since Claude Code 2.1.302) starts its file with a copy of the message that launched it: its tokens count once, for the agent that wrote it first
   const finish = (to, ts, by) => { if (!doneSeen.has(to)) { doneSeen.add(to); events.push({ ts, agent: to, kind: 'finish', to: by, k: 'f/' + to }); } };   // one per agent, whichever record says it first: the key is the agent, not the record
   for (const st of states) {
     if (!st) continue;
@@ -782,15 +807,16 @@ function buildTimeline(proj, id, files = []) {
     if (st.agent !== 'main' && finished.has(st.agent)) for (let i = st.raw.length - 1; i >= 0; i--) if (st.raw[i].kind === 'say') { lastSay = i; break; }
     const run = agents[st.agent] && agents[st.agent].wf ? runs[agents[st.agent].wf] : null;
     if (run && st.prompt) { parent[st.agent] = run.by || 'main'; events.push({ ts: st.prompt.ts, agent: parent[st.agent], to: st.agent, kind: 'order', ...(run.toolId ? { toolId: run.toolId } : {}), bg: true, wf: agents[st.agent].wf, text: st.prompt.text, title: agents[st.agent].role, k: 'o/' + st.agent }); }   // the order a workflow gave is the first message of the agent's own file: shown as an order from whoever launched the workflow (the lead when nothing says who), given in the background, when the agent started
+    // a fork's file starts with a copy of the call that launched it (Claude Code 2.1.302 turns forks on by default): that copy is not the fork launching or finishing itself
     st.raw.forEach((e, i) => {
-      if (e.kind === 'agentdone') { const to = childByTool[e.toolId], wr = runByTool[e.toolId]; if (to) finish(to, e.ts, e.agent); else if (wr) for (const a of Object.values(wr.agents)) if (!wr.done.has(a)) finish(a, Math.max(e.ts, lastTs[a] || 0), e.agent); }   // the agents the journal knows about are finished below, at their own time
-      else if (e.kind === 'agentcall') { const to = childByTool[e.toolId]; if (to) { parent[to] = e.agent; events.push({ ts: e.ts, agent: e.agent, to, kind: 'order', toolId: e.toolId, bg: e.bg, text: e.text, title: e.title, k: e.k }); } }
+      if (e.kind === 'agentdone') { const to = childByTool[e.toolId] === e.agent ? null : childByTool[e.toolId], wr = runByTool[e.toolId]; if (to) finish(to, e.ts, e.agent); else if (wr) for (const a of Object.values(wr.agents)) if (!wr.done.has(a)) finish(a, Math.max(e.ts, lastTs[a] || 0), e.agent); }   // the agents the journal knows about are finished below, at their own time
+      else if (e.kind === 'agentcall') { const to = childByTool[e.toolId]; if (to && to !== e.agent) { parent[to] = e.agent; events.push({ ts: e.ts, agent: e.agent, to, kind: 'order', toolId: e.toolId, bg: e.bg, text: e.text, title: e.title, k: e.k }); } }
       else if (e.kind === 'wfrun' || e.kind === 'wfdone') return;
       else if (i === lastSay) events.push({ ...e, kind: 'report', to: null });   // `to` filled below, once every order is known
       else events.push(e);
     });
     if (run && run.done.has(st.agent) && st.lastTs) finish(st.agent, st.lastTs, parent[st.agent] || 'main');   // the journal has no times: the agent finished when it last wrote
-    for (const [mid, mu] of st.msgUsage) events.push({ ts: mu.ts, agent: st.agent, kind: 'usage', u: mu.u, model: mu.model, ...(mu.cw ? { cw: mu.cw } : {}), k: 'u/' + st.agent + '/' + mid });
+    for (const [mid, mu] of st.msgUsage) if (usageBy.get(mid) === st) events.push({ ts: mu.ts, agent: st.agent, kind: 'usage', u: mu.u, model: mu.model, ...(mu.cw ? { cw: mu.cw } : {}), ...(mu.ef ? { ef: mu.ef } : {}), ...(mu.adv ? { adv: mu.adv } : {}), k: 'u/' + st.agent + '/' + mid });
   }
   for (const e of events) if (e.kind === 'report' && e.to === null) e.to = parent[e.agent] || 'main';
 
@@ -804,7 +830,8 @@ function buildTimeline(proj, id, files = []) {
   }
   const real = merged.find((e) => e.kind !== 'usage' && e.kind !== 'finish' && e.kind !== 'compact'), first = real ? real.ts : 0, last = merged.length ? merged[merged.length - 1].ts : 0;   // time zero = the first thing said or done
   const marks = !sx && states[0] && (states[0].stops || !states[0].lead) ? { marks: 1 } : {};   // a Claude Code session whose turns end with a mark, also before the lead has written anything: a session that has not closed a turn yet is not one without marks, and its lead is not "done" each time it thinks for a while
-  return { id, proj, agents: Object.values(agents), events: merged.map((e) => ({ ...e, t: Math.max(0, e.ts - first) })), durationMs: last - first, recentUntil, ...marks };
+  const ms = states.find((x) => x && x.agent === 'main'), cost = ms && ms.cost ? { usd: Math.round(ms.cost.usd * 1e4) / 1e4, final: !merged.some((e) => e.kind === 'usage' && e.ts > ms.cost.at) } : null;   // final: nothing was spent after Claude Code counted it (else it is a floor)
+  return { id, proj, agents: Object.values(agents), events: merged.map((e) => ({ ...e, t: Math.max(0, e.ts - first) })), durationMs: last - first, recentUntil, ...marks, ...(cost ? { cost } : {}) };
 }
 
 // Ask the local `claude` CLI (uses the user's existing login) to map a JSON array of strings to another array. Cached.
@@ -1216,8 +1243,8 @@ function start(port = PORT) {
       }
       if (ep == null) return json({ id: tl.id, agents: tl.agents, total: tl.events.length, events: tl.events.slice(+after) });   // a page loaded before 1.25.7 still asks by position
       const a = +after; if (ep !== tl.ep || !(a >= 0 && a <= tl.seq)) return json({ resync: true });   // not the feed this page was following (restart, session dropped from memory, transcript rewritten): it loads the session again
-      if (a === tl.seq) { if (!entry.idle) entry.idle = JSON.stringify({ id: tl.id, agents: tl.agents, ep: tl.ep, seq: tl.seq, marks: tl.marks, events: [] }); res.writeHead(200, { 'content-type': 'application/json' }); return res.end(entry.idle); }   // nothing new, which is the answer to nearly every poll: written once
-      return json({ id: tl.id, agents: tl.agents, ep: tl.ep, seq: tl.seq, marks: tl.marks, events: feedSince(entry, a) });   // new events and changed ones alike, whole, under the key they always had
+      if (a === tl.seq) { if (!entry.idle) entry.idle = JSON.stringify({ id: tl.id, agents: tl.agents, ep: tl.ep, seq: tl.seq, marks: tl.marks, ...(tl.cost ? { cost: tl.cost } : {}), events: [] }); res.writeHead(200, { 'content-type': 'application/json' }); return res.end(entry.idle); }   // nothing new, which is the answer to nearly every poll: written once
+      return json({ id: tl.id, agents: tl.agents, ep: tl.ep, seq: tl.seq, marks: tl.marks, ...(tl.cost ? { cost: tl.cost } : {}), events: feedSince(entry, a) });   // new events and changed ones alike, whole, under the key they always had
     }
     const pk = url.pathname.match(/^\/packs\/([a-z]+)\/(.*)$/);
     if (url.pathname.startsWith('/characters/') || (pk && packDir(pk[1]))) {   // only plain image files of the characters folder (or of a built-in pack), by exact name

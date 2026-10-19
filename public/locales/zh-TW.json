@@ -382,5 +382,15 @@
  "Help count users (1 request a week)": "幫忙統計使用者（每週 1 次請求）",
  "Halloween is coming: dress your agents up as a pumpkin, a ghost, a witch or a skeleton, drawn by hand by Fabien Coupas.": "萬聖節快到了：把你的智慧體打扮成南瓜、幽靈、女巫或骷髏，皆由 Fabien Coupas 手繪。",
  "Happy Halloween! Your agents can come to the call in costume.": "萬聖節快樂！你的智慧體可以穿著裝扮來開會。",
- "Halloween is tomorrow: your agents can come to the call in costume.": "明天就是萬聖節：你的智慧體可以穿著裝扮來開會。"
+ "Halloween is tomorrow: your agents can come to the call in costume.": "明天就是萬聖節：你的智慧體可以穿著裝扮來開會。",
+ "advised by": "顧問",
+ "At least: work went on after it last counted.": "這是最低值：上次統計之後工作仍在繼續。",
+ "cost": "費用",
+ "Counted by Claude Code, sub-agents included": "由 Claude Code 統計，含子代理",
+ "effort": "思考強度",
+ "extra high": "很高",
+ "high": "高",
+ "low": "低",
+ "max": "最高",
+ "medium": "中"
 }

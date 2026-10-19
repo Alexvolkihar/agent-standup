@@ -14,6 +14,7 @@ Agent Standup shows the Claude Code, Codex, Mistral Vibe and Cowork sessions of 
 | `bin/agent-standup.js` | The CLI (`status`, `statusline`, `--open`). `scripts/build-cli.js` builds it into `dist-cli/`. |
 | `desktop/` | Electron app (`main.js`). `scripts/build-desktop.js` builds it. |
 | `plugin/` | The Claude Code plugin (skills `open`, `status`). `scripts/sync-plugin.js` keeps its version in step. |
+| `plugin-band/` | A second plugin, a Claude Code mod (function hooks, `hooks/register.tsx`): a line above the prompt when another session waits for you. Reads only `~/.claude/sessions/*.json`. Check it with `claude plugin validate plugin-band` and `claude plugin test plugin-band`, with the newest `claude` and an old one (2.1.59 is at `/opt/homebrew/bin/claude`): no `$.state`, no `types` key, which old versions refuse. |
 | `api/` | Vercel functions of agent-standup.com: Stripe checkout, pack download, the sales page (`sales.js`) and the growth dashboard (`stats.js` with `_growth.js`, at `/api/stats/?k=<STATS_KEY>`). They have no dependencies. |
 | `website/` | agent-standup.com (Vercel; a push to main deploys it). `npm run website` builds `website/dist`. |
 | `landing/` → `docs/` | The GitHub Pages landing (`npm run landing`). Do not redesign it without asking. |

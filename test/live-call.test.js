@@ -76,4 +76,20 @@ test('live call: joining, orders and lines', { skip: missing || false, timeout: 
     s.user('One thing'); await wait(1200); s.say('LAST line of the call.', { end: true }); await c.heard('LAST line'); await c.quiet(500);
     await c.page.evaluate(() => togglePlay()); await wait(800); await c.page.evaluate(() => togglePlay()); await c.quiet(); assert.equal(count(await c.lines(), 'LAST line'), 1); await c.close();
   });
+
+  await t.test("a fork joins as the lead's twin; the effort, the advisor and the cost Claude Code writes are shown", async () => {   // Claude Code 2.1.302: forks on by default; cost-state since 2.1.300; effort and advisorModel since 2.1.275
+    const s = session(); s.user('hello', Date.now() - 600000); s.say('Ready.', { at: Date.now() - 590000, end: true }); const c = await open(s);
+    const dir = path.join(tmp, 'projects', s.proj), raw = (f, r) => fs.appendFileSync(f, JSON.stringify({ timestamp: new Date().toISOString(), ...r }) + '\n');
+    s.user('Check it with a fork'); await wait(800);
+    raw(path.join(dir, 's.jsonl'), { type: 'assistant', effort: 'max', perTurnEffort: 'max', advisorModel: 'claude-opus-5-5', message: { id: 'mEff', role: 'assistant', model: 'claude-sonnet-5-5', stop_reason: null, usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }, content: [{ type: 'text', text: 'Forking now.' }] } });
+    const id = s.launch(9, 'fork check', 'Say which file', true); fs.writeFileSync(path.join(dir, 's', 'subagents', 'agent-a9.meta.json'), JSON.stringify({ agentType: 'fork', isFork: true, description: 'fork check', toolUseId: id }));
+    s.result(id, 'Async agent launched successfully.\nagentId: a9'); await wait(800); s.say('It is note.txt.', { sub: 9 });
+    await c.until(() => S.agents.a9 && S.effort.main === 'max', null, 20000);
+    assert.deepEqual(await c.page.evaluate(() => [S.agents.a9.name, !!S.agents.a9.twin, S.agents.a9.shirt === S.agents.main.shirt, S.adv.main]), ['Margot 2', true, true, 'claude-opus-5-5']);
+    await c.until(() => /max/.test(document.querySelector('#t-main .tk').textContent), null, 10000);   // a costly effort shows on the tile
+    s.say('Done.', { end: true }); fs.appendFileSync(path.join(dir, 's.jsonl'), JSON.stringify({ type: 'cost-state', totalCostUSD: 0.4213 }) + '\n');   // written when the process ends: no time of its own
+    await c.until(() => S.cost && S.cost.usd === 0.4213 && S.cost.final, null, 20000); await c.quiet(500);
+    await c.page.evaluate(() => openRecap()); assert.match(await c.page.evaluate(() => document.querySelector('#recap .kpis').textContent), /💵 \$0\.42cost/); assert.match(await c.page.evaluate(() => document.querySelector('#tok').title), /💵 \$0\.42/);
+    await c.close();
+  });
 });

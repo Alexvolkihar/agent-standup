@@ -382,5 +382,15 @@
  "Help count users (1 request a week)": "Beim Zählen der Nutzer helfen (1 Anfrage pro Woche)",
  "Halloween is coming: dress your agents up as a pumpkin, a ghost, a witch or a skeleton, drawn by hand by Fabien Coupas.": "Halloween steht vor der Tür: Verkleide deine Agenten als Kürbis, Geist, Hexe oder Skelett, von Hand gezeichnet von Fabien Coupas.",
  "Happy Halloween! Your agents can come to the call in costume.": "Fröhliches Halloween! Deine Agenten können verkleidet zum Call kommen.",
- "Halloween is tomorrow: your agents can come to the call in costume.": "Morgen ist Halloween: Deine Agenten können verkleidet zum Call kommen."
+ "Halloween is tomorrow: your agents can come to the call in costume.": "Morgen ist Halloween: Deine Agenten können verkleidet zum Call kommen.",
+ "advised by": "beraten von",
+ "At least: work went on after it last counted.": "Mindestens: Nach der letzten Zählung ging die Arbeit weiter.",
+ "cost": "Kosten",
+ "Counted by Claude Code, sub-agents included": "Von Claude Code gezählt, Subagenten inklusive",
+ "effort": "Aufwand",
+ "extra high": "sehr hoch",
+ "high": "hoch",
+ "low": "niedrig",
+ "max": "maximal",
+ "medium": "mittel"
 }
