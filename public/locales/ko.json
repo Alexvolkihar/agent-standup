@@ -379,5 +379,8 @@
  "Help count how many people use Agent Standup? When you open the call, at most once a week, the app would load an empty 1-pixel file from GitHub: no identifier, nothing about you or your sessions. GitHub sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "Agent Standup을 쓰는 사람 수를 세는 데 도움을 주시겠어요? 통화를 열 때 최대 일주일에 한 번, 앱이 GitHub에서 빈 1픽셀 파일을 불러옵니다. 식별자도 없고, 사용자나 세션에 대한 정보도 없습니다. 다른 다운로드와 마찬가지로 GitHub는 IP 주소를 볼 수 있습니다. ⚙ › 모든 설정에서 언제든지 끌 수 있습니다.",
  "Count me in": "참여하기",
  "Privacy policy": "개인정보 처리방침",
- "Help count users (1 request a week)": "사용자 수 세기 돕기 (일주일에 요청 1번)"
+ "Help count users (1 request a week)": "사용자 수 세기 돕기 (일주일에 요청 1번)",
+ "Halloween is coming: dress your agents up as a pumpkin, a ghost, a witch or a skeleton, drawn by hand by Fabien Coupas.": "핼러윈이 다가옵니다: 에이전트에게 호박, 유령, 마녀, 해골 분장을 해 보세요. Fabien Coupas가 손으로 그렸습니다.",
+ "Happy Halloween! Your agents can come to the call in costume.": "해피 핼러윈! 에이전트가 분장하고 통화에 올 수 있어요.",
+ "Halloween is tomorrow: your agents can come to the call in costume.": "내일은 핼러윈: 에이전트가 분장하고 통화에 올 수 있어요."
 }

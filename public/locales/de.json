@@ -379,5 +379,8 @@
  "Help count how many people use Agent Standup? When you open the call, at most once a week, the app would load an empty 1-pixel file from GitHub: no identifier, nothing about you or your sessions. GitHub sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "Hilfst du zu zählen, wie viele Leute Agent Standup nutzen? Wenn du den Anruf öffnest, höchstens einmal pro Woche, würde die App eine leere 1-Pixel-Datei von GitHub laden: keine Kennung, nichts über dich oder deine Sitzungen. GitHub sieht deine IP-Adresse, wie bei jedem Download. Du kannst es jederzeit unter ⚙ › Alle Einstellungen ausschalten.",
  "Count me in": "Ich mache mit",
  "Privacy policy": "Datenschutzerklärung",
- "Help count users (1 request a week)": "Beim Zählen der Nutzer helfen (1 Anfrage pro Woche)"
+ "Help count users (1 request a week)": "Beim Zählen der Nutzer helfen (1 Anfrage pro Woche)",
+ "Halloween is coming: dress your agents up as a pumpkin, a ghost, a witch or a skeleton, drawn by hand by Fabien Coupas.": "Halloween steht vor der Tür: Verkleide deine Agenten als Kürbis, Geist, Hexe oder Skelett, von Hand gezeichnet von Fabien Coupas.",
+ "Happy Halloween! Your agents can come to the call in costume.": "Fröhliches Halloween! Deine Agenten können verkleidet zum Call kommen.",
+ "Halloween is tomorrow: your agents can come to the call in costume.": "Morgen ist Halloween: Deine Agenten können verkleidet zum Call kommen."
 }

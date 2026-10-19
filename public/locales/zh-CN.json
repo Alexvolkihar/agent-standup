@@ -379,5 +379,8 @@
  "Help count how many people use Agent Standup? When you open the call, at most once a week, the app would load an empty 1-pixel file from GitHub: no identifier, nothing about you or your sessions. GitHub sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "愿意帮忙统计有多少人在用 Agent Standup 吗？打开通话时，每周最多一次，应用会从 GitHub 加载一个 1 像素的空文件：没有任何标识，也不涉及你或你的会话。和任何下载一样，GitHub 会看到你的 IP 地址。你可以随时在 ⚙ › 全部设置 中关闭。",
  "Count me in": "参与统计",
  "Privacy policy": "隐私政策",
- "Help count users (1 request a week)": "帮忙统计用户（每周 1 次请求）"
+ "Help count users (1 request a week)": "帮忙统计用户（每周 1 次请求）",
+ "Halloween is coming: dress your agents up as a pumpkin, a ghost, a witch or a skeleton, drawn by hand by Fabien Coupas.": "万圣节快到了：把你的智能体打扮成南瓜、幽灵、女巫或骷髅，均由 Fabien Coupas 手绘。",
+ "Happy Halloween! Your agents can come to the call in costume.": "万圣节快乐！你的智能体可以穿着装扮来开会。",
+ "Halloween is tomorrow: your agents can come to the call in costume.": "明天就是万圣节：你的智能体可以穿着装扮来开会。"
 }
