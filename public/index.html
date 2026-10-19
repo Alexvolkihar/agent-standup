@@ -2143,7 +2143,7 @@ function usageStart() {
   if (prefs.usageAsked || prefs.shareUsage === true) return; clearTimeout(usageStart.t); usageStart.t = setTimeout(usageTip, 2500);
 }
 function usageTip() {
-  const t = $('#usageTip'); if (!USAGE_ASKS || prefs.usageAsked || prefs.shareUsage === true || document.hidden || $('#menu').classList.contains('on')) { t.style.display = 'none'; return; }
+  const t = $('#usageTip'); if (!USAGE_ASKS || prefs.usageAsked || prefs.shareUsage === true || firstDay() || document.hidden || $('#menu').classList.contains('on')) { t.style.display = 'none'; return; }   /* firstDay: like every ask, not the first day the app is used */
   if ($('#menuTip').style.display !== 'none') { usageStart.t = setTimeout(usageTip, 4000); return; }   /* after the tip about the moved menu */
   if (prefs.askDay === utcDay() && prefs.askWhat === 'pack') { t.style.display = 'none'; return; }   /* the Halloween pack's day: one ask at a time, this one comes back on the next */
   const r = $('#bMenu').getBoundingClientRect(); if (!r.width) return;
