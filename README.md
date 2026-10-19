@@ -314,7 +314,7 @@ node server.js            # http://localhost:4747   (PORT=… to change)
 
 - `http://localhost:4747/` → live, newest session
 - `http://localhost:4747/?live=0` → replay picker
-- `?proj=<project-dir>` → limit live to one project folder under `~/.claude/projects`
+- `?proj=-Users-me-code-myapp` → the live call follows only that project (the name of its folder in Claude Code's projects folder)
 
 Requires Node 18+.
 
