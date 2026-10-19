@@ -20,6 +20,12 @@ test('settings are kept in a file; cross-site writes are refused', async () => {
     assert.equal((await get(port, '/api/prefs', { origin: 'http://localhost:3000', 'content-type': 'application/json' }, 'PUT', '{"_t":6}')).status, 403, 'another local page (a dev server on another port) is another site');
     assert.equal((await get(port, '/api/prefs', { origin: `http://localhost:${port}`, 'content-type': 'application/json' }, 'PUT', '{"lang":"fr","_t":7}')).status, 200, 'the page itself');
     assert.equal((await get(port, '/api/prefs', {}, 'PUT', '[1]')).status, 400);
+    { const put = (v) => get(port, '/api/prefs', { 'content-type': 'application/json' }, 'PUT', JSON.stringify(v)), saved = async () => JSON.parse((await get(port, '/api/prefs.js')).body.match(/SAVED_PREFS = (.*?); window/)[1]);   // the usage answer: an older page cannot bring back what a newer one changed
+      await put({ lang: 'fr', _t: 8, shareUsage: true, shareUsageT: 100, usageAsked: true }); await put({ lang: 'fr', _t: 9, shareUsage: false, shareUsageT: 200, usageAsked: true });
+      await put({ lang: 'en', _t: 10, shareUsage: true, shareUsageT: 100, usageAsked: true }); let p = await saved(); assert.equal(p.shareUsage, false, 'a page that still holds the old yes'); assert.equal(p.shareUsageT, 200); assert.equal(p.lang, 'en', 'its other settings are written');
+      await put({ lang: 'en', _t: 11, shareUsage: true }); assert.equal((await saved()).shareUsage, false, 'a page with no date for it');
+      await put({ lang: 'en', _t: 12, shareUsage: true, shareUsageT: 300, usageAsked: true }); assert.equal((await saved()).shareUsage, true, 'a newer answer wins');
+      await put({ lang: 'fr', _t: 13 }); }
     assert.equal(JSON.parse((await get(port, '/api/kokoro')).body).installed, false);
     assert.equal((await get(port, '/api/kokoro/install', { 'sec-fetch-site': 'cross-site' }, 'POST')).status, 403);
   } finally { srv.close(); require('../server.js').shutdown(); }
