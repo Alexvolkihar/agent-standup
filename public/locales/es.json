@@ -392,5 +392,8 @@
  "high": "alto",
  "low": "bajo",
  "max": "máximo",
- "medium": "medio"
+ "medium": "medio",
+ "Browsing ": "Navegando en ",
+ "Browsing the web": "Navegando por la web",
+ "No picture of this page yet": "Todavía no hay imagen de esta página"
 }

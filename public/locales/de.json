@@ -392,5 +392,8 @@
  "high": "hoch",
  "low": "niedrig",
  "max": "maximal",
- "medium": "mittel"
+ "medium": "mittel",
+ "Browsing ": "Surft auf ",
+ "Browsing the web": "Surft im Web",
+ "No picture of this page yet": "Noch kein Bild dieser Seite"
 }

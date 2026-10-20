@@ -392,5 +392,8 @@
  "high": "高",
  "low": "低",
  "max": "最大",
- "medium": "中"
+ "medium": "中",
+ "Browsing ": "閲覧中: ",
+ "Browsing the web": "Webを閲覧中",
+ "No picture of this page yet": "このページの画像はまだありません"
 }

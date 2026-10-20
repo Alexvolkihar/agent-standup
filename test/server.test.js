@@ -106,6 +106,25 @@ test('pictures returned by tools are counted in the timeline and served from the
     assert.equal((await get(port, '/api/media?proj=-p&id=s1&agent=main&tool=toolu_pic&n=0', { 'sec-fetch-site': 'cross-site' })).status, 403);
   } finally { srv.close(); require('../server.js').shutdown(); }
 });
+
+test('a browser the agent drives (Claude in Chrome) is described step by step, with the page it is on and the frame its clicks are counted in', async () => {
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', C = 'mcp__claude-in-chrome__';
+  const tabs = '\n\nTab Context:\n- Executed on tabId: 7\n- Available tabs:\n  • tabId 7: "Sweego Application" ("https://app.sweego.io/credentials/smtp")';   // the way the extension ends its answers (1.x, October 2026)
+  const calls = [['toolu_br1', C + 'computer', { action: 'screenshot', tabId: 7, scale: 0.5 }, [{ type: 'text', text: 'Successfully captured screenshot (644x474, jpeg) - ID: ss_1 — 0.5-scale view; coordinate frame: 1288x948.' + tabs }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data: png } }]],
+    ['toolu_br2', C + 'computer', { action: 'left_click', coordinate: [640, 570], tabId: 7, action_summary: 'Opens the Email section' }, [{ type: 'text', text: 'Clicked at (640, 570)' }]],
+    ['toolu_br3', C + 'browser_batch', { actions: [{ name: 'navigate', input: { url: 'https://example.com/a', tabId: 7 } }, { name: 'computer', input: { action: 'type', text: 'hello', tabId: 7, action_summary: 'Types the name' } }] }, [{ type: 'text', text: 'Navigated to https://example.com/a\nTyped "hello"' }]],
+    ['toolu_br4', C + 'navigate', { url: 'https://nope.example', tabId: 7 }, 'Navigation failed', true]];
+  const lines = calls.flatMap(([id, name, input, content, err]) => [{ type: 'assistant', timestamp: '2026-01-01T00:00:00Z', message: { content: [{ type: 'tool_use', id, name, input }] } }, { type: 'user', timestamp: '2026-01-01T00:00:01Z', message: { content: [{ type: 'tool_result', tool_use_id: id, content, ...(err ? { is_error: true } : {}) }] } }]);
+  const dir = path.join(tmp, 'projects', '-br'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 's1.jsonl'), lines.map((r) => JSON.stringify(r)).join('\n') + '\n');
+  const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;
+  try {
+    const ev = JSON.parse((await get(port, '/api/session?proj=-br&id=s1')).body).events, tools = ev.filter((e) => e.kind === 'tools').flatMap((e) => e.tools), res = Object.fromEntries(ev.filter((e) => e.kind === 'results').flatMap((e) => e.items).map((it) => [it.id, it]));
+    assert.deepEqual(tools.map((t) => t.d), [{ kind: 'browser', steps: [{ a: 'screenshot' }] }, { kind: 'browser', steps: [{ a: 'left_click', x: 640, y: 570, n: 'Opens the Email section' }] }, { kind: 'browser', steps: [{ a: 'navigate', u: 'https://example.com/a' }, { a: 'type', t: 'hello', n: 'Types the name' }] }, { kind: 'browser', steps: [{ a: 'navigate', u: 'https://nope.example' }] }]);
+    assert.equal(tools[1].arg, 'Opens the Email section'); assert.equal(tools[2].arg, 'Types the name');   // what the tile's ticker says: the agent's own account of the step
+    assert.deepEqual(res.toolu_br1.web, { u: 'https://app.sweego.io/credentials/smtp', t: 'Sweego Application', f: [1288, 948] }); assert.equal(res.toolu_br1.img, 1);   // half-scale picture, full-size clicks
+    assert.equal(res.toolu_br2.web, undefined); assert.deepEqual(res.toolu_br3.web, { u: 'https://example.com/a' }); assert.equal(res.toolu_br4.web, undefined);   // a call that failed says nothing about the page
+  } finally { srv.close(); require('../server.js').shutdown(); }
+});
 test('an order typed while the lead is working is part of the call', async () => {
   const at = (s) => `2026-01-01T00:00:0${s}Z`, queued = (s, prompt, origin) => ({ type: 'attachment', timestamp: at(s), attachment: { type: 'queued_command', prompt, origin, commandMode: origin.kind === 'human' ? 'prompt' : 'task-notification' } });
   const recs = [{ type: 'user', timestamp: at(0), message: { role: 'user', content: 'first order' } }, { type: 'assistant', timestamp: at(1), message: { content: [{ type: 'tool_use', id: 'toolu_q', name: 'Bash', input: { command: 'ls' } }] } },

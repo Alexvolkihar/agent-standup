@@ -392,5 +392,8 @@
  "high": "높음",
  "low": "낮음",
  "max": "최대",
- "medium": "중간"
+ "medium": "중간",
+ "Browsing ": "탐색 중: ",
+ "Browsing the web": "웹 탐색 중",
+ "No picture of this page yet": "이 페이지의 이미지가 아직 없습니다"
 }

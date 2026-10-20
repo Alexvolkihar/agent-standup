@@ -150,6 +150,13 @@
   .pweb { flex:1; min-height:0; position:relative; overflow:hidden; background:#fff } .pweb iframe { position:absolute; left:0; top:0; border:0; width:calc(100% / var(--z,1)); height:calc(100% / var(--z,1)); transform:scale(var(--z,1)); transform-origin:0 0; background:#fff }
   .pzoom { position:absolute; inset:0; width:100%; cursor:zoom-in }
   .pcard { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; padding:14px; text-align:center; background:#0d1117; color:#d6dae6 } .pcard i { font-style:normal; font-size:30px } .pcard b { font-size:16px } .pcard p { margin:0; max-width:520px; color:#9aa0b4; font-size:12.5px } .pcard em { font-style:normal; color:#6b7089; font-size:11.5px }
+  /* a browser the agent drives (Claude in Chrome): its last screenshot in a frame of the page's shape, and a pointer that goes where it clicks */
+  .pwin.browser { flex-basis:1100px } .pwin.browser #pbody { display:flex; flex-direction:column; padding:0; background:#0b0c11; font:12px -apple-system,system-ui,sans-serif }
+  .pbr { flex:1; min-height:0; position:relative; container-type:size; display:flex; align-items:center; justify-content:center; padding:6px } .pbr.none .pfr { display:none } .pbr:not(.none) .pnone { display:none }
+  .pfr { position:relative; flex:none; width:min(100cqw, 100cqh * var(--ar,1.36)); aspect-ratio:var(--ar,1.36) } .pfr img { position:absolute; inset:0; width:100%; height:100%; border-radius:3px; background:#fff }
+  .pptr { position:absolute; left:50%; top:50%; width:17px; height:23px; margin:-1px 0 0 -1px; z-index:1; pointer-events:none; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 23'%3E%3Cpath d='M1.5 1.5v17l4.3-4.1 3 6.6 2.7-1.2-3-6.5h6z' fill='%23fff' stroke='%23111' stroke-width='1.4' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat; filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)); transition:left .6s cubic-bezier(.3,.7,.3,1), top .6s cubic-bezier(.3,.7,.3,1) }
+  .pptr::after { content:''; position:absolute; left:-13px; top:-13px; width:28px; height:28px; box-sizing:border-box; border-radius:50%; border:3px solid #f0a020; opacity:0 } .pptr.clk::after { animation:pclk .6s ease-out .55s } @keyframes pclk { from { opacity:1; transform:scale(.3) } to { opacity:0; transform:scale(1.5) } }
+  .pkey { position:absolute; z-index:1; margin:24px 0 0 12px; max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:rgba(10,11,16,.88); color:#fff; padding:2px 8px; border-radius:6px; font:12px ui-monospace,Menlo,monospace; transition:left .6s, top .6s } .pkey:empty { display:none }
   #present.pin { height:clamp(240px,74vh,1000px) } #present.pin #pcam, #present.pin #pcap, #present.pin #pbadge { display:none } #present:has(.pwin.web) #pcam { width:110px; height:82px }
   body.narrow #present.pin { height:clamp(220px,70vh,900px) } #present.pin:has(.pcard), body.narrow #present.pin:has(.pcard) { height:clamp(190px,34vh,300px) }   /* nothing to read there but a title and a link */
   .ptab { display:flex; align-items:center; gap:10px; background:#16161e; padding:5px 12px; border-bottom:1px solid #2a2b3d; font:11.5px -apple-system,system-ui,sans-serif } .ptab span { background:#1a1b26; padding:3px 10px; border-radius:6px 6px 0 0; color:#e9eaf0 } .ptab em { color:#6b7089; font-style:normal }
@@ -1630,6 +1637,7 @@ function activityLabel(t) {   // the short "what is on their screen" tag
     case 'glob': return L('Liste ', 'Listing ') + String(d.pattern || '').slice(0, 24);
     case 'todo': return L('Met à jour sa todo', 'Updating todo list');
     case 'artifact': return (d.open ? L('Montre ', 'Showing ') : d.doc ? L('Crée ', 'Writing ') : L('Publie ', 'Publishing ')) + (d.title || (d.open ? 'Artifact' : f)).slice(0, 30);
+    case 'browser': { const s = (d.steps || []).slice(-1)[0] || {}, n = (s.n || '').trim(), h = hostOf(s.u); if (n) return n.length > 36 ? n.slice(0, 36).replace(/\s+\S*$/, '') + '…' : n; return h ? L('Navigue sur ', 'Browsing ') + h : L('Navigue sur le web', 'Browsing the web'); }
     case 'web': return d.url ? L('Consulte ', 'Fetching ') + d.url.replace(/^https?:\/\//, '').slice(0, 26) : L('Recherche sur le web', 'Web search');
     case 'text': { const w = d.what; if (w === 'question') return L('Pose une question', 'Asking a question'); if (w === 'skill') return L('Utilise ', 'Using skill ') + (d.v || ''); if (w === 'mcp') return d.v || t.name; if (w === 'toolsearch') return L('Cherche un outil', 'Looking for a tool'); return t.name; }
     default: return t.name;
@@ -1644,14 +1652,14 @@ function pushTerm(id, tool) {
 }
 function applyResults(ev, silent) {   // the output of a tool call arrives
   const buf = S.term[ev.agent] || []; let last = null;
-  for (const it of ev.items) for (let i = buf.length - 1; i >= 0; i--) if (buf[i].id === it.id) { Object.assign(buf[i], { out: it.out, err: it.err, end: ev.ts, img: it.img || 0, picAt: it.img && !silent ? performance.now() : 0, art: it.art || null }); last = buf[i]; break; }
+  for (const it of ev.items) for (let i = buf.length - 1; i >= 0; i--) if (buf[i].id === it.id) { Object.assign(buf[i], { out: it.out, err: it.err, end: ev.ts, img: it.img || 0, picAt: it.img && !silent ? performance.now() : 0, art: it.art || null, web: it.web || null }); last = buf[i]; break; }
   if (S.run[ev.agent] && ev.items.some((it) => it.id === S.run[ev.agent].id)) delete S.run[ev.agent];
   if (silent || !last) return;
   setTicker(ev.agent, last); if (S.present === ev.agent) { renderPresent(); armPresent(); }
 }
 function setTicker(id, e) {   // the strip on the tile: spinner while running, then ✓/✗ and the real duration
   const t = $('#t-' + id); if (!t) return; const tk = t.querySelector('.ticker'), tool = e.tool, running = e.end == null;
-  tk.innerHTML = `${running ? '<span class="spin"></span>' : ''}<i>${esc(tool.name)}</i> ${esc(tool.arg || '')}${running ? ' <em class="el"></em>' : ` <em class="${e.err ? 'bad' : 'ok'}">${e.err ? '✗' : '✓'} ${fmtDur(e.end - e.ts)}</em>`}`;
+  tk.innerHTML = `${running ? '<span class="spin"></span>' : ''}<i>${esc(e.k === 'browser' ? 'Chrome' : tool.name)}</i> ${esc(tool.arg || '')}${running ? ' <em class="el"></em>' : ` <em class="${e.err ? 'bad' : 'ok'}">${e.err ? '✗' : '✓'} ${fmtDur(e.end - e.ts)}</em>`}`;
   tk.classList.add('on'); if (running) { tk.classList.remove('flash'); void tk.offsetWidth; tk.classList.add('flash'); }
 }
 function tickTools(ev) {
@@ -1678,6 +1686,7 @@ function termModel(id) {
   const buf = S.term[id] || [], last = buf[buf.length - 1], lines = [], more = (n) => ({ c: 'dim', t: `… +${n} ${L('lignes', 'lines')}` });
   const pic = S.cur && buf.slice(-12).reverse().find((e) => e.img), fresh = pic && performance.now() - pic.picAt < (S.live ? 8000 : 2500 / spd());   // a picture a tool returned (screenshot, image file) stays up for a few seconds whatever comes next, then for the next few calls: a screenshot is usually followed by a click or two
   const web = last && last.k === 'artifact' && last.art ? S.arts.get(last.art.url) : null; if (web) return artModel(web, id);   // a page that was just published: the browser window, until the agent does something else
+  if (last && last.k === 'browser') return browserModel(buf, last, id);
   if (pic && (fresh || (buf.length - buf.indexOf(pic) <= 4 && (pic === last || !/^(edit|write|read)$/.test(last.k))))) return { view: 'image', title: pic.k === 'read' ? base(pic.tool.d.file) : pic.tool.name.split('__').pop(), imgs: Array.from({ length: Math.min(pic.img, 3) }, (_, n) => mediaUrl(id, pic.id, n)), more: pic.img - 3, lines, stat: statOf(last, id) };
   if (last && (last.k === 'edit' || last.k === 'write' || last.k === 'read')) {
     const d = last.tool.d, rows = (txt, c) => String(txt || '').split('\n').slice(0, 14).map((t) => ({ c, t }));
@@ -1697,6 +1706,32 @@ function termModel(id) {
   }
   return { view: 'term', lines: lines.slice(-60), stat: statOf(last, id) };
 }
+// An agent driving a browser (Claude in Chrome): the window as it last saw it, the address it is on, and the pointer where it last clicked, which glides to the next click as that call starts.
+// The picture is the last screenshot, unless the agent has gone to another address since: an old page is not shown as the new one.
+const hostOf = (u) => { try { return u ? new URL(u).host : ''; } catch { return ''; } };
+function browserModel(buf, last, id) {
+  let pic = null, url = '', title = '', frame = null, ptr = null, gone = false;
+  for (let i = buf.length - 1; i >= 0; i--) {
+    const e = buf[i]; if (e.k !== 'browser') continue; const w = e.web || {}, st = (e.tool.d && e.tool.d.steps) || [];
+    if (!url) url = w.u || (st.filter((s) => s.u).pop() || {}).u || ''; if (!title && w.t) title = w.t; if (!frame && w.f) frame = w.f;
+    if (!ptr) for (let j = st.length - 1; j >= 0; j--) if (st[j].x != null && /click|move|drag/.test(st[j].a)) { ptr = { x: st[j].x, y: st[j].y, k: e.id + ':' + j, clk: /click/.test(st[j].a) }; break; }
+    if (!pic && e.img) pic = e; if (!pic && st.some((s) => s.u)) gone = true;
+    if (pic && url && title && frame && ptr) break;
+  }
+  const s = ((last.tool.d && last.tool.d.steps) || []).slice(-1)[0] || {}, host = hostOf(url), say = s.n || (s.q ? '🔎 ' + s.q : s.u ? '→ ' + s.u.replace(/^https?:\/\//, '') : s.a ? 'Chrome · ' + s.a.replace(/_/g, ' ') : ''), stat = statOf(last, id);
+  return { view: 'browser', title: title || host || 'Chrome', url, host, img: pic && !gone ? mediaUrl(id, pic.id, Math.min(pic.img - 1, 9)) : '', frame, ptr, typed: s.t || '', lines: [], stat: say ? stat.replace(last.tool.name, say) : stat };
+}
+const BROWSER_HTML = '<div class="pnav"><span class="purl"></span></div><div class="pbr"><div class="pfr"><img alt=""><i class="pptr"></i><span class="pkey"></span></div><div class="pcard pnone"><i>🌐</i><b></b><em></em></div></div>';
+function paintBrowser(pb, m) {   // the window stays from one step to the next: the address changes, the pointer glides, the picture is swapped when a new one comes back
+  const q = (s) => pb.querySelector(s), fr = q('.pfr'), img = q('.pfr img'), ptr = q('.pptr'), key = q('.pkey'); if (!fr) return;
+  q('.purl').textContent = m.url ? (/^https:/.test(m.url) ? '🔒 ' : '') + m.url.replace(/^https?:\/\//, '') : '';
+  q('.pbr').classList.toggle('none', !m.img); q('.pnone b').textContent = m.host || 'Chrome'; q('.pnone em').textContent = m.typed ? '⌨ ' + m.typed : L('Pas encore d’image de cette page', 'No picture of this page yet');
+  if (m.img && img.getAttribute('src') !== m.img) { img.onload = () => { if (S.present) renderPresent(); }; img.src = m.img; }
+  const W = m.frame ? m.frame[0] : img.naturalWidth, H = m.frame ? m.frame[1] : img.naturalHeight, on = !!(m.ptr && W && H); if (W && H) fr.style.setProperty('--ar', (W / H).toFixed(4));
+  const pos = (el) => { el.style.left = Math.min(100, Math.max(0, m.ptr.x / W * 100)) + '%'; el.style.top = Math.min(100, Math.max(0, m.ptr.y / H * 100)) + '%'; };
+  ptr.hidden = !on; if (on) { pos(ptr); pos(key); if (m.ptr.clk && ptr.dataset.k !== m.ptr.k) { ptr.classList.remove('clk'); void ptr.offsetWidth; ptr.classList.add('clk'); } ptr.dataset.k = m.ptr.k; }
+  key.textContent = on && m.typed ? '⌨ ' + m.typed : '';
+}
 const lineHtml = (l, view) => view === 'editor'
   ? `<div class="ln ${l.c}"><b>${esc(l.n != null ? l.n : l.c === 'add' ? '+' : l.c === 'del' ? '−' : '')}</b>${esc(l.t) || ' '}</div>`
   : `<div class="tl ${l.c}">${l.c === 'cmd' ? '<span class="ps">❯</span> ' : l.c === 'tool' ? '<span class="dotg">●</span> ' : l.c === 'run' ? '<span class="spin"></span>' : ''}${esc(l.t)}</div>`;
@@ -1704,12 +1739,13 @@ const lineHtml = (l, view) => view === 'editor'
 // ---------- screen sharing: a real video-call presentation (window + presenter camera) ----------
 function renderPresent() {
   const id = S.present, p = S.agents[id]; if (!p) return; if (S.artPin && !S.arts.has(S.artPin)) { S.artPin = null; armPresent(); }
-  const pinned = S.artPin ? S.arts.get(S.artPin) : null, whole = !pinned && S.artWhole ? S.arts.get(S.artWhole) : null, m = pinned ? artModel(pinned, id) : whole ? artModel(whole, id) : termModel(id), shape = m.view === 'web' && pinned ? 'pin' : m.view === 'web' || m.view === 'image' ? 'pic' : '';
+  const pinned = S.artPin ? S.arts.get(S.artPin) : null, whole = !pinned && S.artWhole ? S.arts.get(S.artWhole) : null, m = pinned ? artModel(pinned, id) : whole ? artModel(whole, id) : termModel(id), shape = m.view === 'web' && pinned ? 'pin' : m.view === 'web' || m.view === 'image' || m.view === 'browser' ? 'pic' : '';
   $('#present .pwin').className = 'pwin ' + (m.view === 'term' ? 'term' : m.view); $('#present').classList.toggle('pic', shape === 'pic'); $('#present').classList.toggle('pin', shape === 'pin'); if (shape !== S.picUp) { S.picUp = shape; layout(); }   // a picture or a page gets a taller window, a pinned page the tallest
   $('#ptitle').textContent = m.view === 'term' ? `${p.name} — zsh — 96×24` : m.title;
-  const pb = $('#pbody'), shown = m.view === 'image' ? m.imgs.join(' ') : m.view === 'web' ? m.key : ''; pb.dataset.art = m.view === 'web' ? m.a.url : '';
-  if (shown) { if (pb.dataset.img !== shown) pb.innerHTML = m.view === 'web' ? artHtml(m) : m.imgs.map((u) => `<img src="${esc(u)}" alt="">`).join('') + (m.more > 0 ? `<span class="pmore">+${m.more}</span>` : ''); }   // the same pictures are left in place: redrawing them would make them blink
+  const pb = $('#pbody'), shown = m.view === 'image' ? m.imgs.join(' ') : m.view === 'web' ? m.key : m.view === 'browser' ? 'browser' : ''; pb.dataset.art = m.view === 'web' ? m.a.url : '';
+  if (shown) { if (pb.dataset.img !== shown) pb.innerHTML = m.view === 'web' ? artHtml(m) : m.view === 'browser' ? BROWSER_HTML : m.imgs.map((u) => `<img src="${esc(u)}" alt="">`).join('') + (m.more > 0 ? `<span class="pmore">+${m.more}</span>` : ''); }   // the same pictures are left in place: redrawing them would make them blink
   else pb.innerHTML = (m.view === 'editor' ? `<div class="ptab"><span>${esc(m.tab.file)}</span><em>${esc(m.tab.path)}</em></div>` : '') + m.lines.map((l) => lineHtml(l, m.view)).join('') + (m.view === 'term' ? '<div class="tl"><span class="ps">❯</span> <span class="cursor"></span></div>' : '');
+  if (m.view === 'browser') paintBrowser(pb, m);
   pb.dataset.img = shown; pb.scrollTop = m.view === 'term' ? pb.scrollHeight : 0; $('#pstat').textContent = m.stat; if (m.view === 'web') fitArt();
   const td = S.todos[id], el = $('#ptodo'), tk = m.view !== 'web' && td && td.length ? prefs.lang + '\n' + td.map((x) => x.s + ' ' + x.c).join('\n') : ''; el.style.display = tk ? '' : 'none'; $('#present').classList.toggle('has-todo', !!tk);
   if (tk && el.dataset.k !== tk) {   // redrawn only when it changes, so it stays where you scrolled it; the task in progress is brought into view

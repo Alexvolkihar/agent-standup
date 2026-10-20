@@ -391,5 +391,8 @@
  "high": "høj",
  "low": "lav",
  "max": "maks",
- "medium": "middel"
+ "medium": "middel",
+ "Browsing ": "Surfer på ",
+ "Browsing the web": "Surfer på nettet",
+ "No picture of this page yet": "Endnu intet billede af denne side"
 }

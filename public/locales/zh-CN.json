@@ -392,5 +392,8 @@
  "high": "高",
  "low": "低",
  "max": "最高",
- "medium": "中"
+ "medium": "中",
+ "Browsing ": "正在浏览 ",
+ "Browsing the web": "正在浏览网页",
+ "No picture of this page yet": "还没有此页面的图片"
 }

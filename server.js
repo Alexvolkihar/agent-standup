@@ -91,6 +91,25 @@ function docPaths(text, cd) {
   return out;
 }
 const absPath = (f, cwd) => (/^~([\\/]|$)/.test(f) ? path.join(os.homedir(), f.slice(1)) : path.isAbsolute(f) ? path.normalize(f) : cwd ? path.resolve(cwd, f) : f);   // cwd: the folder the session was in when it wrote that record
+// A call that drives a browser (Claude in Chrome, the browser of the desktop app): its steps (one, or those of a browser_batch, in order), for the browser window of the shared screen.
+// a: what it did · x, y: where it clicked, in the frame of the page's screenshots · t: what it typed or the key it pressed · u: the address it went to · q: what it looked for · n: its own one-line account of the step
+const BROWSER_MCP = /^mcp__(?:[^_]+__)?(claude-in-chrome|Claude_Browser)__/;
+const browserStep = (name, i) => {
+  i = i && typeof i === 'object' ? i : {}; const s = { a: String(i.action || name || '').slice(0, 30) }, c = Array.isArray(i.coordinate) ? i.coordinate : null;
+  if (c && Number.isFinite(+c[0]) && Number.isFinite(+c[1])) { s.x = +c[0]; s.y = +c[1]; }
+  if (typeof i.url === 'string') s.u = clip(i.url, 300); if (typeof i.text === 'string' && /type|key/.test(s.a)) s.t = clip(i.text, 80); if (typeof i.query === 'string') s.q = clip(i.query, 120); if (typeof i.action_summary === 'string') s.n = clip(i.action_summary, 140);
+  return s;
+};
+const browserLabel = (name, i) => ({ kind: 'browser', steps: (Array.isArray(i.actions) ? i.actions.slice(-12).map((x) => browserStep(x && x.name, x && x.input)) : [browserStep(name, i)]) });
+// What a browser call answered about the page: its address and title, and the frame its clicks are counted in (a screenshot at half scale is still clicked in full-size coordinates)
+function browserSeen(text) {
+  const all = (re) => [...text.matchAll(re)].pop(), web = {}, tab = (text.match(/Executed on tabId: (\d+)/) || [])[1], row = tab && all(new RegExp(`tabId ${tab}: "([^"\\n]*)" \\("([^"\\n]*)"\\)`, 'g'));
+  const u = all(/(?:Navigated to|URL:) *(\S+)/g), t = all(/^Title: *(.+)$/gm), f = all(/coordinate frame: *(\d+)x(\d+)/g) || all(/captured screenshot \((\d+)x(\d+)/g);
+  const url = (u && u[1]) || (row && row[2]) || ''; if (/^(https?|file|chrome|about):/i.test(url)) web.u = clip(url, 300);
+  const title = (t && t[1]) || (row && row[1] !== row[2] && row[1]) || ''; if (title) web.t = clip(title.trim(), 120);
+  if (f && +f[1] > 0 && +f[2] > 0) web.f = [+f[1], +f[2]];
+  return Object.keys(web).length ? { web } : {};
+}
 // What each tool call looks like on a screen ("d"), plus its id/timestamp so the result can be matched later.
 const toolLabel = (b, ts) => {
   const i = b.input || {};
@@ -114,7 +133,8 @@ const toolLabel = (b, ts) => {
     case 'Artifact': if ((!i.action || i.action === 'publish') && !i.asset) { out.d = { kind: 'artifact', file: typeof i.file_path === 'string' ? i.file_path : '', title: clip(i.title, 120), note: clip(i.description, 240) }; const sent = i.files ? artSentOf(i) : [], pg = !/\.html?$/i.test(out.d.file) && sent.find((f) => /\.html?$/i.test(f)); if (sent.length > 1) out.d.sent = sent; if (pg) out.d.page = pg; break; }   // a page published on claude.ai: the call shows it in a browser window (see artifactPage). Any other use of the tool (a read, a list, an upload) is a call like any other
     if (i.action === 'open') { out.d = { kind: 'artifact', file: '', title: '', note: '', open: 1 }; break; }   // a page put on the person's screen: in the line of files when this session did not make it (see artOf)
     // falls through
-    default: if (mcp && /(^|_)Claude_Docs$/.test(mcp[1] || '') && mcp[2] === 'batch' && i.container && i.container.create && typeof i.container.create.name === 'string') { out.d = { kind: 'artifact', file: '', title: clip(i.container.create.name, 120), note: '', doc: 1 }; break; }   // a doc of the Claude Docs connector being born (its later edits are calls like any other)
+    default: if (BROWSER_MCP.test(b.name)) { out.d = browserLabel(mcp[mcp.length - 1], i); const s = out.d.steps[out.d.steps.length - 1]; if (s) out.arg = String(s.n || s.u || s.q || s.a).slice(0, 90); break; }
+      if (mcp && /(^|_)Claude_Docs$/.test(mcp[1] || '') && mcp[2] === 'batch' && i.container && i.container.create && typeof i.container.create.name === 'string') { out.d = { kind: 'artifact', file: '', title: clip(i.container.create.name, 120), note: '', doc: 1 }; break; }   // a doc of the Claude Docs connector being born (its later edits are calls like any other)
       out.d = mcp ? { kind: 'text', what: 'mcp', v: (mcp[1] || '') + ' · ' + (mcp.slice(2).join('__') || ''), text: clip(JSON.stringify(i), 400) } : { kind: 'text', text: clip(JSON.stringify(i), 300) };
   }
   return out;
@@ -724,7 +744,7 @@ function parseRecord(st, r) {
     for (const b of blocks(r)) if (b.type === 'tool_result' && (st.toolName[b.tool_use_id] === 'Agent' || st.toolName[b.tool_use_id] === 'Task') && !(st.bg && st.bg[b.tool_use_id]) && !/^\s*Async agent launched/i.test(resultText(b.content))) push({ ts, agent, kind: 'agentdone', toolId: b.tool_use_id });   // a synchronous call: the lead got the sub-agent's answer back, so it has finished (async launches answer immediately and are not a completion)
     for (const b of blocks(r)) if (b.type === 'tool_result' && st.toolName[b.tool_use_id] && !NO_RESULT.has(st.toolName[b.tool_use_id])) {
       const n = st.toolName[b.tool_use_id], img = resultImages(b.content).length, files = n === 'Bash' && !b.is_error ? docPaths(resultText(b.content), false).map((f) => absPath(f, r.cwd)) : [], art = !b.is_error && st.pubs && st.pubs.has(b.tool_use_id) ? artOf(st, st.pubs.get(b.tool_use_id), r.toolUseResult, resultText(b.content)) : null;
-      items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || (/^mcp__/.test(n) ? 900 : 600)), ...(img ? { img } : {}), ...(files.length ? { files } : {}), ...(art ? { art } : {}) });   // img: how many pictures came back; the page fetches them from /api/media · files: the documents a command says it made
+      items.push({ id: b.tool_use_id, err: !!b.is_error, out: clip(resultText(b.content).replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').trimEnd(), RESULT_MAX[n] || (/^mcp__/.test(n) ? 900 : 600)), ...(img ? { img } : {}), ...(files.length ? { files } : {}), ...(art ? { art } : {}), ...(BROWSER_MCP.test(n) && !b.is_error ? browserSeen(resultText(b.content)) : {}) });   // img: how many pictures came back; the page fetches them from /api/media · files: the documents a command says it made
     }
     if (items.length) push({ ts, agent, kind: 'results', items });
     const typed = blocks(r).filter((b) => b.type === 'text').map((b) => b.text).join('\n').replace(HARNESS, ''), cut = /^\s*\[Request interrupted[^\]]*\]/i.test(typed);   // what the human typed, without the blocks the harness wraps around it
