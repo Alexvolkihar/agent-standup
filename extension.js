@@ -78,7 +78,7 @@ const frameHtml = (src) => `<!doctype html><html><head><meta charset="utf-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src http://localhost:* http://127.0.0.1:* https:; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
     <style>html,body{margin:0;height:100%;background:#12131a}iframe{border:0;width:100%;height:100vh}</style></head>
     <body><iframe src="${src}" allow="autoplay; clipboard-write"></iframe>
-    <script>const vs = acquireVsCodeApi(); const fr = document.querySelector('iframe'); addEventListener('message', (e) => { if (e.source === fr.contentWindow) { if (e.data && e.data.agentStandup) vs.postMessage(e.data); } else if (e.data && e.data.agentStandup === 'pin') fr.contentWindow.postMessage(e.data, '*'); });</script></body></html>`;
+    <script>const vs = acquireVsCodeApi(); const fr = document.querySelector('iframe'); addEventListener('message', (e) => { if (e.source === fr.contentWindow) { if (e.data && e.data.agentStandup) vs.postMessage(e.data); } else if (e.data && (e.data.agentStandup === 'pin' || e.data.agentStandup === 'answered')) fr.contentWindow.postMessage(e.data, '*'); });</script></body></html>`;
 // Messages from the page: open it in the browser, or open a donation link or the draft of a problem report (https only, known sites only).
 // A link that carries a query (the draft of a report) is handed over as text: given as a Uri, VS Code decodes and re-encodes the query, and the draft arrives cut at its first "&" or "#".
 const DONATE_HOSTS = /^(www\.)?(buymeacoffee\.com|ko-fi\.com|paypal\.me|paypal\.com|github\.com)$/, SHOP_HOSTS = /^(checkout\.stripe\.com|agent-standup\.com|(www\.)?instagram\.com)$/, ARTIFACT_PATH = /^\/(code\/)?artifact\/[\w-]+$/;   // SHOP_HOSTS: the payment page of a pack bought from ⚙ → Characters, and the page of the artist who drew it. Its address ends with a fragment the page needs, so it is handed over as text too
@@ -87,7 +87,7 @@ const relay = (webview) => webview.onDidReceiveMessage((m) => {
   if (m.agentStandup === 'openBrowser') openBrowser();
   if (m.agentStandup === 'openCharacters') openCharacters();
   if (m.agentStandup === 'rate') rateNow();
-  if (m.agentStandup === 'answer' && typeof m.id === 'string') answerHere(m.id);
+  if (m.agentStandup === 'answer' && typeof m.id === 'string') { const a = answerHere(m.id); if (a && a.how === 'app' && a.app) webview.postMessage({ agentStandup: 'answered', how: 'app', app: String(a.app) }); }   // the page says where it waits
   if (m.agentStandup === 'notify' && typeof m.text === 'string' && !(m.text.includes('✋') && cfg().get('notifyNeedsYou') !== false && !callInView() && Date.now() - needsTold < 60e3)) vscode.window.showInformationMessage('Agent Standup: ' + m.text.slice(0, 120));   // the page's own "may be waiting for you ✋", from a call out of view, a minute after the notification that names the session (see needsYou): the same news twice. Otherwise it is the only word of it (a stalled agent, a sub-agent's approval, a session of another folder)
   if (m.agentStandup === 'openExternal') { try { const u = new URL(m.url); if (u.protocol === 'https:' && (DONATE_HOSTS.test(u.hostname) || SHOP_HOSTS.test(u.hostname) || (u.hostname === 'claude.ai' && ARTIFACT_PATH.test(u.pathname)))) vscode.env.openExternal(u.search || u.hash ? u.toString() : vscode.Uri.parse(u.toString())); } catch {} }
 });
@@ -150,9 +150,9 @@ function noteWindow() {
     Promise.resolve(vscode.env.asExternalUri(vscode.Uri.parse(scheme + '://doublegeste.agent-standup/window'))).then((u) => { const m = /\bwindowId=(\d+)/.exec(String((u && u.query) || (u && u.toString && u.toString()) || '')); require('./server.js').noteEditor({ scheme, windowId: m ? m[1] : '' }); }, () => {});
   } catch {}
 }
-const openHere = (sid) => vscode.commands.executeCommand('claude-vscode.primaryEditor.open', sid);   // Claude Code's own command, the one its link runs: the session's tab, brought up
-const answerHere = (id) => { try { return require('./server.js').answerIn(id, { here: openHere }); } catch { return null; } };   // a session of this window: its tab; another window or app: the link (server.js, answerIn)
-function answerOr(r) { const a = answerHere(r.id); if (!a || a.how !== 'editor') return openPanel({ id: r.id, proj: r.proj }); }   // a terminal, the Claude app or nothing to open: the call on that session, as before
+const openHere = (sid, fallback) => Promise.resolve(vscode.commands.executeCommand('claude-vscode.primaryEditor.open', sid)).then(undefined, () => { if (fallback) fallback(); });   // Claude Code's own command, the one its link runs: the session's tab, brought up (an older Claude Code without it: the fallback)
+const answerHere = (id, fallback) => { try { return require('./server.js').answerIn(id, { here: (sid) => openHere(sid, fallback) }); } catch { return null; } };   // a session of this window: its tab; another window or app: the link (server.js, answerIn)
+function answerOr(r) { const a = answerHere(r.id, () => openPanel({ id: r.id, proj: r.proj })); if (!a || a.how !== 'editor') return openPanel({ id: r.id, proj: r.proj }); }   // a terminal, the Claude app or nothing to open: the call on that session, as before
 function needsText(r) {
   const plan = r.tool === 'ExitPlanMode' || (r.menu && r.menu.kind === 'plan'), what = r.ask || (plan ? tt('a plan to approve') : /^(AskUserQuestion)?$/.test(r.tool || '') ? '' : r.tool), name = clip(r.title || r.id, 60);
   return what ? tt('{0} is waiting for you: {1}', name, clip(what, 80)) : tt('{0} is waiting for you', name);

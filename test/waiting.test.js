@@ -45,8 +45,14 @@ const PROG = '0c0c0c0c-0c0c-40c0-80c0-0c0c0c0c0c0c'; sput(PROG, [user('Ask me re
 
 const NOSTAT = '0f0f0f0f-0f0f-40f0-80f0-0f0f0f0f0f0f'; sput(NOSTAT, [user('Plan the menu', 60e3), call('AskUserQuestion', { questions: [{ question: 'Tea or coffee?', options: [{ label: 'Tea' }, { label: 'Coffee' }] }] }, 20e3)], 20e3);   // Cowork, or Claude Code before 2.1.269: no status file
 
+const tag = (recs, version, entrypoint) => recs.map((r) => ({ ...r, version, entrypoint })), CLOSED = '0b1b1b1b-1b1b-41b1-81b1-1b1b1b1b1b1b', COWORKQ = '0c1c1c1c-1c1c-41c1-81c1-1c1c1c1c1c1c';
+sput(CLOSED, [...tag([user('Tea or coffee', 60e3), call('AskUserQuestion', { questions: [{ question: 'Tea or coffee?' }] }, 50e3)], '2.1.301', 'cli'), { type: 'last-prompt' }, { type: 'cost-state' }], 120e3);   // a terminal session killed with its question open: that Claude Code writes a status, and there is none
+sput(COWORKQ, tag([user('Plan the menu', 60e3), call('AskUserQuestion', { questions: [{ question: 'Soup or salad?' }] }, 20e3)], '2.1.280', 'local-agent'), 20e3);   // Cowork: its status is kept elsewhere
+
 test('with no status from Claude Code, a question open in the transcript still needs you; a pending edit stays a guess', () => {
   const core = require('../server.js'), rows = core.boardRows(), r = rows.find((x) => x.id === NOSTAT);
+  assert.equal(rows.find((x) => x.id === CLOSED).state, 'working'); assert.equal(rows.find((x) => x.id === CLOSED).maybe, 1, 'a session closed with its question open: a guess on its tile, not a call for you');
+  assert.equal(rows.find((x) => x.id === COWORKQ).state, 'blocked'); assert.equal(rows.find((x) => x.id === COWORKQ).sure, 1);
   assert.equal(r.state, 'blocked'); assert.equal(r.sure, 1); assert.equal(r.ask, 'Tea or coffee?'); assert.equal(r.menu.sure, 1); assert.equal(r.known, undefined);
   assert.equal(rows.find((x) => x.id === id(GUESS)).state, 'working');
   core.shutdown();

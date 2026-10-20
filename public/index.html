@@ -2757,7 +2757,8 @@ setInterval(async () => {
 
 
 window.addEventListener('message', (e) => {   // VS Code asks for a given session: the one the status bar was clicked for, or the one of the Claude Code tab you went to (the message is named 'pin' on both sides, from when the call was pinned there)
-  const d = e.data; if (!EMBED || e.source !== window.parent || !d || d.agentStandup !== 'pin' || typeof d.id !== 'string') return;
+  const d = e.data; if (EMBED && e.source === window.parent && d && d.agentStandup === 'answered' && d.how === 'app' && typeof d.app === 'string') { toast('✋ ' + L('Elle vous attend dans ', 'Waiting for you in ') + d.app.slice(0, 40)); return; }   // the extension opened the terminal or app the session runs in (answerAt)
+  if (!EMBED || e.source !== window.parent || !d || d.agentStandup !== 'pin' || typeof d.id !== 'string') return;
   if (d.tab) { if (prefs.followTab !== false && S.live && !S.demo && typeof d.proj === 'string' && !(S.pick && S.pick.pin)) goSession(d.proj, d.id); return; }   // the Claude Code tab you went to: the call goes with you (followTab in extension.js; off in ⚙), unless you pinned a call (📌): that one stays while you go through your tabs
   const dp = typeof d.proj === 'string' ? d.proj : ''; if (!TOOL[dp]) prefs.proj = dp; S.pick = { proj: dp, id: d.id }; S.cur = null; setView('call'); if (S.live) { fillProjects(); followCurrent(); } else setMode('live');
 });
@@ -3210,7 +3211,7 @@ function paintAttn(now = Date.now()) {
 // Nothing to open (another tool, an older Claude Code, a session a program runs): the call alone goes there, as before.
 function answerAt(c) {
   if (!S.live || S.demo || !c || !c.id || (answerAt.k === c.id && Date.now() - answerAt.at < 2000)) return; answerAt.k = c.id; answerAt.at = Date.now();   // one opening per click, not per repeated click
-  if (EMBED) { window.parent.postMessage({ agentStandup: 'answer', proj: c.proj, id: c.id }, '*'); return; }   // in the editor: the extension opens a session of its own window itself, with no link
+  if (EMBED && APP.kind === 'editor') { window.parent.postMessage({ agentStandup: 'answer', proj: c.proj, id: c.id }, '*'); return; }   // in the editor: the extension opens a session of its own window itself, with no link
   fetch('/api/answer', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ proj: c.proj, id: c.id }) }).then((r) => r.json()).then((a) => { if (a && a.how === 'app' && a.app) toast('✋ ' + L('Elle vous attend dans ', 'Waiting for you in ') + a.app); }).catch(() => {});
 }
 function goAttn(others, open) {   // the next thing that needs you: an agent of this session, or another session (which the call goes to); others: only the other sessions (the red line shows those); open: a click, which also opens it where it can be answered (G only moves, so that it can be pressed again)
