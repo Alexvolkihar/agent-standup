@@ -144,6 +144,8 @@ test('live call: sessions, tabs and replays', { skip: missing || false, timeout:
       await c.until(() => document.querySelector('#askc').classList.contains('on'), null, 20000);   // the page used to say "✓ your turn · 5 min" past 3 minutes of quiet, with no card
       assert.match(await c.page.evaluate(() => agentState('main', Date.now()).txt), /needs you 5 min/, 'Claude Code says a menu is open: certain, no question mark'); assert.match(await c.page.evaluate(() => document.querySelector('#askc').innerText), /npm run build/);
       assert.deepEqual(await c.page.evaluate(() => [document.querySelector('#sline').className.split(' ')[0], document.querySelector('#attn').hidden]), ['blocked', true], 'the status line says it in red, once: no second red line under it for the same agent');
+      const posts = []; c.page.on('request', (q) => { if (q.url().endsWith('/api/answer')) posts.push(q.postData()); }); await c.page.evaluate(() => pillGo()); await c.until(() => true); await wait(800);
+      assert.deepEqual(posts.map((b) => JSON.parse(b).id), ['s'], 'a click on it also asks to open the session where it can be answered');
       await c.page.evaluate(() => document.querySelector('#prefs .mi[data-t=askCard]').click());
     } finally { fs.rmSync(path.join(CC, '1.json'), { force: true }); }   // every session of this file is called s
     await c.close();

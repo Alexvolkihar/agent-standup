@@ -405,5 +405,7 @@
  "Update the plugin in a terminal, then restart Claude Code:": "請在終端機中更新外掛，然後重新啟動 Claude Code：",
  "What’s new": "新功能",
  "Get told when a new version of Agent Standup is out? At most once a day, the app would ask npm for the number of the latest version: nothing about you or your sessions. npm sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "Agent Standup 有新版本時要提醒你嗎？每天最多一次，應用程式會向 npm 查詢最新版本號：不涉及你或你的工作階段。和任何下載一樣，npm 會看到你的 IP 位址。你可以隨時在 ⚙ › 全部設定 中關閉。",
- "Yes, tell me": "好，提醒我"
+ "Yes, tell me": "好，提醒我",
+ "Click to go and answer": "點擊前往回答",
+ "Waiting for you in ": "正在等你："
 }

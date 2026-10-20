@@ -405,5 +405,7 @@
  "Update the plugin in a terminal, then restart Claude Code:": "Atualize o plugin em um terminal e depois reinicie o Claude Code:",
  "What’s new": "Novidades",
  "Get told when a new version of Agent Standup is out? At most once a day, the app would ask npm for the number of the latest version: nothing about you or your sessions. npm sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "Quer saber quando sair uma nova versão do Agent Standup? No máximo uma vez por dia, o app perguntaria ao npm o número da versão mais recente: nada sobre você ou suas sessões. O npm vê seu endereço IP, como em qualquer download. Você pode desativar quando quiser em ⚙ › Todas as configurações.",
- "Yes, tell me": "Sim, me avise"
+ "Yes, tell me": "Sim, me avise",
+ "Click to go and answer": "Clique para ir responder",
+ "Waiting for you in ": "Esperando por você em "
 }

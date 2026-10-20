@@ -142,6 +142,14 @@ function claimNeeds(k, ep, kind) {   // true: this window is the first to tell i
   } catch (e) { return !(e && e.code === 'EEXIST'); }
 }
 claimNeeds.tidy = 0;
+// This window, for "answer in Claude Code" (server.js, answerIn): the Claude Code sessions it runs are children of this extension host, and a link with its window number opens there.
+function noteWindow() {
+  try {
+    const scheme = vscode.env.uriScheme; if (typeof scheme !== 'string' || !scheme || !vscode.env.asExternalUri) return;
+    Promise.resolve(vscode.env.asExternalUri(vscode.Uri.parse(scheme + '://doublegeste.agent-standup/window'))).then((u) => { const m = /\bwindowId=(\d+)/.exec(String((u && u.query) || (u && u.toString && u.toString()) || '')); require('./server.js').noteEditor({ scheme, windowId: m ? m[1] : '' }); }, () => {});
+  } catch {}
+}
+function answerOr(r) { let a = null; try { a = require('./server.js').answerIn(r.id); } catch {} if (!a || a.how !== 'editor') return openPanel({ id: r.id, proj: r.proj }); }   // a terminal, the Claude app or nothing to open: the call on that session, as before
 function needsText(r) {
   const plan = r.tool === 'ExitPlanMode' || (r.menu && r.menu.kind === 'plan'), what = r.ask || (plan ? tt('a plan to approve') : /^(AskUserQuestion)?$/.test(r.tool || '') ? '' : r.tool), name = clip(r.title || r.id, 60);
   return what ? tt('{0} is waiting for you: {1}', name, clip(what, 80)) : tt('{0} is waiting for you', name);
@@ -155,7 +163,7 @@ function needsYou(rows, now = Date.now()) {   // rows: those the status bar coun
     if (callInView() || onTabOf(r)) continue;   // seen: the call or its tab shows it, and that is the one word of it
     if (!claimNeeds(k, s.ep, 'first')) continue;
     const text = needsText(r), go = tt('Go to session'), call = tt('Open call'); needsTold = Date.now();
-    Promise.resolve(vscode.window.showInformationMessage('✋ ' + text, go, call)).then((a) => { if (a === go) return openPanel({ id: r.id, proj: r.proj }); if (a === call) return openPanel(); }, () => {});   // go: what the status bar does for that session
+    Promise.resolve(vscode.window.showInformationMessage('✋ ' + text, go, call)).then((a) => { if (a === go) return answerOr(r); if (a === call) return openPanel(); }, () => {});   // go: its Claude Code tab, where it can be answered, or else the call on it (what the status bar does for that session)
   }
   for (const k of [...needsSeen.keys()]) if (!here.has(k)) needsSeen.delete(k);   // answered (or the setting off): the next wait is told again
 }
@@ -250,6 +258,7 @@ function activate(ctx) {
   try { process.env.AGENT_STANDUP_HOST = `${vscode.env.appName || 'editor'} ${vscode.version || ''}`.trim(); } catch {}   // named in a problem report: VS Code, Cursor, VSCodium…
   try { process.env.AGENT_STANDUP_RATE = ratePage(); } catch {}   // ⚙ › Rate, in the page opened in a browser: the store this editor installs from
   codex0 = process.env.AGENT_STANDUP_CODEX; vibe0 = process.env.AGENT_STANDUP_VIBE;
+  noteWindow();
   const applyPath = () => { const e = serverEnv(); for (const [k, v] of Object.entries(e)) { if (v == null) delete process.env[k]; else process.env[k] = v; } if (started) started.then((s) => { if (s.kid && s.kid.connected) s.kid.send({ env: Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v === undefined ? null : v])) }); }).catch(() => {}); };   /* null: unset there too (JSON leaves out undefined) */   // here (the characters folder, a server in the extension host) and in the server's process
   applyPath(); ctx.subscriptions.push(vscode.workspace.onDidChangeConfiguration((ev) => { if (ev.affectsConfiguration('agentStandup.claudePath') || ev.affectsConfiguration('agentStandup.charactersPath') || ev.affectsConfiguration('agentStandup.codex') || ev.affectsConfiguration('agentStandup.vibe')) applyPath(); }));
   ctx.subscriptions.push(
@@ -292,5 +301,5 @@ function activate(ctx) {
   ctx.subscriptions.push({ dispose: () => clearInterval(watch) });   // its own server is asked whether it still runs, not pinged: a ping missed while a large session is read would start a second server and leave the first one running
   if (cfg().get('autoOpen')) openPanel();
 }
-async function deactivate() { stopping = true; try { if (started) { const s = await started; if (s.kid) s.kid.kill(); if (s.server) { s.server.close(); require('./server.js').shutdown(); } } } catch {} }
+async function deactivate() { stopping = true; try { require('./server.js').forgetEditor(); } catch {} try { if (started) { const s = await started; if (s.kid) s.kid.kill(); if (s.server) { s.server.close(); require('./server.js').shutdown(); } } } catch {} }
 module.exports = { activate, deactivate, _server: () => started, _pingActive: pingActive, _noteUse: noteUse, _rateNow: rateNow, _ratePages: RATE_PAGES, _askUsage: askUsage, _pingWeek: pingWeek, _mondayOf: mondayOf, _net: net, _needsYou: needsYou };

@@ -433,9 +433,9 @@ const menuOf = (b) => {   // what a menu waiting for you shows, from the call it
 // It is the only sign of a Bash approval: in the transcript, a command waiting for your go-ahead looks just like one that runs. A file whose process has ended is left out.
 const CC_SESSIONS = process.env.AGENT_STANDUP_CC_SESSIONS || path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'sessions');
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
-function liveStatus() {   // session id → { status, since }
+function liveStatus() {   // session id → { status, since, pid, ep (where it runs: claude-vscode, cli, claude-desktop, sdk-cli…) }
   const out = new Map(); let names = []; try { names = fs.readdirSync(CC_SESSIONS); } catch { return out; }
-  for (const n of names) { if (!/^\d+\.json$/.test(n)) continue; try { const s = JSON.parse(fs.readFileSync(path.join(CC_SESSIONS, n), 'utf8')); if (s && typeof s.sessionId === 'string' && /^(busy|idle|waiting)$/.test(s.status) && Number.isInteger(s.pid) && s.pid > 0 && alive(s.pid)) out.set(s.sessionId, { status: s.status !== 'waiting' ? s.status : s.waitingFor === 'dialog open' ? 'idle' : /^sdk-/.test(String(s.entrypoint || '')) ? 'busy' : s.status, since: Number(s.statusUpdatedAt) || 0 }); } catch {} }   /* a dialog you opened yourself (/model, /config, /mcp…) also says waiting: it is not a question for you. Nor is a menu of a session a program runs (claude -p, the Agent SDK: entrypoint sdk-cli, sdk-ts…): its question goes to that program, which answers it, never to you */
+  for (const n of names) { if (!/^\d+\.json$/.test(n)) continue; try { const s = JSON.parse(fs.readFileSync(path.join(CC_SESSIONS, n), 'utf8')); if (s && typeof s.sessionId === 'string' && /^(busy|idle|waiting)$/.test(s.status) && Number.isInteger(s.pid) && s.pid > 0 && alive(s.pid)) out.set(s.sessionId, { status: s.status !== 'waiting' ? s.status : s.waitingFor === 'dialog open' ? 'idle' : /^sdk-/.test(String(s.entrypoint || '')) ? 'busy' : s.status, since: Number(s.statusUpdatedAt) || 0, pid: s.pid, ep: String(s.entrypoint || '') }); } catch {} }   /* a dialog you opened yourself (/model, /config, /mcp…) also says waiting: it is not a question for you. Nor is a menu of a session a program runs (claude -p, the Agent SDK: entrypoint sdk-cli, sdk-ts…): its question goes to that program, which answers it, never to you */
   return out;
 }
 // When the person last did something in a session: an order, a slash command, a "!" command, an order typed while the lead was working. It is what moves the live call (see currentSession).
@@ -453,6 +453,37 @@ function typedBefore(file) {   // the first look at a session whose last order i
   const { text, cut } = readTail(file, 4 * 1024 * 1024), lines = text.split('\n');
   for (let i = lines.length - 1; i >= (cut ? 1 : 0); i--) { if (!lines[i].includes('"type":"user"') && !lines[i].includes('"queued_command"')) continue; try { const a = typedAt(JSON.parse(lines[i])); if (a) return a; } catch {} }
   return 0;
+}
+// Answer in Claude Code: a click on what needs you goes where it can be answered. The session's process (its status file) leads to the editor window that runs it: each Agent Standup
+// extension notes its window in <settings folder>/editors/<extension host pid>.json (its link scheme, its window number), and Claude Code's extension opens
+// <scheme>://anthropic.claude-code/open?session=<id>&windowId=<n> in that window, which brings up the session's tab. Without that note: the editor among the session's parent processes (macOS),
+// in whichever window was last used. A session in a terminal or in the Claude app (macOS): that app is brought to the front. Nothing leaves the computer: a local link or app is opened.
+const editorsDir = () => path.join(path.dirname(PREFS), 'editors'), EDITOR_APPS = [[/Visual Studio Code - Insiders\.app|Code - Insiders\.app/, 'vscode-insiders'], [/Visual Studio Code\.app|\/Code\.app\//, 'vscode'], [/\/Cursor\.app\//, 'cursor'], [/\/Windsurf\.app\//, 'windsurf'], [/\/VSCodium\.app\//, 'vscodium']];
+function noteEditor(info) {   // the extension, for its window: { scheme, windowId } (forgetEditor when the window closes)
+  try { const d = editorsDir(); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, process.pid + '.json'), JSON.stringify({ pid: process.pid, scheme: String((info && info.scheme) || ''), windowId: String((info && info.windowId) || '') })); } catch (e) { logError('editor note', e); }
+}
+function forgetEditor() { try { fs.unlinkSync(path.join(editorsDir(), process.pid + '.json')); } catch {} }
+function procTree() {   // pid → { ppid, cmd }: one look at every process (macOS and Linux; nothing on Windows)
+  const m = new Map(); if (process.platform === 'win32') return m;
+  try { for (const l of execFileSync('ps', ['-axo', 'pid=,ppid=,comm='], { encoding: 'utf8', timeout: 3000, maxBuffer: 16 << 20 }).split('\n')) { const x = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(l); if (x) m.set(+x[1], { ppid: +x[2], cmd: x[3] }); } } catch {}
+  return m;
+}
+function openLocal(args) {   // a link or an app, opened as a click on it would be (AGENT_STANDUP_ANSWER=dry: said, not opened, for the tests)
+  if (process.env.AGENT_STANDUP_ANSWER === 'dry') return;
+  const [cmd, a] = process.platform === 'darwin' ? ['open', args] : process.platform === 'win32' ? ['rundll32', ['url.dll,FileProtocolHandler', args[args.length - 1]]] : ['xdg-open', [args[args.length - 1]]];
+  try { spawn(cmd, a, { stdio: 'ignore', detached: true, windowsHide: true }).on('error', () => {}).unref(); } catch {}
+}
+function answerIn(id) {   // { how: 'editor' | 'app' | '', app, link }: where the session that waits can be answered, opened
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id))) return { how: '' };
+  const w = liveStatus().get(String(id)); if (!w || !w.pid || !/^(claude-vscode|cli|claude-desktop)$/.test(w.ep)) return { how: '' };   // a session a program runs (sdk-…) has no one to answer it there
+  const tree = procTree(), up = []; for (let p = w.pid, i = 0; p > 1 && i < 20 && tree.has(p); i++) { up.push(p); p = tree.get(p).ppid; }
+  const link = (scheme, win) => `${scheme}://anthropic.claude-code/open?session=${String(id).toLowerCase()}${win ? '&windowId=' + win : ''}`;
+  if (w.ep === 'claude-vscode') {
+    for (const p of up) { let e = null; try { e = JSON.parse(fs.readFileSync(path.join(editorsDir(), p + '.json'), 'utf8')); } catch {} if (e && /^[a-z][a-z0-9+.-]{1,30}$/.test(e.scheme) && /^\d{1,9}$/.test(String(e.windowId))) { const l = link(e.scheme, e.windowId); openLocal([l]); return { how: 'editor', link: l }; } }   // the window that runs it: its extension host is one of its parents
+    for (const p of up) for (const [re, scheme] of EDITOR_APPS) if (re.test(tree.get(p).cmd)) { const l = link(scheme, ''); openLocal([l]); return { how: 'editor', link: l }; }
+  }
+  if (process.platform === 'darwin') for (const p of up.slice().reverse()) { const m = /^(\/.+?\.app)\//.exec(tree.get(p).cmd); if (m) { openLocal(['-a', m[1]]); return { how: 'app', app: path.basename(m[1], '.app') }; } }   // the outermost app: Terminal, iTerm, Claude…
+  return { how: '' };
 }
 function parseTail(file, st) {
   const sig = st.mtimeMs + ':' + st.size, hit = boardCache.get(file); if (hit && hit.sig === sig) return hit;
@@ -1252,6 +1283,7 @@ function start(port = PORT) {
     if (url.pathname === '/api/prefs.js') { res.writeHead(200, { 'content-type': 'application/javascript', 'cache-control': 'no-store' }); return res.end('window.SAVED_PREFS = ' + JSON.stringify(readPrefs()).replace(/</g, '\\u003c') + '; window.AS_APP = ' + JSON.stringify(appKind()).replace(/</g, '\\u003c') + ';'); }
     if (url.pathname === '/api/prefs' && req.method === 'PUT') return readBody((body) => { try { const v = JSON.parse(body); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('prefs must be an object'); const cur = readPrefs() || {}; if ((+cur.shareUsageT || 0) > (+v.shareUsageT || 0)) { v.shareUsage = cur.shareUsage; v.shareUsageT = cur.shareUsageT; v.usageAsked = cur.usageAsked; } writePrefs(v);   /* the usage answer: a page opened before it was changed elsewhere (another tab, the desktop app) writes back its old settings, not its old answer */ json({ ok: true }); } catch (e) { json({ error: String(e.message || e) }, 400); } });
     if (url.pathname === '/api/prefs') return json(readPrefs() || {});
+    if (url.pathname === '/api/answer' && req.method === 'POST') return readBody((body) => { let v = {}; try { v = JSON.parse(body); } catch {} json(answerIn(String((v && v.id) || ''))); });   /* a click on what needs you: open it where it can be answered (answerIn) */
     if (url.pathname === '/api/done' && req.method === 'POST') return readBody((body) => { try { const v = JSON.parse(body); json({ ok: setDone(String(v.proj || ''), String(v.id || ''), v.on !== false) }); } catch (e) { logError('done', e); json({ error: String(e.message || e) }, 400); } });
     if (url.pathname === '/api/errors' && req.method === 'POST') return readBody((body) => { try { const b = JSON.parse(body) || {}; logError('page' + (typeof b.where === 'string' && b.where ? ' ' + b.where.slice(0, 40) : ''), { message: String(b.msg || ''), stack: String(b.stack || '') }); json({ ok: true }); } catch (e) { json({ error: String(e.message || e) }, 400); } });   // an error of the page, written to the local log
     if (url.pathname === '/api/errors') return json(errorReport());
@@ -1324,7 +1356,7 @@ function start(port = PORT) {
   } catch (e) { logError(req.method + ' ' + url.pathname, e); if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });
 }
-module.exports = { _winArg: winArg, start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, packsDir, installPack, logError, updateInfo, _reveal: reveal, _scrub: { tidy, homeRe }, _artifact: { page: artifactPage, csp: artifactCsp } };
+module.exports = { answerIn, noteEditor, forgetEditor, _winArg: winArg, start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, packsDir, installPack, logError, updateInfo, _reveal: reveal, _scrub: { tidy, homeRe }, _artifact: { page: artifactPage, csp: artifactCsp } };
 if (require.main === module && process.env.AGENT_STANDUP_CHILD === '1' && typeof process.send === 'function') {   // started by the VS Code extension in a process of its own (see extension.js): reading a large session no longer stops the editor's extensions. Asked for by name: pm2 and others give any app a channel too
   const srv = start(+process.env.PORT || 0), tell = (m) => { try { process.send(m); } catch {} };
   srv.on('listening', () => tell({ port: srv.address().port })).on('error', (e) => { tell({ error: e.code || String(e) }); process.exit(1); });

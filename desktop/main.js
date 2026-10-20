@@ -40,6 +40,7 @@ function refreshTray() {
   if (c.needs > lastNeeds && !(win && win.isFocused()) && Notification.isSupported()) {
     const r = c.latest, clip = (s, k) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > k ? s.slice(0, k - 1).trimEnd() + '…' : s; };
     const n = new Notification({ title: 'Agent Standup', body: r ? `✋ ${clip(r.title || r.id, 60)} may be waiting for you` + (r.ask ? ': ' + clip(r.ask, 80) : '') : 'An agent may be waiting for you ✋' });   // its question, or the call it waits to run: Bash(npm test)
+    n.on('click', () => { let a = null; try { a = r && core.answerIn(r.id); } catch {} if (!a || a.how !== 'editor') showWindow(); });   // where it can be answered: its Claude Code tab in the editor (server.js, answerIn), else this window
     n.on('failed', (e, err) => { if (!notifyFailed) console.warn('notification not shown:', err); notifyFailed = true; });   // macOS refuses it when notifications are off for the app, or the app is not signed
     n.show();
   }

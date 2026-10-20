@@ -2,7 +2,7 @@
 // since when it has waited, apart from how long it worked before; a status file whose process has ended says nothing.
 const test = require('node:test'), assert = require('node:assert'), fs = require('fs'), os = require('os'), path = require('path'), { spawnSync } = require('child_process');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'as-waiting-')), PROJECTS = path.join(tmp, 'projects'), SESSIONS = path.join(tmp, 'sessions');
-Object.assign(process.env, { AGENT_STANDUP_PREFS: path.join(tmp, 'prefs.json'), AGENT_STANDUP_KOKORO_DIR: path.join(tmp, 'kokoro'), AGENT_STANDUP_PROJECTS: PROJECTS, AGENT_STANDUP_CC_SESSIONS: SESSIONS });
+Object.assign(process.env, { AGENT_STANDUP_ANSWER: 'dry', AGENT_STANDUP_PREFS: path.join(tmp, 'prefs.json'), AGENT_STANDUP_KOKORO_DIR: path.join(tmp, 'kokoro'), AGENT_STANDUP_PROJECTS: PROJECTS, AGENT_STANDUP_CC_SESSIONS: SESSIONS });
 fs.mkdirSync(SESSIONS, { recursive: true });
 
 const now = Date.now(), iso = (ago) => new Date(now - ago).toISOString(), id = (n) => `${String(n).repeat(8)}-${String(n).repeat(4)}-4${String(n).repeat(3)}-8${String(n).repeat(3)}-${String(n).repeat(12)}`;
@@ -99,4 +99,20 @@ test('a menu open on a message with two commands names the first one, the one Cl
   const core = require('../server.js'), r = core.boardRows().find((x) => x.id === oid('f'));
   assert.equal(r.state, 'blocked'); assert.equal(r.ask, 'Bash(npm test)');
   core.shutdown();
+});
+
+test('a click on what needs you opens the session where it can be answered: its Claude Code tab, in the editor window that runs it', { skip: process.platform === 'win32' ? 'no process tree on Windows' : false }, async () => {
+  const { spawn } = require('child_process'), http = require('http'), kid = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30000)']), sid = '0d0d0d0d-0d0d-40d0-80d0-0d0d0d0d0d0d', sdk = '0e0e0e0e-0e0e-40e0-80e0-0e0e0e0e0e0e';   // kid: the claude of a Claude Code tab; this process: the extension host of its window
+  const st = (k, id, ep) => fs.writeFileSync(path.join(SESSIONS, k + '.json'), JSON.stringify({ pid: kid.pid, sessionId: id, status: 'waiting', waitingFor: 'input needed', entrypoint: ep, statusUpdatedAt: now }));
+  st(120, sid, 'claude-vscode'); st(121, sdk, 'sdk-cli');
+  const core = require('../server.js'), srv = core.start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;
+  const ask = (body, headers = {}) => new Promise((done) => { const q = http.request({ host: '127.0.0.1', port, path: '/api/answer', method: 'POST', headers: { 'content-type': 'application/json', ...headers } }, (r) => { let b = ''; r.on('data', (d) => (b += d)); r.on('end', () => done({ status: r.statusCode, j: (() => { try { return JSON.parse(b); } catch { return null; } })() })); }); q.end(JSON.stringify(body)); });
+  try {
+    core.noteEditor({ scheme: 'vscode', windowId: '7' });   // what the extension notes for its window
+    assert.deepEqual((await ask({ id: sid })).j, { how: 'editor', link: `vscode://anthropic.claude-code/open?session=${sid}&windowId=7` }, 'that window, which brings up its tab');
+    core.forgetEditor(); const b = (await ask({ id: sid })).j; assert.ok(b.how === '' || (b.how === 'app' && b.app) || /^(vscode|vscode-insiders|cursor|windsurf|vscodium):\/\/anthropic\.claude-code\/open\?session=0d0d0d0d-0d0d-40d0-80d0-0d0d0d0d0d0d$/.test(b.link), JSON.stringify(b));   // no note: the editor among its parents, else the app it runs in (macOS), else nothing
+    assert.deepEqual((await ask({ id: sdk })).j, { how: '' }, 'a session a program runs: no one to answer it there');
+    assert.deepEqual((await ask({ id: '../../etc' })).j, { how: '' }); assert.deepEqual((await ask({ id: id(MENU) })).j, { how: '' }, 'where it runs not said (an older Claude Code): nothing opened');
+    assert.equal((await ask({ id: sid }, { 'sec-fetch-site': 'cross-site' })).status, 403, 'another site cannot make it open anything');
+  } finally { kid.kill(); core.forgetEditor(); for (const k of [120, 121]) fs.rmSync(path.join(SESSIONS, k + '.json'), { force: true }); srv.close(); core.shutdown(); }
 });

@@ -405,5 +405,7 @@
  "Update the plugin in a terminal, then restart Claude Code:": "ターミナルでプラグインを更新してから、Claude Code を再起動してください：",
  "What’s new": "新機能",
  "Get told when a new version of Agent Standup is out? At most once a day, the app would ask npm for the number of the latest version: nothing about you or your sessions. npm sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "Agent Standup の新しいバージョンが出たら知らせましょうか？ 1日に1回まで、アプリが npm に最新バージョンの番号を問い合わせます。あなたやセッションについての情報は送りません。他のダウンロードと同じく、npm にはあなたの IP アドレスが見えます。⚙ › すべての設定 でいつでもオフにできます。",
- "Yes, tell me": "はい、知らせて"
+ "Yes, tell me": "はい、知らせて",
+ "Click to go and answer": "クリックして回答しに行く",
+ "Waiting for you in ": "待っています: "
 }

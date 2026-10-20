@@ -2,7 +2,7 @@
 // VS Code tells a tab's label, not its session, so the label is looked up among the titles of the recent sessions.
 const test = require('node:test'), assert = require('node:assert'), fs = require('fs'), os = require('os'), path = require('path'), Module = require('module');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'as-ext-'));
-process.env.AGENT_STANDUP_PREFS = path.join(tmp, 'prefs.json'); process.env.AGENT_STANDUP_KOKORO_DIR = path.join(tmp, 'kokoro'); process.env.AGENT_STANDUP_PROJECTS = path.join(tmp, 'projects'); process.env.AGENT_STANDUP_CODEX = 'off'; process.env.AGENT_STANDUP_VIBE = 'off'; process.env.AGENT_STANDUP_CC_SESSIONS = path.join(tmp, 'sessions');   // not the status of the sessions open on the machine the tests run on
+process.env.AGENT_STANDUP_PREFS = path.join(tmp, 'prefs.json'); process.env.AGENT_STANDUP_KOKORO_DIR = path.join(tmp, 'kokoro'); process.env.AGENT_STANDUP_PROJECTS = path.join(tmp, 'projects'); process.env.AGENT_STANDUP_CODEX = 'off'; process.env.AGENT_STANDUP_VIBE = 'off'; process.env.AGENT_STANDUP_CC_SESSIONS = path.join(tmp, 'sessions'); process.env.AGENT_STANDUP_ANSWER = 'dry';   // not the status of the sessions open on the machine the tests run on
 
 // ---- sessions with a title, the way Claude Code writes one ----
 function titled(proj, id, title, minutesAgo) {
