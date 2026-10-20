@@ -435,7 +435,7 @@ const CC_SESSIONS = process.env.AGENT_STANDUP_CC_SESSIONS || path.join(process.e
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
 function liveStatus() {   // session id → { status, since, pid, ep (where it runs: claude-vscode, cli, claude-desktop, sdk-cli…) }
   const out = new Map(); let names = []; try { names = fs.readdirSync(CC_SESSIONS); } catch { return out; }
-  for (const n of names) { if (!/^\d+\.json$/.test(n)) continue; try { const s = JSON.parse(fs.readFileSync(path.join(CC_SESSIONS, n), 'utf8')); if (s && typeof s.sessionId === 'string' && /^(busy|idle|waiting)$/.test(s.status) && Number.isInteger(s.pid) && s.pid > 0 && alive(s.pid)) out.set(s.sessionId, { status: s.status !== 'waiting' ? s.status : s.waitingFor === 'dialog open' ? 'idle' : /^sdk-/.test(String(s.entrypoint || '')) ? 'busy' : s.status, since: Number(s.statusUpdatedAt) || 0, pid: s.pid, ep: String(s.entrypoint || '') }); } catch {} }   /* a dialog you opened yourself (/model, /config, /mcp…) also says waiting: it is not a question for you. Nor is a menu of a session a program runs (claude -p, the Agent SDK: entrypoint sdk-cli, sdk-ts…): its question goes to that program, which answers it, never to you */
+  for (const n of names) { if (!/^\d+\.json$/.test(n)) continue; try { const s = JSON.parse(fs.readFileSync(path.join(CC_SESSIONS, n), 'utf8')); if (s && typeof s.sessionId === 'string' && /^(busy|idle|waiting)$/.test(s.status) && Number.isInteger(s.pid) && s.pid > 0 && alive(s.pid)) out.set(s.sessionId, { status: s.status !== 'waiting' ? s.status : s.waitingFor === 'dialog open' ? 'idle' : s.entrypoint === 'sdk-cli' ? 'busy' : s.status, since: Number(s.statusUpdatedAt) || 0, pid: s.pid, ep: String(s.entrypoint || '') }); } catch {} }   /* a dialog you opened yourself (/model, /config, /mcp…) also says waiting: it is not a question for you. Nor is a menu of a session started with claude -p (entrypoint sdk-cli): its question goes to the program that started it. An Agent SDK host (sdk-ts, sdk-py: Zed, a home-made app) may show its menus to a person, so those are kept */
   return out;
 }
 // When the person last did something in a session: an order, a slash command, a "!" command, an order typed while the lead was working. It is what moves the live call (see currentSession).
@@ -460,7 +460,10 @@ function typedBefore(file) {   // the first look at a session whose last order i
 // in whichever window was last used. A session in a terminal or in the Claude app (macOS): that app is brought to the front. Nothing leaves the computer: a local link or app is opened.
 const editorsDir = () => path.join(path.dirname(PREFS), 'editors'), EDITOR_APPS = [[/Visual Studio Code - Insiders\.app|Code - Insiders\.app/, 'vscode-insiders'], [/Visual Studio Code\.app|\/Code\.app\//, 'vscode'], [/\/Cursor\.app\//, 'cursor'], [/\/Windsurf\.app\//, 'windsurf'], [/\/VSCodium\.app\//, 'vscodium']];
 function noteEditor(info) {   // the extension, for its window: { scheme, windowId } (forgetEditor when the window closes)
-  try { const d = editorsDir(); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, process.pid + '.json'), JSON.stringify({ pid: process.pid, scheme: String((info && info.scheme) || ''), windowId: String((info && info.windowId) || '') })); } catch (e) { logError('editor note', e); }
+  try {
+    const d = editorsDir(); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, process.pid + '.json'), JSON.stringify({ pid: process.pid, ppid: process.ppid, scheme: String((info && info.scheme) || ''), windowId: String((info && info.windowId) || '') }));   // ppid: a note left by a crash is not taken for another process that gets its number
+    for (const n of fs.readdirSync(d)) { const p = +n.replace(/\.json$/, ''); if (/^\d+\.json$/.test(n) && !alive(p)) try { fs.unlinkSync(path.join(d, n)); } catch {} }   // the notes of windows that closed without saying so
+  } catch (e) { logError('editor note', e); }
 }
 function forgetEditor() { try { fs.unlinkSync(path.join(editorsDir(), process.pid + '.json')); } catch {} }
 function procTree() {   // pid → { ppid, cmd }: one look at every process (macOS and Linux; nothing on Windows)
@@ -473,15 +476,24 @@ function openLocal(args) {   // a link or an app, opened as a click on it would 
   const [cmd, a] = process.platform === 'darwin' ? ['open', args] : process.platform === 'win32' ? ['rundll32', ['url.dll,FileProtocolHandler', args[args.length - 1]]] : ['xdg-open', [args[args.length - 1]]];
   try { spawn(cmd, a, { stdio: 'ignore', detached: true, windowsHide: true }).on('error', () => {}).unref(); } catch {}
 }
-function answerIn(id) {   // { how: 'editor' | 'app' | '', app, link }: where the session that waits can be answered, opened
+function answerIn(id, opts = {}) {   // { how: 'editor' | 'app' | '', app, link }: where the session that waits can be answered, opened. opts.here(id): the extension, for a session of its own window (no link, and no prompt from the editor)
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id))) return { how: '' };
   const w = liveStatus().get(String(id)); if (!w || !w.pid || !/^(claude-vscode|cli|claude-desktop)$/.test(w.ep)) return { how: '' };   // a session a program runs (sdk-…) has no one to answer it there
   const tree = procTree(), up = []; for (let p = w.pid, i = 0; p > 1 && i < 20 && tree.has(p); i++) { up.push(p); p = tree.get(p).ppid; }
   const link = (scheme, win) => `${scheme}://anthropic.claude-code/open?session=${String(id).toLowerCase()}${win ? '&windowId=' + win : ''}`;
   if (w.ep === 'claude-vscode') {
-    for (const p of up) { let e = null; try { e = JSON.parse(fs.readFileSync(path.join(editorsDir(), p + '.json'), 'utf8')); } catch {} if (e && /^[a-z][a-z0-9+.-]{1,30}$/.test(e.scheme) && /^\d{1,9}$/.test(String(e.windowId))) { const l = link(e.scheme, e.windowId); openLocal([l]); return { how: 'editor', link: l }; } }   // the window that runs it: its extension host is one of its parents
-    for (const p of up) for (const [re, scheme] of EDITOR_APPS) if (re.test(tree.get(p).cmd)) { const l = link(scheme, ''); openLocal([l]); return { how: 'editor', link: l }; }
+    for (const p of up) {   // the window that runs it: its extension host is one of its parents
+      let e = null; try { e = JSON.parse(fs.readFileSync(path.join(editorsDir(), p + '.json'), 'utf8')); } catch {} if (!e || e.ppid !== tree.get(p).ppid) continue;
+      if (e.pid === process.pid && typeof opts.here === 'function') { try { opts.here(String(id).toLowerCase()); } catch {} return { how: 'editor', here: 1 }; }
+      if (/^[a-z][a-z0-9+.-]{1,30}$/.test(e.scheme) && /^\d{1,9}$/.test(String(e.windowId))) { const l = link(e.scheme, e.windowId); openLocal([l]); return { how: 'editor', link: l }; }
+    }
+    for (const p of up) for (const [re, scheme] of EDITOR_APPS) if (re.test(tree.get(p).cmd)) {   // no note: the link goes to the editor's last used window, so only when it has one (one extension host); else the editor comes to the front, and its tab is yours to pick
+      const host = tree.get(p).cmd, hosts = [...tree.values()].filter((x) => x.cmd === host && (tree.get(x.ppid) || {}).cmd !== host).length;   // an extension host per window, started by the app itself (language servers and the like are its children)
+      if (hosts === 1 && /Helper \(Plugin\)/.test(host)) { const l = link(scheme, ''); openLocal([l]); return { how: 'editor', link: l }; }
+      break;
+    }
   }
+  if (process.platform === 'darwin' && up.some((p) => /\/iTermServer/.test(tree.get(p).cmd))) { openLocal(['-b', 'com.googlecode.iterm2']); return { how: 'app', app: 'iTerm' }; }   // iTerm2 runs its shells under a server of its own, not under the app
   if (process.platform === 'darwin') for (const p of up.slice().reverse()) { const m = /^(\/.+?\.app)\//.exec(tree.get(p).cmd); if (m) { openLocal(['-a', m[1]]); return { how: 'app', app: path.basename(m[1], '.app') }; } }   // the outermost app: Terminal, iTerm, Claude…
   return { how: '' };
 }

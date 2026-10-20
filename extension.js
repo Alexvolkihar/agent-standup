@@ -87,6 +87,7 @@ const relay = (webview) => webview.onDidReceiveMessage((m) => {
   if (m.agentStandup === 'openBrowser') openBrowser();
   if (m.agentStandup === 'openCharacters') openCharacters();
   if (m.agentStandup === 'rate') rateNow();
+  if (m.agentStandup === 'answer' && typeof m.id === 'string') answerHere(m.id);
   if (m.agentStandup === 'notify' && typeof m.text === 'string' && !(m.text.includes('✋') && cfg().get('notifyNeedsYou') !== false && !callInView() && Date.now() - needsTold < 60e3)) vscode.window.showInformationMessage('Agent Standup: ' + m.text.slice(0, 120));   // the page's own "may be waiting for you ✋", from a call out of view, a minute after the notification that names the session (see needsYou): the same news twice. Otherwise it is the only word of it (a stalled agent, a sub-agent's approval, a session of another folder)
   if (m.agentStandup === 'openExternal') { try { const u = new URL(m.url); if (u.protocol === 'https:' && (DONATE_HOSTS.test(u.hostname) || SHOP_HOSTS.test(u.hostname) || (u.hostname === 'claude.ai' && ARTIFACT_PATH.test(u.pathname)))) vscode.env.openExternal(u.search || u.hash ? u.toString() : vscode.Uri.parse(u.toString())); } catch {} }
 });
@@ -149,7 +150,9 @@ function noteWindow() {
     Promise.resolve(vscode.env.asExternalUri(vscode.Uri.parse(scheme + '://doublegeste.agent-standup/window'))).then((u) => { const m = /\bwindowId=(\d+)/.exec(String((u && u.query) || (u && u.toString && u.toString()) || '')); require('./server.js').noteEditor({ scheme, windowId: m ? m[1] : '' }); }, () => {});
   } catch {}
 }
-function answerOr(r) { let a = null; try { a = require('./server.js').answerIn(r.id); } catch {} if (!a || a.how !== 'editor') return openPanel({ id: r.id, proj: r.proj }); }   // a terminal, the Claude app or nothing to open: the call on that session, as before
+const openHere = (sid) => vscode.commands.executeCommand('claude-vscode.primaryEditor.open', sid);   // Claude Code's own command, the one its link runs: the session's tab, brought up
+const answerHere = (id) => { try { return require('./server.js').answerIn(id, { here: openHere }); } catch { return null; } };   // a session of this window: its tab; another window or app: the link (server.js, answerIn)
+function answerOr(r) { const a = answerHere(r.id); if (!a || a.how !== 'editor') return openPanel({ id: r.id, proj: r.proj }); }   // a terminal, the Claude app or nothing to open: the call on that session, as before
 function needsText(r) {
   const plan = r.tool === 'ExitPlanMode' || (r.menu && r.menu.kind === 'plan'), what = r.ask || (plan ? tt('a plan to approve') : /^(AskUserQuestion)?$/.test(r.tool || '') ? '' : r.tool), name = clip(r.title || r.id, 60);
   return what ? tt('{0} is waiting for you: {1}', name, clip(what, 80)) : tt('{0} is waiting for you', name);

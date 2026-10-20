@@ -1524,7 +1524,7 @@ function paintAsk(now) {
   if (el.dataset.k !== m.id) { el.dataset.k = m.id; el.className = 'on'; el.setAttribute('aria-label', L('Ce que la session attend de vous', 'What the session is waiting for from you')); el.innerHTML = askHtml(m, p); }   // built once per menu, so it is announced once
   const t = el.querySelector('.ak-t'); if (t) t.textContent = fmtShort(Math.max(0, now - (row.since || now)));
 }
-$('#askc').onclick = (e) => { if (e.target.closest('.ax')) { ASKC.off = $('#askc').dataset.k; paintAsk(Date.now()); } else answerAt(S.cur); };
+$('#askc').onclick = (e) => { if (e.target.closest('.ax')) { ASKC.off = $('#askc').dataset.k; paintAsk(Date.now()); } else if (!String(getSelection() || '')) answerAt(S.cur); };   /* not while you select its text to copy it */
 function paintStates() {
   const now = Date.now(), n = { working: 0, waiting: 0, blocked: 0, stalled: 0, done: 0 }, ros = [], attn = [];
   for (const p of Object.values(S.agents)) {
@@ -3209,18 +3209,19 @@ function paintAttn(now = Date.now()) {
 // A click on what needs you also opens that session where it can be answered: its Claude Code tab in the editor window that runs it, or the terminal or app it runs in (server.js, answerIn).
 // Nothing to open (another tool, an older Claude Code, a session a program runs): the call alone goes there, as before.
 function answerAt(c) {
-  if (!S.live || S.demo || !c || !c.id) return;
+  if (!S.live || S.demo || !c || !c.id || (answerAt.k === c.id && Date.now() - answerAt.at < 2000)) return; answerAt.k = c.id; answerAt.at = Date.now();   // one opening per click, not per repeated click
+  if (EMBED) { window.parent.postMessage({ agentStandup: 'answer', proj: c.proj, id: c.id }, '*'); return; }   // in the editor: the extension opens a session of its own window itself, with no link
   fetch('/api/answer', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ proj: c.proj, id: c.id }) }).then((r) => r.json()).then((a) => { if (a && a.how === 'app' && a.app) toast('✋ ' + L('Elle vous attend dans ', 'Waiting for you in ') + a.app); }).catch(() => {});
 }
-function goAttn(others) {   // the next thing that needs you: an agent of this session, or another session (which the call goes to); others: only the other sessions (the red line shows those)
+function goAttn(others, open) {   // the next thing that needs you: an agent of this session, or another session (which the call goes to); others: only the other sessions (the red line shows those); open: a click, which also opens it where it can be answered (G only moves, so that it can be pressed again)
   const a = attnItems(Date.now()).filter((x) => !others || x.r); if (!a.length) { toast(L('Personne n’a besoin de vous pour le moment', 'Nobody needs you right now')); return; }
   goAttn.i = ((goAttn.i || 0) + (goAttn.at && Date.now() - goAttn.at < 30000 ? 1 : 0)) % a.length; goAttn.at = Date.now(); const x = a[goAttn.i];
-  if (x.r) { goAttn.i = 0; setView('call'); goSession(x.r.proj, x.r.id); answerAt(x.r); return; }
-  if (x.sure) answerAt(S.cur);
+  if (x.r) { goAttn.i = 0; setView('call'); goSession(x.r.proj, x.r.id); if (open) answerAt(x.r); return; }
+  if (open && x.sure) answerAt(S.cur);
   if (document.body.classList.contains('tree') || document.body.classList.contains('board')) setView('call');
   S.focusLock = Date.now() + 25000; setFocus(x.id); const t = $('#t-' + x.id); if (t) { t.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); popTile(x.id); }
 }
-$('#attn').onclick = () => goAttn(true);
+$('#attn').onclick = () => goAttn(true, true);
 // J / K (or a click on the “need you” chip) jump to the agents that need you or are stalled, one after the other
 function jumpAttn(dir = 1) {
   const a = (S.attn || []).filter((id) => $('#t-' + id));

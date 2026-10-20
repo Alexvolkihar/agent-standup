@@ -52,8 +52,11 @@ test('with no status from Claude Code, a question open in the transcript still n
   core.shutdown();
 });
 
-test('a question in a session a program runs (claude -p, the Agent SDK) is not for you: it never needs you', () => {
+const HOST = '0a1a1a1a-1a1a-41a1-81a1-1a1a1a1a1a1a'; sput(HOST, [user('Ask me red or blue', 60e3), call('AskUserQuestion', { questions: [{ question: 'Red or blue?', options: [{ label: 'Red' }, { label: 'Blue' }] }] }, 30e3)], 30e3); fs.writeFileSync(path.join(SESSIONS, '115.json'), JSON.stringify({ pid: process.pid, sessionId: HOST, status: 'waiting', waitingFor: 'input needed', entrypoint: 'sdk-ts', statusUpdatedAt: now - 28e3 }));   // an Agent SDK host (Zed…) that shows its menus to a person
+
+test('a question in a session started with claude -p is not for you: it never needs you; one in an Agent SDK host that shows it to a person still does', () => {
   const core = require('../server.js'), r = core.boardRows().find((x) => x.id === PROG);
+  assert.equal(core.boardRows().find((x) => x.id === HOST).state, 'blocked');
   assert.equal(r.state, 'working'); assert.equal(r.sure, undefined); assert.equal(r.maybe, undefined); assert.equal(r.menu, undefined); assert.equal(r.known, 1);
   core.shutdown();
 });
@@ -119,6 +122,9 @@ test('a click on what needs you opens the session where it can be answered: its 
   try {
     core.noteEditor({ scheme: 'vscode', windowId: '7' });   // what the extension notes for its window
     assert.deepEqual((await ask({ id: sid })).j, { how: 'editor', link: `vscode://anthropic.claude-code/open?session=${sid}&windowId=7` }, 'that window, which brings up its tab');
+    let here = ''; assert.deepEqual(core.answerIn(sid, { here: (x) => { here = x; } }), { how: 'editor', here: 1 }); assert.equal(here, sid, 'the extension of that very window opens it itself: no link, no prompt from the editor');
+    const note = path.join(path.dirname(process.env.AGENT_STANDUP_PREFS), 'editors', process.pid + '.json'), n = JSON.parse(fs.readFileSync(note, 'utf8')); fs.writeFileSync(note, JSON.stringify({ ...n, ppid: n.ppid + 1, windowId: '9' }));
+    assert.ok(!/windowId=9/.test((await ask({ id: sid })).j.link || ''), 'a note left by another process that had the same number (a crash) is not followed');
     core.forgetEditor(); const b = (await ask({ id: sid })).j; assert.ok(b.how === '' || (b.how === 'app' && b.app) || /^(vscode|vscode-insiders|cursor|windsurf|vscodium):\/\/anthropic\.claude-code\/open\?session=0d0d0d0d-0d0d-40d0-80d0-0d0d0d0d0d0d$/.test(b.link), JSON.stringify(b));   // no note: the editor among its parents, else the app it runs in (macOS), else nothing
     assert.deepEqual((await ask({ id: sdk })).j, { how: '' }, 'a session a program runs: no one to answer it there');
     assert.deepEqual((await ask({ id: '../../etc' })).j, { how: '' }); assert.deepEqual((await ask({ id: id(MENU) })).j, { how: '' }, 'where it runs not said (an older Claude Code): nothing opened');
