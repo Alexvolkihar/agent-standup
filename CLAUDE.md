@@ -28,6 +28,7 @@ Agent Standup shows the Claude Code, Codex, Mistral Vibe and Cowork sessions of 
 - `npm test` takes about 2.5 minutes: the four browser files run side by side. While iterating, run one file: `node --test test/server.test.js`.
 - `npm run i18n` checks that every language has every key, and rebuilds the website and landing locale files.
 - The app leaves out sessions in temporary folders. Put throwaway sessions and test copies under `reports/` (git-ignored), not `/tmp`.
+- A live `claude` that an agent starts to probe Claude Code (a question, a permission menu) runs in its scratchpad or another temporary folder, with `CLAUDE_CODE_ENTRYPOINT` and `CLAUDECODE` unset (it then says `sdk-cli`). Under `reports/` its menus reach Arthur as "needs you" in his own call and editor.
 
 ## Checks after every edit (CI runs the same ones)
 - `node --check` on each `.js` you touched.
