@@ -1,6 +1,7 @@
 // npm run stats — what the project can see about itself: the public counters of the stores and of GitHub (no server, no tracking of people).
 //   npm run stats                        today's figures, what moved since you last looked, and the trend day by day
 //   node scripts/stats.js --record FILE  adds today's line to the history FILE (one JSON line per day; a second run the same day replaces the line)
+//   STATS_NO_RANK=1 skips the VS Code search ranks (about 40 searches), STATS_NO_WEBSITE=1 the website
 // The history is the file history.jsonl of the "stats" release on GitHub, beside the counters of the landing page. .github/workflows/stats.yml adds a line every day.
 // What each number is worth: Marketplace "installs" are people (installed from inside VS Code); the "downloads" of the Marketplace, of Open VSX and of npm
 // are fetches of the package, and every published version brings a burst of automatic ones (mirrors, scanners). Compare days, not totals.
@@ -26,8 +27,25 @@ async function collect() {
     }
     return { stars: r.stargazers_count, forks: r.forks_count, files, active, week, weeks, landing };   // week: the VS Code extension; weeks: the plugin, the command line and the desktop app (server.js, usageWeek)
   });
-  const yt = await soft(youtube);
-  return { d: new Date().toISOString().slice(0, 10), mp, ovsx, npm, hub, ...(yt ? { yt } : {}) };
+  const yt = await soft(youtube), rank = process.env.STATS_NO_RANK ? null : await soft(ranks);
+  return { d: new Date().toISOString().slice(0, 10), mp, ovsx, npm, hub, ...(yt ? { yt } : {}), ...(rank ? { rank } : {}) };
+}
+// Where the extension comes in VS Code's own search (the Extensions view asks the same gallery, and ranks mostly on the words of the name), for phrases people type.
+// 0: not in the first RANK_DEPTH results. RANK_BEFORE: the ranks of 20 October 2026, before the name became "Agent Standup: Claude Code & Codex Agent Monitor" (1.40.0); 0 there: past the 100th.
+const RANK_PHRASES = ['agent standup', 'claude code agent monitor', 'claude code monitor', 'claude code dashboard', 'claude code subagents', 'claude code agents', 'claude code sessions', 'claude code usage', 'agent monitor', 'agent dashboard', 'subagents', 'sub-agents', 'codex monitor', 'mistral vibe', 'standup', 'codex', 'claude code'], RANK_DEPTH = 500;
+const RANK_BEFORE = { 'agent standup': 1, 'claude code monitor': 179, 'claude code dashboard': 0, 'claude code subagents': 44, 'claude code agents': 0, 'claude code sessions': 0, 'claude code usage': 0, 'agent monitor': 17, 'agent dashboard': 13, subagents: 40, 'sub-agents': 5, 'mistral vibe': 3, standup: 2, codex: 0, 'claude code': 0 };
+async function ranks() {
+  const page = async (q, n) => (((await json('https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json;api-version=3.0-preview.1' }, body: JSON.stringify({ filters: [{ criteria: [{ filterType: 8, value: 'Microsoft.VisualStudio.Code' }, { filterType: 10, value: q }, { filterType: 12, value: '4096' }], pageNumber: n, pageSize: 100, sortBy: 0, sortOrder: 0 }], flags: 0x200 | 0x100 | 0x2 }) })).results[0] || {}).extensions || []);
+  const one = async (q) => { for (let n = 1, seen = 0; seen < RANK_DEPTH; n++) { const ex = await page(q, n), i = ex.findIndex((e) => e.publisher.publisherName + '.' + e.extensionName === ext); if (i >= 0) return seen + i + 1; if (ex.length < 100) break; seen += ex.length; } return 0; };
+  const out = {}; let k = 0; await Promise.all(Array.from({ length: 4 }, async () => { while (k < RANK_PHRASES.length) { const q = RANK_PHRASES[k++]; out[q] = await one(q); } }));   // four searches at a time
+  return Object.fromEntries(RANK_PHRASES.map((q) => [q, out[q]]));
+}
+function printRanks(now, was, hist) {
+  const r = (n) => (n ? '#' + n : '>' + RANK_DEPTH), first = hist.find((x) => x.rank && x.d < new Date().toISOString().slice(0, 10));   // the first day the daily job recorded them
+  console.log(`\nVS Code search rank (the Extensions view; lower is better; >${RANK_DEPTH}: not in the first ${RANK_DEPTH}):`);
+  console.log('  ' + 'search'.padEnd(28) + 'now'.padEnd(8) + 'since you looked'.padEnd(18) + (first ? ('on ' + first.d.slice(5)).padEnd(10) : '') + 'before the rename (10-20)');
+  for (const q of RANK_PHRASES) { const n = now[q], p = was && was[q], b = RANK_BEFORE[q], moved = typeof p === 'number' && p !== n ? (p && n ? (n < p ? '▲ ' : '▼ ') + Math.abs(p - n) : r(p) + ' → ' + r(n)) : '';
+    console.log('  ' + q.padEnd(28) + r(n).padEnd(8) + moved.padEnd(18) + (first ? (first.rank[q] == null ? '-' : r(first.rank[q])).padEnd(10) : '') + (b == null ? '-' : b ? '#' + b : '>100')); }
 }
 // The YouTube channel's public counts: subscribers, and the views of each video and Short, read from the channel's own pages (the consent cookie skips the EU consent page)
 async function youtube() {
@@ -111,8 +129,9 @@ const lines = (text) => text.split('\n').filter(Boolean).map((l) => { try { retu
   for (const m of Object.keys(byWeek).sort()) wk.push({ m, by: byWeek[m], n: Object.values(byWeek[m]).reduce((t, v) => t + v, 0) });
   if (wk.length) console.log('\nPeople who opened the call, week by week (opt-in):\n' + wk.map((w, i) => `  week of ${w.m}  ${w.n}${i === wk.length - 1 ? ' so far' : ''}  (${Object.entries(w.by).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ') || 'none'})`).join('\n'));
   if (days.length < 3) console.log('\n  The daily job on GitHub adds one line a day: the trend is worth reading after a week or two.');
+  if (now.rank) printRanks(now.rank, prev.r || null, lines(hist));
   if (now.yt && now.yt.videos.length) console.log('\nYouTube (public counts):\n' + now.yt.videos.map((x) => '  ' + String(x.views).padStart(6) + '  ' + (x.short ? '[Short] ' : '') + x.title).join('\n'));
   if (!process.env.STATS_NO_WEBSITE) { try { printWebsite(await website()); } catch { console.log('\nWebsite: not read (the Vercel command line needs `npx vercel login` on this computer)'); } }
   console.log('\nThe funnel of the Marketplace page (views, then installs, per day) is only in your publisher account: https://marketplace.visualstudio.com/manage (Acquisition tab).');
-  fs.writeFileSync(snap, JSON.stringify({ at: new Date().toISOString().slice(0, 16).replace('T', ' '), f }));
+  fs.writeFileSync(snap, JSON.stringify({ at: new Date().toISOString().slice(0, 16).replace('T', ' '), f, ...(now.rank ? { r: now.rank } : prev.r ? { r: prev.r } : {}) }));
 })().catch((e) => { console.error(e.message || e); process.exit(1); });
