@@ -407,5 +407,5 @@
  "Get told when a new version of Agent Standup is out? At most once a day, the app would ask npm for the number of the latest version: nothing about you or your sessions. npm sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "Agent Standup 有新版本时要提醒你吗？每天最多一次，应用会向 npm 查询最新版本号：不涉及你或你的会话。和任何下载一样，npm 会看到你的 IP 地址。你可以随时在 ⚙ › 全部设置 中关闭。",
  "Yes, tell me": "好，提醒我",
  "Click to go and answer": "点击前往回答",
- "Waiting for you in ": "正在等你："
+ "Waiting for you in ": "正在等你： "
 }
