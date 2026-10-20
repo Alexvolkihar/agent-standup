@@ -21,6 +21,9 @@ put(RUNS, [user('Count it', 60e3), ...launch('a1', 55e3), say(WAIT, 50e3)], 50e3
 put(DONE, [user('Count it', 60e3), ...launch('a2', 55e3), say(WAIT, 50e3)], 50e3); agent(DONE, 'a2', { agentType: 'general-purpose', requestShape: 'background', finished: true }, 5e3);   // its meta says it ended (2.1.302), before the news reached the lead
 put(OLDER, [user('Count it', 600e3), ...launch('a3', 590e3), say(WAIT, 580e3), user('Meanwhile, what time is it?', 60e3), say('It is noon.', 50e3)], 50e3); agent(OLDER, 'a3', { agentType: 'general-purpose' }, 5e3);   // launched before your last order: the answer to it is yours to read
 put(NEWS, [user('Count it', 60e3), ...launch('a4', 55e3), say(WAIT, 50e3), news('a4', 40e3), say('The file has 5 words.', 30e3)], 30e3); agent(NEWS, 'a4', { agentType: 'general-purpose' }, 40e3);
+const note = (aid) => `<task-notification>\n<task-id>${aid}</task-id>\n<tool-use-id>toolu_${aid}</tool-use-id>\n<status>completed</status>\n</task-notification>`, QUEUED = 'c', ATTACHED = 'd';   // before 2.1.302 the news is often only queued, then handed over inside the next order
+put(QUEUED, [user('Count it', 60e3), ...launch('a6', 55e3), say(WAIT, 50e3), { type: 'queue-operation', operation: 'enqueue', timestamp: iso(40e3), content: note('a6') }, say('The file has 5 words.', 30e3)], 30e3); agent(QUEUED, 'a6', { agentType: 'general-purpose' }, 5e3);
+put(ATTACHED, [user('Count it', 60e3), ...launch('a7', 55e3), say(WAIT, 50e3), { type: 'attachment', isSidechain: false, timestamp: iso(40e3), attachment: { type: 'queued_command', prompt: note('a7'), origin: { kind: 'task-notification' } } }, say('The file has 5 words.', 30e3)], 30e3); agent(ATTACHED, 'a7', { agentType: 'general-purpose' }, 5e3);
 put(SILENT, [user('Count it', 2100e3), ...launch('a5', 2000e3), say(WAIT, 1990e3)], 1500e3); agent(SILENT, 'a5', { agentType: 'general-purpose' }, 1990e3);   // no word from it for half an hour: its session was closed under it
 
 test('a lead that waits on the sub-agents it launched in the background is not waiting on you, until they are done or the news comes', () => {
@@ -30,6 +33,7 @@ test('a lead that waits on the sub-agents it launched in the background is not w
   assert.equal(row(OLDER).state, 'turn');
   assert.equal(row(NEWS).state, 'turn');
   assert.equal(row(SILENT).state, 'turn');
+  assert.equal(row(QUEUED).state, 'turn', 'the news only queued (2.1.294): the agent ended all the same'); assert.equal(row(ATTACHED).state, 'turn');
   core.shutdown();
 });
 

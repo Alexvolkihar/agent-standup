@@ -43,6 +43,15 @@ sput(SLOW, [user('Fix the header', 90e3), call('Edit', { file_path: '/work/shop/
 
 const PROG = '0c0c0c0c-0c0c-40c0-80c0-0c0c0c0c0c0c'; sput(PROG, [user('Ask me red or blue', 60e3), call('AskUserQuestion', { questions: [{ question: 'Red or blue?', options: [{ label: 'Red' }, { label: 'Blue' }] }] }, 30e3)], 30e3); fs.writeFileSync(path.join(SESSIONS, '114.json'), JSON.stringify({ pid: process.pid, sessionId: PROG, status: 'waiting', waitingFor: 'input needed', entrypoint: 'sdk-cli', statusUpdatedAt: now - 28e3 }));   // a session a program runs (claude -p, the Agent SDK): its question goes to that program
 
+const NOSTAT = '0f0f0f0f-0f0f-40f0-80f0-0f0f0f0f0f0f'; sput(NOSTAT, [user('Plan the menu', 60e3), call('AskUserQuestion', { questions: [{ question: 'Tea or coffee?', options: [{ label: 'Tea' }, { label: 'Coffee' }] }] }, 20e3)], 20e3);   // Cowork, or Claude Code before 2.1.269: no status file
+
+test('with no status from Claude Code, a question open in the transcript still needs you; a pending edit stays a guess', () => {
+  const core = require('../server.js'), rows = core.boardRows(), r = rows.find((x) => x.id === NOSTAT);
+  assert.equal(r.state, 'blocked'); assert.equal(r.sure, 1); assert.equal(r.ask, 'Tea or coffee?'); assert.equal(r.menu.sure, 1); assert.equal(r.known, undefined);
+  assert.equal(rows.find((x) => x.id === id(GUESS)).state, 'working');
+  core.shutdown();
+});
+
 test('a question in a session a program runs (claude -p, the Agent SDK) is not for you: it never needs you', () => {
   const core = require('../server.js'), r = core.boardRows().find((x) => x.id === PROG);
   assert.equal(r.state, 'working'); assert.equal(r.sure, undefined); assert.equal(r.maybe, undefined); assert.equal(r.menu, undefined); assert.equal(r.known, 1);

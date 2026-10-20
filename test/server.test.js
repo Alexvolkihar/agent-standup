@@ -25,7 +25,9 @@ test('settings are kept in a file; cross-site writes are refused', async () => {
       await put({ lang: 'en', _t: 10, shareUsage: true, shareUsageT: 100, usageAsked: true }); let p = await saved(); assert.equal(p.shareUsage, false, 'a page that still holds the old yes'); assert.equal(p.shareUsageT, 200); assert.equal(p.lang, 'en', 'its other settings are written');
       await put({ lang: 'en', _t: 11, shareUsage: true }); assert.equal((await saved()).shareUsage, false, 'a page with no date for it');
       await put({ lang: 'en', _t: 12, shareUsage: true, shareUsageT: 300, usageAsked: true }); assert.equal((await saved()).shareUsage, true, 'a newer answer wins');
-      await put({ lang: 'fr', _t: 13 }); }
+      await put({ lang: 'fr', _t: 13, updateNotice: true, updateNoticeT: 400, updateAsked: true }); await put({ lang: 'fr', _t: 14, updateNotice: false, updateNoticeT: 500, updateAsked: true });   // the new-version notice, the same way: turned off in one window
+      await put({ lang: 'en', _t: 15, updateNotice: true, updateNoticeT: 400, updateAsked: true }); p = await saved(); assert.equal(p.updateNotice, false, 'a window opened before cannot turn the npm check back on'); assert.equal(p.lang, 'en');
+      await put({ lang: 'fr', _t: 16 }); }
     assert.equal(JSON.parse((await get(port, '/api/kokoro')).body).installed, false);
     assert.equal((await get(port, '/api/kokoro/install', { 'sec-fetch-site': 'cross-site' }, 'POST')).status, 403);
   } finally { srv.close(); require('../server.js').shutdown(); }
