@@ -41,6 +41,14 @@ const ORPHAN = '0a0a0a0a-0a0a-40a0-80a0-0a0a0a0a0a0a', SLOW = '0b0b0b0b-0b0b-40b
 sput(ORPHAN, [user('Note the launch date', 200e3), call('Edit', { file_path: '/work/memory/launch.md', old_string: 'a', new_string: 'b' }, 120e3), user('Would we launch any earlier?', 100e3), say('I would keep the 29th.', 90e3), { type: 'cost-state' }, { type: 'mode' }], 5e3);   // an edit you passed over by typing: it never got its answer; records without a date moved the file since
 sput(SLOW, [user('Fix the header', 90e3), call('Edit', { file_path: '/work/shop/src/header.js', old_string: 'a', new_string: 'b' }, 60e3)], 60e3); fs.writeFileSync(path.join(SESSIONS, '113.json'), JSON.stringify({ pid: process.pid, sessionId: SLOW, status: 'busy', statusUpdatedAt: now - 60e3 }));   // Claude Code says it works: no menu is open
 
+const PROG = '0c0c0c0c-0c0c-40c0-80c0-0c0c0c0c0c0c'; sput(PROG, [user('Ask me red or blue', 60e3), call('AskUserQuestion', { questions: [{ question: 'Red or blue?', options: [{ label: 'Red' }, { label: 'Blue' }] }] }, 30e3)], 30e3); fs.writeFileSync(path.join(SESSIONS, '114.json'), JSON.stringify({ pid: process.pid, sessionId: PROG, status: 'waiting', waitingFor: 'input needed', entrypoint: 'sdk-cli', statusUpdatedAt: now - 28e3 }));   // a session a program runs (claude -p, the Agent SDK): its question goes to that program
+
+test('a question in a session a program runs (claude -p, the Agent SDK) is not for you: it never needs you', () => {
+  const core = require('../server.js'), r = core.boardRows().find((x) => x.id === PROG);
+  assert.equal(r.state, 'working'); assert.equal(r.sure, undefined); assert.equal(r.maybe, undefined); assert.equal(r.menu, undefined); assert.equal(r.known, 1);
+  core.shutdown();
+});
+
 test('no "needs you" by mistake: a call left without its answer is given up at your next message, and a session Claude Code says is at work is believed', () => {
   const core = require('../server.js'), rows = core.boardRows(), row = (sid) => rows.find((r) => r.id === sid);
   assert.equal(row(ORPHAN).state, 'turn'); assert.equal(row(ORPHAN).maybe, undefined); assert.equal(row(ORPHAN).ask, undefined);
