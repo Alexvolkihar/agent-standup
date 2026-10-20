@@ -1482,14 +1482,14 @@ function gaveOf(la) {   // the turn of the followed session ended on "I couldn't
 }
 function agentState(id, now) {
   let s = S.status[id]; const r = S.run[id], w = S.waitOn[id], la = S.lastAct[id];
-  if (id === 'main' && S.live && atTail()) { const row = rowOf(S.cur); if (row && row.state === 'blocked' && row.since && !(la > S.rowsAt)) return { k: 'blocked', txt: '✋ ' + (row.sure ? L('vous attend ', 'needs you ') : L('attend vous ? ', 'needs you? ')) + fmtShort(Math.max(0, now - row.since)), ask: row.ask || '', sure: !!row.sure, since: row.since }; }   // what the server knows: a menu open in the session (a Bash approval looks like a running command here), and the question or command it waits on; unless the session moved since that answer. Before "your turn": a menu left open for longer than the lead's quiet time still needs you
+  if (id === 'main' && S.live && atTail()) { const row = rowOf(S.cur); if (row && row.state === 'blocked' && row.since && !(la > S.rowsAt)) return { k: 'blocked', txt: '✋ ' + (row.sure ? L('vous attend ', 'needs you ') : L('vous attend ? ', 'needs you? ')) + fmtShort(Math.max(0, now - row.since)), ask: row.ask || '', sure: !!row.sure, since: row.since }; }   // what the server knows: a menu open in the session (a Bash approval looks like a running command here), and the question or command it waits on; unless the session moved since that answer. Before "your turn": a menu left open for longer than the lead's quiet time still needs you
   if (id === 'main' && !s) {   // the lead is at work until the message that closes its turn, even while it thinks, and from its first turn on (the server says which transcripts carry that mark); one without it falls back on "quiet for 25 s", and a turn cut short on 3 minutes of silence
     const open = S.live && la && (S.sawEnd ? !S.turnOver && now - la < 180000 : now - la < 25000);
     if (r || (w && w.size) || open) s = 'working'; else if (S.live && la) { const g = gaveOf(la); return { k: 'done', txt: (g ? '⚠ ' + L('a abandonné ?', 'gave up?') : '✓ ' + L('à vous', 'your turn')) + ' · ' + fmtShort(Math.max(0, now - la)), ...(g ? { gave: g } : {}) }; }
   }
   if (s === 'done') return { k: 'done', txt: '✓ ' + L('terminé', 'done') };
   if (!s) return { k: 'idle', txt: '' };
-  if (S.live && atTail() && r && r.ts && r.name && NEEDS_OK.test(r.name)) { const age = now - r.ts; if (age > (ASKS.test(r.name) ? 4000 : 15000)) return { k: 'blocked', txt: '✋ ' + L('attend vous ? ', 'needs you? ') + fmtShort(age), since: r.ts }; }
+  if (S.live && atTail() && r && r.ts && r.name && NEEDS_OK.test(r.name) && !(rowOf(S.cur) || {}).known) { const age = now - r.ts; if (age > (ASKS.test(r.name) ? 4000 : 15000)) return { k: 'blocked', txt: '✋ ' + L('vous attend ? ', 'needs you? ') + fmtShort(age), since: r.ts }; }   /* a guess, on the tile only (not sure: no red line, no sound), and only where Claude Code does not say whether a menu is open (known): there, its word is believed */
   if (w && w.size) {   // really waiting only while the lead has a sub-agent call pending, or while those agents are still active (background agents never block the lead)
     const pendingSub = r && /^(Task|Agent)$/.test(r.name), open = [...w].filter((c) => S.status[c] !== 'done' && (pendingSub || !S.live || now - Math.max(S.lastAct[c] || 0, S.orderTs[c] || 0) < 120000));
     if (open.length) {
@@ -1533,7 +1533,7 @@ function paintStates() {
     STATE_CLASSES.forEach((c) => t.classList.toggle(c, st.k === c));
     const el = t.querySelector('.status'); if (el.textContent !== st.txt) { el.textContent = st.txt; const tb = t.querySelector('.tbadge'); if (tb) tb.style.top = el.offsetHeight > 26 ? el.offsetTop + el.offsetHeight + 4 + 'px' : ''; } /* a status on two lines: the badges under it move down */ const sc = 'status ' + st.k + (isTurn(p.id, st) ? ' turn' : '') + (st.gave ? ' gave' : ''); if (el.className !== sc) el.className = sc;
     const pr = t.querySelector('.prop'), want = { blocked: '✋', stalled: '😰', waiting: '⌛' }[st.k] || '', was = S.prevState[p.id];   // a raised hand, a sweat drop, an hourglass: the call metaphor for "needs you / stuck / waiting"
-    const spot = S.spotted || (S.spotted = new Set()); if (st.k !== 'blocked') spot.delete(p.id); else if (!spot.has(p.id) && shown && !S.gone.has(p.id) && !S.speakers.size && !(S.focusLock > Date.now())) { spot.add(p.id); setFocus(p.id); }   // one that waits on you takes the spotlight once per wait, as soon as nobody talks (the speaker has it until then)
+    const spot = S.spotted || (S.spotted = new Set()); if (st.k !== 'blocked' || !st.sure) spot.delete(p.id); else if (!spot.has(p.id) && shown && !S.gone.has(p.id) && !S.speakers.size && !(S.focusLock > Date.now())) { spot.add(p.id); setFocus(p.id); }   // one that waits on you takes the spotlight once per wait, as soon as nobody talks (the speaker has it until then)
     if (st.k === 'done' && was && was !== 'done' && was !== 'idle') { pr.textContent = '🎉'; pr.className = 'prop cheer'; setTimeout(() => { if (pr.classList.contains('cheer')) { pr.textContent = ''; pr.className = 'prop'; } }, 1200); }
     else if (!pr.classList.contains('cheer')) { if (pr.textContent !== want) pr.textContent = want; const pc = 'prop ' + (want ? st.k : ''); if (pr.className !== pc) pr.className = pc; }
     if (shown && !S.gone.has(p.id)) ros.push({ p, st });
@@ -1544,7 +1544,7 @@ function paintStates() {
   paintPill();
   const b = $('#board'), parts = [['working', '⚙', L('au travail', 'working')], ['waiting', '🔗', L('attendent leurs sous-agents', 'on sub-agents')], ['blocked', '✋', L('vous attendent', 'need you')], ['stalled', '⚠', L('bloqués', 'stalled')], ['done', '✓', L('terminés', 'done')]]
     .filter(([k]) => n[k] && !S.pillSess).map(([k, i, l]) => `<span class="${k}" title="${n[k]} ${l}">${i} ${n[k]}<em> ${l}</em></span>`).join('');
-  if (b.innerHTML !== parts) b.innerHTML = parts; fitBoard(); S.nBlocked = n.blocked + n.stalled; S.attn = attn; paintRoster(ros); paintFiles(); paintAsk(now); paintAttn(now); return n;
+  if (b.innerHTML !== parts) b.innerHTML = parts; fitBoard(); S.nBlocked = ros.filter((x) => x.st.k === 'blocked' && x.st.sure).length;   /* the sound, the red icon and the title: only a menu really open, not a guess nor a stalled hand-off */ S.attn = attn; paintRoster(ros); paintFiles(); paintAsk(now); paintAttn(now); return n;
 }
 function fitBoard(force) {   // the chips lose their words when they do not all fit (a long language, a narrower window): a chip is never cut mid-word. Tried again with the words only when the window or the texts around have changed
   const b = $('#board'), key = innerWidth + '|' + b.textContent.length + '|' + $('#pill').textContent.length + '|' + $('#subtitle').textContent.length;
@@ -2780,7 +2780,7 @@ $('#reactBar').onclick = (e) => {
 };
 
 // ---------- board: every recent session at a glance ----------
-const BSTATE = { blocked: ['✋', 'needs you?', 'attend vous ?'], working: ['⚙', 'working', 'au travail'], waiting: ['🔗', 'waiting on sub-agents', 'attend ses sous-agents'], turn: ['✓', 'your turn', 'à vous'], idle: ['💤', 'idle', 'inactif'] };
+const BSTATE = { blocked: ['✋', 'needs you', 'vous attend'], working: ['⚙', 'working', 'au travail'], waiting: ['🔗', 'waiting on sub-agents', 'attend ses sous-agents'], turn: ['✓', 'your turn', 'à vous'], idle: ['💤', 'idle', 'inactif'] };
 const BORDER = ['blocked', 'working', 'waiting', 'turn', 'idle'];
 const agoStr = (ms) => (ms < 90e3 ? Math.max(1, Math.round(ms / 1000)) + 's' : ms < 5400e3 ? Math.round(ms / 60e3) + ' min' : Math.round(ms / 3600e3) + ' h');
 const BGROUP = ['blocked', 'turn', 'working', 'waiting', 'idle'];   // the board is in sections, what waits for you first
@@ -2788,7 +2788,7 @@ let boardBusy = false, boardAll = null, boardDoneOpen = false, boardIdleOpen = f
 const BTOOLS = [['claude', 'Claude Code'], ['_codex', 'Codex'], ['_vibe', 'Mistral Vibe'], ['_cowork', 'Cowork']], toolOf = (r) => (BTOOLS.some(([k]) => k === r.proj) ? r.proj : 'claude');   // the filter at the top of the board, shown when sessions of two tools or more are listed
 const isDone = (r) => !!r.done;   // put away by you, until the session moves again: the server says so, to every window
 function bcard(r, now, done) {
-  const g = r.state === 'turn' && r.gave ? r.gave : '', [ic, en0, fr0] = g ? ['⚠', 'gave up?', 'a abandonné ?'] : BSTATE[r.state], [en, fr] = r.state === 'blocked' && r.sure ? ['needs you', 'vous attend'] : [en0, fr0], waited = r.since ? now - r.since : r.state === 'blocked' ? r.ageMs : now - r.mtime, mine = r.state === 'blocked' || r.state === 'turn';   // how long it has waited on you
+  const g = r.state === 'turn' && r.gave ? r.gave : '', [ic, en0, fr0] = g ? ['⚠', 'gave up?', 'a abandonné ?'] : BSTATE[r.state], [en, fr] = [en0, fr0], waited = r.since ? now - r.since : r.state === 'blocked' ? r.ageMs : now - r.mtime, mine = r.state === 'blocked' || r.state === 'turn';   // how long it has waited on you
   const head = r.state === 'blocked' ? [r.ask ? '' : esc(r.tool), r.ran ? '' : agoStr(waited)].filter(Boolean).join(' ') : r.state === 'working' && r.tool ? esc(r.tool) : r.state === 'idle' || (r.state === 'turn' && !r.ran) ? agoStr(waited) : '', extra = head ? ' · ' + head : '';
   const took = mine && r.ran ? `⏱ ${L('a travaillé', 'worked')} ${agoStr(r.ran)} · ${L('vous attend depuis', 'waiting on you for')} ${agoStr(waited)}` : r.state === 'working' && r.asked ? `⏱ ${L('au travail depuis', 'working for')} ${agoStr(Math.max(0, now - r.asked))}` : '';   // the time it worked, apart from the time it has waited on you
   const pr = r.pr ? `<button class="bpr" data-url="${esc(r.pr.url)}" title="${esc(L('Ouvrir la pull request', 'Open the pull request'))}">PR #${+r.pr.n} ↗</button>` : '';
@@ -3202,7 +3202,7 @@ function attnItems(now) {
   return out;
 }
 function paintAttn(now = Date.now()) {
-  const el = $('#attn'), a = attnItems(now), f = a[0];
+  const el = $('#attn'), a = attnItems(now).filter((x) => x.r), f = a[0];   /* the other sessions only: the call's own agents are already on the status line above (G still goes to them) */
   const html = f ? `<span class="aw">✋ <b>${esc(f.who)}</b> ${esc(f.sure ? L('vous attend', 'needs you') : L('vous attend peut-être', 'may need you'))}${f.what ? ' · ' + esc(f.what.replace(/\s+/g, ' ').slice(0, 120)) : ''}${f.since ? ' · ' + agoStr(Math.max(0, now - f.since)) : ''}</span>${a.length > 1 ? `<span class="am">+${a.length - 1}</span>` : ''}<span class="ak">G</span>` : '';
   if (html !== paintAttn.html) { paintAttn.html = html; el.innerHTML = html; el.hidden = !f; el.title = a.map((x) => x.who + (x.what ? ' · ' + x.what : '')).join('\n'); }
 }
@@ -3243,7 +3243,7 @@ function paintPill() {
   else if (!S.playing) txt = L('PAUSE', 'PAUSED');
   else {
     sess = true; const st = {}, by = { working: [], waiting: [], blocked: [], stalled: [], done: [], idle: [] };
-    for (const id in S.agents) if (id !== 'user' && !S.gone.has(id) && (id === 'main' || S.status[id])) { st[id] = agentState(id, now); by[st[id].k].push(id); }
+    for (const id in S.agents) if (id !== 'user' && !S.gone.has(id) && (id === 'main' || S.status[id])) { st[id] = agentState(id, now); by[st[id].k === 'blocked' && !st[id].sure ? 'working' : st[id].k].push(id); }   /* red only when sure: a guess reads as work, its tile says the rest */
     const what = (id) => `${nameOf(id)} — ${st[id].txt.replace(/^\S+\s/, '')}`, more = (a) => (a.length > 1 ? ` +${a.length - 1}` : ''), lead = st.main || { k: 'idle' };
     if (by.blocked.length) { cls = 'blocked'; to = by.blocked[0]; const q = st[to].ask || ''; txt = '✋ ' + what(to) + more(by.blocked) + (q ? ' · ' + (q.length > 110 ? q.slice(0, 108).replace(/\s+\S*$/, '') + '…' : q) : ''); if (q) tip = q; }   // the question or the command it waits on, next to its timer
     else if (by.stalled.length) { cls = 'stalled'; to = by.stalled[0]; txt = '⚠ ' + what(to) + more(by.stalled); }

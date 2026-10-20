@@ -121,10 +121,10 @@ async function followTab() {
 }
 
 // "Needs you": a notification when a session the status bar counts starts to wait on you (a question, an approval, a plan), naming it and what it asks (agentStandup.notifyNeedsYou).
-// Once when it starts to wait, once more ("Still waiting") if it still waits 5 minutes later, then nothing until it waits again. Not while the call is in view (the page alerts itself),
+// Once when it starts to wait, then nothing until it waits again: never a reminder. Not while the call is in view (the page alerts itself),
 // nor while you are on that session's Claude Code tab (its question is in front of you). Windows on the same folder share a mark in the extension's folder: the first to tell it tells it.
 let needsTold = 0;   // when needsYou last showed a notification (the clock, not the scan's time)
-const REMIND_MS = 5 * 60e3, needsSeen = new Map();   // "proj/id" → { ep, at, reminded }: the sessions that wait on you, since when this window has known it
+const needsSeen = new Map();   // "proj/id" → { ep }: the sessions that wait on you, known to this window (told, or seen in the call or on their tab)
 const callInView = () => !!((panel && panel.visible) || (side && side.visible));
 const oneLine = (x) => String(x).replace(/\s+/g, ' ').trim(), clip = (s, n) => { s = oneLine(s); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
 function onTabOf(r) {   // the same match as followTab: the tab's label, whole or cut after 24 characters, against the session's title
@@ -151,13 +151,11 @@ function needsYou(rows, now = Date.now()) {   // rows: those the status bar coun
   for (const r of on ? rows : []) {
     if (r.state !== 'blocked') continue;
     const k = r.proj + '/' + r.id, ep = String(r.since || r.mtime || 0); here.add(k);
-    let s = needsSeen.get(k); const again = !!s;   // a session that waits on and on is one wait, even when what says since when changes
-    if (!s) needsSeen.set(k, (s = { ep, at: now, reminded: false }));
-    else if (s.reminded || now - s.at < REMIND_MS) continue;
-    if (callInView() || onTabOf(r)) continue;   // seen: the call or its tab shows it; a reminder may still come later
-    if (again) s.reminded = true; if (!claimNeeds(k, s.ep, again ? 'again' : 'first')) continue;
+    if (needsSeen.has(k)) continue; const s = { ep }; needsSeen.set(k, s);   // a session that waits on and on is one wait, even when what says since when changes
+    if (callInView() || onTabOf(r)) continue;   // seen: the call or its tab shows it, and that is the one word of it
+    if (!claimNeeds(k, s.ep, 'first')) continue;
     const text = needsText(r), go = tt('Go to session'), call = tt('Open call'); needsTold = Date.now();
-    Promise.resolve(vscode.window.showInformationMessage('✋ ' + (again ? tt('Still waiting: {0}', text) : text), go, call)).then((a) => { if (a === go) return openPanel({ id: r.id, proj: r.proj }); if (a === call) return openPanel(); }, () => {});   // go: what the status bar does for that session
+    Promise.resolve(vscode.window.showInformationMessage('✋ ' + text, go, call)).then((a) => { if (a === go) return openPanel({ id: r.id, proj: r.proj }); if (a === call) return openPanel(); }, () => {});   // go: what the status bar does for that session
   }
   for (const k of [...needsSeen.keys()]) if (!here.has(k)) needsSeen.delete(k);   // answered (or the setting off): the next wait is told again
 }

@@ -2,7 +2,7 @@
 // VS Code tells a tab's label, not its session, so the label is looked up among the titles of the recent sessions.
 const test = require('node:test'), assert = require('node:assert'), fs = require('fs'), os = require('os'), path = require('path'), Module = require('module');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'as-ext-'));
-process.env.AGENT_STANDUP_PREFS = path.join(tmp, 'prefs.json'); process.env.AGENT_STANDUP_KOKORO_DIR = path.join(tmp, 'kokoro'); process.env.AGENT_STANDUP_PROJECTS = path.join(tmp, 'projects'); process.env.AGENT_STANDUP_CODEX = 'off'; process.env.AGENT_STANDUP_VIBE = 'off';
+process.env.AGENT_STANDUP_PREFS = path.join(tmp, 'prefs.json'); process.env.AGENT_STANDUP_KOKORO_DIR = path.join(tmp, 'kokoro'); process.env.AGENT_STANDUP_PROJECTS = path.join(tmp, 'projects'); process.env.AGENT_STANDUP_CODEX = 'off'; process.env.AGENT_STANDUP_VIBE = 'off'; process.env.AGENT_STANDUP_CC_SESSIONS = path.join(tmp, 'sessions');   // not the status of the sessions open on the machine the tests run on
 
 // ---- sessions with a title, the way Claude Code writes one ----
 function titled(proj, id, title, minutesAgo) {
@@ -200,17 +200,16 @@ test('a link the page asks for is opened on a known site only; the draft of a pr
 const waits = (over = {}) => ({ proj: '-work-app', id: 'wait-1', title: 'Fix the  login\tpage', state: 'blocked', since: 1e12, mtime: 1e12, tool: 'Bash', ask: 'Bash(npm test)', ...over });
 const tick = () => new Promise((r) => setImmediate(r));
 
-test('a session that starts to wait on you is told once, naming it and what it asks; once more 5 minutes later if it still waits, then not again until it waits again', async () => {
+test('a session that starts to wait on you is told once, naming it and what it asks, never reminded, and told again only when it waits again', async () => {
   const v = standIn(), told = [], x = await activated(v, undefined, { noOpen: true }), T = 1e12;
   v.vscode.window.showInformationMessage = (m, ...b) => { told.push([m, ...b]); return Promise.resolve(undefined); };
   try {
     x.ext._needsYou([waits()], T); assert.deepEqual(told, [['✋ Fix the login page is waiting for you: Bash(npm test)', 'Go to session', 'Open call']]);
     x.ext._needsYou([waits()], T + 4000); x.ext._needsYou([waits()], T + 5 * 60e3 - 1); assert.equal(told.length, 1, 'not at every scan');
-    x.ext._needsYou([waits()], T + 5 * 60e3); assert.deepEqual(told[1], ['✋ Still waiting: Fix the login page is waiting for you: Bash(npm test)', 'Go to session', 'Open call']);
-    x.ext._needsYou([waits()], T + 6 * 60e3); x.ext._needsYou([waits()], T + 60 * 60e3); assert.equal(told.length, 2, 'one reminder only');
-    x.ext._needsYou([waits({ state: 'working' })], T + 61 * 60e3); x.ext._needsYou([waits({ since: T + 62 * 60e3 })], T + 62 * 60e3); assert.equal(told.length, 3, 'answered, then waiting again: told again');
+    x.ext._needsYou([waits()], T + 5 * 60e3); x.ext._needsYou([waits()], T + 60 * 60e3); assert.equal(told.length, 1, 'no reminder');
+    x.ext._needsYou([waits({ state: 'working' })], T + 61 * 60e3); x.ext._needsYou([waits({ since: T + 62 * 60e3 })], T + 62 * 60e3); assert.equal(told.length, 2, 'answered, then waiting again: told again');
     x.ext._needsYou([waits({ id: 'q', title: 'Pick a name', tool: 'AskUserQuestion', ask: 'Which name do you want for the new command, the short one or the long one that says exactly what it does?' }), waits({ id: 'p', title: 'Plan it', tool: 'ExitPlanMode', ask: undefined }), waits({ id: 'm', title: 'A menu', tool: '', ask: undefined }), waits({ id: 'w', state: 'working' })], T);
-    assert.deepEqual(told.slice(3).map((t) => t[0]), ['✋ Pick a name is waiting for you: Which name do you want for the new command, the short one or the long one that…', '✋ Plan it is waiting for you: a plan to approve', '✋ A menu is waiting for you'], 'one per session; the question cut to about 80 characters');
+    assert.deepEqual(told.slice(2).map((t) => t[0]), ['✋ Pick a name is waiting for you: Which name do you want for the new command, the short one or the long one that…', '✋ Plan it is waiting for you: a plan to approve', '✋ A menu is waiting for you'], 'one per session; the question cut to about 80 characters');
   } finally { await x.close(); }
 });
 
@@ -223,7 +222,8 @@ test('no "needs you" notification when the setting is off, when the call is in v
     v.relay({ agentStandup: 'notify', text: 'An agent may be waiting for you ✋' }); assert.equal(told.length, 1, 'the page\'s own alert, call in view');
     v.panelObj.visible = false; x.ext._needsYou([waits()], T + 60e3); assert.equal(told.length, 1, 'already seen in the call');
     v.relay({ agentStandup: 'notify', text: 'An agent may be waiting for you ✋' }); v.relay({ agentStandup: 'notify', text: 'Your agents are done 🎉' }); assert.deepEqual(told.slice(1).map((t) => t[0]), ['Agent Standup: An agent may be waiting for you ✋', 'Agent Standup: Your agents are done 🎉'], 'call out of view and nothing told by the extension: the page\'s ✋ is the only word of it (a stalled agent, a sub-agent, another folder)');
-    answer = 0; const n = v.sent.length; x.ext._needsYou([waits()], T + 5 * 60e3); assert.match(told[3][0], /^✋ Still waiting: Fix the login page/, 'the reminder, once the call is out of view');
+    x.ext._needsYou([waits()], T + 5 * 60e3); assert.equal(told.length, 3, 'seen in the call: no reminder once it is out of view'); x.ext._needsYou([], T + 6 * 60e3);
+    answer = 0; const n = v.sent.length; x.ext._needsYou([waits({ since: T + 7 * 60e3 })], T + 7 * 60e3); assert.match(told[3][0], /^✋ Fix the login page/, 'answered, then a new wait, the call out of view');
     v.relay({ agentStandup: 'notify', text: 'An agent may be waiting for you ✋' }); assert.equal(told.length, 4, 'right after the notification that names the session, the page\'s generic ✋ is the same news: not shown');
     await tick(); await tick(); assert.deepEqual(v.sent.slice(n), [{ where: 'panel', agentStandup: 'pin', id: 'wait-1', proj: '-work-app' }], 'Go to session: what the status bar does for it');
     v.active = { viewColumn: 1, activeTab: claude('Fix the login page and i…') }; x.ext._needsYou([waits({ id: 'tab', title: 'Fix the login page and its tests' })], T); assert.equal(told.length, 4, 'you are on its tab');
@@ -234,21 +234,22 @@ test('no "needs you" notification when the setting is off, when the call is in v
 test('the status bar\'s scan tells the sessions of this workspace that wait on you, once', async () => {
   const dir = path.join(tmp, 'projects', '-work-app'), file = path.join(dir, 'asking.jsonl'), at = Date.now() - 20000, told = [];
   fs.writeFileSync(file, [{ type: 'user', message: { role: 'user', content: 'name it' } }, { type: 'custom-title', customTitle: 'Name the command' }, { type: 'assistant', message: { id: 'm2', role: 'assistant', stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'tu1', name: 'AskUserQuestion', input: { questions: [{ question: 'Short or long name?', header: 'Name', options: [{ label: 'Short' }, { label: 'Long' }] }] } }] } }].map((r) => JSON.stringify({ timestamp: new Date(at).toISOString(), ...r })).join('\n') + '\n');
-  fs.utimesSync(file, at / 1000, at / 1000); await new Promise((r) => setTimeout(r, 1300));   // past the scan the other tests shared
+  fs.utimesSync(file, at / 1000, at / 1000); fs.mkdirSync(process.env.AGENT_STANDUP_CC_SESSIONS, { recursive: true }); const sf = path.join(process.env.AGENT_STANDUP_CC_SESSIONS, '4242.json'); fs.writeFileSync(sf, JSON.stringify({ pid: process.pid, sessionId: 'asking', status: 'waiting', waitingFor: 'input needed', statusUpdatedAt: at }));   // Claude Code says its question is open: a call left pending alone is only a guess, never told
+  await new Promise((r) => setTimeout(r, 1300));   // past the scan the other tests shared
   const v = standIn(); v.vscode.window.showInformationMessage = (m, ...b) => { told.push(m); return Promise.resolve(undefined); };
   const x = await activated(v, undefined, { noOpen: true });
   try {
     await tick(); assert.deepEqual(told, ['✋ Name the command is waiting for you: Short or long name?']);
     await new Promise((r) => setTimeout(r, 4300)); assert.equal(told.length, 1, 'the next scan says nothing');
-  } finally { await x.close(); fs.unlinkSync(file); }
+  } finally { await x.close(); fs.unlinkSync(file); fs.unlinkSync(sf); }
 });
 
-test('two windows on the same folder tell a wait once between them, and its reminder once', async () => {
+test('two windows on the same folder tell a wait once between them', async () => {
   const dir = path.join(tmp, 'storage-needs'), told = [], xs = [], T = 1e12;
   try {
     for (let i = 0; i < 2; i++) { const v = standIn(); xs.push(await activated(v, undefined, { globalStorageUri: { fsPath: dir }, noOpen: true })); v.vscode.window.showInformationMessage = (m) => { told.push([i, m]); return Promise.resolve(undefined); }; }
     for (const x of xs) x.ext._needsYou([waits()], T); assert.equal(told.length, 1);
-    for (const x of xs) x.ext._needsYou([waits()], T + 5 * 60e3); assert.equal(told.length, 2); assert.match(told[1][1], /Still waiting/);
-    for (const x of xs) { x.ext._needsYou([], T + 6 * 60e3); x.ext._needsYou([waits({ since: T + 7 * 60e3 })], T + 7 * 60e3); } assert.equal(told.length, 3, 'a new wait');
+    for (const x of xs) x.ext._needsYou([waits()], T + 5 * 60e3); assert.equal(told.length, 1, 'no reminder');
+    for (const x of xs) { x.ext._needsYou([], T + 6 * 60e3); x.ext._needsYou([waits({ since: T + 7 * 60e3 })], T + 7 * 60e3); } assert.equal(told.length, 2, 'a new wait');
   } finally { for (const x of xs) await x.close(); }
 });

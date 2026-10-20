@@ -115,7 +115,7 @@ function boardRow(r, now) {
   if (r.uni) {   // the current format says it outright: idle, running, or blocked on an approval or a question
     const u = uniSummary(r), kind = u.status, age = now - r.mtime, live = u.live;
     const state = age >= 30 * 60e3 ? 'idle' : kind === 'blocked' ? 'blocked' : kind === 'running' ? (u.waiting ? 'waiting' : 'working') : kind === 'idle' || kind === 'failed' ? 'turn' : age < 10 * 60e3 ? 'working' : 'idle';
-    return { proj: PROJ, id: r.id, title: title(r), mtime: r.mtime, state, tool: '', ageMs: age, subActive: state === 'idle' || state === 'turn' ? 0 : live, subTotal: u.kids, asked: u.asked || 0, dir: dirKey(meta(r.dir).cwd), source: SOURCE };
+    return { proj: PROJ, id: r.id, title: title(r), mtime: r.mtime, state, tool: '', ageMs: age, subActive: state === 'idle' || state === 'turn' ? 0 : live, subTotal: u.kids, asked: u.asked || 0, dir: dirKey(meta(r.dir).cwd), source: SOURCE, ...(state === 'blocked' ? { sure: 1 } : {}) };   /* blocked: Vibe wrote that it waits on an approval or a question, not a guess */
   }
   const sig = r.mtime + ':' + r.size; let t = tailCache.get(r.file);
   if (!t || t.sig !== sig) {

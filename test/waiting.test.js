@@ -36,6 +36,18 @@ folder('-work-app', '/work/app', 'c', 900e3); folder('-work-app-sub', '/work/app
 const two = { type: 'assistant', timestamp: iso(30e3), message: { role: 'assistant', stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'toolu_t1', name: 'Bash', input: { command: 'npm test' } }, { type: 'tool_use', id: 'toolu_t2', name: 'Bash', input: { command: 'npm run lint' } }] } };
 fs.mkdirSync(path.join(PROJECTS, '-work-two'), { recursive: true }); fs.writeFileSync(path.join(PROJECTS, '-work-two', oid('f') + '.jsonl'), JSON.stringify(user('Check it', 60e3)) + '\n' + JSON.stringify(two) + '\n'); fs.writeFileSync(path.join(SESSIONS, '112.json'), JSON.stringify({ pid: process.pid, sessionId: oid('f'), status: 'waiting', waitingFor: 'permission prompt', statusUpdatedAt: now - 25e3 }));   // two commands in one message: the menu asks about the first
 
+const sput = (sid, recs, ago) => { const f = path.join(PROJECTS, '-work-shop', sid + '.jsonl'); fs.writeFileSync(f, recs.map((r) => JSON.stringify(r)).join('\n') + '\n'); const t = new Date(now - ago); fs.utimesSync(f, t, t); };
+const ORPHAN = '0a0a0a0a-0a0a-40a0-80a0-0a0a0a0a0a0a', SLOW = '0b0b0b0b-0b0b-40b0-80b0-0b0b0b0b0b0b';
+sput(ORPHAN, [user('Note the launch date', 200e3), call('Edit', { file_path: '/work/memory/launch.md', old_string: 'a', new_string: 'b' }, 120e3), user('Would we launch any earlier?', 100e3), say('I would keep the 29th.', 90e3), { type: 'cost-state' }, { type: 'mode' }], 5e3);   // an edit you passed over by typing: it never got its answer; records without a date moved the file since
+sput(SLOW, [user('Fix the header', 90e3), call('Edit', { file_path: '/work/shop/src/header.js', old_string: 'a', new_string: 'b' }, 60e3)], 60e3); fs.writeFileSync(path.join(SESSIONS, '113.json'), JSON.stringify({ pid: process.pid, sessionId: SLOW, status: 'busy', statusUpdatedAt: now - 60e3 }));   // Claude Code says it works: no menu is open
+
+test('no "needs you" by mistake: a call left without its answer is given up at your next message, and a session Claude Code says is at work is believed', () => {
+  const core = require('../server.js'), rows = core.boardRows(), row = (sid) => rows.find((r) => r.id === sid);
+  assert.equal(row(ORPHAN).state, 'turn'); assert.equal(row(ORPHAN).maybe, undefined); assert.equal(row(ORPHAN).ask, undefined);
+  assert.equal(row(SLOW).state, 'working'); assert.equal(row(SLOW).maybe, undefined); assert.equal(row(SLOW).menu, undefined); assert.equal(row(SLOW).known, 1);
+  core.shutdown();
+});
+
 test('a Bash approval needs you, with the command, since the menu opened, apart from the time it worked', () => {
   const core = require('../server.js'), rows = core.boardRows(), row = (n) => rows.find((r) => r.id === id(n));
   assert.equal(row(MENU).state, 'blocked'); assert.equal(row(MENU).tool, 'Bash'); assert.equal(row(MENU).ask, 'Bash(npm run build --prod)');   // on one line, the way Claude Code shows it
@@ -44,7 +56,8 @@ test('a Bash approval needs you, with the command, since the menu opened, apart 
   assert.equal(row(STALE).state, 'working'); assert.equal(row(STALE).ask, undefined);   // the process is gone: its file says nothing
   assert.equal(row(BUSY).state, 'working'); assert.equal(row(BUSY).since, undefined);   // a command that runs is not a question
   assert.equal(row(TURN).state, 'turn'); assert.equal(row(TURN).since, now - 600e3); assert.equal(row(TURN).ran, 300e3);
-  assert.equal(row(GUESS).state, 'blocked'); assert.equal(row(GUESS).ask, 'Edit(header.js)'); assert.equal(row(GUESS).since, now - 20e3);   // no status file: still the guess from a file edit left pending
+  assert.equal(row(GUESS).state, 'working'); assert.equal(row(GUESS).maybe, 1); assert.equal(row(GUESS).ask, 'Edit(header.js)'); assert.equal(row(GUESS).since, now - 20e3);   // no status file: only a guess from a file edit left pending, never "needs you"
+  assert.equal(row(BUSY).maybe, undefined); assert.equal(row(BUSY).known, 1);
   core.shutdown();
 });
 
