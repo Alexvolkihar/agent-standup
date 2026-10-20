@@ -1,5 +1,5 @@
 {
-  "extension.description": "Claude Code, Codex, Mistral Vibe 세션을 애니메이션이 있는 실시간 팀 통화로 지켜보세요. 메인 에이전트가 지시하면 서브에이전트가 참가해 화면을 공유하고 보고합니다. 음성, 서브에이전트 트리, 타임라인, 요약, 동영상 내보내기를 지원합니다.",
+  "extension.description": "Claude Code와 Codex 에이전트 중 누가 작업 중이고, 누가 막혀 있고, 누가 당신을 기다리는지 실시간 팀 통화로 확인하세요. 서브에이전트가 참가해 화면을 공유하고 보고합니다. 모든 세션 대시보드, 에이전트별 토큰 사용량, 다시 보기, 음성을 지원합니다. Mistral Vibe와 Cowork도 지원합니다. 로컬 파일만 읽으며 토큰을 쓰지 않습니다.",
   "command.open.title": "Agent Standup: 실시간 통화 열기",
   "command.openInBrowser.title": "Agent Standup: 브라우저에서 열기 (음성 + 소리)",
   "command.focus.title": "Agent Standup: 사이드바 표시",

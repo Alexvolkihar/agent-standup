@@ -1,5 +1,5 @@
 {
-  "extension.description": "Claude Code、Codex、Mistral Vibe のセッションを、ライブのアニメーション付きチーム通話として眺められます。メインエージェントが指示を出し、サブエージェントが参加して画面を共有し、報告します。音声、サブエージェントのツリー、タイムライン、まとめ、動画書き出しにも対応。",
+  "extension.description": "Claude Code と Codex のエージェントのうち、どれが作業中で、どれが止まっていて、どれがあなたを待っているかを、ライブのチーム通話で確認できます。サブエージェントが参加し、画面を共有して報告します。全セッションのダッシュボード、エージェントごとのトークン使用量、リプレイ、音声付き。Mistral Vibe と Cowork にも対応。ローカルファイルを読むだけで、トークンを消費しません。",
   "command.open.title": "Agent Standup: ライブ通話を開く",
   "command.openInBrowser.title": "Agent Standup: ブラウザで開く（音声・サウンド対応）",
   "command.focus.title": "Agent Standup: サイドバーを表示",

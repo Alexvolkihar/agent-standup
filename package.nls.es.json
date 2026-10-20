@@ -1,5 +1,5 @@
 {
-  "extension.description": "Mira tu sesión de Claude Code, Codex o Mistral Vibe como una videollamada de equipo animada y en directo: el agente principal da órdenes, los subagentes se unen, comparten pantalla e informan — con voces, árbol de subagentes, línea de tiempo, resumen y exportación de vídeo.",
+  "extension.description": "Mira cuáles de tus agentes de Claude Code y Codex están trabajando, atascados o esperándote, en una videollamada de equipo en directo: los subagentes se unen, comparten pantalla e informan. Un panel con todas las sesiones, los tokens de cada agente, repetición y voces. También Mistral Vibe y Cowork. Solo lee archivos locales.",
   "command.open.title": "Agent Standup: Abrir videollamada en vivo",
   "command.openInBrowser.title": "Agent Standup: Abrir en el navegador (voz + sonido)",
   "command.focus.title": "Agent Standup: Mostrar barra lateral",

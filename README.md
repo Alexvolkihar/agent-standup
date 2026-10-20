@@ -4,9 +4,20 @@
 
 **See which of your agents is working, stuck, waiting on another one, or burning tokens — across all your Claude Code, Codex, Mistral Vibe and Cowork sessions, at zero token cost.** Agent Standup turns the session files Claude Code, Codex and Mistral Vibe already write into a live team call (and a board of every session): it only reads local files and never calls Claude unless the call is held in French, Spanish or Brazilian Portuguese, or you turn on the jokes.
 
-**Your Claude Code, Codex or Mistral Vibe session as a live team call.** The lead gives orders, sub-agents join the call, work at their desks, share their screen and report back — with voices, expressions and a view of the real work as it happens.
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup"><img src="https://atoll92.github.io/agent-standup/media/install-vscode.png" width="380" alt="Install in VS Code: free and open source"></a>
+  <br>
+  <a href="https://open-vsx.org/extension/DoubleGeste/agent-standup"><img src="https://atoll92.github.io/agent-standup/media/install-openvsx.png" width="260" alt="Cursor, Windsurf and VSCodium: install from Open VSX"></a>
+  <a href="https://github.com/Atoll92/agent-standup/releases/latest"><img src="https://atoll92.github.io/agent-standup/media/install-macos.png" width="260" alt="macOS app: free download, no editor needed"></a>
+</p>
 
-**Runs as a VS Code extension, a terminal command, or a desktop app.** Try it in 30 seconds, no install and no editor (Node 18+): `npx @double_geste/agent-standup --open`, then ⚙ → Source → Demo.
+**No editor? Try it in 30 seconds from any terminal** (Node 18+), then ⚙ → Source → Demo if you have no session yet:
+
+```sh
+npx @double_geste/agent-standup@latest --open
+```
+
+**Your Claude Code, Codex or Mistral Vibe session as a live team call.** The lead gives orders, sub-agents join the call, work at their desks, share their screen and report back — with voices, expressions and a view of the real work as it happens.
 
 **Works with:** Claude Code · Codex · Mistral Vibe · Cowork — in VS Code, Cursor, Windsurf, any terminal, or as a desktop app.
 

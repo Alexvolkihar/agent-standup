@@ -1,5 +1,5 @@
 {
-  "extension.description": "把你的 Claude Code、Codex 或 Mistral Vibe 会话变成一场实时动画团队视频通话：主代理下达指令，子代理加入、共享屏幕并汇报——配有语音、子代理树状图、时间线、回顾和视频导出。",
+  "extension.description": "看清你的 Claude Code 和 Codex 代理谁在工作、谁卡住了、谁在等你——以实时团队视频通话的形式：子代理加入、共享屏幕并汇报。所有会话的看板、每个代理的 token 用量、回放和语音。也支持 Mistral Vibe 和 Cowork。只读取本地文件，不消耗 token。",
   "command.open.title": "Agent Standup: 打开实时视频通话",
   "command.openInBrowser.title": "Agent Standup: 在浏览器中打开（语音 + 声音）",
   "command.focus.title": "Agent Standup: 显示侧边栏",

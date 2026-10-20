@@ -1,5 +1,5 @@
 {
-  "extension.description": "Watch your Claude Code, Codex or Mistral Vibe session as a live, animated team call: the lead gives orders, sub-agents join, share their screen and report back — with voices, a sub-agent tree, timeline, recap and video export.",
+  "extension.description": "See which Claude Code and Codex agents are working, stuck or waiting for you, as a live team call: subagents join, share their screen and report back. A dashboard of every session, token usage per agent, replay and voices. Mistral Vibe and Cowork too. It only reads local files and costs no tokens.",
   "command.open.title": "Agent Standup: Open live call",
   "command.openInBrowser.title": "Agent Standup: Open in browser (voice + sound)",
   "command.focus.title": "Agent Standup: Show sidebar",

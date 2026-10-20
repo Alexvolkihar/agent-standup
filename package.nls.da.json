@@ -1,5 +1,5 @@
 {
-  "extension.description": "Se din Claude Code-, Codex- eller Mistral Vibe-session som et levende, animeret teammøde: lederen giver ordrer, underagenter deltager, deler deres skærm og rapporterer tilbage — med stemmer, et træ over underagenter, tidslinje, resumé og videoeksport.",
+  "extension.description": "Se hvilke af dine Claude Code- og Codex-agenter der arbejder, sidder fast eller venter på dig, som et levende teammøde: underagenter deltager, deler deres skærm og rapporterer tilbage. Et overblik over alle sessioner, tokenforbrug per agent, genafspilning og stemmer. Også Mistral Vibe og Cowork. Læser kun lokale filer og koster ingen tokens.",
   "command.open.title": "Agent Standup: Åbn live-opkald",
   "command.openInBrowser.title": "Agent Standup: Åbn i browser (stemme + lyd)",
   "command.focus.title": "Agent Standup: Vis sidepanel",
