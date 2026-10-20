@@ -497,10 +497,10 @@ function answerIn(id, opts = {}) {   // { how: 'editor' | 'app' | '', app, link 
   if (process.platform === 'darwin') for (const p of up.slice().reverse()) { const m = /^(\/.+?\.app)\//.exec(tree.get(p).cmd); if (m) { openLocal(['-a', m[1]]); return { how: 'app', app: path.basename(m[1], '.app') }; } }   // the outermost app: Terminal, iTerm, Claude…
   return { how: '' };
 }
-// Does this session's Claude Code write a status in ~/.claude/sessions (the terminal since 2.1.221, the VS Code panel and the Agent SDK since 2.1.269; Cowork keeps its own elsewhere)?
+// Does this session's Claude Code write a status in ~/.claude/sessions (the terminal since 2.1.221; the VS Code panel, the desktop app's Code tab and the Agent SDK since 2.1.269; Cowork keeps its own elsewhere)?
 // Where it does, no status means its process has ended: a question left open there was given up, not asked.
 const verAtLeast = (v, min) => { const x = String(v || '').split('.').map((n) => parseInt(n, 10) || 0); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== min[i]) return (x[i] || 0) > min[i]; return true; };
-const statusWritten = (proj, p) => proj !== COWORK && !!p.ver && p.ep !== 'local-agent' && verAtLeast(p.ver, p.ep === 'claude-vscode' || /^sdk-/.test(p.ep || '') ? [2, 1, 269] : [2, 1, 221]);
+const statusWritten = (proj, p) => proj !== COWORK && !!p.ver && p.ep !== 'local-agent' && verAtLeast(p.ver, p.ep === 'cli' ? [2, 1, 221] : [2, 1, 269]);
 function parseTail(file, st) {
   const sig = st.mtimeMs + ':' + st.size, hit = boardCache.get(file); if (hit && hit.sig === sig) return hit;
   const { lines, cut } = boardTail(file);
