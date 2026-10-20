@@ -1710,7 +1710,7 @@ function termModel(id) {
   }
   return { view: 'term', lines: lines.slice(-60), stat: statOf(last, id) };
 }
-// An agent driving a browser (Claude in Chrome): the window as it last saw it, the address it is on, and the pointer where it last clicked, which glides to the next click as that call starts.
+// An agent driving a browser (Claude in Chrome, the desktop app's browser): the window as it last saw it, the address it is on, and the pointer where it last clicked, which glides to the next click as that call starts.
 // The picture is the last screenshot, unless the agent has gone to another address since: an old page is not shown as the new one.
 const hostOf = (u) => { try { return u ? new URL(u).host : ''; } catch { return ''; } };
 function browserModel(buf, last, id) {
@@ -1718,7 +1718,7 @@ function browserModel(buf, last, id) {
   for (let i = buf.length - 1; i >= 0; i--) {
     const e = buf[i]; if (e.k !== 'browser') continue; const w = e.web || {}, st = (e.tool.d && e.tool.d.steps) || [];
     if (!url) url = w.u || (st.filter((s) => s.u).pop() || {}).u || ''; if (!title && w.t) title = w.t; if (!frame && w.f) frame = w.f;
-    if (!ptr) for (let j = st.length - 1; j >= 0; j--) if (st[j].x != null && /click|move|drag/.test(st[j].a)) { ptr = { x: st[j].x, y: st[j].y, k: e.id + ':' + j, clk: /click/.test(st[j].a) }; break; }
+    if (!ptr) for (let j = st.length - 1, ask = true; j >= 0; j--) { const at = st[j].x != null ? [st[j].x, st[j].y] : ask && w.p; if (/click|move|drag|hover/.test(st[j].a)) { if (at) { ptr = { x: at[0], y: at[1], k: e.id + ':' + j, clk: /click/.test(st[j].a) }; break; } ask = false; } }   // a click on an element has its point in the answer (w.p, of the last click only); without one, the pointer stays where it last was
     if (!pic && e.img) pic = e; if (!pic && st.some((s) => s.u)) gone = true;
     if (pic && url && title && frame && ptr) break;
   }

@@ -155,6 +155,28 @@ test('a browser the agent drives (Claude in Chrome) is described step by step, w
     assert.equal(res.toolu_br2.web, undefined); assert.deepEqual(res.toolu_br3.web, { u: 'https://example.com/a' }); assert.equal(res.toolu_br4.web, undefined);   // a call that failed says nothing about the page
   } finally { srv.close(); require('../server.js').shutdown(); }
 });
+test('the desktop app\'s browser and its spelling of Claude in Chrome are browsers too: their page, the frame of their screenshots, and where a click on an element landed', async () => {
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', B = 'mcp__Claude_Browser__', shot = { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: png } };
+  const tabs = '\n\nTab Context:\n- Executed on tabId: seed\n- Available tabs:\n  • tabId seed: "Agent Standup" ("http://localhost:4747/")';   // the way the desktop app's browser ends its answers (October 2026): its tabs have names
+  const calls = [['toolu_db1', B + 'navigate', { url: 'http://localhost:4747' }, [{ type: 'text', text: 'navigated to http://localhost:4747/' }, { type: 'text', text: tabs }]],
+    ['toolu_db2', B + 'computer', { action: 'screenshot' }, [shot, { type: 'text', text: '[Image: source: /x/blob.jpg]' }, { type: 'text', text: 'Screenshot size: 800x600' }, { type: 'text', text: tabs }]],
+    ['toolu_db3', B + 'computer', { action: 'screenshot', scale: 0.6 }, [shot, { type: 'text', text: 'Screenshot size: 480x360 0.6-scale view; coordinate frame: 800x600.' }, { type: 'text', text: tabs }]],
+    ['toolu_db4', B + 'computer', { action: 'left_click', ref: 'ref_112', action_summary: 'Joins the live call' }, [{ type: 'text', text: 'left_click at (628, 441) [ref_112]' }, { type: 'text', text: tabs }]],
+    ['toolu_db5', 'mcp__Claude_in_Chrome__computer', { action: 'left_click', coordinate: [10, 20], tabId: 3 }, [{ type: 'text', text: 'Clicked at (10, 20)\n\nTab Context:\n- Executed on tabId: 3\n- Available tabs:\n  • tabId 3: "Inbox "today"" (https://mail.example.com/)' }]],   // the desktop app's Chrome: no quotes around the address
+    ['toolu_db6', 'mcp__Claude_in_Chrome__computer', { action: 'left_click', ref: 'ref_9', tabId: 3 }, [{ type: 'text', text: 'Clicked on element ref_9' }]]];
+  const lines = calls.flatMap(([id, name, input, content]) => [{ type: 'assistant', timestamp: '2026-01-01T00:00:00Z', message: { content: [{ type: 'tool_use', id, name, input }] } }, { type: 'user', timestamp: '2026-01-01T00:00:01Z', message: { content: [{ type: 'tool_result', tool_use_id: id, content }] } }]);
+  const dir = path.join(tmp, 'projects', '-db'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 's1.jsonl'), lines.map((r) => JSON.stringify(r)).join('\n') + '\n');
+  const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port;
+  try {
+    const ev = JSON.parse((await get(port, '/api/session?proj=-db&id=s1')).body).events, tools = ev.filter((e) => e.kind === 'tools').flatMap((e) => e.tools), res = Object.fromEntries(ev.filter((e) => e.kind === 'results').flatMap((e) => e.items).map((it) => [it.id, it]));
+    assert.deepEqual(tools.map((t) => t.d.kind), ['browser', 'browser', 'browser', 'browser', 'browser', 'browser']);
+    assert.deepEqual(tools[3].d.steps, [{ a: 'left_click', n: 'Joins the live call' }]); assert.deepEqual(tools[4].d.steps, [{ a: 'left_click', x: 10, y: 20 }]);
+    const page = { u: 'http://localhost:4747/', t: 'Agent Standup' };
+    assert.deepEqual(res.toolu_db1.web, page); assert.deepEqual(res.toolu_db2.web, { ...page, f: [800, 600] }); assert.equal(res.toolu_db2.img, 1); assert.deepEqual(res.toolu_db3.web, { ...page, f: [800, 600] });   // full size or at 0.6, the clicks are counted in 800x600
+    assert.deepEqual(res.toolu_db4.web, { ...page, p: [628, 441] });   // the click named an element: the answer says where it landed
+    assert.deepEqual(res.toolu_db5.web, { u: 'https://mail.example.com/', t: 'Inbox "today"' }); assert.equal(res.toolu_db6.web, undefined);   // Chrome does not say where a click on an element landed
+  } finally { srv.close(); require('../server.js').shutdown(); }
+});
 test('an order typed while the lead is working is part of the call', async () => {
   const at = (s) => `2026-01-01T00:00:0${s}Z`, queued = (s, prompt, origin) => ({ type: 'attachment', timestamp: at(s), attachment: { type: 'queued_command', prompt, origin, commandMode: origin.kind === 'human' ? 'prompt' : 'task-notification' } });
   const recs = [{ type: 'user', timestamp: at(0), message: { role: 'user', content: 'first order' } }, { type: 'assistant', timestamp: at(1), message: { content: [{ type: 'tool_use', id: 'toolu_q', name: 'Bash', input: { command: 'ls' } }] } },

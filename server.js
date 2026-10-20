@@ -91,9 +91,9 @@ function docPaths(text, cd) {
   return out;
 }
 const absPath = (f, cwd) => (/^~([\\/]|$)/.test(f) ? path.join(os.homedir(), f.slice(1)) : path.isAbsolute(f) ? path.normalize(f) : cwd ? path.resolve(cwd, f) : f);   // cwd: the folder the session was in when it wrote that record
-// A call that drives a browser (Claude in Chrome, the browser of the desktop app): its steps (one, or those of a browser_batch, in order), for the browser window of the shared screen.
+// A call that drives a browser (Claude in Chrome, written claude-in-chrome by Claude Code and Claude_in_Chrome by the desktop app; the desktop app's own browser): its steps (one, or those of a browser_batch, in order), for the browser window of the shared screen.
 // a: what it did · x, y: where it clicked, in the frame of the page's screenshots · t: what it typed or the key it pressed · u: the address it went to · q: what it looked for · n: its own one-line account of the step
-const BROWSER_MCP = /^mcp__(?:[^_]+__)?(claude-in-chrome|Claude_Browser)__/;
+const BROWSER_MCP = /^mcp__(?:[^_]+__)?(claude-in-chrome|Claude_in_Chrome|Claude_Browser)__/;
 const browserStep = (name, i) => {
   i = i && typeof i === 'object' ? i : {}; const s = { a: String(i.action || name || '').slice(0, 30) }, c = Array.isArray(i.coordinate) ? i.coordinate : null;
   if (c && Number.isFinite(+c[0]) && Number.isFinite(+c[1])) { s.x = +c[0]; s.y = +c[1]; }
@@ -101,13 +101,14 @@ const browserStep = (name, i) => {
   return s;
 };
 const browserLabel = (name, i) => ({ kind: 'browser', steps: (Array.isArray(i.actions) ? i.actions.slice(-12).map((x) => browserStep(x && x.name, x && x.input)) : [browserStep(name, i)]) });
-// What a browser call answered about the page: its address and title, and the frame its clicks are counted in (a screenshot at half scale is still clicked in full-size coordinates)
+// What a browser call answered about the page: its address and title, the frame its clicks are counted in (a screenshot at half scale is still clicked in full-size coordinates),
+// and p: where its last click landed, which the desktop app's browser says when the agent named an element instead of a point ("left_click at (628, 441) [ref_112]"). Its tabs have names ("seed"), not numbers; the desktop app's Chrome writes a tab's address without quotes
 function browserSeen(text) {
-  const all = (re) => [...text.matchAll(re)].pop(), web = {}, tab = (text.match(/Executed on tabId: (\d+)/) || [])[1], row = tab && all(new RegExp(`tabId ${tab}: "([^"\\n]*)" \\("([^"\\n]*)"\\)`, 'g'));
-  const u = all(/(?:Navigated to|URL:) *(\S+)/g), t = all(/^Title: *(.+)$/gm), f = all(/coordinate frame: *(\d+)x(\d+)/g) || all(/captured screenshot \((\d+)x(\d+)/g);
+  const all = (re) => [...text.matchAll(re)].pop(), web = {}, tab = (text.match(/Executed on tabId: ([\w-]+)/) || [])[1], row = tab && all(new RegExp(`tabId ${tab}: "(.*)" \\("?([^"\\s]*?)"?\\)\\s*$`, 'gm'));
+  const u = all(/(?:[Nn]avigated to|URL:) *(\S+)/g), t = all(/^Title: *(.+)$/gm), f = all(/coordinate frame: *(\d+)x(\d+)/g) || all(/captured screenshot \((\d+)x(\d+)/g) || all(/Screenshot size: *(\d+)x(\d+)/g), p = all(/\b(?:left_click|right_click|double_click|triple_click|hover) at \((\d+), *(\d+)\)/g);
   const url = (u && u[1]) || (row && row[2]) || ''; if (/^(https?|file|chrome|about):/i.test(url)) web.u = clip(url, 300);
   const title = (t && t[1]) || (row && row[1] !== row[2] && row[1]) || ''; if (title) web.t = clip(title.trim(), 120);
-  if (f && +f[1] > 0 && +f[2] > 0) web.f = [+f[1], +f[2]];
+  if (f && +f[1] > 0 && +f[2] > 0) web.f = [+f[1], +f[2]]; if (p) web.p = [+p[1], +p[2]];
   return Object.keys(web).length ? { web } : {};
 }
 // What each tool call looks like on a screen ("d"), plus its id/timestamp so the result can be matched later.
