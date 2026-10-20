@@ -860,7 +860,7 @@ function buildTimeline(proj, id, files = []) {
   let recentUntil = 0; for (const a of Object.values(agents)) if (a.id !== 'main' && a.mtime && now0 - a.mtime <= 240000) recentUntil = Math.max(recentUntil, a.mtime + 241000);
   for (const a of Object.values(agents)) if (a.id !== 'main' && now0 - (a.mtime || 0) > 240000) finished.add(a.id);   // old transcripts without a completion record: silent for 4 min counts as finished
   const events = [], parent = {}, doneSeen = new Set(), lastTs = {}; for (const st of states) if (st) lastTs[st.agent] = st.lastTs || 0;
-  const usageBy = new Map(); for (const st of states) if (st) for (const [mid, mu] of st.msgUsage) { const o = usageBy.get(mid); if (!o || mu.ts < o.msgUsage.get(mid).ts || (mu.ts === o.msgUsage.get(mid).ts && st.agent === 'main')) usageBy.set(mid, st); }   // a fork (on by default since Claude Code 2.1.302) starts its file with a copy of the message that launched it: its tokens count once, for the agent that wrote it first
+  const usageBy = new Map(); for (const st of states) if (st) for (const [mid, mu] of st.msgUsage) { if (!/^msg_/.test(mid)) continue; const o = usageBy.get(mid); if (!o || mu.ts < o.msgUsage.get(mid).ts || (mu.ts === o.msgUsage.get(mid).ts && st.agent === 'main')) usageBy.set(mid, st); }   // a fork (on by default since Claude Code 2.1.302) starts its file with a copy of the message that launched it: its tokens count once, for the agent that wrote it first. Only the API's own message ids (msg_…) name one message across files: Codex and Vibe number theirs in each agent (t0, v1…), the same name in two agents is two messages
   const finish = (to, ts, by) => { if (!doneSeen.has(to)) { doneSeen.add(to); events.push({ ts, agent: to, kind: 'finish', to: by, k: 'f/' + to }); } };   // one per agent, whichever record says it first: the key is the agent, not the record
   for (const st of states) {
     if (!st) continue;
@@ -877,7 +877,7 @@ function buildTimeline(proj, id, files = []) {
       else events.push(e);
     });
     if (run && run.done.has(st.agent) && st.lastTs) finish(st.agent, st.lastTs, parent[st.agent] || 'main');   // the journal has no times: the agent finished when it last wrote
-    for (const [mid, mu] of st.msgUsage) if (usageBy.get(mid) === st) events.push({ ts: mu.ts, agent: st.agent, kind: 'usage', u: mu.u, model: mu.model, ...(mu.cw ? { cw: mu.cw } : {}), ...(mu.ef ? { ef: mu.ef } : {}), ...(mu.adv ? { adv: mu.adv } : {}), k: 'u/' + st.agent + '/' + mid });
+    for (const [mid, mu] of st.msgUsage) if (!usageBy.has(mid) || usageBy.get(mid) === st) events.push({ ts: mu.ts, agent: st.agent, kind: 'usage', u: mu.u, model: mu.model, ...(mu.cw ? { cw: mu.cw } : {}), ...(mu.ef ? { ef: mu.ef } : {}), ...(mu.adv ? { adv: mu.adv } : {}), k: 'u/' + st.agent + '/' + mid });
   }
   for (const e of events) if (e.kind === 'report' && e.to === null) e.to = parent[e.agent] || 'main';
 

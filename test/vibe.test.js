@@ -37,7 +37,7 @@ const lines1 = [
 ];
 const kidLines = [user('Find every place the cart total is computed.\nReport the files.'), asst('', [['k1', 'grep', { pattern: 'total', path: '/w' }]]), tool('k1', 'grep', 'matches: cart.js:1', { matches: 'cart.js:1\ncheckout.js:9', match_count: 2 }), asst('Two places: cart.js and checkout.js.')];
 const main1 = put(path.join(ROOT, S1), lines1, metaOf({ start: START, more: { title: 'Fix the cart total', child_sessions: [{ session_id: 'kid', tool_call_id: 'c6', agent: 'explore', relative_path: 'agents/' + KID }], stats: { steps: 4, session_prompt_tokens: 9000, session_completion_tokens: 700, session_cached_tokens: 4000, context_tokens: 3000 }, config: { active_model: 'devstral', models: [{ name: 'devstral-latest', alias: 'devstral', max_context_length: 200000 }] } } }), END);
-put(path.join(ROOT, S1, 'agents', KID), kidLines, metaOf({ start: SUB_START, more: { parent_session_id: 'id-' + START } }), SUB_END);
+put(path.join(ROOT, S1, 'agents', KID), kidLines, metaOf({ start: SUB_START, more: { parent_session_id: 'id-' + START, stats: { steps: 1, session_prompt_tokens: 1000, session_completion_tokens: 50, session_cached_tokens: 0 } } }), SUB_END);
 put(path.join(ROOT, S2), [user('An older question, with no title.'), asst('An older answer.')], metaOf({ start: NOW - 30 * 3600e3 }), NOW - 29 * 3600e3);
 fs.mkdirSync(path.join(ROOT, '.last_session'), { recursive: true }); fs.mkdirSync(path.join(ROOT, 'session_empty'), { recursive: true }); fs.writeFileSync(path.join(ROOT, '.session_index.json'), '{}');   // what else Vibe keeps there
 // ---- the current format: a snapshot taken while the lead waits for its sub-agent, then (later, in the test) the journal that follows it
@@ -120,6 +120,7 @@ test('a Vibe session becomes the same events as a Claude Code one: lines, tools 
     assert.equal(real[17].ts, Math.round(END));
     const u = ev.filter((e) => e.kind === 'usage' && e.agent === 'main'), sum = (k) => u.reduce((n, e) => n + e.u[k], 0), last = u[u.length - 1];
     assert.deepEqual([sum('i'), sum('o'), sum('r'), last.u.i + last.u.r, last.model, last.cw], [5000, 700, 4000, 3000, 'devstral', 200000]);   // the totals of the session, and a last line the size of the context now
+    const ku = ev.filter((e) => e.kind === 'usage' && e.agent !== 'main'); assert.deepEqual([ku.reduce((n, e) => n + e.u.i + e.u.r, 0), ku.reduce((n, e) => n + e.u.o, 0)], [1000, 50], 'the sub-agent\'s own tokens: Vibe numbers the lines of each agent from 1, the same name in the lead is another message (1.40.0 candidate counted only one of them)');
   } finally { stop(); }
 });
 
