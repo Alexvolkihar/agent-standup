@@ -21,7 +21,7 @@ A command appears in the call once it has finished, because that is when Codex w
 ## Try it
 
 - **In VS Code, Cursor or Windsurf:** search "Agent Standup" in the Extensions view.
-- **In a terminal, without installing anything** (Node 18 or later): `npx @double_geste/agent-standup --open`
+- **In a terminal, without installing anything** (Node 18 or later): `npx @double_geste/agent-standup@latest --open`
 - **As a desktop app** for macOS, Windows and Linux, from https://agent-standup.com
 
 To leave Codex out, use the setting `agentStandup.codex` in VS Code, or `--codex off` on the command line. To read Codex sessions from another folder: `--codex /path/to/codex-home`.

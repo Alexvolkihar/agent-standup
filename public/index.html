@@ -312,6 +312,7 @@
   #prefs .pfoot { display:flex; justify-content:flex-end; padding:12px 10px 0; margin-top:8px; border-top:1px solid var(--line) } #prefsReset.sure { border-color:#ff7a6b; color:#ffb4a8 }
   #menuTip { position:fixed; z-index:13; max-width:260px; padding:10px 12px; border-radius:10px; background:#2b3352; border:1px solid var(--accent); box-shadow:0 10px 30px rgba(0,0,0,.5); font-size:12.5px; line-height:1.45; color:var(--text) } #menuTip::before { content:''; position:absolute; top:-7px; right:var(--ax,14px); width:12px; height:12px; background:#2b3352; border-left:1px solid var(--accent); border-top:1px solid var(--accent); transform:rotate(45deg) } #menuTip .btn { display:block; margin:8px 0 0 auto }   /* once, after the menu moved */
   #rateTip, #coffeeTip, #usageTip { position:fixed; z-index:13; max-width:280px; padding:10px 12px; border-radius:10px; background:#2b3352; border:1px solid var(--accent); box-shadow:0 10px 30px rgba(0,0,0,.5); font-size:12.5px; line-height:1.45; color:var(--text) } #rateTip::before, #coffeeTip::before, #usageTip::before { content:''; position:absolute; top:-7px; right:var(--ax,14px); width:12px; height:12px; background:#2b3352; border-left:1px solid var(--accent); border-top:1px solid var(--accent); transform:rotate(45deg) } #rateTip .rtb, #coffeeTip .rtb, #usageTip .rtb { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; margin-top:8px } #usageTip { max-width:360px } #rateYes, #coffeeYes, #usageYes { border-color:var(--accent) }   /* once, on the third day: a star (desktop app, command line) */
+  #updTip { position:fixed; z-index:13; max-width:340px; padding:10px 12px; border-radius:10px; background:#2b3352; border:1px solid var(--accent); box-shadow:0 10px 30px rgba(0,0,0,.5); font-size:12.5px; line-height:1.45; color:var(--text) } #updTip::before { content:''; position:absolute; top:-7px; right:var(--ax,14px); width:12px; height:12px; background:#2b3352; border-left:1px solid var(--accent); border-top:1px solid var(--accent); transform:rotate(45deg) } #updTip .rtb { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; margin-top:8px } #updCmd { display:block; margin-top:6px; padding:5px 7px; border-radius:6px; background:rgba(0,0,0,.28); font:11.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap:anywhere; user-select:all } #updGo { border-color:var(--accent) }   /* a newer version, once per version (desktop app, command line, plugin) */
   a.artist { color:#f5c04a; text-underline-offset:2px } #menuShop:empty { display:none } #menuShop { margin:2px 0 8px; font-size:12px; line-height:1.5; color:#c3c6d4 }   /* the Halloween pack, for those who do not have it */
   #recap { position:fixed; inset:0; z-index:15; background:rgba(5,6,12,.88); display:none; overflow:auto; padding:28px 16px } #recap.on { display:block }
   #recap .box { max-width:860px; margin:0 auto; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px 26px }
@@ -389,6 +390,7 @@
 <div id="usageTip" role="dialog" aria-live="polite" style="display:none"><span id="usageTipT"></span><div class="rtb"><button class="btn" id="usageRead"></button><button class="btn" id="usageNo"></button><button class="btn" id="usageYes"></button></div></div>
 <div id="coffeeTip" role="status" style="display:none"><span id="coffeeTipT"></span><div class="rtb"><button class="btn" id="coffeeNo"></button><button class="btn" id="coffeeYes"></button></div></div>
 <div id="rateTip" role="status" style="display:none"><span id="rateTipT"></span><div class="rtb"><button class="btn" id="rateNo"></button><button class="btn" id="rateLater"></button><button class="btn" id="rateYes"></button></div></div>
+<div id="updTip" role="status" style="display:none"><span id="updTipT"></span><code id="updCmd" style="display:none"></code><div class="rtb"><button class="btn" id="updNotes"></button><button class="btn" id="updLater"></button><button class="btn" id="updGo"></button></div></div>
 <div id="prefs" role="dialog" aria-modal="true" aria-labelledby="prefsT"><div class="pbox">
   <div class="phead"><h2 id="prefsT" data-fr="Réglages" data-en="Settings">Réglages</h2><button class="btn" id="prefsX" data-fr="Fermer" data-en="Close">Fermer</button></div>
   <div class="pcols"><div class="pcol">
@@ -397,7 +399,9 @@
   <div class="box" id="officeBox" style="display:none"><input id="officeVol" type="range" min="0.1" max="1" step="0.05" style="width:100%" aria-label="Ambience volume"></div>
   <button class="mi" data-t="music"><span data-fr="Musique d’ambiance (radio FIP)" data-en="Office music (FIP radio)">Musique d’ambiance (radio FIP)</span><i class="sw"></i></button>
   <div class="box" id="musicBox" style="display:none"><select id="station"></select><input id="musicVol" type="range" min="0" max="1" step="0.05" style="width:100%" aria-label="Music volume"></div>
-  <button class="mi" data-t="shareUsage" id="mShare" style="display:none"><span data-fr="Aider à compter les utilisateurs (1 requête par semaine)" data-en="Help count users (1 request a week)">Aider à compter les utilisateurs (1 requête par semaine)</span><i class="sw"></i></button> <button class="mi" data-t="notify"><span data-fr="Me prévenir quand les agents ont fini" data-en="Notify me when agents finish">Me prévenir quand les agents ont fini</span><i class="sw"></i></button>
+  <button class="mi" data-t="shareUsage" id="mShare" style="display:none"><span data-fr="Aider à compter les utilisateurs (1 requête par semaine)" data-en="Help count users (1 request a week)">Aider à compter les utilisateurs (1 requête par semaine)</span><i class="sw"></i></button>
+  <button class="mi" data-t="updateNotice" id="mUpd" style="display:none"><span data-fr="Me dire quand une nouvelle version sort (1 requête par jour)" data-en="Tell me when a new version is out (1 request a day)">Me dire quand une nouvelle version sort (1 requête par jour)</span><i class="sw"></i></button>
+<button class="mi" data-t="notify"><span data-fr="Me prévenir quand les agents ont fini" data-en="Notify me when agents finish">Me prévenir quand les agents ont fini</span><i class="sw"></i></button>
   <h4 data-fr="Personnages" data-en="Characters">Personnages</h4>
   <button class="mi" data-t="customLaptop"><span data-fr="Ordinateur devant vos personnages" data-en="Laptop in front of your own characters">Ordinateur devant vos personnages</span><i class="sw"></i></button>
   <button class="mi" data-t="ownNames"><span data-fr="Garder les noms de mes agents" data-en="Keep my agents’ own names">Garder les noms de mes agents</span><i class="sw"></i></button>
@@ -2158,7 +2162,7 @@ function rateDay() {   // a day of use: the page in view that day
   rateTip();
 }
 function rateTip() {
-  const t = $('#rateTip'); if (!RATE_ASKS || prefs.rateDone || firstDay() || askedToday('rate') || (+prefs.rateDays || 0) < 3 || (prefs.rateLater && utcDay() < prefs.rateLater) || $('#menuTip').style.display !== 'none' || $('#usageTip').style.display !== 'none' || $('#menu').classList.contains('on')) { t.style.display = 'none'; return; }
+  const t = $('#rateTip'); if (!RATE_ASKS || prefs.rateDone || firstDay() || askedToday('rate') || (+prefs.rateDays || 0) < 3 || (prefs.rateLater && utcDay() < prefs.rateLater) || $('#menuTip').style.display !== 'none' || $('#usageTip').style.display !== 'none' || $('#updTip').style.display !== 'none' || $('#menu').classList.contains('on')) { t.style.display = 'none'; return; }
   const r = $('#bMenu').getBoundingClientRect(); if (!r.width) return;
   $('#rateTipT').textContent = L('Agent Standup vous plaît ? Une étoile sur GitHub aide d’autres personnes à le trouver.', 'Enjoying Agent Standup? A star on GitHub helps other people find it.');
   $('#rateYes').textContent = L('⭐ Mettre une étoile', '⭐ Star it'); $('#rateLater').textContent = L('Plus tard', 'Later'); $('#rateNo').textContent = L('Non merci', 'No thanks');
@@ -2175,7 +2179,7 @@ function coffeeAsk(busyAt) {
   const now = Date.now(), team = Object.keys(S.agents).filter((id) => id !== 'main' && id !== 'user' && S.lastAct[id] >= busyAt).length;
   if (!(now - busyAt >= 10 * 60e3 || (team >= 3 && now - busyAt >= 2 * 60e3))) return;
   if ($('#rateTip').style.display !== 'none' || $('#usageTip').style.display !== 'none' || rateTip.seen === utcDay() || prefs.rateDone === utcDay() || (RATE_ASKS && !prefs.rateDone && prefs.rateLast === utcDay() && (+prefs.rateDays || 0) >= 3)) return;   /* the star shown, given or declined today */
-  clearTimeout(coffeeAsk.t); coffeeAsk.t = setTimeout(() => { if (prefs.coffeeAsked || document.hidden || $('#menu').classList.contains('on') || $('#menuTip').style.display !== 'none' || $('#rateTip').style.display !== 'none' || agentState('main', Date.now()).k !== 'done') return; coffeeTip(); }, 8000);   /* after the confetti and the lead's last word */
+  clearTimeout(coffeeAsk.t); coffeeAsk.t = setTimeout(() => { if (prefs.coffeeAsked || document.hidden || $('#menu').classList.contains('on') || $('#menuTip').style.display !== 'none' || $('#rateTip').style.display !== 'none' || $('#updTip').style.display !== 'none' || agentState('main', Date.now()).k !== 'done') return; coffeeTip(); }, 8000);   /* after the confetti and the lead's last word */
 }
 function coffeeTip() {
   const at = [$('#bCoffee'), $('#bMenu')].find((b) => b.getBoundingClientRect().width), t = $('#coffeeTip'); if (!at) return;
@@ -2199,7 +2203,7 @@ function usageStart() {
 }
 function usageTip() {
   const t = $('#usageTip'); if (!USAGE_ASKS || prefs.usageAsked || prefs.shareUsage === true || firstDay() || document.hidden || $('#menu').classList.contains('on')) { t.style.display = 'none'; return; }   /* firstDay: like every ask, not the first day the app is used */
-  if ($('#menuTip').style.display !== 'none') { usageStart.t = setTimeout(usageTip, 4000); return; }   /* after the tip about the moved menu */
+  if ($('#menuTip').style.display !== 'none' || $('#updTip').style.display !== 'none') { usageStart.t = setTimeout(usageTip, 4000); return; }   /* after the tip about the moved menu, or about a new version */
   if (prefs.askDay === utcDay() && prefs.askWhat === 'pack') { t.style.display = 'none'; return; }   /* the Halloween pack's day: one ask at a time, this one comes back on the next */
   const r = $('#bMenu').getBoundingClientRect(); if (!r.width) return;
   $('#rateTip').style.display = 'none'; $('#coffeeTip').style.display = 'none'; noteAsk('usage'); if (!prefs.usageDay) { prefs.usageDay = utcDay(); savePrefs(); }
@@ -2210,6 +2214,49 @@ function usageTip() {
 const usageAnswer = (yes) => { prefs.shareUsage = yes; prefs.usageAsked = true; savePrefs(); $('#usageTip').style.display = 'none'; syncSwitches(); document.querySelectorAll('.mi[data-t="shareUsage"] .sw').forEach((x) => x.classList.toggle('on', yes)); if (yes) usageOpened(true); };
 $('#usageYes').onclick = () => usageAnswer(true); $('#usageNo').onclick = () => usageAnswer(false); $('#usageRead').onclick = () => openExternal('https://agent-standup.com/privacy/');
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { usageOpened(); if (USAGE_ASKS && !prefs.usageAsked && prefs.shareUsage !== true && $('#usageTip').style.display === 'none') usageStart(); } });
+// A newer version, in the desktop app, the command line and the Claude Code plugin (the editor updates itself from its store). Off until the person says yes: the page asks once, by the menu,
+// from the second day and on a day nothing else was asked, once the usage question is answered ("Yes, tell me" turns prefs.updateNotice on; any other answer leaves it off and it is not asked
+// again; ⚙ › All settings turns it on or off). Then the server asks npm at most once a day which version is the latest (server.js, updateInfo, which reads the answer again in the settings
+// file) and this page shows it once per version, with the step that updates this app: download the desktop app again, update the plugin, or the npx / npm command to copy. "Later" hides it
+// until the next version. One tip at a time by the menu; never asked with DO_NOT_TRACK or NO_UPDATE_NOTIFIER set (APP.updates), in a demo or embedded.
+const UPD_SHOWS = ['desktop', 'cli', 'plugin'].includes(APP.kind) && APP.updates !== false && APP.track !== false && !EMBED && !Q.get('demo');
+const tipsBusy = () => document.hidden || $('#menu').classList.contains('on') || ['#menuTip', '#usageTip', '#rateTip', '#coffeeTip'].some((s) => $(s).style.display !== 'none');
+function updStart() {
+  if (!UPD_SHOWS) return; $('#mUpd').style.display = '';
+  if (prefs.updateNotice !== true) { clearTimeout(updAsk.t); if (!prefs.updateAsked) updAsk.t = setTimeout(updAsk, 6000); return; }   /* after the usage question, which waits 2.5 s */
+  if (updStart.u) return updTip(0);   /* known already: shown again in the language just chosen */
+  if (document.hidden || Date.now() - (updStart.at || 0) < 3600e3) return; updStart.at = Date.now();
+  clearTimeout(updStart.t); updStart.t = setTimeout(() => fetch('/api/update').then((r) => r.json()).then((u) => { if (u && u.newer && typeof u.latest === 'string') { updStart.u = u; updTip(0); } }).catch(() => {}), 3000);
+}
+function updAsk() {
+  const t = $('#updTip'); if (!UPD_SHOWS || prefs.updateNotice === true || prefs.updateAsked || firstDay() || usagePending() || askedToday('update') || tipsBusy()) return;   /* like every ask: not the first day, one ask a day; it comes back with the next day the page is in view */
+  const r = $('#bMenu').getBoundingClientRect(); if (!r.width) return;
+  noteAsk('update'); updTip.mode = 'ask';
+  $('#updTipT').textContent = L('Être prévenu quand une nouvelle version d’Agent Standup sort ? Au plus une fois par jour, l’app demanderait à npm le numéro de la dernière version : rien sur vous ni sur vos sessions. npm voit votre adresse IP, comme pour tout téléchargement. Vous pouvez l’arrêter quand vous voulez dans ⚙ › Tous les réglages.', 'Get told when a new version of Agent Standup is out? At most once a day, the app would ask npm for the number of the latest version: nothing about you or your sessions. npm sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.');
+  $('#updCmd').style.display = 'none'; $('#updNotes').textContent = L('Confidentialité', 'Privacy policy'); $('#updLater').textContent = L('Non merci', 'No thanks'); $('#updGo').textContent = L('Oui, prévenez-moi', 'Yes, tell me');
+  updPlace(t, r);
+}
+const updPlace = (t, r) => { t.style.display = ''; t.style.top = Math.round(r.bottom + 10) + 'px'; t.style.right = Math.max(8, Math.round(innerWidth - r.right - 6)) + 'px'; t.style.setProperty('--ax', Math.max(8, Math.round(r.width / 2 - 2)) + 'px'); };
+function updTip(n) {
+  const t = $('#updTip'), u = updStart.u; clearTimeout(updTip.t); if (!u || prefs.updateNotice !== true || prefs.updSeen === u.latest) { t.style.display = 'none'; return; }
+  if (tipsBusy()) { t.style.display = 'none'; if (n < 40) updTip.t = setTimeout(() => updTip(n + 1), 15000); return; }   /* after the other tips by the menu */
+  const r = $('#bMenu').getBoundingClientRect(); if (!r.width) return; updTip.mode = 'tell';
+  const step = u.how === 'download' ? L('Téléchargez la nouvelle app sur GitHub.', 'Download the new app from GitHub.') : u.how === 'plugin' ? L('Mettez le plugin à jour dans un terminal, puis redémarrez Claude Code :', 'Update the plugin in a terminal, then restart Claude Code:') : u.how === 'npx' ? L('La prochaine fois, lancez-le avec :', 'Next time, start it with:') : L('Mettez-le à jour avec :', 'Update it with:');
+  $('#updTipT').textContent = L('Agent Standup {0} est sorti (vous avez la {1}).', 'Agent Standup {0} is out (you have {1}).').replace('{0}', () => u.latest).replace('{1}', () => u.current) + ' ' + step;
+  $('#updCmd').textContent = u.cmd || ''; $('#updCmd').style.display = u.cmd ? '' : 'none';
+  $('#updNotes').textContent = L('Nouveautés', 'What’s new'); $('#updLater').textContent = L('Plus tard', 'Later'); $('#updGo').textContent = u.how === 'download' ? L('Télécharger', 'Download') : L('Copier', 'Copy');
+  updPlace(t, r);
+}
+const updEnd = () => { if (updStart.u) prefs.updSeen = updStart.u.latest; savePrefs(); $('#updTip').style.display = 'none'; };
+const updAnswer = (yes) => { prefs.updateNotice = yes; prefs.updateAsked = true; savePrefs(); $('#updTip').style.display = 'none'; syncSwitches(); document.querySelectorAll('.mi[data-t="updateNotice"] .sw').forEach((x) => x.classList.toggle('on', yes)); if (yes) { updStart.at = 0; setTimeout(updStart, 600); } };   /* yes: asked once the settings file says so (savePrefs waits 400 ms) */
+$('#updLater').onclick = () => (updTip.mode === 'ask' ? updAnswer(false) : updEnd()); $('#updNotes').onclick = () => (updTip.mode === 'ask' ? openExternal('https://agent-standup.com/privacy/') : updStart.u && openExternal(updStart.u.notes));
+$('#updGo').onclick = async () => {
+  if (updTip.mode === 'ask') return updAnswer(true);
+  const u = updStart.u; if (!u) return; if (u.how === 'download') { openExternal(u.url); return updEnd(); }
+  let ok = false; try { await navigator.clipboard.writeText(u.cmd); ok = true; } catch { try { const ta = document.createElement('textarea'); ta.value = u.cmd; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); } catch {} }
+  $('#updGo').textContent = ok ? L('Copié', 'Copied') : L('Sélectionnez la commande', 'Select the command'); if (ok) setTimeout(updEnd, 1500);
+};
+document.addEventListener('visibilitychange', () => { if (!document.hidden && UPD_SHOWS && !updStart.u) updStart(); }); setInterval(() => { if (UPD_SHOWS && !updStart.u) updStart(); }, 6 * 3600e3);   // the desktop window can stay open for days
 
 // =====================================================================
 //  recap
@@ -2981,7 +3028,7 @@ async function exportVideo(from = 0, to = 0, clip = 0) {   // clip: length in ms
 //  UI wiring
 // =====================================================================
 function applyLang() {
-  renderCharInfo(); packNote(); menuTip(); rateDay(); coffeeDay(); usageStart();
+  renderCharInfo(); packNote(); menuTip(); rateDay(); coffeeDay(); usageStart(); updStart();
   try { for (const id in S.act) { const b = S.term[id], t = b && b[b.length - 1]; if (t && t.tool) S.act[id] = activityLabel(t.tool); } if (S.live) fillProjects(); } catch {}   // what each agent is doing, and the list of projects, were written in the language before
   document.documentElement.lang = (LANGS.find((l) => l[0] === prefs.lang) || LANGS[0])[2];
   document.querySelectorAll('[data-fr]').forEach((el) => (el.textContent = FR() ? el.dataset.fr : tr(el.dataset.en)));
@@ -3046,6 +3093,7 @@ function menuInit() {
 }
 const onSwitch = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'shareUsage') { prefs.usageAsked = true; savePrefs(); usageOpened(true); } if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'callTr') { prefs.callTrSeen = true; savePrefs(); setLang(prefs.lang); } if (b.dataset.t === 'voice') voiceOffer(); if (b.dataset.t === 'customLaptop') { for (const k in imgCache) delete imgCache[k]; buildStage(); paintStatus(); } if (b.dataset.t === 'files') paintFiles(); if (b.dataset.t === 'artNet' && S.present) renderPresent(); if (b.dataset.t === 'ownNames') renameAll(); if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'focusLayout') { document.body.classList.toggle('focusl', !!prefs.focusLayout); layout(); } if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify') { prefs.notifyChosen = true; savePrefs(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
   if (b.dataset.t === 'askCard') paintAsk(Date.now());
+  if (b.dataset.t === 'updateNotice') { prefs.updateAsked = true; savePrefs(); $('#updTip').style.display = 'none'; if (prefs.updateNotice) { updStart.at = 0; setTimeout(updStart, 600); } }   /* an answer too; on: asked once the settings file says so (savePrefs waits 400 ms) */
   if (b.dataset.t === 'music') { $('#musicBox').style.display = prefs.music ? '' : 'none'; if (prefs.music) { AUD.init(); AUD.apply(); } } };
 $('#menu').onclick = onSwitch; $('#prefs').onclick = (e) => { if (e.target === $('#prefs')) return closePrefs(); onSwitch(e); setTimeout(syncSwitches); };
 function openPrefs(target) {   // ⚙ → All settings; target: one of its settings, found by the search of the menu, shown and lit up

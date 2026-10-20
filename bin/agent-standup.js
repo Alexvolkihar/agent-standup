@@ -68,5 +68,6 @@ if (cmd === 'status') {
   const port = +process.env.PORT || 4747, srv = server.start(port);
   srv.on('error', (e) => { console.error(e.code === 'EADDRINUSE' ? `Port ${port} is already in use (Agent Standup may already be running, e.g. inside your editor). Try: agent-standup --port ${port + 1}` : String(e)); process.exit(1); });
   srv.on('listening', () => { if (flags.open) { const url = `http://localhost:${port}/`, opener = process.platform === 'darwin' ? ['open', [url]] : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]] : ['xdg-open', [url]]; try { spawn(opener[0], opener[1], { stdio: 'ignore', detached: true }).on('error', () => {}).unref(); } catch {} } });
+  srv.on('listening', () => server.updateInfo().then((u) => { if (u.newer && u.cmd) console.log(`\nAgent Standup ${u.latest} is out (you have ${u.current}). ${u.how === 'plugin' ? 'Update the plugin, then restart Claude Code:' : u.how === 'npx' ? 'Next time, start it with:' : 'Update it with:'}\n  ${u.cmd}\n`); }, () => {}));   // a newer version (server.js, updateInfo: at most one request to npm a day, never with DO_NOT_TRACK or NO_UPDATE_NOTIFIER)
   process.on('SIGINT', () => { try { server.shutdown(); } catch {} process.exit(0); });
 } else { console.error(`Unknown command "${cmd}".\n\n${HELP}`); process.exit(2); }

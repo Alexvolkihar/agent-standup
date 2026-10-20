@@ -34,12 +34,12 @@ test('the page is told where it runs, for ⚙ › Rate: the store page the edito
   const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port, h0 = process.env.AGENT_STANDUP_HOST, r0 = process.env.AGENT_STANDUP_RATE;
   const app = async () => JSON.parse((await get(port, '/api/prefs.js')).body.match(/window\.AS_APP = (.*);$/)[1]), GH = 'https://github.com/Atoll92/agent-standup', MP = 'https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup&ssr=false#review-details';
   try {
-    delete process.env.AGENT_STANDUP_HOST; delete process.env.AGENT_STANDUP_RATE; assert.deepEqual(await app(), { kind: '', rate: GH, track: true });
-    process.env.AGENT_STANDUP_HOST = 'desktop app'; process.env.AGENT_STANDUP_RATE = MP; assert.deepEqual(await app(), { kind: 'desktop', rate: GH, track: true });   // the desktop app has no store
-    process.env.AGENT_STANDUP_HOST = 'command line'; assert.deepEqual(await app(), { kind: 'cli', rate: GH, track: true });
-    process.env.AGENT_STANDUP_HOST = 'claude code plugin'; assert.deepEqual(await app(), { kind: 'plugin', rate: GH, track: true });   // the plugin's commands: agent-standup --from plugin
-    process.env.AGENT_STANDUP_HOST = 'Cursor 1.2'; assert.deepEqual(await app(), { kind: 'editor', rate: MP, track: true });
-    process.env.AGENT_STANDUP_RATE = 'https://example.com/'; assert.deepEqual(await app(), { kind: 'editor', rate: GH, track: true });   // only the two stores
+    delete process.env.AGENT_STANDUP_HOST; delete process.env.AGENT_STANDUP_RATE; assert.deepEqual(await app(), { kind: '', rate: GH, track: true, updates: true });
+    process.env.AGENT_STANDUP_HOST = 'desktop app'; process.env.AGENT_STANDUP_RATE = MP; assert.deepEqual(await app(), { kind: 'desktop', rate: GH, track: true, updates: true });   // the desktop app has no store
+    process.env.AGENT_STANDUP_HOST = 'command line'; assert.deepEqual(await app(), { kind: 'cli', rate: GH, track: true, updates: true });
+    process.env.AGENT_STANDUP_HOST = 'claude code plugin'; assert.deepEqual(await app(), { kind: 'plugin', rate: GH, track: true, updates: true });   // the plugin's commands: agent-standup --from plugin
+    process.env.AGENT_STANDUP_HOST = 'Cursor 1.2'; assert.deepEqual(await app(), { kind: 'editor', rate: MP, track: true, updates: true });
+    process.env.AGENT_STANDUP_RATE = 'https://example.com/'; assert.deepEqual(await app(), { kind: 'editor', rate: GH, track: true, updates: true });   // only the two stores
   } finally {
     for (const [k, v] of [['AGENT_STANDUP_HOST', h0], ['AGENT_STANDUP_RATE', r0]]) { if (v == null) delete process.env[k]; else process.env[k] = v; }
     srv.close(); require('../server.js').shutdown();
@@ -62,11 +62,41 @@ test('usage, for those who said yes (in the settings file, not only in the page)
     process.env.AGENT_STANDUP_HOST = 'claude code plugin'; assert.equal((await send()).sent, true); process.env.AGENT_STANDUP_HOST = 'desktop app'; assert.equal((await send()).sent, true);
     await wait(); assert.deepEqual(hits.slice().sort(), ['/stats/cli-week.gif', '/stats/desktop-week.gif', '/stats/plugin-week.gif'], 'a counter for each kind, nothing else in the request');
     for (const f of fs.readdirSync(dir)) if (f.startsWith('sent-')) fs.unlinkSync(path.join(dir, f));
-    process.env.DO_NOT_TRACK = '1'; assert.equal((await send()).sent, false, 'DO_NOT_TRACK'); assert.equal((await app()).track, false, 'and the page does not ask'); await wait(); assert.equal(hits.length, 3);
+    process.env.DO_NOT_TRACK = '1'; assert.equal((await send()).sent, false, 'DO_NOT_TRACK'); assert.equal((await app()).track, false, 'and the page does not ask'); assert.equal((await app()).updates, false, 'nor about new versions'); await wait(); assert.equal(hits.length, 3);
     assert.equal((await get(port, '/api/usage', { 'sec-fetch-site': 'cross-site' }, 'POST')).status, 403, 'another site cannot make it count');
   } finally {
     for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
     if (saved0 == null) { try { fs.unlinkSync(process.env.AGENT_STANDUP_PREFS); } catch {} } else fs.writeFileSync(process.env.AGENT_STANDUP_PREFS, saved0);
+    srv.close(); sink.close(); require('../server.js').shutdown();
+  }
+});
+
+test('a newer version, in the desktop app, the command line and the plugin, for those who said yes (in the settings file): npm asked once a day for all of them, again an hour after a failure, the step that updates each; nothing for the editor, without a yes, with DO_NOT_TRACK or NO_UPDATE_NOTIFIER', async () => {
+  let answer = JSON.stringify({ name: '@double_geste/agent-standup', version: '99.0.0' }); const hits = [], sink = http.createServer((q, r) => { hits.push(q.url); r.setHeader('content-type', 'application/json'); r.end(answer); }); await new Promise((r) => sink.listen(0, '127.0.0.1', r));
+  const srv = require('../server.js').start(0); await new Promise((r) => srv.once('listening', r)); const port = srv.address().port, keep = ['AGENT_STANDUP_HOST', 'AGENT_STANDUP_UPDATE_URL', 'DO_NOT_TRACK', 'NO_UPDATE_NOTIFIER'].map((k) => [k, process.env[k]]);
+  const P = process.env.AGENT_STANDUP_PREFS, saved0 = fs.existsSync(P) ? fs.readFileSync(P, 'utf8') : null, file = path.join(path.dirname(P), 'update-check.json'), upd = async () => JSON.parse((await get(port, '/api/update')).body);
+  try {
+    process.env.AGENT_STANDUP_UPDATE_URL = `http://127.0.0.1:${sink.address().port}/latest`; delete process.env.DO_NOT_TRACK; delete process.env.NO_UPDATE_NOTIFIER; try { fs.unlinkSync(file); } catch {}
+    const said = (v) => fs.writeFileSync(P, JSON.stringify({ ...JSON.parse(saved0 || '{}'), updateNotice: v }));
+    process.env.AGENT_STANDUP_HOST = 'command line'; said(undefined); assert.equal((await upd()).on, false, 'no yes in the settings file: nothing'); said(false); assert.equal((await upd()).on, false); said(true);
+    process.env.AGENT_STANDUP_HOST = 'Visual Studio Code 1.99'; assert.equal((await upd()).on, false, 'the editor updates itself'); assert.deepEqual(hits, []);
+    process.env.AGENT_STANDUP_HOST = 'command line'; const a = await upd();
+    assert.equal(a.on, true); assert.equal(a.newer, true); assert.equal(a.latest, '99.0.0'); assert.match(a.current, /^\d+\.\d+\.\d+$/); assert.equal(a.notes, 'https://github.com/Atoll92/agent-standup/releases/tag/v99.0.0');
+    assert.equal(a.how, 'npm', 'not run from npx\'s cache'); assert.equal(a.cmd, 'npm i -g @double_geste/agent-standup@latest'); assert.deepEqual(hits, ['/latest']);
+    assert.equal((await upd()).latest, '99.0.0'); process.env.AGENT_STANDUP_HOST = 'claude code plugin'; const b = await upd();
+    assert.equal(b.how, 'plugin'); assert.match(b.cmd, /claude plugin update agent-standup@double-geste/); process.env.AGENT_STANDUP_HOST = 'desktop app'; const c = await upd();
+    assert.equal(c.how, 'download'); assert.equal(c.url, 'https://github.com/Atoll92/agent-standup/releases/latest'); assert.equal(hits.length, 1, 'one request a day, shared by every kind and server');
+    fs.writeFileSync(file, JSON.stringify({ t: Date.now(), latest: a.current })); assert.equal((await upd()).newer, false, 'already the latest');
+    fs.writeFileSync(file, JSON.stringify({ t: Date.now() - 2 * 864e5, latest: '1.0.0' })); assert.equal((await upd()).latest, '99.0.0', 'a day later: asked again'); assert.equal(hits.length, 2);
+    answer = '<html>not json'; fs.writeFileSync(file, JSON.stringify({ t: Date.now() - 2 * 864e5, latest: '99.0.0' })); assert.equal((await upd()).latest, '99.0.0', 'a failure keeps what was known');
+    assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).failed, true); await upd(); assert.equal(hits.length, 3, 'and waits an hour before asking again');
+    answer = JSON.stringify({ version: '99.0.0; rm -rf /' }); fs.writeFileSync(file, JSON.stringify({ t: Date.now() - 2 * 864e5, latest: '' })); const d = await upd(); assert.equal(d.on, true); assert.equal(d.latest, undefined, 'only a plain version number is believed'); assert.equal(d.newer, undefined);
+    said(false); assert.equal((await upd()).on, false, 'turned off again in the settings file'); said(true);
+    process.env.DO_NOT_TRACK = '1'; assert.equal((await upd()).on, false, 'DO_NOT_TRACK'); delete process.env.DO_NOT_TRACK; process.env.NO_UPDATE_NOTIFIER = '1'; assert.equal((await upd()).on, false, 'NO_UPDATE_NOTIFIER');
+    assert.equal(hits.length, 4, 'none of those asked npm'); assert.equal((await get(port, '/api/update', { 'sec-fetch-site': 'cross-site' })).status, 403, 'another site cannot make it ask');
+  } finally {
+    for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+    if (saved0 == null) { try { fs.unlinkSync(P); } catch {} } else fs.writeFileSync(P, saved0); try { fs.unlinkSync(file); } catch {}
     srv.close(); sink.close(); require('../server.js').shutdown();
   }
 });

@@ -395,5 +395,16 @@
  "medium": "mittel",
  "Browsing ": "Surft auf ",
  "Browsing the web": "Surft im Web",
- "No picture of this page yet": "Noch kein Bild dieser Seite"
+ "No picture of this page yet": "Noch kein Bild dieser Seite",
+ "Agent Standup {0} is out (you have {1}).": "Agent Standup {0} ist da (du hast {1}).",
+ "Download": "Herunterladen",
+ "Download the new app from GitHub.": "Lade die neue App von GitHub herunter.",
+ "Next time, start it with:": "Starte es beim nächsten Mal mit:",
+ "Select the command": "Markiere den Befehl",
+ "Tell me when a new version is out (1 request a day)": "Sag mir, wenn eine neue Version da ist (1 Anfrage pro Tag)",
+ "Update it with:": "Aktualisiere es mit:",
+ "Update the plugin in a terminal, then restart Claude Code:": "Aktualisiere das Plugin in einem Terminal und starte dann Claude Code neu:",
+ "What’s new": "Neuigkeiten",
+ "Get told when a new version of Agent Standup is out? At most once a day, the app would ask npm for the number of the latest version: nothing about you or your sessions. npm sees your IP address, as with any download. You can turn it off any time in ⚙ › All settings.": "Möchtest du erfahren, wenn eine neue Version von Agent Standup da ist? Höchstens einmal pro Tag würde die App npm nach der Nummer der neuesten Version fragen: nichts über dich oder deine Sitzungen. npm sieht deine IP-Adresse, wie bei jedem Download. Du kannst es jederzeit unter ⚙ › Alle Einstellungen ausschalten.",
+ "Yes, tell me": "Ja, sag Bescheid"
 }

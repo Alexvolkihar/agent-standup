@@ -606,7 +606,7 @@ const RATE_STORES = /^https:\/\/(marketplace\.visualstudio\.com|open-vsx\.org)\/
 function appKind() {
   const h = String(process.env.AGENT_STANDUP_HOST || ''), rate = String(process.env.AGENT_STANDUP_RATE || '');
   const kind = h === 'desktop app' ? 'desktop' : h === 'command line' ? 'cli' : h === 'claude code plugin' ? 'plugin' : h ? 'editor' : '';
-  return { kind, rate: kind === 'editor' && RATE_STORES.test(rate) ? rate : GITHUB_REPO, track: !noTrack() };   // track: false when DO_NOT_TRACK is set, and the page does not ask about usage
+  return { kind, rate: kind === 'editor' && RATE_STORES.test(rate) ? rate : GITHUB_REPO, track: !noTrack(), updates: !noUpdate() };   // track: false when DO_NOT_TRACK is set, and the page does not ask about usage
 }
 // Usage, counted only for those who said yes, in the desktop app, the command line and the Claude Code plugin (the editor counts itself: extension.js, pingWeek). The page asks once
 // (prefs.shareUsage, which this server reads again in the settings file before it sends anything); when the call is opened it asks this server, which sends at most one empty request a week (weeks from Monday, UTC) for the 1-pixel file of its kind in the "stats"
@@ -629,6 +629,46 @@ function usageWeek(now = new Date()) {
     r.on('error', () => {}); r.on('timeout', () => r.destroy());
   } catch (e) { logError('usage', e); }
   return { sent: true, week };
+}
+// A newer version, told in the desktop app, the command line and the Claude Code plugin (the editor updates itself from its store). At most once a day, this server asks the npm registry which
+// version is the latest: one request for the package's small manifest, with nothing about you or your sessions in it (the registry sees your IP address, as when npx starts the app). The answer is
+// kept beside the settings (update-check.json), so every server and page share one request a day; after a failure it tries again an hour later. The page shows it once per version, by the menu,
+// with the step that updates this app (index.html, updTip); the command line prints it when it starts. Off until the person says yes: the page asks once (prefs.updateNotice, read here
+// from the settings file, as for usage; ⚙ › All settings turns it on or off). Never with DO_NOT_TRACK or NO_UPDATE_NOTIFIER set. AGENT_STANDUP_UPDATE_URL: where the tests answer.
+const UPDATE_KINDS = ['desktop', 'cli', 'plugin'], UPDATE_FILE = path.join(path.dirname(PREFS), 'update-check.json'), VER_RE = /^\d{1,4}\.\d{1,5}\.\d{1,6}$/;
+const noUpdate = () => noTrack() || /^(1|true|yes)$/i.test(String(process.env.NO_UPDATE_NOTIFIER || '').trim());
+const verParts = (v) => String(v || '').split('-')[0].split('.').map((n) => parseInt(n, 10) || 0);
+const newerThan = (a, b) => { const x = verParts(a), y = verParts(b); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
+function updateHow(kind) {   // the step that updates this app: the desktop app is downloaded again, the plugin is updated by Claude Code, the command line by npx (it runs from npx's cache, a folder named _npx) or npm
+  if (kind === 'desktop') return { how: 'download', url: GITHUB_REPO + '/releases/latest' };
+  if (kind === 'plugin') return { how: 'plugin', cmd: 'claude plugin marketplace update double-geste && claude plugin update agent-standup@double-geste' };
+  return __dirname.split(path.sep).includes('_npx') ? { how: 'npx', cmd: 'npx @double_geste/agent-standup@latest --open' } : { how: 'npm', cmd: 'npm i -g @double_geste/agent-standup@latest' };
+}
+function latestFromNpm() {   // the version npm calls latest, or '' (offline, an error, anything unexpected)
+  return new Promise((done) => {
+    try {
+      const u = new URL(process.env.AGENT_STANDUP_UPDATE_URL || 'https://registry.npmjs.org/@double_geste/agent-standup/latest');
+      const r = require(u.protocol === 'http:' ? 'http' : 'https').get(u, { headers: { 'user-agent': 'agent-standup', accept: 'application/json' }, timeout: 5000 }, (m) => {
+        let b = ''; m.setEncoding('utf8'); m.on('data', (d) => { b += d; if (b.length > 65536) m.destroy(); }); m.on('error', () => done('')); m.on('close', () => done(''));
+        m.on('end', () => { try { const v = m.statusCode === 200 ? String(JSON.parse(b).version || '') : ''; done(VER_RE.test(v) ? v : ''); } catch { done(''); } });
+      });
+      r.on('error', () => done('')); r.on('timeout', () => r.destroy());
+    } catch (e) { logError('update', e); done(''); }
+  });
+}
+let updateAsking = null;
+function updateInfo() {   // what /api/update and the command line tell: { on, current, latest, newer, notes, how, cmd or url }
+  const kind = appKind().kind, off = { on: false, current: VERSION };
+  if (!UPDATE_KINDS.includes(kind) || noUpdate() || (readPrefs() || {}).updateNotice !== true) return Promise.resolve(off);   // the answer is read here, from the settings file: the page asking is not enough
+  const tell = (latest) => (latest ? { on: true, current: VERSION, latest, newer: newerThan(latest, VERSION), notes: `${GITHUB_REPO}/releases/tag/v${latest}`, ...updateHow(kind) } : { ...off, on: true });
+  let c = null; try { c = JSON.parse(fs.readFileSync(UPDATE_FILE, 'utf8')); } catch {}
+  const known = c && typeof c.latest === 'string' && VER_RE.test(c.latest) ? c.latest : '', at = (c && +c.t) || 0, now = Date.now();
+  if (at <= now && now - at < (c && c.failed ? 3600e3 : 864e5)) return Promise.resolve(tell(known));
+  if (!updateAsking) updateAsking = latestFromNpm().then((v) => {
+    try { fs.mkdirSync(path.dirname(UPDATE_FILE), { recursive: true }); fs.writeFileSync(UPDATE_FILE, JSON.stringify(v ? { t: Date.now(), latest: v } : { t: Date.now(), latest: known, failed: true })); } catch (e) { logError('update', e); }
+    return v || known;
+  }).finally(() => { updateAsking = null; });
+  return updateAsking.then(tell);
 }
 function errorReport() {   // what ⚙ › Report a problem shows: the app, the system and the last errors of the log
   let errors = []; try { errors = fs.readFileSync(ERRLOG, 'utf8').split('\n').filter(Boolean).slice(-40).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((x) => x && typeof x === 'object'); } catch {}
@@ -1170,7 +1210,7 @@ function start(port = PORT) {
   const sendFile = (fp) => { const s = fs.createReadStream(fp); s.on('error', () => res.destroy()); s.pipe(res); };   // a file that vanished between the check and the read ends this answer, not the server
   // Endpoints with side effects (they spawn programs or claim the sound), and the one that serves pictures from a session, refuse requests that a browser marks as coming from another site, e.g. an <img> on a web page.
   const sfs = req.headers['sec-fetch-site'];
-  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && (req.method !== 'GET' || ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts', '/api/prefs', '/api/prefs.js', '/api/voices', '/api/kokoro', '/api/kokoro/install', '/api/media', '/api/artifact', '/api/errors', '/api/packs'].includes(url.pathname))) { res.writeHead(403); return res.end('forbidden'); }
+  if (sfs && sfs !== 'same-origin' && sfs !== 'none' && (req.method !== 'GET' || ['/api/translate', '/api/quips', '/api/warm', '/api/audio', '/api/tts', '/api/prefs', '/api/prefs.js', '/api/voices', '/api/kokoro', '/api/kokoro/install', '/api/media', '/api/artifact', '/api/errors', '/api/packs', '/api/update'].includes(url.pathname))) { res.writeHead(403); return res.end('forbidden'); }
   const readBody = (cb, max = 262144) => {   // request bodies are small JSON: stop reading beyond 256 KB (or max) and give up after 10 s
     const chunks = []; let size = 0, over = false; req.setTimeout(10000, () => req.destroy());
     if (+req.headers['content-length'] > max) { res.writeHead(413); res.end('too large'); return req.destroy(); }
@@ -1201,6 +1241,7 @@ function start(port = PORT) {
       return loadVoices().then((v) => json(v));
     }
     if (url.pathname === '/api/kokoro/install' && req.method === 'POST') return json(kokoro.install()); if (url.pathname === '/api/usage' && req.method === 'POST') return json(usageWeek());
+    if (url.pathname === '/api/update') return updateInfo().then(json, () => json({ on: false, current: VERSION }));   /* a newer version, at most one request to npm a day (updateInfo) */
     if (url.pathname === '/api/kokoro') return json(kokoro.status());
     if (url.pathname === '/api/tts') {
       return tts(url.searchParams.get('text') || '', url.searchParams.get('voice'), url.searchParams.get('rate'), url.searchParams.get('engine'), url.searchParams.get('fb'))
@@ -1282,7 +1323,7 @@ function start(port = PORT) {
   } catch (e) { logError(req.method + ' ' + url.pathname, e); if (res.headersSent) return res.destroy(); json({ error: String(e.message || e) }, 500); }
   }).listen(port, '127.0.0.1', function () { console.log(`Agent Standup → http://localhost:${this.address().port}`); });
 }
-module.exports = { _winArg: winArg, start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, packsDir, installPack, logError, _reveal: reveal, _scrub: { tidy, homeRe }, _artifact: { page: artifactPage, csp: artifactCsp } };
+module.exports = { _winArg: winArg, start, currentSession, shutdown, findClaude, bundledClaude, boardRows, sessionRows: listSessions, charactersDir, listCharacters, packsDir, installPack, logError, updateInfo, _reveal: reveal, _scrub: { tidy, homeRe }, _artifact: { page: artifactPage, csp: artifactCsp } };
 if (require.main === module && process.env.AGENT_STANDUP_CHILD === '1' && typeof process.send === 'function') {   // started by the VS Code extension in a process of its own (see extension.js): reading a large session no longer stops the editor's extensions. Asked for by name: pm2 and others give any app a channel too
   const srv = start(+process.env.PORT || 0), tell = (m) => { try { process.send(m); } catch {} };
   srv.on('listening', () => tell({ port: srv.address().port })).on('error', (e) => { tell({ error: e.code || String(e) }); process.exit(1); });

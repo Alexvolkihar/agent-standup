@@ -54,6 +54,7 @@ Only these can leave your computer, each when you turn it on or start it yoursel
 - **Artifact libraries:** when you ask for them, an artifact shown in the call loads the scripts and fonts it names from the servers claude.ai lets artifacts use. The page runs in a frame that cannot send anything out.
 
 - **Usage count:** the page asks once whether you would help count how many people use it. If you say yes, it loads an empty 1-pixel file from GitHub at most once a week, when you open the call: no identifier, nothing about you or your sessions. It is never asked, and nothing is sent, when the `DO_NOT_TRACK` environment variable is set; ⚙ › All settings turns it off.
+- **New versions:** the page also asks once whether to tell you when a new version is out. If you say yes, it asks the npm registry for the latest version number at most once a day, and shows how to update the plugin when there is one. Never asked, and nothing sent, with `DO_NOT_TRACK` or `NO_UPDATE_NOTIFIER` set; ⚙ › All settings turns it off.
 
 Running the app with `npx` downloads its package from the npm registry.
 
