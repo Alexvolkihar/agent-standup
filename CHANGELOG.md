@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.41.1
-- **More room for the call:** for new users, the list of agents on the left of the call is off by default; ⚙ → Agents list (left) turns it on. If you already use Agent Standup, nothing changes.
+- **More room for the call:** for new users, the list of agents on the left of the call is off by default; ⚙ → Agents list (left) turns it on, and ⚙ → Reset to defaults now turns it off. If you already use Agent Standup, nothing changes.
 - **A plan waiting for your approval is on the shared screen again** with Claude Code 2.1.30x, which sends the plan in its file only.
 - **The VS Code status bar** no longer mixes up a folder inside your workspace and a folder beside it with a similar name.
 

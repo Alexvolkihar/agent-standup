@@ -36,8 +36,9 @@ const claudeLines = [
   reminder([{ id: '1', subject: 'Write the tests', description: 'All of them', activeForm: 'Writing the tests', status: 'in_progress', blocks: [], blockedBy: [] }, { id: '2', subject: 'Ship', description: '', activeForm: 'Shipping', status: 'pending', blocks: [], blockedBy: ['1'] }]),
   ...call('toolu_ts1', 'TaskStop', { task_id: 'bqxyt1tyn' }, '{"message":"Successfully stopped task"}', { tur: { message: 'Successfully stopped task', task_id: 'bqxyt1tyn' } }),
   ...call('toolu_pw', 'Write', { file_path: PLANF, content: '# From its file' }, 'File created'),
-  ...call('toolu_plan2', 'ExitPlanMode', {}, 'User approved', { tur: { plan: '# From its file', isAgent: false, filePath: PLANF } }),   // Claude Code 2.1.30x: no plan in the call, only in its file
-  ...call('toolu_plan', 'ExitPlanMode', { plan: '# Plan\n\n' + 'step\n'.repeat(1000), planFilePath: '/x/plan.md' }, 'User approved', { tur: { plan: '# Plan', isAgent: false, filePath: '/x/plan.md' } }),
+  ...call('toolu_plan2', 'ExitPlanMode', {}, 'User approved', { tur: { plan: '# The one approved', isAgent: false, filePath: PLANF } }),   // Claude Code 2.1.30x: no plan in the call; its answer names it, the file may hold a later one
+  ...call('toolu_plan3', 'ExitPlanMode', {}, 'User rejected'),   // rejected, no plan in the answer: the file
+  ...call('toolu_plan', 'ExitPlanMode', { plan: '# Plan\n\n' + 'step\n'.repeat(1000), planFilePath: '/x/plan.md' }, 'User approved', { tur: { plan: '# Plan\n\n' + 'step\n'.repeat(1000), isAgent: false, filePath: '/x/plan.md' } }),
   ...call('toolu_pv1', 'mcp__Claude_Preview__preview_start', { name: 'web' }, [{ type: 'text', text: '{\n  "serverId": "s-1",\n  "port": 3211,\n  "name": "web",\n  "reused": false\n}\nServer started successfully on port 3211.' }]),
   ...call('toolu_pv2', 'mcp__Claude_Preview__preview_eval', { serverId: 's-1', expression: 'document.title' + ' '.repeat(200) + 'x' }, [{ type: 'text', text: '"Shop"' }]),
   ...call('toolu_pv3', 'mcp__Claude_Preview__preview_resize', { serverId: 's-1', width: 1440, height: 900 }, [{ type: 'text', text: 'Viewport set to 1440x900.' }]),
@@ -90,7 +91,7 @@ test('Claude Code: task lists, plans, Claude Preview, Cowork tools, diffs, test 
     const twice = items.filter((it) => it.id === 'toolu_tc1' || it.id === 'toolu_tw1').slice(-2); assert.deepEqual(twice.map((it) => [it.out, it.task]), [['again', undefined], ['twice', undefined]], 'a record that answers two calls lends its notes to neither');
 
     // the plan
-    assert.equal(tools.toolu_plan2.d.text, '# From its file\n\nStep one.', 'an empty ExitPlanMode shows the plan file the session wrote'); assert.equal(tools.toolu_plan.d.kind, 'plan'); assert.equal(tools.toolu_plan.d.text.length, 4000); assert.match(tools.toolu_plan.d.text, /^# Plan\n\nstep/);
+    assert.equal(tools.toolu_plan2.d.text, '# The one approved', 'the plan its answer names, not the later one in the file'); assert.equal(tools.toolu_plan3.d.text, '# From its file\n\nStep one.', 'no plan in the answer: the plan file the session wrote'); assert.equal(tools.toolu_plan.d.kind, 'plan'); assert.equal(tools.toolu_plan.d.text.length, 4000); assert.match(tools.toolu_plan.d.text, /^# Plan\n\nstep/);
 
     // Claude Preview: a browser, step by step, and what its answers say about the page
     assert.deepEqual(['toolu_pv1', 'toolu_pv2', 'toolu_pv3', 'toolu_pv4', 'toolu_pv5', 'toolu_pv6', 'toolu_pv7', 'toolu_pv8', 'toolu_pv9'].map((id) => tools[id].d), [
