@@ -2928,7 +2928,8 @@ setInterval(async () => {
     S.seq = d.seq; if (d.marks) S.sawEnd = true; if (d.cost && (!S.cost || d.cost.usd !== S.cost.usd || d.cost.final !== S.cost.final)) { S.cost = d.cost; later('tok', renderTokens, 300); } if (!d.events || !d.events.length) return;
     for (const a of d.agents) if (!S.agents[a.id]) { S.agents[a.id] = persona(twinOf(a)); addTile(S.agents[a.id]); }
     const from = S.events.length, fresh = [], changed = [];   // the session is not written in order: what is new goes at the end (the order the call got it in), what the server corrected is corrected in place
-    for (const e of d.events) { const old = S.byK.get(e.k); if (old) { changed.push([old, { kind: old.kind, n: old.tools ? old.tools.length : 0, end: old.end }]); Object.assign(old, e); } else { S.byK.set(e.k, e); fresh.push(e); } }
+    for (const e of d.events) { const old = S.byK.get(e.k); if (old && old.tools && e.tools) e.tools = e.tools.map((t, j) => (old.tools[j] && old.tools[j].id === t.id ? Object.assign(old.tools[j], t) : t));   /* a call sent again (its plan named by the answer): the same object, which the shared screen holds */
+      if (old) { changed.push([old, { kind: old.kind, n: old.tools ? old.tools.length : 0, end: old.end }]); Object.assign(old, e); } else { S.byK.set(e.k, e); fresh.push(e); } }
     if (fresh.some((e) => e.end)) S.sawEnd = true;
     if (fresh.length) { S.events = S.events.concat(fresh); stampT(from); $('#seek').max = S.events.length - 1; trNew(from); warmTTS(from); renderLog(false); }
     if (S.playing && !S.recomputing) for (const e of fresh) if (e.kind === 'order' && !S.status[e.to]) { S.status[e.to] = 'working'; S.orderTs[e.to] = e.ts || 0; S.gone.delete(e.to); }   // a new sub-agent shows up now, while the previous line is still being read
