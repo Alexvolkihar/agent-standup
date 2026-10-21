@@ -15,14 +15,14 @@ const projKey = () => (cfg().get('onlyThisWorkspace') ? wsKey() : '');
 // The sessions of this workspace: its folder, or a folder inside it (a worktree under .claude/worktrees, a package of a monorepo), as inFolder in server.js does for the call.
 // A project's name alone cannot tell app/old (inside app) from app-old (beside it): the folder the session was started in says. Not found: counted by its name, as the call does.
 const projectsDir = () => process.env.AGENT_STANDUP_PROJECTS || path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');   // where server.js reads the transcripts (ROOT)
-const cwds = new Map();   // project → the folder its sessions were started in, kept once it is sure (the folder whose name is the project's)
+const cwds = new Map();   // session → the folder it was started in, kept once it is sure (a folder whose name is the project's): per session, since app/old and app-old share one project name
 function cwdOf(r) {
   try {
     if (r.source === 'codex' || r.source === 'vibe') return String(require(r.source === 'codex' ? './codex.js' : './vibe.js').cwd(r.id) || '');   // a Codex or Vibe session says which folder it was started in
-    if (cwds.has(r.proj) || !/^[\w.\-]+$/.test(String(r.proj)) || !/^[\w.\-]+$/.test(String(r.id))) return cwds.get(r.proj) || '';
+    const ck = r.proj + '/' + r.id; if (cwds.has(ck) || !/^[\w.\-]+$/.test(String(r.proj)) || !/^[\w.\-]+$/.test(String(r.id))) return cwds.get(ck) || '';
     const fd = fs.openSync(path.join(projectsDir(), r.proj, r.id + '.jsonl'), 'r'); let head = ''; try { const buf = Buffer.alloc(64 * 1024), n = fs.readSync(fd, buf, 0, buf.length, 0); head = buf.subarray(0, n).toString('utf8'); } finally { fs.closeSync(fd); }
     const m = /"cwd":"((?:[^"\\]|\\.)*)"/.exec(head), cwd = m ? JSON.parse('"' + m[1] + '"') : '';
-    if (cwd && fold(keyOf(cwd)) === fold(r.proj)) { if (cwds.size > 500) cwds.clear(); cwds.set(r.proj, cwd); return cwd; } return '';
+    if (cwd && fold(keyOf(cwd)) === fold(r.proj)) { if (cwds.size > 500) cwds.clear(); cwds.set(ck, cwd); return cwd; } return '';
   } catch { return ''; }
 }
 function inWorkspace(r, key) {

@@ -280,6 +280,17 @@ test('the status bar and its notifications count the sessions of a folder inside
   } finally { await x.close(); for (const m of made) for (const f of m.files) fs.unlinkSync(f); }
 });
 
+test('a folder inside the workspace and a folder beside it with the same project name are told apart session by session, whichever is read first', async () => {
+  const v = standIn(), x = await activated(v, undefined, { noOpen: true }), made = [];
+  const put = (proj, id, cwd) => { const d = path.join(tmp, 'projects', proj); fs.mkdirSync(d, { recursive: true }); const f = path.join(d, id + '.jsonl'); fs.writeFileSync(f, JSON.stringify({ type: 'user', cwd, message: { role: 'user', content: 'go' } }) + '\n'); made.push(f); };
+  put('-w3-app-old', 'in3', '/w3/app/old'); put('-w3-app-old', 'by3', '/w3/app-old'); put('-w4-app-old', 'in4', '/w4/app/old'); put('-w4-app-old', 'by4', '/w4/app-old');   // Claude Code names app/old and app-old alike
+  try {
+    const is = (proj, id, ws) => x.ext._inWorkspace({ proj, id }, ws);
+    assert.deepEqual([is('-w3-app-old', 'in3', '-w3-app'), is('-w3-app-old', 'by3', '-w3-app')], [true, false], 'the one inside read first');
+    assert.deepEqual([is('-w4-app-old', 'by4', '-w4-app'), is('-w4-app-old', 'in4', '-w4-app')], [false, true], 'the one beside read first');
+  } finally { await x.close(); for (const f of made) fs.unlinkSync(f); }
+});
+
 test('on Windows the workspace is found whatever the case of its drive letter: VS Code writes c:\\, Claude Code C:\\', async () => {
   const v = standIn(), x = await activated(v, undefined, { noOpen: true }), real = Object.getOwnPropertyDescriptor(process, 'platform');
   const wt = path.join(tmp, 'projects', 'C--work-app--claude-worktrees-b'), old = path.join(tmp, 'projects', 'C--work-app-old');
