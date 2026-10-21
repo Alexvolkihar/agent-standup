@@ -38,6 +38,8 @@ const claudeLines = [
   ...call('toolu_pw', 'Write', { file_path: PLANF, content: '# From its file' }, 'File created'),
   ...call('toolu_plan2', 'ExitPlanMode', {}, 'User approved', { tur: { plan: '# The one approved', isAgent: false, filePath: PLANF } }),   // Claude Code 2.1.30x: no plan in the call; its answer names it, the file may hold a later one
   ...call('toolu_plan3', 'ExitPlanMode', {}, 'User rejected'),   // rejected, no plan in the answer: the file
+  { type: 'assistant', uuid: 'a-pw2', timestamp: T(), message: { id: 'msg_pw2', content: [{ type: 'tool_use', id: 'toolu_pw2', name: 'Write', input: { file_path: PLANF, content: '# Written with its call' } }, { type: 'tool_use', id: 'toolu_plan4', name: 'ExitPlanMode', input: { plan: '# The one before' } }] } },   // the plan written in the same message as its call, which carries the one before
+  { type: 'user', uuid: 'u-pw2', timestamp: T(), message: { content: [{ type: 'tool_result', tool_use_id: 'toolu_pw2', content: 'File created' }, { type: 'tool_result', tool_use_id: 'toolu_plan4', content: 'User rejected' }] } },
   ...call('toolu_plan', 'ExitPlanMode', { plan: '# Plan\n\n' + 'step\n'.repeat(1000), planFilePath: '/x/plan.md' }, 'User approved', { tur: { plan: '# Plan\n\n' + 'step\n'.repeat(1000), isAgent: false, filePath: '/x/plan.md' } }),
   ...call('toolu_pv1', 'mcp__Claude_Preview__preview_start', { name: 'web' }, [{ type: 'text', text: '{\n  "serverId": "s-1",\n  "port": 3211,\n  "name": "web",\n  "reused": false\n}\nServer started successfully on port 3211.' }]),
   ...call('toolu_pv2', 'mcp__Claude_Preview__preview_eval', { serverId: 's-1', expression: 'document.title' + ' '.repeat(200) + 'x' }, [{ type: 'text', text: '"Shop"' }]),
@@ -91,7 +93,7 @@ test('Claude Code: task lists, plans, Claude Preview, Cowork tools, diffs, test 
     const twice = items.filter((it) => it.id === 'toolu_tc1' || it.id === 'toolu_tw1').slice(-2); assert.deepEqual(twice.map((it) => [it.out, it.task]), [['again', undefined], ['twice', undefined]], 'a record that answers two calls lends its notes to neither');
 
     // the plan
-    assert.equal(tools.toolu_plan2.d.text, '# The one approved', 'the plan its answer names, not the later one in the file'); assert.equal(tools.toolu_plan3.d.text, '# From its file\n\nStep one.', 'no plan in the answer: the plan file the session wrote'); assert.equal(tools.toolu_plan.d.kind, 'plan'); assert.equal(tools.toolu_plan.d.text.length, 4000); assert.match(tools.toolu_plan.d.text, /^# Plan\n\nstep/);
+    assert.equal(tools.toolu_plan2.d.text, '# The one approved', 'the plan its answer names, not the later one in the file'); assert.equal(tools.toolu_plan3.d.text, '# From its file', 'no plan in the answer: the plan as the session last wrote it, not the file as it is now'); assert.equal(tools.toolu_plan4.d.text, '# Written with its call', 'written in the same message: that plan, not the one before'); assert.equal(tools.toolu_plan.d.kind, 'plan'); assert.equal(tools.toolu_plan.d.text.length, 4000); assert.match(tools.toolu_plan.d.text, /^# Plan\n\nstep/);
 
     // Claude Preview: a browser, step by step, and what its answers say about the page
     assert.deepEqual(['toolu_pv1', 'toolu_pv2', 'toolu_pv3', 'toolu_pv4', 'toolu_pv5', 'toolu_pv6', 'toolu_pv7', 'toolu_pv8', 'toolu_pv9'].map((id) => tools[id].d), [
