@@ -63,6 +63,15 @@ test('a session Claude Code compacts while it sits idle stays idle, and stays pu
   core.shutdown();
 });
 
+test('a session whose tab is closed has not moved: what Claude Code writes then has no time, and the session keeps the time of its last record', async () => {
+  const closing = [{ type: 'last-prompt', lastPrompt: 'Ship it', sessionId: 's' }, { type: 'ai-title', aiTitle: 'Ship it', sessionId: 's' }, { type: 'mode', mode: 'default', sessionId: 's' }, { type: 'atis-latch', sessionId: 's' }, { type: 'cost-state', sessionId: 's' }];   // 2.1.304, on closing the tab
+  const T = 'e', O = 'f'; put(T, [user('Ship it', 1300e3), say('Shipped.', 1200e3), ...closing], 1e3); put(O, [user('Ship it', 7300e3), say('Shipped.', 7200e3), ...closing], 1e3);
+  const core = require('../server.js'), rows = await scan(core), t = rows.find((r) => r.id === id(T)), o = rows.find((r) => r.id === id(O));
+  assert.equal(t.state, 'turn'); assert.equal(t.mtime, now - 1200e3, 'not a turn that ended just now, which the call would announce');
+  assert.equal(o.state, 'idle'); assert.equal(o.mtime, now - 7200e3);
+  core.shutdown();
+});
+
 const get = (port, p) => new Promise((res, rej) => http.get({ port, path: p }, (x) => { let b = ''; x.on('data', (d) => (b += d)); x.on('end', () => res(JSON.parse(b))); }).on('error', rej));
 test("a fork's copy of the message that launched it is not counted twice, nor taken for the fork ordering itself", async () => {
   const F = 7, call = { type: 'assistant', timestamp: iso(60e3), message: { role: 'assistant', id: 'msg_lead', model: 'claude-sonnet-5-5', stop_reason: 'tool_use', usage: { input_tokens: 2, output_tokens: 313, cache_read_input_tokens: 12790, cache_creation_input_tokens: 15080 }, content: [{ type: 'tool_use', id: 'toolu_fork', name: 'Agent', input: { description: 'fork check', subagent_type: 'fork', prompt: 'Say which file' } }] } };
