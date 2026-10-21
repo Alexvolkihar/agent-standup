@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.41.0
 - **The shared screen shows much more of what the agents do, and live.** When an agent updates its task list (TodoWrite, or the task tools of Claude Code and Cowork), the list itself is shared, large, with a short flash on each task done. A test run shows its passed, failed and skipped counts in large, a green or red bar and the names of the tests that failed (node, vitest, jest, pytest, mocha, go, cargo). An edit shows its diff with real line numbers and context, and so does a Bash command that edited files; `git diff` is in colour. The Claude desktop app's **Claude Preview** is a browser window, with its screenshots, its size and its console. A web search is a page of results, a fetched page shows its address, status and what the agent read. A plan waiting for your approval is shown as a document. The screenshots you paste in a prompt are shared from your own camera, and Codex's screenshots and images are shown at last.
 - **The output of a background command, as it is written.** A command an agent runs in the background (or a Monitor) streams its lines on the shared screen with a red ● LIVE until it ends, even after the turn is over. It is read from the file Claude Code writes in its temporary folder, on this computer; nothing is sent.
 - **The screen feels alive.** A command is typed and its output scrolls in, in under a second (not while catching up, above 2× or with reduced motion). In a narrow sidebar the window keeps its whole width.
