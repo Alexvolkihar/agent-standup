@@ -27,6 +27,7 @@ const OUTS = {
   cargo: 'running 3 tests\ntest tests::adds ... ok\ntest tests::totals ... FAILED\ntest tests::slow ... ignored\n\nfailures:\n\nfailures:\n    tests::totals\n\ntest result: FAILED. 1 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s\n',
   plain: 'src/a.js:3: // 3 passed, 1 failed\nBuild ok\nok  everything fine\nTests run by CI only\n  Tests: none here\n## Tests: 3 suites\n42 files passing lint? no\n=== notes ===\n',
 };
+const PLANF = path.join(tmp, '.claude', 'plans', 'tour.md'); fs.mkdirSync(path.dirname(PLANF), { recursive: true }); fs.writeFileSync(PLANF, '# From its file\n\nStep one.\n');
 const hunk = (o, lines) => ({ oldStart: o, oldLines: 1, newStart: o, newLines: 1, lines });
 const claudeLines = [
   reminder([]),   // an empty list before any task: nothing to say
@@ -34,6 +35,8 @@ const claudeLines = [
   ...call('toolu_tu1', 'TaskUpdate', { taskId: '1', status: 'in_progress' }, 'Updated task #1 status', { tur: { success: true, taskId: '1', updatedFields: ['status'], statusChange: { from: 'pending', to: 'in_progress' } } }),
   reminder([{ id: '1', subject: 'Write the tests', description: 'All of them', activeForm: 'Writing the tests', status: 'in_progress', blocks: [], blockedBy: [] }, { id: '2', subject: 'Ship', description: '', activeForm: 'Shipping', status: 'pending', blocks: [], blockedBy: ['1'] }]),
   ...call('toolu_ts1', 'TaskStop', { task_id: 'bqxyt1tyn' }, '{"message":"Successfully stopped task"}', { tur: { message: 'Successfully stopped task', task_id: 'bqxyt1tyn' } }),
+  ...call('toolu_pw', 'Write', { file_path: PLANF, content: '# From its file' }, 'File created'),
+  ...call('toolu_plan2', 'ExitPlanMode', {}, 'User approved', { tur: { plan: '# From its file', isAgent: false, filePath: PLANF } }),   // Claude Code 2.1.30x: no plan in the call, only in its file
   ...call('toolu_plan', 'ExitPlanMode', { plan: '# Plan\n\n' + 'step\n'.repeat(1000), planFilePath: '/x/plan.md' }, 'User approved', { tur: { plan: '# Plan', isAgent: false, filePath: '/x/plan.md' } }),
   ...call('toolu_pv1', 'mcp__Claude_Preview__preview_start', { name: 'web' }, [{ type: 'text', text: '{\n  "serverId": "s-1",\n  "port": 3211,\n  "name": "web",\n  "reused": false\n}\nServer started successfully on port 3211.' }]),
   ...call('toolu_pv2', 'mcp__Claude_Preview__preview_eval', { serverId: 's-1', expression: 'document.title' + ' '.repeat(200) + 'x' }, [{ type: 'text', text: '"Shop"' }]),
@@ -87,7 +90,7 @@ test('Claude Code: task lists, plans, Claude Preview, Cowork tools, diffs, test 
     const twice = items.filter((it) => it.id === 'toolu_tc1' || it.id === 'toolu_tw1').slice(-2); assert.deepEqual(twice.map((it) => [it.out, it.task]), [['again', undefined], ['twice', undefined]], 'a record that answers two calls lends its notes to neither');
 
     // the plan
-    assert.equal(tools.toolu_plan.d.kind, 'plan'); assert.equal(tools.toolu_plan.d.text.length, 4000); assert.match(tools.toolu_plan.d.text, /^# Plan\n\nstep/);
+    assert.equal(tools.toolu_plan2.d.text, '# From its file\n\nStep one.', 'an empty ExitPlanMode shows the plan file the session wrote'); assert.equal(tools.toolu_plan.d.kind, 'plan'); assert.equal(tools.toolu_plan.d.text.length, 4000); assert.match(tools.toolu_plan.d.text, /^# Plan\n\nstep/);
 
     // Claude Preview: a browser, step by step, and what its answers say about the page
     assert.deepEqual(['toolu_pv1', 'toolu_pv2', 'toolu_pv3', 'toolu_pv4', 'toolu_pv5', 'toolu_pv6', 'toolu_pv7', 'toolu_pv8', 'toolu_pv9'].map((id) => tools[id].d), [
