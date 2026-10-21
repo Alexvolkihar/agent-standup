@@ -15,5 +15,11 @@
   "{0} is waiting for you": "{0} está esperando por você",
   "a plan to approve": "um plano para aprovar",
   "Go to session": "Ir para a sessão",
-  "Open call": "Abrir a chamada"
+  "Open call": "Abrir a chamada",
+  "usage limit · resets {0}": "limite de uso · renova {0}",
+  "usage limit": "limite de uso",
+  "logged out": "desconectado",
+  "for less than a minute": "há menos de um minuto",
+  "for {0} min": "há {0} min",
+  "for {0} h {1} min": "há {0} h {1} min"
 }

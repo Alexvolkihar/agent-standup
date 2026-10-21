@@ -8,11 +8,11 @@
   "config.port.description": "Lokal port for Agent Standup-serveren. 0 (standard) vælger automatisk en ledig port for hvert VS Code-vindue.",
   "config.autoOpen.description": "Åbn live-opkaldet automatisk, når VS Code starter.",
   "config.onlyThisWorkspace.description": "Følg kun Claude Code-sessioner, der er startet i den aktuelle arbejdsmappe.",
-  "config.statusBar.description": "Vis live-tal i statuslinjen (agenter der arbejder, har brug for dig, din tur) for dette arbejdsområde; elementet bliver rødt, når en agent måske venter på dig.",
+  "config.statusBar.description": "Vis live-tal i statuslinjen (agenter der arbejder, har brug for dig, din tur) for dette arbejdsområde; elementet bliver rødt, når en session venter på dit svar (et spørgsmål eller en tilladelse er åben).",
   "config.shareUsage.description": "Hjælp projektet med at tælle, hvor mange der bruger det: én gang om dagen, når editoren starter, og højst én gang om ugen, når du åbner opkaldet, sendes én tom forespørgsel til en 1-pixel-fil på GitHub (ingen identifikator, intet indhold; GitHub ser din IP som ved enhver download). Fra, indtil du siger ja (du bliver spurgt én gang, første gang du åbner opkaldet); ignoreres, hvis VS Code-telemetri er slået fra.",
   "config.codex.description": "Vis også Codex-sessioner (læses fra ~/.codex/sessions eller $CODEX_HOME). Slå fra for kun at vise Claude Code-sessioner.",
   "config.vibe.description": "Vis også Mistral Vibe-sessioner (læst fra ~/.vibe/logs/session eller $VIBE_HOME). Slå fra for at udelade dem.",
   "config.claudePath.description": "Fuld sti til Claude Code-programmet, hvis det ikke findes automatisk (bruges til oversættelse).",
   "config.charactersPath.description": "Mappe med dine egne figurbilleder (PNG, GIF eller WebP, op til 300 KB hver). Tom bruger ~/.agent-standup/characters. lead.png er lederen, you.png er dig, alle andre billeder er underagenter, navn-talk.png er en valgfri ramme med åben mund.",
-  "config.notifyNeedsYou.description": "Vis en notifikation, når en session i dette arbejdsområde begynder at vente på dig (et spørgsmål, en godkendelse, en plan), med sessionens navn og hvad den spørger om, og én gang til, hvis den stadig venter 5 minutter senere. Vises ikke, mens opkaldet er synligt."
+  "config.notifyNeedsYou.description": "Vis en notifikation, når en session i dette arbejdsområde begynder at vente på dig (et spørgsmål, en godkendelse, en plan), med sessionens navn og hvad den spørger om; én gang pr. ventetid, aldrig en påmindelse. Vises ikke, mens opkaldet er synligt, eller mens du er på sessionens Claude Code-fane."
 }

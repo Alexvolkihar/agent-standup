@@ -393,16 +393,19 @@ test('a document a command names is a file of the session when it was written si
     here(used(53, 'toolu_g', 'Bash', { command: 'grep -n title index.html' })), here(result(54, 'toolu_g', '3: title')), here(used(55, 'toolu_e', 'Edit', { file_path: page, old_string: 'a', new_string: 'b' })), here(result(56, 'toolu_e', 'ok')),
     said(58, 'Done.', { stop: 'end_turn' })].map(line).join(''));
   const { port, stop } = await serve(), server = require('../server.js'), run = server._reveal.run, shown = []; server._reveal.run = (f) => shown.push(f);
-  const ask = (file, check) => get(port, '/api/reveal', { 'content-type': 'application/json' }, 'POST', JSON.stringify({ proj: '-c', id: 's', file, ...(check ? { check: true } : {}) })).then((r) => r.status);
+  const ask = (file, check) => get(port, '/api/reveal', { 'content-type': 'application/json' }, 'POST', JSON.stringify({ proj: '-c', id: 's', file, ...(check ? { check: true } : {}) })).then((r) => (check ? (r.status === 200 ? JSON.parse(r.body).reason || 200 : 'status ' + r.status) : r.status));   // a check is always answered 200: { exists: true } or { exists: false, reason }
   try {
     const tools = (await load(port, 'proj=-c&id=s')).events.filter((e) => e.kind === 'tools').flatMap((e) => e.tools), res = (await load(port, 'proj=-c&id=s')).events.filter((e) => e.kind === 'results').flatMap((e) => e.items);
     assert.deepEqual(tools[0].d.outs, [pdf, csv, gone, old]);   // named from the folder the command went to; not the link, nor the pattern
     assert.deepEqual(res.map((i) => i.files), [undefined, [zip, old], undefined, undefined, undefined, undefined]); assert.deepEqual(tools[4].d.outs, [page]); assert.deepEqual(tools[2].d.outs, [late]); assert.deepEqual(tools[3].d.outs, [path.join(work, 'list.txt')]);   // what a here-document holds is not the command
     assert.equal(await ask(pdf, true), 200); assert.equal(await ask(csv, true), 200); assert.equal(await ask(zip, true), 200); assert.deepEqual(shown, [], 'asking whether it is there opens nothing');
-    assert.equal(await ask(old, true), 404);    // read by a command, and written long before it
-    assert.equal(await ask(page, true), 404);   // looked at by a command, then changed by hand: recent for that reason, and not made by the command
-    assert.equal(await ask(gone, true), 410);   // removed by the command
-    assert.equal(await ask(path.join(work, 'make.py'), true), 404); assert.equal(await ask(path.join(work, 'other.pdf'), true), 404); assert.equal(await ask('/etc/hosts', true), 404);
+    assert.equal(await ask(old, true), 'unknown');    // read by a command, and written long before it
+    assert.equal(await ask(page, true), 'unknown');   // looked at by a command, then changed by hand: recent for that reason, and not made by the command
+    assert.equal(await ask(gone, true), 'gone');      // removed by the command
+    assert.equal(await ask(path.join(work, 'make.py'), true), 'unknown'); assert.equal(await ask(path.join(work, 'other.pdf'), true), 'unknown'); assert.equal(await ask('/etc/hosts', true), 'unknown');
+    assert.deepEqual(JSON.parse((await get(port, '/api/reveal', { 'content-type': 'application/json' }, 'POST', JSON.stringify({ proj: '-c', id: 's', file: pdf, check: true }))).body), { ok: true, exists: true });
+    assert.deepEqual(JSON.parse((await get(port, '/api/reveal', { 'content-type': 'application/json' }, 'POST', JSON.stringify({ proj: '-c', id: 's', file: gone, check: true }))).body), { exists: false, reason: 'gone' });
+    assert.equal(await ask(gone), 410); assert.deepEqual(shown, [], 'the real thing still says why it cannot');
     assert.equal(await ask(pdf), 200); assert.deepEqual(shown, [pdf]); assert.equal(await ask(old), 404); assert.deepEqual(shown, [pdf]);
     fs.writeFileSync(path.join(dir, 'big.jsonl'), [typed(0, 'Build it'), here(used(1, 'toolu_1', 'Bash', { command: 'make 2>&1 | tee \\\\server\\share\\log.txt //host/share/b.pdf ' + 'x<<1|y<<2;'.repeat(1900) })), here(result(2, 'toolu_1', ('std::cout << a << b << "report.pdf";\n').repeat(500))),
       here(used(3, 'toolu_2', 'Bash', { command: "cat <<EOF > a.txt\nx.pdf\nEOF\ncat <<'END' >> b.md\ny.pdf" })), said(4, 'Done.', { stop: 'end_turn' })].map(line).join(''));

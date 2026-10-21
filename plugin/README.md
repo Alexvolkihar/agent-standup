@@ -20,7 +20,7 @@ In earlier versions, in two steps:
 ## Use it
 
 - `/agent-standup:open` starts the app and opens the call in your browser at `http://localhost:4747`. You can also ask Claude to "open the standup" or "show me my agents".
-- `/agent-standup:status` prints one line: how many sessions are working, how many need you, and whether it is your turn. You can also ask "is anything waiting for me?".
+- `/agent-standup:status` prints one line: how many sessions are working, how many need you, and whether it is your turn, or whether a session stopped on Claude's usage limit (with when it resets) or because Claude Code is logged out. You can also ask "is anything waiting for me?".
 
 It needs Node.js 18 or later and works where Claude Code runs on your own computer. In a chat on claude.ai there is no computer to run it on, so Claude will give you the command to run yourself.
 
@@ -40,7 +40,7 @@ Both skills run one command, pinned to an exact version of the app's npm package
 
 ## Data
 
-The app reads the session files Claude Code writes in `~/.claude/projects` (and the status it keeps for each open session in `~/.claude/sessions`), the ones Codex writes in `~/.codex/sessions`, the ones Mistral Vibe writes in `~/.vibe/logs/session`, and those of Cowork (a tab of the Claude desktop app) in that app’s own folder. It never writes to them. By default it sends nothing anywhere: the page is served from your machine (`127.0.0.1`) to your browser.
+The app reads the session files Claude Code writes in `~/.claude/projects` (and the status it keeps for each open session in `~/.claude/sessions`, and, while a command runs in the background, what it writes in Claude Code's temporary folder), the ones Codex writes in `~/.codex/sessions`, the ones Mistral Vibe writes in `~/.vibe/logs/session`, and those of Cowork (a tab of the Claude desktop app) in that app’s own folder. It never writes to them. By default it sends nothing anywhere: the page is served from your machine (`127.0.0.1`) to your browser. A click on a session that needs you looks at the list of running programs to open that session where it runs: a local link, or its terminal or Claude app brought to the front.
 
 On your machine it keeps your settings in one small file, the list of sessions you put away as done, a log of its own errors, a character pack if you buy one, and, when voices are on, the spoken lines as sound files in a private folder, deleted after a day.
 

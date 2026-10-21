@@ -1,6 +1,6 @@
 # Privacy
 
-Last updated: 17 October 2026.
+Last updated: 21 October 2026.
 
 This page covers Agent Standup in all its forms (the VS Code extension, the `agent-standup` command, the desktop app, the Claude Code plugin) and its website. Agent Standup is published by Double Geste, an individual developer. It is an unofficial community project, not affiliated with Anthropic, OpenAI or Mistral AI.
 
@@ -11,7 +11,9 @@ Agent Standup runs on your own computer. It reads files that are already there, 
 ## What it reads
 
 - **Your session files.** The ones Claude Code writes in `~/.claude/projects` (and the status it keeps for each open session in `~/.claude/sessions`: busy, idle or waiting for your answer; and the plan files a session names in `~/.claude/plans`, to show a plan that waits for your approval), the ones Codex writes in `~/.codex/sessions` (with the names Codex gives them in `~/.codex/session_index.jsonl`), the ones Mistral Vibe writes in `~/.vibe/logs/session`, and the ones Cowork (a tab of the Claude desktop app) writes in that app's own folder (`local-agent-mode-sessions`), with the title the app noted beside each of them. They hold what you typed, what the agents answered and what they ran, so they can contain personal or confidential information. Agent Standup only reads them. It never changes or deletes them. Reading Codex sessions, reading Mistral Vibe sessions and reading Cowork sessions can each be turned off. A page a session published on claude.ai (an artifact) is shown from what the session file holds of it; it is not read from your disk nor fetched from claude.ai.
+- **The output of a command a session runs in the background**, while it runs: Claude Code writes it to a file in its own temporary folder (`claude-<your user number>` in `/tmp` or in the system's temporary folder, `…/tasks/`), and the call's shared screen shows its last lines as they come. Only the commands of the session the call follows, while they run: read every second while one is on screen, and once to see whether it still writes when nobody is sharing. Nothing is kept or sent.
 - **Your own character images**, if you put some in its characters folder.
+- **The list of running programs** (`ps`, on macOS and Linux), only when you click on a session that needs you, to find the editor, terminal or Claude app it runs in. That app is then brought to the front, or a local link such as `vscode://…` is opened, as a click on it would; nothing is sent.
 
 ## What it keeps on your computer
 
@@ -24,7 +26,8 @@ Agent Standup runs on your own computer. It reads files that are already there, 
 - **A character pack you bought**, in a `packs` folder beside your characters folder (`~/.agent-standup/packs`): its pictures, and in a file named `codes.json` the code of the purchase, which is the reference Stripe gave it. The code is kept so that the app can show it to you: it is what installs the pack on another computer.
 - **Whether you share usage, in the desktop app, the command line and the Claude Code plugin:** your answer, in your settings file, and an empty file named after the kind of app and the week of the last request (for example `sent-cli-week-2026-10-19`) beside your settings.
 - **Whether you want to hear about new versions, in the desktop app, the command line and the Claude Code plugin:** your answer, in your settings file, the last version you were told about, and, in a file named `update-check.json` beside your settings, the latest version number npm gave and when it was asked.
-- **In VS Code's own storage for the extension:** the day and the week of the last "share usage" requests when that setting is on, whether you have been asked about that setting, and, for the one time the extension asks for a rating, the number of days the call was opened or an agent was at work, the last of those days and your answer.
+- **In VS Code's own storage for the extension:** the day and the week of the last "share usage" requests when that setting is on, whether you have been asked about that setting; for the one time the extension asks for a rating, the number of days the call was opened or an agent was at work, the last of those days and your answer; and short-lived marks (a hash, no session content, deleted after a day) so that only one window notifies you of a given wait.
+- **Which editor window runs which session**, in a folder named `editors` beside your settings: for each open VS Code, Cursor or Windsurf window with the extension, a small file with the number of its process, the editor's link scheme (for example `vscode`) and its window number, so that a click on a session that needs you opens it in the right window. It is removed when the window closes.
 
 Nothing else is written. Uninstalling the app and deleting those folders removes everything.
 

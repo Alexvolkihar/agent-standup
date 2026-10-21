@@ -11,6 +11,8 @@ const files: Record<string, string> = {
   '104.json': at({ pid: 104, sessionId: 's-self', status: 'waiting', waitingFor: 'input needed', cwd: '/work/me' }),   // the session the band is drawn in
   '105.json': at({ pid: 105, sessionId: 's-docs', status: 'waiting', waitingFor: 'input needed', cwd: '/work/docs', name: 'release notes', nameSource: 'user', entrypoint: 'cli' }),
   '106.json': at({ pid: 106, sessionId: 's-busy', status: 'busy', cwd: '/work/busy' }),
+  '108.json': at({ pid: 108, sessionId: 's-sdk', status: 'waiting', waitingFor: 'permission prompt', cwd: '/work/script', entrypoint: 'sdk-cli', kind: 'sdk' }),   // claude -p run by a program: no one to answer it there
+  '109.json': at({ pid: 109, sessionId: 's-sdk-ts', status: 'waiting', waitingFor: 'input needed', cwd: '/work/bot', entrypoint: 'sdk-ts' }),   // an Agent SDK host (Zed, a home-made app) shows its menus to a person: kept
   'notes.txt': 'not a session',
 }
 const bottom = (on: On) => {   // what the engine does beneath the plugins: start the session, draw its own empty band
@@ -42,7 +44,8 @@ test('the band lists the other sessions that wait on you, not a dialog opened by
     expect(await ui.find({ type: 'Text', text: /web-shop \(VS Code\)/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: 'docs · release notes' })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: 'needs an approval' })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /api|old|me|busy|1f/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /bot/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /api|old|me|busy|1f|script/ })).toBeUndefined()
     await ui.unmount()
   }
 })
@@ -60,13 +63,17 @@ test('Hide puts the band away until another session needs you', async ($, on) =>
   expect(await ui.find({ type: 'Text', text: /web-shop/ })).toBeUndefined()
   list['107.json'] = at({ pid: 107, sessionId: 's-new', status: 'waiting', waitingFor: 'permission prompt', cwd: '/work/new' })
   list['106.json'] = at({ pid: 106, sessionId: 's-busy', status: 'idle', cwd: '/work/busy' })   // finished its turn
+  list['108.json'] = at({ pid: 108, sessionId: 's-sdk', status: 'idle', cwd: '/work/script', entrypoint: 'sdk-cli', kind: 'sdk' })   // claude -p finished: its turn is the program's, not told
+  list['110.json'] = at({ pid: 110, sessionId: 's-sdk-new', status: 'waiting', waitingFor: 'permission prompt', cwd: '/work/script2', entrypoint: 'sdk-cli', kind: 'sdk' })   // and another one waiting: not told
+  list['111.json'] = at({ pid: 111, sessionId: 's-zed', status: 'waiting', waitingFor: 'permission prompt', cwd: '/work/zed', entrypoint: 'sdk-ts' })   // an Agent SDK host waiting: told
   await clock.advance(4000)
-  expect(await ui.find({ type: 'Text', text: /new/ })).toBeDefined()
-  expect(toasts).toEqual(['✓ busy has finished: your turn there', '✋ new needs an approval'])   // nothing about what was already so at the first look
+  expect(await ui.find({ type: 'Text', text: /web-shop/ })).toBeDefined()   // back, with the new ones under its first three
+  expect(await ui.find({ type: 'Text', text: 'and 2 more' })).toBeDefined()
+  expect(toasts).toEqual(['✓ busy has finished: your turn there', '✋ new needs an approval', '✋ zed needs an approval'])   // nothing about what was already so at the first look
   await ui.unmount()
 })
 
-test('no sessions folder (Claude Code before 2.1.294): no band, no error', async ($, on) => {
+test('no sessions folder (none has run yet, or a Claude Code that writes no status): no band, no error', async ($, on) => {
   mock.env(on, { HOME: '/home/ana' })
   on('session.id', () => ({ value: 's-self' }))
   on('fs.list', () => ({ deny: 'ENOENT' }))

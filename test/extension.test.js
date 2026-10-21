@@ -253,3 +253,72 @@ test('two windows on the same folder tell a wait once between them', async () =>
     for (const x of xs) { x.ext._needsYou([], T + 6 * 60e3); x.ext._needsYou([waits({ since: T + 7 * 60e3 })], T + 7 * 60e3); } assert.equal(told.length, 2, 'a new wait');
   } finally { for (const x of xs) await x.close(); }
 });
+
+// ---- which sessions are this workspace's: its folder, or a folder inside it (a worktree, a package), never the folder beside it with a longer name ----
+function started(cwd, id, title, secondsAgo) {   // a session started in that folder, asking a question, that Claude Code says is open
+  const proj = cwd.replace(/[^a-zA-Z0-9]/g, '-'), dir = path.join(tmp, 'projects', proj), file = path.join(dir, id + '.jsonl'), at = Date.now() - secondsAgo * 1000; fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(file, [{ type: 'user', cwd, sessionId: id, message: { role: 'user', content: 'go' } }, { type: 'custom-title', customTitle: title }, { type: 'assistant', cwd, sessionId: id, message: { id: 'm-' + id, role: 'assistant', stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'tu-' + id, name: 'AskUserQuestion', input: { questions: [{ question: 'Which one?', header: 'Pick', options: [{ label: 'A' }, { label: 'B' }] }] } }] } }].map((r) => JSON.stringify({ timestamp: new Date(at).toISOString(), ...r })).join('\n') + '\n');
+  fs.utimesSync(file, at / 1000, at / 1000); fs.mkdirSync(process.env.AGENT_STANDUP_CC_SESSIONS, { recursive: true });
+  const sf = path.join(process.env.AGENT_STANDUP_CC_SESSIONS, (started.n = (started.n || 5000) + 1) + '.json'); fs.writeFileSync(sf, JSON.stringify({ pid: process.pid, sessionId: id, status: 'waiting', waitingFor: 'input needed', statusUpdatedAt: at }));
+  return { proj, files: [file, sf] };
+}
+
+test('the status bar and its notifications count the sessions of a folder inside the workspace (a worktree, a package), not those of a folder beside it', async () => {
+  const made = [started('/work/app/.claude/worktrees/feat-x', 'wt', 'In a worktree', 30), started('/work/app/packages/api', 'pkg', 'In a package', 90), started('/work/app-old', 'old', 'Beside it', 20)], told = [];
+  await new Promise((r) => setTimeout(r, 1300));   // past the scan the other tests shared
+  const v = standIn(); let item = null; const make = v.vscode.window.createStatusBarItem; v.vscode.window.createStatusBarItem = () => (item = make());
+  v.vscode.window.showInformationMessage = (m) => { told.push(m); return Promise.resolve(undefined); };
+  const x = await activated(v, undefined, { noOpen: true });
+  try {
+    await tick(); assert.deepEqual(told.sort(), ['✋ In a package is waiting for you: Which one?', '✋ In a worktree is waiting for you: Which one?']);
+    assert.match(item.text, /2 needs you/); assert.ok(!/Beside it/.test(item.tooltip), 'app-old is beside app, not in it');
+    assert.match(item.tooltip, /✋ In a worktree · Which one\? · for less than a minute/); assert.match(item.tooltip, /✋ In a package · Which one\? · for 1 min/);
+    const ws = '-work-app', is = (r) => x.ext._inWorkspace(r, ws);
+    assert.deepEqual([is({ proj: ws }), is({ proj: made[0].proj, id: 'wt' }), is({ proj: made[1].proj, id: 'pkg' }), is({ proj: made[2].proj, id: 'old' }), is({ proj: '-work-application', id: 'x' }), is({ proj: '-other', id: 'x' })], [true, true, true, false, false, false]);
+    assert.equal(is({ proj: '-work-app-new', id: 'not-written-yet' }), true, 'no folder to tell by: counted by its name, as the call does');
+    assert.deepEqual([is({ proj: '_vibe', id: 'v', dir: ws }), is({ proj: '_codex', id: 'c', dir: '-elsewhere' })], [true, false], 'a Codex or Vibe session, by the folder it was started in');
+  } finally { await x.close(); for (const m of made) for (const f of m.files) fs.unlinkSync(f); }
+});
+
+test('on Windows the workspace is found whatever the case of its drive letter: VS Code writes c:\\, Claude Code C:\\', async () => {
+  const v = standIn(), x = await activated(v, undefined, { noOpen: true }), real = Object.getOwnPropertyDescriptor(process, 'platform');
+  const wt = path.join(tmp, 'projects', 'C--work-app--claude-worktrees-b'), old = path.join(tmp, 'projects', 'C--work-app-old');
+  fs.mkdirSync(wt, { recursive: true }); fs.mkdirSync(old, { recursive: true });
+  fs.writeFileSync(path.join(wt, 'w1.jsonl'), JSON.stringify({ type: 'user', cwd: 'C:\\work\\app\\.claude\\worktrees\\b', message: { role: 'user', content: 'go' } }) + '\n');
+  fs.writeFileSync(path.join(old, 'o1.jsonl'), JSON.stringify({ type: 'user', cwd: 'C:\\work\\app-old', message: { role: 'user', content: 'go' } }) + '\n');
+  try {
+    v.vscode.workspace.workspaceFolders = [{ uri: { fsPath: 'c:\\work\\app' } }];
+    Object.defineProperty(process, 'platform', { ...real, value: 'win32' });
+    const key = x.ext._projKey(), is = (r) => x.ext._inWorkspace(r, key);
+    assert.equal(key, 'C--work-app', 'the name Claude Code gives the project, sent to the call too');
+    assert.deepEqual([is({ proj: 'C--work-app' }), is({ proj: 'c--work-app' }), is({ proj: 'C--work-app--claude-worktrees-b', id: 'w1' }), is({ proj: 'C--work-app-old', id: 'o1' })], [true, true, true, false]);
+    Object.defineProperty(process, 'platform', real); assert.equal(x.ext._projKey(), 'c--work-app', 'elsewhere a name is taken as it is written');
+  } finally { Object.defineProperty(process, 'platform', real); await x.close(); fs.rmSync(wt, { recursive: true, force: true }); fs.rmSync(old, { recursive: true, force: true }); }
+});
+
+test('the status bar\'s tooltip says what a session that waits asks and for how long; one stopped by the usage limit, or logged out, says so instead of having given up', async () => {
+  const v = standIn(), x = await activated(v, undefined, { noOpen: true }), T = 1e12, line = (r) => x.ext._tipLine({ proj: '-work-app', id: 'i', title: 'Ship it', state: 'turn', mtime: T, ...r }, T);
+  try {
+    assert.equal(line({ state: 'blocked', tool: 'Bash', ask: 'Bash(npm test)', since: T - 30e3 }), '✋ Ship it · Bash(npm test) · for less than a minute');
+    assert.equal(line({ state: 'blocked', tool: 'ExitPlanMode', since: T - 7 * 60e3 }), '✋ Ship it · a plan to approve · for 7 min');
+    assert.equal(line({ state: 'blocked', tool: '', since: T - 125 * 60e3 }), '✋ Ship it · for 2 h 5 min');
+    assert.equal(line({ state: 'blocked', tool: 'AskUserQuestion' }), '✋ Ship it', 'no time known: none said');
+    assert.equal(line({ limit: { resets: '7:20pm (Europe/Paris)' } }), '⏳ Ship it · usage limit · resets 7:20pm (Europe/Paris)');
+    assert.equal(line({ limit: { resets: '' } }), '⏳ Ship it · usage limit');
+    assert.equal(line({ auth: 1 }), '⚠ Ship it · logged out');
+    assert.deepEqual([line({ gave: 1 }), line({}), line({ state: 'working' })], ['⚠ Ship it', '✓ Ship it', '⚙ Ship it'], 'the others as before');
+  } finally { await x.close(); }
+});
+
+test('the status bar says "your turn" only for a turn you can take: sessions stopped by the usage limit say when it resets, a lost login says so', async () => {
+  const v = standIn(), x = await activated(v, undefined, { noOpen: true }), bar = (...rows) => x.ext._barText(rows.map((r, i) => ({ proj: '-work-app', id: 'i' + i, title: 'T' + i, state: 'turn', mtime: 1e12, ...r })));
+  try {
+    assert.equal(bar({}, { limit: { resets: '7:20pm (Europe/Paris)' } }), '$(device-camera-video) $(check) your turn', 'one turn you can take: your turn');
+    assert.equal(bar({ limit: { resets: '7:20pm (Europe/Paris)' } }, { limit: { resets: '7:20pm (Europe/Paris)' } }), '$(device-camera-video) ⏳ usage limit · resets 7:20pm', 'all stopped by the limit: when it resets, without its zone');
+    assert.equal(bar({ limit: { resets: '' } }), '$(device-camera-video) ⏳ usage limit');
+    assert.equal(bar({ auth: 1 }), '$(device-camera-video) $(warning) logged out');
+    assert.equal(bar({ state: 'working' }, { limit: { resets: '3pm' } }), '$(device-camera-video) $(sync~spin) 1 working', 'another at work: as before');
+    assert.equal(bar({ state: 'blocked' }, {}), '$(device-camera-video) $(warning) 1 needs you');
+    assert.equal(bar(), '$(device-camera-video) Agent Standup');
+  } finally { await x.close(); }
+});

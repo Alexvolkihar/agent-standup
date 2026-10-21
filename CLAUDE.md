@@ -5,7 +5,7 @@ Agent Standup shows the Claude Code, Codex, Mistral Vibe and Cowork sessions of 
 ## Map
 | Path | What |
 |---|---|
-| `server.js` | The whole backend: reads `~/.claude/projects/**/*.jsonl` incrementally, merges sub-agents, serves `/api/*` and `public/`. Also handles translation, prefs, characters, packs and the shop client. |
+| `server.js` | The whole backend: reads `~/.claude/projects/**/*.jsonl` incrementally, merges sub-agents, serves `/api/*` and `public/`. For the shared screen it also reads the live output of background commands from Claude Code's temp folder (`/tmp/claude-<uid>/<project>/<session>/tasks/<id>.output`, `/api/taskout`). Also handles translation, prefs, characters, packs and the shop client. |
 | `codex.js`, `vibe.js` | Readers for Codex and Mistral Vibe. Each lists its sessions under one made-up project (`SOURCES` in server.js). Cowork is read like Claude Code, from the desktop app's folder (`coworkHomes`). |
 | `demo.js` | The built-in demo: a made-up session (English and French) that `server.js` serves. |
 | `kokoro.js`, `kokoro-worker.js` | Natural voices (Kokoro TTS), installed on demand. |

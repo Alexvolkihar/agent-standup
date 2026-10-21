@@ -1,6 +1,6 @@
 // Agent Standup's band for Claude Code (a mod: Claude Code's function hooks). In the session you are in, a line above the prompt says when another Claude Code session
 // on this computer needs you (an approval, an answer), and a toast says when one needs you or has finished its turn. It reads only the status file each session keeps
-// in <config dir>/sessions/<pid>.json (written by Claude Code 2.1.294 and later) and asks `ps` whether a waiting session's process still runs. Nothing is sent anywhere.
+// in <config dir>/sessions/<pid>.json (written by Claude Code 2.1.221 and later in the terminal, 2.1.269 elsewhere; mods run from 2.1.294) and asks `ps` whether a waiting session's process still runs. Nothing is sent anywhere.
 // The whole call, with every session as a character: /agent-standup:open (the agent-standup plugin).
 import type { EngineInterface, Register } from 'claude-code'
 
@@ -23,6 +23,9 @@ export const whereOf = (s: Status): string => {
 export const whatOf = (w: unknown): string => (w === 'permission prompt' ? 'an approval' : w === 'input needed' ? 'an answer' : 'you')
 // waiting, and not on a dialog the person opened there themselves (/model, /config…): those say "dialog open"
 const waits = (s: Status): boolean => s.status === 'waiting' && s.waitingFor !== 'dialog open'
+// a session a program started with claude -p (entrypoint sdk-cli): its questions go to that program, and its turns are not yours. An Agent SDK host (sdk-ts, sdk-py: Zed, a home-made app)
+// may show its menus to a person, so those are kept (as liveStatus in Agent Standup's server)
+const byProgram = (s: Status): boolean => s.entrypoint === 'sdk-cli'
 
 // The processes that still run, of those asked about. A session that crashed leaves its file behind, saying what it was doing then.
 const alive = async ($: EngineInterface, pids: readonly number[]): Promise<Set<number>> => {
@@ -49,13 +52,13 @@ export const register: Register = on => {
       try {
         names = (await $.fs.list(dir)).filter(f => f.kind === 'file' && /^\d+\.json$/.test(f.name)).map(f => f.name)
       } catch {
-        names = []   // no such folder: a Claude Code older than 2.1.294, or none has run yet
+        names = []   // no such folder: a Claude Code that writes no status, or none has run yet
       }
       const rows: Status[] = []
       for (const n of names) {
         try {
           const s = JSON.parse(await $.fs.read(dir + '/' + n)) as Status
-          if (s && typeof s.sessionId === 'string' && s.sessionId !== self) rows.push(s)
+          if (s && typeof s.sessionId === 'string' && s.sessionId !== self && !byProgram(s)) rows.push(s)
         } catch {
           // a file being written, or not one of Claude Code's: skipped
         }

@@ -1,17 +1,36 @@
 // Agent Standup — VS Code extension host. Runs the local server in a process of its own and shows it in a webview.
 const vscode = require('vscode');
-const http = require('http'), fs = require('fs'), path = require('path');
+const http = require('http'), fs = require('fs'), path = require('path'), os = require('os');
 
 let panel = null, side = null, status = null, started = null;
 const logErr = (where, e) => { try { require('./server.js').logError(where, e); } catch {} };   // the local error log (see logError in server.js): nothing is sent
 
 const cfg = () => vscode.workspace.getConfiguration('agentStandup');
 const tt = (s, ...a) => (vscode.l10n && vscode.l10n.t ? vscode.l10n.t(s, ...a) : s.replace(/\{(\d+)\}/g, (_, i) => a[i]));   // runtime strings: bundles in ./l10n, the English text is the key
-const projKey = () => {
-  const f = vscode.workspace.workspaceFolders;
-  if (!f || !f.length || !cfg().get('onlyThisWorkspace')) return '';
-  return f[0].uri.fsPath.replace(/[^a-zA-Z0-9]/g, '-');   // Claude Code's project-dir naming
-};
+// Claude Code's project-dir naming. On Windows VS Code writes the drive letter small (c:\work\app), and the folder Claude Code is started in has it capital, as the system gives it: its project is C--work-app
+const keyOf = (p) => { const k = String(p || '').replace(/[^a-zA-Z0-9]/g, '-'); return process.platform === 'win32' ? k.replace(/^[a-z](?=--)/, (c) => c.toUpperCase()) : k; };
+const fold = (k) => (process.platform === 'win32' ? String(k || '').toLowerCase() : String(k || ''));   // names compared as the system does: on Windows, whatever their case
+const wsKey = () => { const f = vscode.workspace.workspaceFolders; return f && f.length ? keyOf(f[0].uri.fsPath) : ''; };
+const projKey = () => (cfg().get('onlyThisWorkspace') ? wsKey() : '');
+// The sessions of this workspace: its folder, or a folder inside it (a worktree under .claude/worktrees, a package of a monorepo), as inFolder in server.js does for the call.
+// A project's name alone cannot tell app/old (inside app) from app-old (beside it): the folder the session was started in says. Not found: counted by its name, as the call does.
+const projectsDir = () => process.env.AGENT_STANDUP_PROJECTS || path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');   // where server.js reads the transcripts (ROOT)
+const cwds = new Map();   // project → the folder its sessions were started in, kept once it is sure (the folder whose name is the project's)
+function cwdOf(r) {
+  try {
+    if (r.source === 'codex' || r.source === 'vibe') return String(require(r.source === 'codex' ? './codex.js' : './vibe.js').cwd(r.id) || '');   // a Codex or Vibe session says which folder it was started in
+    if (cwds.has(r.proj) || !/^[\w.\-]+$/.test(String(r.proj)) || !/^[\w.\-]+$/.test(String(r.id))) return cwds.get(r.proj) || '';
+    const fd = fs.openSync(path.join(projectsDir(), r.proj, r.id + '.jsonl'), 'r'); let head = ''; try { const buf = Buffer.alloc(64 * 1024), n = fs.readSync(fd, buf, 0, buf.length, 0); head = buf.subarray(0, n).toString('utf8'); } finally { fs.closeSync(fd); }
+    const m = /"cwd":"((?:[^"\\]|\\.)*)"/.exec(head), cwd = m ? JSON.parse('"' + m[1] + '"') : '';
+    if (cwd && fold(keyOf(cwd)) === fold(r.proj)) { if (cwds.size > 500) cwds.clear(); cwds.set(r.proj, cwd); return cwd; } return '';
+  } catch { return ''; }
+}
+function inWorkspace(r, key) {
+  const k = fold(key), names = [fold(r.proj), fold(r.dir)]; if (!k) return false;
+  if (names.includes(k)) return true; if (!names.some((d) => d.startsWith(k + '-'))) return false;
+  const cwd = cwdOf(r), P = process.platform === 'win32' ? path.win32 : path; if (!cwd) return true;
+  for (let d = cwd; d;) { if (fold(keyOf(d)) === k) return true; const up = P.dirname(d); if (up === d) return false; d = up; } return false;   // the workspace folder is the session's folder or one above it
+}
 const ping = (port) => new Promise((res) => {
   const r = http.get({ host: '127.0.0.1', port, path: '/api/current', timeout: 1500 }, (m) => { m.resume(); res(m.statusCode === 200); });
   r.on('error', () => res(false)); r.on('timeout', () => { r.destroy(); res(false); });
@@ -113,10 +132,10 @@ async function followTab() {
     if (typeof vt !== 'string' || !vt.includes('claudeVSCodePanel')) return;   // any other tab (a file, the call itself): the call stays where it is
     const key = g.viewColumn + '|' + t.label; if (key === tabKey) return; tabKey = key;   // only when you change tab: the call may have been moved by hand since
     const one = (x) => String(x).replace(/\s+/g, ' ').trim(), cut = /…$/.test(t.label), label = one(t.label.replace(/…$/, '')); if (!label || t.label === 'Claude Code') return;
-    const f = vscode.workspace.workspaceFolders, ws = f && f.length ? f[0].uri.fsPath.replace(/[^a-zA-Z0-9]/g, '-') : '';
+    const ws = wsKey();
     const { port, error } = await ensureServer(); if (error) return; const named = (list) => list.filter((r) => typeof r.title === 'string' && (cut ? one(r.title).startsWith(label) : one(r.title) === label));
     let rows = named(await getJson(port, '/api/board')); if (!rows.length) rows = named(await getJson(port, '/api/sessions'));   // a conversation of another day is no longer among the sessions of the moment: it is looked up in the whole list
-    const r = rows.find((x) => ws && (x.proj === ws || x.proj.startsWith(ws + '-'))) || rows[0]; if (!r) return;
+    const r = rows.find((x) => ws && inWorkspace(x, ws)) || rows[0]; if (!r) return;
     for (const w of [panel, side]) if (w) w.webview.postMessage({ agentStandup: 'pin', id: r.id, proj: r.proj, tab: true });
   } catch (e) { if (!/ECONNREFUSED|ECONNRESET|socket hang up|timeout|JSON/.test(String(e && e.message))) logErr('follow tab', e); }   // a server that is starting again is not an error
 }
@@ -153,9 +172,23 @@ function noteWindow() {
 const openHere = (sid, fallback) => Promise.resolve(vscode.commands.executeCommand('claude-vscode.primaryEditor.open', sid)).then(undefined, () => { if (fallback) fallback(); });   // Claude Code's own command, the one its link runs: the session's tab, brought up (an older Claude Code without it: the fallback)
 const answerHere = (id, fallback) => { try { return require('./server.js').answerIn(id, { here: (sid) => openHere(sid, fallback) }); } catch { return null; } };   // a session of this window: its tab; another window or app: the link (server.js, answerIn)
 function answerOr(r) { const a = answerHere(r.id, () => openPanel({ id: r.id, proj: r.proj })); if (!a || a.how !== 'editor') return openPanel({ id: r.id, proj: r.proj }); }   // a terminal, the Claude app or nothing to open: the call on that session, as before
+const askOf = (r) => r.ask || (r.tool === 'ExitPlanMode' || (r.menu && r.menu.kind === 'plan') ? tt('a plan to approve') : /^(AskUserQuestion)?$/.test(r.tool || '') ? '' : r.tool);   // what a session that waits on you asks: its question, the call it waits to run, a plan
 function needsText(r) {
-  const plan = r.tool === 'ExitPlanMode' || (r.menu && r.menu.kind === 'plan'), what = r.ask || (plan ? tt('a plan to approve') : /^(AskUserQuestion)?$/.test(r.tool || '') ? '' : r.tool), name = clip(r.title || r.id, 60);
+  const what = askOf(r), name = clip(r.title || r.id, 60);
   return what ? tt('{0} is waiting for you: {1}', name, clip(what, 80)) : tt('{0} is waiting for you', name);
+}
+function tipLine(r, now) {   // a line of the status bar's tooltip: the session, and for one that waits on you what it asks and for how long; one stopped by the usage limit, or logged out, says so
+  if (r.limit && (r.state === 'turn' || r.state === 'idle')) return '⏳ ' + clip(r.title || r.id, 60) + ' · ' + (r.limit.resets ? tt('usage limit · resets {0}', clip(r.limit.resets, 40)) : tt('usage limit'));
+  if (r.auth && (r.state === 'turn' || r.state === 'idle')) return '⚠ ' + clip(r.title || r.id, 60) + ' · ' + tt('logged out');
+  if (r.state === 'blocked') { const what = askOf(r), m = r.since ? Math.max(0, Math.floor((now - r.since) / 60e3)) : -1; return '✋ ' + clip(r.title || r.id, 60) + (what ? ' · ' + clip(what, 60) : '') + (m < 0 ? '' : ' · ' + (m < 1 ? tt('for less than a minute') : m < 60 ? tt('for {0} min', m) : tt('for {0} h {1} min', Math.floor(m / 60), m % 60))); }
+  return `${r.state === 'turn' && r.gave ? '⚠' : { blocked: '✋', working: '⚙', waiting: '🔗', turn: '✓', idle: '💤' }[r.state]} ${r.title}`;
+}
+function barText(act) {   // the status bar's text, from the sessions it counts
+  const cnt = (st) => act.filter((r) => r.state === st).length, blocked = cnt('blocked'), working = cnt('working') + cnt('waiting'), turns = act.filter((r) => r.state === 'turn');
+  const free = turns.some((r) => !r.limit && !r.auth), lim = turns.find((r) => r.limit), out = turns.some((r) => r.auth);   // a session stopped on your usage limit, or on a login that is gone: not a turn you can take (as the CLI's status)
+  const parts = []; if (blocked) parts.push('$(warning) ' + tt('{0} needs you', blocked)); if (working) parts.push('$(sync~spin) ' + tt('{0} working', working));
+  if (!blocked && !working) { if (free) parts.push('$(check) ' + tt('your turn')); else { if (lim) { const at = String(lim.limit.resets || '').replace(/\s*\([^)]*\)\s*$/, ''); parts.push('⏳ ' + (at ? tt('usage limit · resets {0}', clip(at, 30)) : tt('usage limit'))); } if (out) parts.push('$(warning) ' + tt('logged out')); } }   /* the reset time without its zone (Europe/Paris) */
+  return '$(device-camera-video) ' + (parts.join(' · ') || 'Agent Standup');
 }
 function needsYou(rows, now = Date.now()) {   // rows: those the status bar counts, read in a focused window
   const on = cfg().get('notifyNeedsYou') !== false, here = new Set();
@@ -274,7 +307,7 @@ function activate(ctx) {
   status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 90);
   status.text = '$(device-camera-video) Agent Standup'; status.tooltip = tt('Open the live Agent Standup call'); status.command = 'agentStandup.open';
   status.show(); ctx.subscriptions.push(status);
-  // Glanceable state without opening anything: counts for this workspace, red when an agent may need you. Reads the session files directly (no server needed).
+  // Glanceable state without opening anything: counts for this workspace, red when a session waits for your answer. Reads the session files directly (no server needed).
   let target = null;
   let polling = false;
   const poll = async () => {
@@ -283,15 +316,13 @@ function activate(ctx) {
       const bar = cfg().get('statusBar'), tell = cfg().get('notifyNeedsYou') !== false;
       if (!bar) { if (status.text !== '$(device-camera-video) Agent Standup') { status.text = '$(device-camera-video) Agent Standup'; status.backgroundColor = undefined; status.tooltip = tt('Open the live Agent Standup call'); } if (!tell) return needsYou([]); }   // counts off: the plain button stays (and the notifications, unless they are off too)
       if (!vscode.window.state.focused) return;
-      const key = projKey(), rows = require('./server.js').boardRows().filter((r) => (key ? r.proj === key || r.dir === key : !r.tmp)), now = Date.now();   // read here, as before (the ends of the transcripts only): no server process for a window whose call is never opened
+      const key = projKey(), rows = require('./server.js').boardRows().filter((r) => (key ? inWorkspace(r, key) : !r.tmp)), now = Date.now();   // read here, as before (the ends of the transcripts only): no server process for a window whose call is never opened
       needsYou(rows, now); if (!bar) return;
-      const act = rows.filter((r) => r.state !== 'idle' || now - r.mtime < 15 * 60e3), cnt = (st) => act.filter((r) => r.state === st).length;
-      const blocked = cnt('blocked'), working = cnt('working') + cnt('waiting'), turn = cnt('turn'); if (act.length) noteUse();   // a day of use towards the rating, call opened or not
-      const parts = []; if (blocked) parts.push('$(warning) ' + tt('{0} needs you', blocked)); if (working) parts.push('$(sync~spin) ' + tt('{0} working', working)); if (!blocked && !working && turn) parts.push('$(check) ' + tt('your turn'));
-      status.text = '$(device-camera-video) ' + (parts.join(' · ') || 'Agent Standup');
+      const act = rows.filter((r) => r.state !== 'idle' || now - r.mtime < 15 * 60e3), blocked = act.filter((r) => r.state === 'blocked').length; if (act.length) noteUse();   // a day of use towards the rating, call opened or not
+      status.text = barText(act);
       status.backgroundColor = blocked ? new vscode.ThemeColor('statusBarItem.errorBackground') : undefined;
       const best = act.find((r) => r.state === 'blocked') || act.find((r) => r.state === 'working') || act.find((r) => r.state === 'waiting') || act[0] || null; target = best ? { id: best.id, proj: best.proj } : null;
-      status.tooltip = act.length ? act.slice(0, 6).map((r) => `${r.state === 'turn' && r.gave ? '⚠' : { blocked: '✋', working: '⚙', waiting: '🔗', turn: '✓', idle: '💤' }[r.state]} ${r.title}`).join('\n') + '\n\n' + tt('Click to open the call') : tt('Open the live Agent Standup call');
+      status.tooltip = act.length ? act.slice(0, 6).map((r) => tipLine(r, now)).join('\n') + '\n\n' + tt('Click to open the call') : tt('Open the live Agent Standup call');
     } catch (e) { logErr('status bar', e); } finally { polling = false; }
   };
   ctx.subscriptions.push(vscode.commands.registerCommand('agentStandup.openStatus', () => openPanel(target)));
@@ -305,4 +336,4 @@ function activate(ctx) {
   if (cfg().get('autoOpen')) openPanel();
 }
 async function deactivate() { stopping = true; try { require('./server.js').forgetEditor(); } catch {} try { if (started) { const s = await started; if (s.kid) s.kid.kill(); if (s.server) { s.server.close(); require('./server.js').shutdown(); } } } catch {} }
-module.exports = { activate, deactivate, _server: () => started, _pingActive: pingActive, _noteUse: noteUse, _rateNow: rateNow, _ratePages: RATE_PAGES, _askUsage: askUsage, _pingWeek: pingWeek, _mondayOf: mondayOf, _net: net, _needsYou: needsYou };
+module.exports = { activate, deactivate, _server: () => started, _pingActive: pingActive, _noteUse: noteUse, _rateNow: rateNow, _ratePages: RATE_PAGES, _askUsage: askUsage, _pingWeek: pingWeek, _mondayOf: mondayOf, _net: net, _needsYou: needsYou, _inWorkspace: inWorkspace, _projKey: projKey, _tipLine: tipLine, _barText: barText };

@@ -91,6 +91,8 @@
   .rr.k-blocked { border-left-color:#ff5252; background:rgba(192,57,43,.28) } .rr.k-blocked .st { color:#fff; font-weight:700 } .rr.k-stalled { border-left-color:#ffb347 } .rr.k-stalled .st { color:#ffb347; font-weight:700 }
   .rr.k-done { opacity:.82 } .rr.k-done .st { color:var(--ok) } .rr.turn { opacity:1; border-left-color:var(--accent) } .rr.turn .st { color:var(--accent); font-weight:700 } .rr.turn.gave { border-left-color:#ffb347 } .rr.turn.gave .st { color:#ffb347 } .rr.k-idle .st { color:var(--dim) } .rr.speaking { box-shadow:0 0 0 2px rgba(124,156,255,.5) }
   #boardv { flex:1; overflow:auto; padding:16px 18px; display:none }
+  .bnote, .miss { margin:0 0 12px; padding:7px 12px; border-radius:10px; font-size:12.5px; background:rgba(255,179,71,.09); border:1px solid rgba(255,179,71,.45); color:var(--text); text-align:left; overflow-wrap:anywhere }   /* amber, not the red of "needs you"; the long names of variables wrap in a narrow window */
+  .miss summary { cursor:pointer; list-style:none } .miss summary::-webkit-details-marker { display:none } .miss u { color:var(--accent); text-decoration:none; white-space:nowrap } .miss ul { margin:6px 0 2px; padding-left:18px; color:var(--dim) } .miss .mv { font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace; overflow-wrap:anywhere } #eMiss:empty { display:none } #eMiss .miss { max-width:460px; margin:0 } .bcard .bab { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
   .bsum { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; font-size:12.5px } .bsum span { padding:3px 10px; border-radius:99px; background:var(--panel2); border:1px solid var(--line) }
   .bgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:10px }
   .bcard { text-align:left; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:11px 13px; display:flex; flex-direction:column; gap:5px; cursor:pointer }
@@ -153,7 +155,7 @@
   /* a browser the agent drives (Claude in Chrome): its last screenshot in a frame of the page's shape, and a pointer that goes where it clicks */
   .pwin.browser { flex-basis:1100px } .pwin.browser #pbody { display:flex; flex-direction:column; padding:0; background:#0b0c11; font:12px -apple-system,system-ui,sans-serif }
   .pbr { flex:1; min-height:0; position:relative; container-type:size; display:flex; align-items:center; justify-content:center; padding:6px } .pbr.none .pfr { display:none } .pbr:not(.none) .pnone { display:none }
-  .pfr { position:relative; flex:none; width:min(100cqw, 100cqh * var(--ar,1.36)); aspect-ratio:var(--ar,1.36) } .pfr img { position:absolute; inset:0; width:100%; height:100%; border-radius:3px; background:#fff }
+  .pfr { position:relative; flex:none; width:min(100cqw, 100cqh * var(--ar,1.36)); aspect-ratio:var(--ar,1.36) } .pfr img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; border-radius:3px; background:#fff }
   .pptr { position:absolute; left:50%; top:50%; width:17px; height:23px; margin:-1px 0 0 -1px; z-index:1; pointer-events:none; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 23'%3E%3Cpath d='M1.5 1.5v17l4.3-4.1 3 6.6 2.7-1.2-3-6.5h6z' fill='%23fff' stroke='%23111' stroke-width='1.4' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat; filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)); transition:left .6s cubic-bezier(.3,.7,.3,1), top .6s cubic-bezier(.3,.7,.3,1) }
   .pptr::after { content:''; position:absolute; left:-13px; top:-13px; width:28px; height:28px; box-sizing:border-box; border-radius:50%; border:3px solid #f0a020; opacity:0 } .pptr.clk::after { animation:pclk .6s ease-out .55s } @keyframes pclk { from { opacity:1; transform:scale(.3) } to { opacity:0; transform:scale(1.5) } }
   .pkey { position:absolute; z-index:1; margin:24px 0 0 12px; max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:rgba(10,11,16,.88); color:#fff; padding:2px 8px; border-radius:6px; font:12px ui-monospace,Menlo,monospace; transition:left .6s, top .6s } .pkey:empty { display:none }
@@ -164,6 +166,32 @@
   .tl { white-space:pre-wrap; word-break:break-word } .tl .ps { color:#7ee787 } .tl.cmd { color:#e6edf3 } .tl.tool { color:#8b95b0 } .dotg { color:#58a6ff }
   .tl.new { animation:lineIn .28s ease-out } @keyframes lineIn { from { opacity:0; transform:translateY(5px) } }
   .cursor { display:inline-block; width:7px; height:14px; background:#c9d1d9; vertical-align:-2px; animation:blinkc 1s steps(1) infinite } @keyframes blinkc { 50% { opacity:0 } }
+  /* the other screens an agent shares: its task board, a test run, a web search or a page it read (reader mode), the plan it presents, a diff with its line numbers, a background command streaming in */
+  .pwin.board #pbody, .pwin.test #pbody { overflow-y:auto; scrollbar-width:thin; overscroll-behavior:contain; padding-bottom:16px }
+  .pbd { font:13.5px/1.45 -apple-system,system-ui,sans-serif; max-width:780px } .pbd h4 { display:flex; align-items:center; gap:10px; margin:2px 0 8px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#8b95b0 } .pbd h4 b { font-size:15px; letter-spacing:0; color:#e6edf3 }
+  .pbar2 { flex:1; display:flex; height:6px; min-width:60px; border-radius:99px; overflow:hidden; background:#262a3a } .pbar2 i { display:block; height:100%; transition:width .6s ease-out } .pbar2 .ok { background:#3fb950 } .pbar2 .bad { background:#f85149 } .pbar2 .skip { background:#6b7089 }
+  .bt { display:flex; gap:10px; padding:5px 10px; margin:1px 0; border-radius:8px; color:#c3c6d4 } .bt > i { flex:none; width:16px; text-align:center; font-style:normal; color:#6b7089 } .bt em { display:block; font-style:normal; font-size:12px; color:#ffd24a }
+  .bt.completed { color:#6b7089 } .bt.completed span { text-decoration:line-through; text-decoration-color:rgba(139,149,176,.6) } .bt.completed > i { color:#3fb950 } .bt.in_progress { color:#fff; background:rgba(240,160,32,.13); box-shadow:inset 3px 0 0 #f0a020 } .bt.in_progress > i { color:#f0a020 }
+  .bt.just { animation:tdone 1s ease-out var(--jd, 0s) both } .bt.just > i { animation:tpop .55s ease-out var(--jd, 0s) both } @keyframes tdone { 0% { background:rgba(63,185,80,.4) } } @keyframes tpop { 0% { transform:scale(.2) } 60% { transform:scale(1.7) } }
+  .ptst { margin-top:10px; padding:12px 14px; border-radius:10px; background:#141824; border:1px solid #262a3a; font:13px -apple-system,system-ui,sans-serif; max-width:780px } .ptst.ok { border-color:rgba(63,185,80,.55) } .ptst.bad { border-color:rgba(248,81,73,.6) }
+  .ptst.flash.ok { animation:tflashok 1.1s ease-out } .ptst.flash.bad { animation:tflashbad 1.1s ease-out } @keyframes tflashok { 0% { background:rgba(63,185,80,.45) } } @keyframes tflashbad { 0% { background:rgba(248,81,73,.45) } }
+  .ptr { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 18px; margin-bottom:10px } .prun { align-self:center; padding:1px 8px; border-radius:6px; background:#262a3a; color:#9aa0b4; font:11.5px ui-monospace,Menlo,monospace } .pc { color:#9aa0b4; white-space:nowrap } .pc b { font-size:26px; line-height:1; margin-right:3px } .pc.ok b { color:#3fb950 } .pc.bad b { color:#f85149 } .pc.zero b { color:#4b5069 } .pc.skip b { color:#8b95b0 }
+  .ptst .pbar2 { height:8px } .pfail { margin:10px 0 0; padding:0; list-style:none; font:12px/1.5 ui-monospace,Menlo,monospace; color:#ff7b72 } .pfail li { white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .pfail .dim { color:#6b7089 }
+  .pwin.search, .pwin.fetch, .pwin.plan { flex-basis:1000px } .pwin.search #pbody, .pwin.fetch #pbody, .pwin.plan #pbody { display:flex; flex-direction:column; padding:0; font:13px/1.5 -apple-system,system-ui,sans-serif }
+  .ppage { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; background:#fff; color:#1f2328 } .pwin.plan .ppage { background:#f7f6f2 } .psq { color:#d6dae6 } .pnn b.ok { color:#3fb950 } .pnn b.bad { color:#f85149 }
+  .psr { padding:10px 18px 24px } .sr { padding:5px 0; max-width:660px } .sr em { display:block; font-style:normal; font-size:11.5px; color:#1a7f37; white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .sr b { display:block; font-weight:500; font-size:15px; color:#1a0dab; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  .pwait { padding:26px; text-align:center; color:#57606a } .pwait .spin { border-color:#57606a; border-top-color:transparent }
+  .pread, .pdoc { max-width:720px; margin:0 auto; padding:14px 22px 40px; font:14px/1.6 Georgia,'Iowan Old Style',serif; color:#24292f; overflow-wrap:anywhere } .pdoc { font:13.5px/1.55 -apple-system,system-ui,sans-serif } .pread p, .pdoc p { margin:0 0 8px } .pread .bad { color:#cf222e; font:12.5px ui-monospace,Menlo,monospace }
+  .pread h3, .pread h4, .pread h5, .pdoc h3, .pdoc h4, .pdoc h5 { font-family:-apple-system,system-ui,sans-serif; margin:14px 0 6px; line-height:1.3 } .pread h3, .pdoc h3 { font-size:20px; margin-top:4px } .pread h4, .pdoc h4 { font-size:16px } .pread h5, .pdoc h5 { font-size:14px }
+  .pread ul, .pdoc ul { margin:0 0 8px; padding-left:20px } .pread li.sub, .pdoc li.sub { margin-left:18px } .pread code, .pdoc code { font:12.5px ui-monospace,Menlo,monospace; background:rgba(175,184,193,.25); padding:1px 4px; border-radius:4px } .pread pre, .pdoc pre { margin:0 0 8px; font:12px/1.45 ui-monospace,Menlo,monospace; background:#eceae4; padding:8px 10px; border-radius:6px; white-space:pre-wrap } .pread u, .pdoc u { color:#0969da; text-decoration:none }
+  .ln.dn b { width:34px; text-align:right; color:#4b5069 } .ln i { flex:none; width:8px; margin-left:-4px; font-style:normal; opacity:.85 } .ln.hunk { color:#79c0ff; background:rgba(56,139,253,.1); margin:3px 0 1px } .ptab .pmf { color:#c3c6d4; background:#262a3a; padding:1px 8px; border-radius:99px }
+  .tl.add { color:#7ee787 } .tl.del { color:#ff7b72 } .tl.hunk { color:#79c0ff } .tl.ok { color:#7ee787 }
+  #plive { flex:none; margin-left:10px; color:#ff6b62; font-weight:700; font-size:10.5px; letter-spacing:.08em; white-space:nowrap } #plive:empty { display:none } #plive b { animation:pulse 1.4s ease-in-out infinite }
+  .pdev { flex:none; max-height:6.4em; overflow:hidden; padding:4px 10px; background:#11131b; border-top:1px solid #232637; font:11px/1.45 ui-monospace,Menlo,monospace; color:#9aa0b4 } .pdev div { white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .pdev .e { color:#ff7b72 } .pdev .w { color:#ffd24a }
+  .pwin.board #pbody, .pwin.test #pbody { padding-right:calc(14px + var(--camx, 0px)); padding-bottom:calc(16px + var(--camy, 0px)) } .ppage { padding-right:var(--camx, 0px) } .ppage::after { content:''; display:block; height:var(--camy, 0px) }   /* room for the camera and the caption (camRoom) */
+  #present.has-todo.camr #pcam { right:28px } #present.has-todo.camr #pcap { right:200px } body.narrow #present.doc #pcap { right:14px }
+  body.narrow .pdev { display:none } body.narrow .pread h3, body.narrow .pdoc h3 { font-size:16px } body.narrow .pread h4, body.narrow .pdoc h4 { font-size:14px }
+  body.narrow .bt { padding:3px 8px; font-size:12.5px } body.narrow .pc b { font-size:20px } body.narrow .ptst { padding:9px 10px } body.narrow .pread, body.narrow .pdoc { padding:10px 12px 30px; font-size:12.5px } body.narrow .sr b { font-size:13px } body.narrow .psr { padding:8px 12px 20px }
   #pstat { flex:none; padding:4px 12px; background:#161925; color:#8b95b0; font:11.5px ui-monospace,Menlo,monospace; border-top:1px solid #232637; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
   #ptodo { flex:0 0 230px; margin-left:12px; align-self:flex-start; position:relative; max-height:100%; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; background:rgba(20,22,32,.92); border:1px solid #2a2d3d; border-radius:10px; padding:8px 10px; font-size:12px }
   #ptodo h5 { margin:0 0 6px; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim) } .td { display:flex; gap:7px; padding:2px 0; color:#c3c6d4 } .td i { font-style:normal; flex:none } .td.completed { color:#6b7089; text-decoration:line-through } .td.completed i { color:var(--ok) } .td.in_progress { color:#fff } .td.in_progress i { color:var(--gold) }
@@ -173,10 +201,10 @@
   .ticker em { font-style:normal; color:#9aa3bd; font-size:10px } .ticker em.ok { color:#58d68d } .ticker em.bad { color:#ff7b72 }
   .status { max-width:84%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
   #pbadge { margin-left:auto; flex:none; background:rgba(240,160,32,.94); color:#201400; font-weight:600; font-size:11px; padding:1px 10px; border-radius:99px; white-space:nowrap }
-  #present.has-todo #pcam { right:270px } #pcam { position:absolute; right:28px; bottom:22px; width:158px; height:118px; z-index:2; cursor:default; box-shadow:0 8px 24px rgba(0,0,0,.6) }
+  #present.has-todo #pcam { right:270px } #present.has-todo #pcap { right:442px }   /* the caption ends before the camera, which the task list pushes left */ #pcam { position:absolute; right:28px; bottom:22px; width:158px; height:118px; z-index:2; cursor:default; box-shadow:0 8px 24px rgba(0,0,0,.6) }
   #pcap { display:none; position:absolute; left:24px; right:200px; bottom:20px; z-index:2; background:rgba(10,11,16,.84); backdrop-filter:blur(6px); border-radius:10px; padding:6px 12px; font-size:13px; max-height:calc(100% - 34px); overflow-y:auto; scrollbar-width:thin } #pcap:not(:empty) { display:block }
-  body.narrow #present { height:clamp(150px,36vh,260px) } body.narrow #pcam { width:110px; height:82px } body.narrow #pcap { left:14px; right:146px; font-size:12.5px }
-  body.narrow #ptodo { display:none } body.narrow #present.has-todo #pcam { right:28px }   /* too narrow for a terminal and a task list side by side: the terminal keeps the room */
+  body.narrow #present { height:clamp(150px,36vh,260px) } body.narrow #pcam { display:none } body.narrow #pcap { left:14px; right:14px; font-size:12.5px }   /* in a narrow sidebar the window keeps its whole width: the badge says who shares, and their tile is lit just below */
+  body.narrow #ptodo { display:none } body.narrow #present.has-todo #pcap { right:14px }   /* too narrow for a terminal and a task list side by side: the terminal keeps the room */
   #gantt { display:none; flex:none; width:100%; background:#0f1118; border-top:1px solid var(--line); cursor:pointer }
   body.replay #gantt { display:block }
   aside { display:none; width:320px; flex:none; border-left:1px solid var(--line); background:var(--panel); flex-direction:column; min-height:0 }
@@ -324,6 +352,7 @@
   .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px } .kpi { background:var(--bg); border-radius:10px; padding:10px 12px } .kpi b { display:block; font-size:22px } .kpi span { color:var(--dim); font-size:11.5px }
   .coffee { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:20px; padding:12px 14px; background:var(--bg); border:1px dashed #4a4f66; border-radius:10px; font-size:13px; color:#c3c6d4 }
   #recap table { width:100%; border-collapse:collapse; font-size:12.5px } #recap td, #recap th { padding:4px 8px; border-bottom:1px solid var(--line); text-align:left } #recap th { color:var(--dim); font-weight:500 } #recap .f { font:12px ui-monospace,Menlo,monospace; word-break:break-all }
+  @media (max-width:600px) { #recap .box { padding:18px 14px } #recap table { display:block; overflow-x:auto; max-width:100% } }   /* a narrow window: a wide table scrolls sideways instead of being cut */
 
   /* ---------- tree ---------- */
   #tree ul { list-style:none; margin:0; padding-left:26px; position:relative } #tree > ul { padding-left:0 } #tree li { position:relative; padding:3px 0 }
@@ -363,6 +392,7 @@
   <div class="hint" id="trHint" style="display:none"></div>
   <h4 data-fr="Son" data-en="Sound">Son</h4>
   <button class="mi" data-t="voice"><span data-fr="Voix des agents" data-en="Agent voices">Voix des agents</span><i class="sw"></i></button>
+  <div class="box" id="voiceVolBox" style="display:none"><input id="voiceVol" type="range" min="0.05" max="1" step="0.05" style="width:100%" aria-label="Voice volume"></div>
   <div class="box" id="vstyleBox"><label class="lbl" for="vstyle" data-fr="Style des voix" data-en="Voice style">Style des voix</label><select id="vstyle"></select><div class="hint" id="vstyleTip" style="padding:6px 0 0;display:none" data-fr="Pour la meilleure expérience, choisissez les voix naturelles." data-en="For the best experience, pick the natural voices.">Pour la meilleure expérience, choisissez les voix naturelles.</div></div>
   <div class="box" id="kokoroBox" style="display:none"><button class="btn" id="kokoroInstall" style="width:100%"></button><div class="hint" id="kokoroHint" style="padding:2px 0 6px"></div></div>
   <h4 data-fr="Personnages" data-en="Characters">Personnages</h4>
@@ -426,18 +456,18 @@
 <main>
   <nav id="roster" aria-label="Agents"></nav>
   <section id="center">
-    <div id="present"><div class="pwin term"><div class="pbar"><i class="r"></i><i class="y"></i><i class="g"></i><span id="ptitle"></span><span id="pbadge"></span></div><div id="pbody"></div><div id="pstat"></div></div><div id="ptodo" style="display:none"></div><div id="pcap"></div><div id="pcam" class="tile working"></div></div>
+    <div id="present"><div class="pwin term"><div class="pbar"><i class="r"></i><i class="y"></i><i class="g"></i><span id="ptitle"></span><span id="plive"></span><span id="pbadge"></span></div><div id="pbody"></div><div id="pstat"></div></div><div id="ptodo" style="display:none"></div><div id="pcap"></div><div id="pcam" class="tile working"></div></div>
     <div id="stage"></div><div id="tree"></div><div id="boardv"></div>
     <div id="reactBar" aria-label="Reactions"><button data-e="👍">👍</button><button data-e="👏">👏</button><button data-e="☕">☕</button><button data-e="🔥">🔥</button><button data-e="🙌">🙌</button></div>
     <div id="files"></div>
     <div id="hl"></div>
     <canvas id="gantt" height="90"></canvas>
     <div id="toasts" role="status" aria-live="polite"><div class="toast offer" id="vOffer" style="display:none"><span id="vOfferT"></span><button class="btn" id="vOfferB"></button><button class="ic" id="vOfferX" aria-label="Close">✕</button></div><div class="toast offer" id="packNote" style="display:none"><img id="packNoteI" src="pack-halloween.jpg" alt="" width="48" height="36"><span id="packNoteT"></span><button class="btn" id="packNoteB"></button><button class="ic" id="packNoteX" aria-label="Close">✕</button></div><div class="toast offer" id="trNote" style="display:none"><span id="trNoteT"></span><button class="btn" id="trNoteOk"></button><button class="btn" id="trNoteOff"></button></div></div><div id="visit" role="status" aria-live="polite"></div><div id="askc" role="region" aria-live="polite"></div>
-    <div id="empty"><h2 id="eT"></h2><p id="eP"></p><button class="cta" id="eDemo"></button></div>
+    <div id="empty"><h2 id="eT"></h2><p id="eP"></p><div id="eMiss"></div><button class="cta" id="eDemo"></button></div>
     <div id="gate"><button class="cta" id="gB"></button></div>
     <div id="detail"><div class="hd"><b id="dname"></b><button class="ic" id="dclose">✕</button></div><div id="dbody"></div></div>
   </section>
-  <aside><h2 id="logH">Transcript</h2><input id="logQ" type="search" placeholder="Search…" aria-label="Search the transcript" style="margin:8px 10px;width:calc(100% - 20px)"><div id="log"></div></aside>
+  <aside><h2 id="logH" data-fr="Transcription" data-en="Transcript">Transcript</h2><input id="logQ" type="search" placeholder="Search…" aria-label="Search the transcript" style="margin:8px 10px;width:calc(100% - 20px)"><div id="log"></div></aside>
 </main>
 <footer>
   <input id="seek" type="range" min="0" max="0" value="0"><span class="dim" id="pos">0 / 0</span>
@@ -474,7 +504,7 @@ const Q = new URLSearchParams(location.search);
 const EMBED = Q.get('embed') === '1' || window.parent !== window;
 const APP = window.AS_APP && typeof window.AS_APP === 'object' && typeof window.AS_APP.rate === 'string' ? window.AS_APP : { kind: '', rate: 'https://github.com/Atoll92/agent-standup' };   // where this page runs (appKind in server.js)
 
-let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'kokoro', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call', hideCode: false, ownNames: true, visits: true, askCard: false, followTab: true, files: true, callTr: true };
+let prefs = { lang: 'en', voice: true, roster: true, banter: true, reactions: false, office: false, officeVol: 0.8, vstyle: 'kokoro', notify: false, epi: false, vanish: true, music: false, station: 'fip', musicVol: 0.35, view: 'call', hideCode: false, ownNames: true, visits: true, askCard: false, followTab: true, files: true, callTr: true, voiceVol: 1 };
 const PREF_DEFAULTS = { ...prefs };   // for ⚙ → All settings → Reset to defaults
 { let loc = {}; try { loc = JSON.parse(localStorage.getItem('cc.prefs') || '{}') || {}; } catch {}   // the settings file (shared by every window) and this origin's copy: the more recent one wins
   const sv = window.SAVED_PREFS && typeof window.SAVED_PREFS === 'object' ? window.SAVED_PREFS : {}; Object.assign(prefs, (sv._t || 0) > (loc._t || 0) ? sv : loc);
@@ -490,7 +520,9 @@ if (prefs.vstyle !== 'animal' || !prefs.vstyleChosen) prefs.vstyle = 'kokoro';
 if (!prefs.notifyChosen) prefs.notify = true;   // “tell me when the agents are done” is on unless the person chose otherwise
 let prefsTimer = null;
 let shareWas = prefs.shareUsage, updWas = prefs.updateNotice;   // the usage answer as last saved: when it changes, savePrefs dates it, and the server keeps the newest (another page may write older settings)
-const savePrefs = () => { prefs._t = Date.now(); if (prefs.shareUsage !== shareWas) { shareWas = prefs.shareUsage; prefs.shareUsageT = Date.now(); } if (prefs.updateNotice !== updWas) { updWas = prefs.updateNotice; prefs.updateNoticeT = Date.now(); } try { localStorage.setItem('cc.prefs', JSON.stringify(prefs)); } catch {} clearTimeout(prefsTimer); prefsTimer = setTimeout(() => { fetch('/api/prefs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(prefs) }).catch(() => {}); }, 400); };
+let langKeep = null;   // ?lang=xx shows the page in that language for this visit only: the saved language stays the one the person chose
+const prefsOut = () => JSON.stringify(langKeep == null ? prefs : { ...prefs, lang: langKeep });
+const savePrefs = () => { prefs._t = Date.now(); if (prefs.shareUsage !== shareWas) { shareWas = prefs.shareUsage; prefs.shareUsageT = Date.now(); } if (prefs.updateNotice !== updWas) { updWas = prefs.updateNotice; prefs.updateNoticeT = Date.now(); } try { localStorage.setItem('cc.prefs', prefsOut()); } catch {} clearTimeout(prefsTimer); prefsTimer = setTimeout(() => { fetch('/api/prefs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: prefsOut() }).catch(() => {}); }, 400); };
 // Languages: French and English live in the code as pairs L(french, english); every other language is a catalogue public/locales/<code>.json mapping the English text to its translation.
 // A missing string falls back to English, so a half-translated language still works. See public/locales/README.md to add one.
 const LANGS = [['en', 'English', 'en'], ['fr', 'Français', 'fr'], ['zh-TW', '繁體中文', 'zh-Hant-TW'], ['zh-CN', '简体中文', 'zh-Hans-CN'], ['es', 'Español', 'es'], ['de', 'Deutsch', 'de'], ['da', 'Dansk', 'da'], ['pt-BR', 'Português (Brasil)', 'pt-BR'], ['ja', '日本語', 'ja'], ['ko', '한국어', 'ko']];
@@ -523,8 +555,8 @@ const tr = (en) => (prefs.lang === 'en' || prefs.lang === 'fr' ? en : LOC[en] ||
 const L = (fr, en) => (FR() ? fr : tr(en));
 async function loadLocale(code) { LOC = {}; if (code === 'en' || code === 'fr') return; try { const r = await fetch('/locales/' + encodeURIComponent(code) + '.json'); if (r.ok) LOC = await r.json(); } catch {} }
 async function setLang(code, save) {
-  if (!LANGS.some((l) => l[0] === code)) code = 'en'; prefs.lang = code; await loadLocale(code); if (save) { prefs.langChosen = true; savePrefs(); }
-  if (TRL()) fetch('/api/warm?lang=' + CALL()).catch(() => {}); AUD.stopAll(); synth && synth.cancel(); applyLang(); if (TRL()) prefetchTr(S.idx); kokoroUI(); voiceOffer(); callNote();   /* its texts, and the offer to add the voices of this language */
+  if (!LANGS.some((l) => l[0] === code)) code = 'en'; prefs.lang = code; await loadLocale(code); if (save) { langKeep = null; prefs.langChosen = true; savePrefs(); }
+  if (TRL()) fetch('/api/warm?lang=' + CALL()).catch(() => {}); AUD.stopAll(); synth && synth.cancel(); applyLang(); if (TRL()) prefetchTr(S.idx); kokoroUI(); voiceOffer(); callNote(); paintMissing();   /* its texts, and the offer to add the voices of this language */
 }
 
 // =====================================================================
@@ -927,7 +959,7 @@ const AUD = {
     const src = c.createBufferSource(); src.buffer = buf; src.loop = true; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
     const g = c.createGain(); g.gain.value = 0.3; src.connect(lp).connect(g).connect(this.sfx); src.start(); this.apply(); OFFICE.start();
   },
-  apply() { if (!this.ctx) return; this.sfx.gain.value = prefs.office && !this.off() ? 1 : 0; this.voice.gain.value = prefs.voice && !this.off() ? 1 : 0; this.applyMusic(); RADIO.sync();  },
+  apply() { if (!this.ctx) return; this.sfx.gain.value = prefs.office && !this.off() ? 1 : 0; this.voice.gain.value = prefs.voice && !this.off() ? (prefs.voiceVol ?? 1) : 0; this.applyMusic(); RADIO.sync();  },
   // Music fades down quickly when an agent starts talking and comes back slowly once the room is quiet.
   applyMusic() { if (!this.ctx) return; this.amb.gain.setTargetAtTime((this.ducked ? 0.35 : 1) * (prefs.officeVol ?? 0.8), this.ctx.currentTime, 0.25); const v = prefs.music && !this.off() ? (prefs.musicVol ?? 0.35) * (this.ducked ? 0.16 : 1) : 0; this.music.gain.setTargetAtTime(v, this.ctx.currentTime, this.ducked ? 0.12 : 0.7); },
   blip(f) { if (!this.ctx || this.off()) return; const c = this.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.1); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22); o.connect(g).connect(c.destination); o.start(t); o.stop(t + 0.25); },
@@ -1104,7 +1136,7 @@ function warmTTS(i) {   // called by run() before each line (i is that line) and
     const e = S.events[k]; if (quiet(e)) { k++; continue; }
     if (S.live && len - k > 300) break;   // a backlog that run() skips
     const group = [e]; let j = k + 1;
-    if (e.kind === 'order') { while (j < Math.min(len, k + 40) && group.length < 8) { const e2 = S.events[j]; if (e2.kind === 'usage' || e2.kind === 'compact') j++; else if (e2.kind === 'order' && e2.agent === e.agent) { group.push(e2); j++; } else break; } }
+    if (e.kind === 'order') { while (j < Math.min(len, k + 40) && group.length < 8) { const e2 = S.events[j]; if (e2.kind === 'usage' || e2.kind === 'compact' || e2.kind === 'tasks') j++; else if (e2.kind === 'order' && e2.agent === e.agent) { group.push(e2); j++; } else break; } }
     else if (isSub(e.agent)) { while (j < Math.min(len, k + 28) && group.length < 3) { const e2 = S.events[j]; if (quiet(e2)) j++; else if (e2.kind !== 'order' && isSub(e2.agent) && !group.some((g) => g.agent === e2.agent)) { group.push(e2); j++; } else break; } }
     const pl = paceAt(k), many = e.kind === 'order' && group.length > 1, rate = TTS.rateAt(many || !S.live ? k : j - 1, pl.boost);
     for (const g of many ? [e] : group) {   // orders in a row: only the first is read out
@@ -1206,7 +1238,7 @@ function speakBrowser(text, p, token, lo = CALL()) {   // the browser's own voic
       if (i >= parts.length || done || token !== S.token) return fin(true);
       if (t0 && said >= 20) { const el = performance.now() - t0; captionRun(p.id, text, el * all / said, el); }   // the length of the audio is not known in advance here: the subtitles are set again on the pace the voice really has, after each sentence
       said += parts[i].length; const part = parts[i++].trim(); if (!part) return next();
-      const u = new SpeechSynthesisUtterance(part); u.lang = lo === 'en' ? 'en-US' : homeOf(lo).replace('_', '-'); u.voice = voice; u.pitch = prefs.vstyle !== 'cartoon' ? 0.95 + ((p.vi >>> 5) % 5) * 0.03 : p.id === 'main' ? 0.8 : [1.5, 0.6, 1.2, 1.7, 0.9, 0.5, 1.35][(p.vi >>> 3) % 7]; u.rate = Math.min(1.7, 0.97 * spd());
+      const u = new SpeechSynthesisUtterance(part); u.lang = lo === 'en' ? 'en-US' : homeOf(lo).replace('_', '-'); u.voice = voice; u.pitch = prefs.vstyle !== 'cartoon' ? 0.95 + ((p.vi >>> 5) % 5) * 0.03 : p.id === 'main' ? 0.8 : [1.5, 0.6, 1.2, 1.7, 0.9, 0.5, 1.35][(p.vi >>> 3) % 7]; u.rate = Math.min(1.7, 0.97 * spd()); u.volume = Math.max(0, Math.min(1, prefs.voiceVol ?? 1));
       u.onstart = () => { started = true; if (!t0) { t0 = performance.now(); captionRun(p.id, text, estMs(text)); } }; u.onend = () => setTimeout(next, 120); u.onerror = () => fin(started); synth.speak(u);
     };
     next();
@@ -1316,7 +1348,7 @@ function renderLog(full) {
   if (full || S.logTo < from || S.logTo > S.events.length) { log.innerHTML = ''; S.logTo = from; }
   const html = [];
   for (let i = S.logTo; i < S.events.length; i++) {
-    if (S.events[i].kind === 'results' || S.events[i].kind === 'usage' || S.events[i].kind === 'finish' || S.events[i].kind === 'compact') continue;
+    if (S.events[i].kind === 'results' || S.events[i].kind === 'usage' || S.events[i].kind === 'finish' || S.events[i].kind === 'compact' || S.events[i].kind === 'tasks') continue;
     html.push(logRow(i));
   }
   log.insertAdjacentHTML('beforeend', html.join('')); S.logTo = S.events.length;
@@ -1445,6 +1477,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && BT.el) h
 function tally(ev) {   // numbers that pile up over a session: token usage, errors, last sign of life, the files it created
   noteFiles(ev);
   if (ev.kind === 'compact') { S.compacts[ev.agent] = (S.compacts[ev.agent] || 0) + 1; delete S.ctxWarned[ev.agent]; }
+  if (ev.kind === 'tasks') applyTasks(ev);
   noteCalls(ev); if (wasteStep(S.wst, ev)) later('badges', renderBadges, 300);
   const det = loopStep(S.rep, ev); if (det) { S.loops[ev.agent] = det; later('badges', renderBadges, 300); } else if (S.loops[ev.agent] && (ev.kind === 'results' ? (S.loops[ev.agent].kind === 'errors' && ev.items.every((it) => !it.err)) : (ev.kind === 'tools' && S.rep[ev.agent].n < 2))) { delete S.loops[ev.agent]; later('badges', renderBadges, 300); }
   if (ev.kind === 'usage') { const c = ev.u.i + ev.u.r + ev.u.w; if (c > 0 && ev.model !== '<synthetic>') { S.ctx[ev.agent] = c; S.model[ev.agent] = ev.model; if (ev.cw) S.cw[ev.agent] = ev.cw; if (ev.ef) S.effort[ev.agent] = ev.ef; if (ev.adv) S.adv[ev.agent] = ev.adv; } const u = (S.usage[ev.agent] = S.usage[ev.agent] || { i: 0, o: 0, r: 0, w: 0 }); u.i += ev.u.i; u.o += ev.u.o; u.r += ev.u.r; u.w += ev.u.w; later('tok', renderTokens, 300); }   // which also redraws the context chips. Asking for those first, under the same name, left this one unasked: the counts on the tiles and in the header stood still during a live call
@@ -1480,12 +1513,15 @@ const atTail = () => S.idx >= S.events.length - 3;   // only trust wall-clock ag
 function gaveOf(la) {   // the turn of the followed session ended on "I couldn't…" or on an error (the server's gave): its first sentence, unless the session moved since that answer
   const row = S.live && atTail() ? rowOf(S.cur) : null; return row && row.state === 'turn' && row.gave && !(la > S.rowsAt) ? row.gave : '';
 }
+// Claude Code stopped on its usage limit or on a login error (the server's limit and auth): not a gave-up, nothing the session itself could do. Said in amber, with no sound and no visitor
+const limitTxt = (r, short) => !r ? '' : r.limit ? '⏳ ' + L('limite d’usage', 'usage limit') + (r.limit.resets && !short ? ' · ' + L('reprise à {0}', 'resets {0}').replace('{0}', () => r.limit.resets) : '') : r.auth ? '⚠ ' + L('déconnecté : lancez /login', 'logged out: run /login') : '';
+function stopOf(la) { const row = S.live && atTail() ? rowOf(S.cur) : null; return row && row.state === 'turn' && !(la > S.rowsAt) ? limitTxt(row) : ''; }   // the followed session's, unless it moved since that answer
 function agentState(id, now) {
   let s = S.status[id]; const r = S.run[id], w = S.waitOn[id], la = S.lastAct[id];
   if (id === 'main' && S.live && atTail()) { const row = rowOf(S.cur); if (row && row.state === 'blocked' && row.since && !(la > S.rowsAt)) return { k: 'blocked', txt: '✋ ' + (row.sure ? L('vous attend ', 'needs you ') : L('vous attend ? ', 'needs you? ')) + fmtShort(Math.max(0, now - row.since)), ask: row.ask || '', sure: !!row.sure, since: row.since }; }   // what the server knows: a menu open in the session (a Bash approval looks like a running command here), and the question or command it waits on; unless the session moved since that answer. Before "your turn": a menu left open for longer than the lead's quiet time still needs you
   if (id === 'main' && !s) {   // the lead is at work until the message that closes its turn, even while it thinks, and from its first turn on (the server says which transcripts carry that mark); one without it falls back on "quiet for 25 s", and a turn cut short on 3 minutes of silence
     const open = S.live && la && (S.sawEnd ? !S.turnOver && now - la < 180000 : now - la < 25000);
-    if (r || (w && w.size) || open) s = 'working'; else if (S.live && la) { const g = gaveOf(la); return { k: 'done', txt: (g ? '⚠ ' + L('a abandonné ?', 'gave up?') : '✓ ' + L('à vous', 'your turn')) + ' · ' + fmtShort(Math.max(0, now - la)), ...(g ? { gave: g } : {}) }; }
+    if (r || (w && w.size) || open) s = 'working'; else if (S.live && la) { const g = gaveOf(la), stop = g ? '' : stopOf(la); return { k: 'done', txt: (stop || (g ? '⚠ ' + L('a abandonné ?', 'gave up?') : '✓ ' + L('à vous', 'your turn'))) + ' · ' + fmtShort(Math.max(0, now - la)), ...(g ? { gave: g } : stop ? { stop } : {}) }; }
   }
   if (s === 'done') return { k: 'done', txt: '✓ ' + L('terminé', 'done') };
   if (!s) return { k: 'idle', txt: '' };
@@ -1530,8 +1566,8 @@ function paintStates() {
   for (const p of Object.values(S.agents)) {
     if (p.id === 'user') continue; const t = $('#t-' + p.id); if (!t) continue;
     const st = agentState(p.id, now), shown = t.style.display !== 'none'; if (shown && n[st.k] !== undefined && !S.gone.has(p.id)) { n[st.k]++; if (st.k === 'blocked' || st.k === 'stalled') attn.push(p.id); }
-    STATE_CLASSES.forEach((c) => t.classList.toggle(c, st.k === c));
-    const el = t.querySelector('.status'); if (el.textContent !== st.txt) { el.textContent = st.txt; const tb = t.querySelector('.tbadge'); if (tb) tb.style.top = el.offsetHeight > 26 ? el.offsetTop + el.offsetHeight + 4 + 'px' : ''; } /* a status on two lines: the badges under it move down */ const sc = 'status ' + st.k + (isTurn(p.id, st) ? ' turn' : '') + (st.gave ? ' gave' : ''); if (el.className !== sc) el.className = sc;
+    STATE_CLASSES.forEach((c) => t.classList.toggle(c, st.k === c && !(c === 'done' && st.stop)));   /* stopped by the usage limit or a logout: resting, not the happy face and sparkles of done */
+    const el = t.querySelector('.status'); if (el.textContent !== st.txt) { el.textContent = st.txt; const tb = t.querySelector('.tbadge'); if (tb) tb.style.top = el.offsetHeight > 26 ? el.offsetTop + el.offsetHeight + 4 + 'px' : ''; } /* a status on two lines: the badges under it move down */ const sc = 'status ' + st.k + (isTurn(p.id, st) ? ' turn' : '') + (st.gave || st.stop ? ' gave' : ''); if (el.className !== sc) el.className = sc;
     const pr = t.querySelector('.prop'), want = { blocked: '✋', stalled: '😰', waiting: '⌛' }[st.k] || '', was = S.prevState[p.id];   // a raised hand, a sweat drop, an hourglass: the call metaphor for "needs you / stuck / waiting"
     const spot = S.spotted || (S.spotted = new Set()); if (st.k !== 'blocked' || !st.sure) spot.delete(p.id); else if (!spot.has(p.id) && shown && !S.gone.has(p.id) && !S.speakers.size && !(S.focusLock > Date.now())) { spot.add(p.id); setFocus(p.id); }   // one that waits on you takes the spotlight once per wait, as soon as nobody talks (the speaker has it until then)
     if (st.k === 'done' && was && was !== 'done' && was !== 'idle') { pr.textContent = '🎉'; pr.className = 'prop cheer'; setTimeout(() => { if (pr.classList.contains('cheer')) { pr.textContent = ''; pr.className = 'prop'; } }, 1200); }
@@ -1566,7 +1602,7 @@ const rosTok = (id) => { const u = S.usage[id]; return u && tokTotal(u) ? `<span
 function paintRoster(ros) {   // a fixed list beside the call: who is doing what, urgent first, readable even with dozens of agents
   const box = $('#roster'); if (!box || !document.body.classList.contains('rost')) return;
   ros.sort((a, b) => (a.p.id === 'main' ? -1 : b.p.id === 'main' ? 1 : (RORDER[a.st.k] - RORDER[b.st.k]) || (S.lastAct[b.p.id] || 0) - (S.lastAct[a.p.id] || 0)));
-  const rows = ros.slice(0, 60).map(({ p, st }) => `<div class="rr k-${st.k}${isTurn(p.id, st) ? ' turn' : ''}${st.gave ? ' gave' : ''}${S.focus === p.id ? ' sel' : ''}${S.speakers.has(p.id) ? ' speaking' : ''}" data-id="${esc(p.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}, ${esc(st.txt || '')}" title="${esc(p.name + ' — ' + p.role + leadTool(p) + (st.txt ? '\n' + st.txt : '') + (S.lastTool[p.id] ? '\n' + S.lastTool[p.id] : ''))}"><div class="n"><span class="dot" style="background:${p.shirt}"></span><b>${esc(p.name)}</b><span class="ro">${esc(p.role + leadTool(p))}</span>${rosTok(p.id)}</div><div class="st">${esc(st.txt || L('en veille', 'standing by'))}${S.loops[p.id] ? ' 🔁' : ''}${S.wst.items && S.wst.items[p.id] && S.wst.items[p.id].length ? ' ♻' + S.wst.items[p.id].length : ''}</div></div>`).join('');
+  const rows = ros.slice(0, 60).map(({ p, st }) => `<div class="rr k-${st.k}${isTurn(p.id, st) ? ' turn' : ''}${st.gave || st.stop ? ' gave' : ''}${S.focus === p.id ? ' sel' : ''}${S.speakers.has(p.id) ? ' speaking' : ''}" data-id="${esc(p.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}, ${esc(st.txt || '')}" title="${esc(p.name + ' — ' + p.role + leadTool(p) + (st.txt ? '\n' + st.txt : '') + (S.lastTool[p.id] ? '\n' + S.lastTool[p.id] : ''))}"><div class="n"><span class="dot" style="background:${p.shirt}"></span><b>${esc(p.name)}</b><span class="ro">${esc(p.role + leadTool(p))}</span>${rosTok(p.id)}</div><div class="st">${esc(st.txt || L('en veille', 'standing by'))}${S.loops[p.id] ? ' 🔁' : ''}${S.wst.items && S.wst.items[p.id] && S.wst.items[p.id].length ? ' ♻' + S.wst.items[p.id].length : ''}</div></div>`).join('');
   const left = Object.values(S.agents).filter((p) => S.gone.has(p.id) && p.id !== 'main' && p.id !== 'user').sort((a, b) => (S.lastAct[b.id] || 0) - (S.lastAct[a.id] || 0));   // a finished agent's tile leaves the stage: its line stays here, with what it used
   const gone = left.slice(0, 40).map((p) => `<div class="rr left" data-id="${esc(p.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}"><div class="n"><span class="dot" style="background:${p.shirt}"></span><b>${esc(p.name)}</b><span class="ro">${esc(p.role)}</span>${rosTok(p.id)}</div></div>`).join('');
   const html = `<h3>${L('Agents', 'Agents')} · ${ros.length}</h3>${rows}${ros.length > 60 ? `<div class="ro" style="padding:4px 8px">+${ros.length - 60}</div>` : ''}${left.length ? `<h3 style="margin-top:8px">${L('terminés', 'done')} · ${left.length}</h3>${gone}` : ''}`;
@@ -1591,13 +1627,13 @@ function renderBadges() {   // per tile: failed tool calls, a command that has b
   }
   if (BT && BT.el) refreshTip();
 }
-const fmtShort = (ms) => { const s = Math.round(ms / 1000); return s < 90 ? `${s}s` : `${Math.round(s / 60)} min`; };
+const fmtShort = (ms) => { const s = Math.round(ms / 1000); return s < 90 ? `${s}s` : s < 5400 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`; };   // hours past 90 min, as agoStr
 function askNotify() { try { if (!EMBED && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch {} AUD.init(); AUD.alert(); }
 function watchDone(n) {   // live: the team was busy for a while and has now been quiet for a few seconds → tell the person
   if (!S.live || !S.playing) { S.busySince = S.idleAt = 0; return; }
   const now = Date.now(); if (n > 0) { S.busySince = S.busySince || now; S.idleAt = 0; return; } if (!S.busySince) return;
   S.idleAt = S.idleAt || now; if (now - S.idleAt < 6000) return;
-  const long = S.idleAt - S.busySince >= 20000; S.busySince = S.idleAt = 0; if (!long || !prefs.notify) return;
+  const long = S.idleAt - S.busySince >= 20000; S.busySince = S.idleAt = 0; if (!long || !prefs.notify || agentState('main', now).stop) return;   // stopped by the usage limit or a logout: no chime, the status says it
   const msg = L('Les agents ont fini 🎉', 'Your agents are done 🎉'); S.doneUntil = now + 60000; AUD.alert();
   if (EMBED) window.parent.postMessage({ agentStandup: 'notify', text: msg }, '*');
   else { try { if (document.hidden && 'Notification' in window && Notification.permission === 'granted') new Notification('Agent Standup', { body: msg }); } catch {} }
@@ -1612,8 +1648,9 @@ function updateTitle() {
   paintStates(); if (S.live && S.nBlocked && !S.wasBlocked && prefs.notify) { AUD.alert(); const msg = L('Un agent attend peut-être votre feu vert ✋', 'An agent may be waiting for you ✋'); if (EMBED) window.parent.postMessage({ agentStandup: 'notify', text: msg }, '*'); else { try { if (document.hidden && 'Notification' in window && Notification.permission === 'granted') new Notification('Agent Standup', { body: msg }); } catch {} } } S.wasBlocked = S.nBlocked > 0;
   let n = 0; for (const id in S.status) if (S.status[id] === 'working' && !S.gone.has(id)) n++;
   if (S.live && S.agents.main && /^(working|waiting)$/.test(agentState('main', Date.now()).k)) n++;   // the lead counts too: a session without sub-agents also ends
-  watchDone(n); setFav(S.live && S.nBlocked ? '#ff4d4d' : null);
-  document.title = S.live && S.nBlocked ? `✋ ${S.nBlocked} ${L('à voir', 'need you')} · Agent Standup` : S.doneUntil > Date.now() && !n ? '✓ ' + L('Terminé', 'Done') + ' · Agent Standup' : S.live && S.playing && n ? `● ${n} ${L('au travail', 'working')} · Agent Standup` : 'Agent Standup';
+  const need = S.live ? Math.max(S.nBlocked || 0, attnItems(Date.now()).filter((x) => x.sure).length) : 0;   // the tab counts every session that needs you, not only this one's agents (a menu really open, as the red icon always did)
+  watchDone(n); setFav(need ? '#ff4d4d' : null);
+  document.title = need ? `✋ ${need} ${L('à voir', 'need you')} · Agent Standup` : S.doneUntil > Date.now() && !n ? '✓ ' + L('Terminé', 'Done') + ' · Agent Standup' : S.live && S.playing && n ? `● ${n} ${L('au travail', 'working')} · Agent Standup` : 'Agent Standup';
 }
 /* The endless little motions (breathing, blinking, typing, twinkling, steam, the spinner, a raised hand, the hourglass of an agent that waits) are moved by this one clock, 25 times a second, instead of 60 times a second by the browser:
    every redraw of the call goes through VS Code's own window, which flickered. They all move on the same tick, so together they cost one redraw, not one each. */
@@ -1629,7 +1666,7 @@ setInterval(() => {
 setInterval(() => { if (!S.agents || !S.live) return; renderBadges(); updateTitle(); if (document.body.classList.contains('tree')) renderTree(); }, 2000);
 const base = (f) => String(f || '').split('/').pop();
 const fmtDur = (ms) => (ms < 950 ? `${Math.max(1, Math.round(ms))} ms` : ms < 60000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.floor(ms / 60000)} min ${Math.round((ms % 60000) / 1000)} s`);
-const quiet = (e) => e.kind === 'tools' || e.kind === 'results' || e.kind === 'usage' || e.kind === 'finish' || e.kind === 'compact';
+const quiet = (e) => e.kind === 'tools' || e.kind === 'results' || e.kind === 'usage' || e.kind === 'finish' || e.kind === 'compact' || e.kind === 'tasks';
 function activityLabel(t) {   // the short "what is on their screen" tag
   const d = t.d || {}, f = base(d.file || t.arg);
   switch (d.kind) {
@@ -1639,9 +1676,10 @@ function activityLabel(t) {   // the short "what is on their screen" tag
     case 'cmd': { const n = (d.note || '').trim(), w = d.text.trim().split(/\s+/); if (n) return n.length > 36 ? n.slice(0, 36).replace(/\s+\S*$/, '') + '…' : n; return L('Exécute ', 'Running ') + w.slice(0, 2).join(' ').slice(0, 26) + (w.length > 2 ? '…' : ''); }   /* cut at a word, and said to be cut */
     case 'grep': return L('Cherche « ', 'Searching “') + String(d.pattern || '').slice(0, 22) + L(' »', '”');
     case 'glob': return L('Liste ', 'Listing ') + String(d.pattern || '').slice(0, 24);
-    case 'todo': return L('Met à jour sa todo', 'Updating todo list');
+    case 'todo': case 'task': return L('Met à jour sa todo', 'Updating todo list');
+    case 'plan': return L('Présente le plan', 'Presenting the plan');
     case 'artifact': return (d.open ? L('Montre ', 'Showing ') : d.doc ? L('Crée ', 'Writing ') : L('Publie ', 'Publishing ')) + (d.title || (d.open ? 'Artifact' : f)).slice(0, 30);
-    case 'browser': { const s = (d.steps || []).slice(-1)[0] || {}, n = (s.n || '').trim(), h = hostOf(s.u); if (n) return n.length > 36 ? n.slice(0, 36).replace(/\s+\S*$/, '') + '…' : n; return h ? L('Navigue sur ', 'Browsing ') + h : L('Navigue sur le web', 'Browsing the web'); }
+    case 'browser': { const s = (d.steps || []).slice(-1)[0] || {}, n = (s.n || '').trim(), h = hostOf(s.u); if (n) return n.length > 36 ? n.slice(0, 36).replace(/\s+\S*$/, '') + '…' : n; if (!h && PREVIEW.test(t.name)) return 'Preview · ' + String(s.a || '').replace(/_/g, ' '); return h ? L('Navigue sur ', 'Browsing ') + h : L('Navigue sur le web', 'Browsing the web'); }
     case 'web': return d.url ? L('Consulte ', 'Fetching ') + d.url.replace(/^https?:\/\//, '').slice(0, 26) : L('Recherche sur le web', 'Web search');
     case 'text': { const w = d.what; if (w === 'question') return L('Pose une question', 'Asking a question'); if (w === 'skill') return L('Utilise ', 'Using skill ') + (d.v || ''); if (w === 'mcp') return d.v || t.name; if (w === 'toolsearch') return L('Cherche un outil', 'Looking for a tool'); return t.name; }
     default: return t.name;
@@ -1650,20 +1688,33 @@ function activityLabel(t) {   // the short "what is on their screen" tag
 function pushTerm(id, tool) {
   const d = tool.d || {}, buf = (S.term[id] = S.term[id] || []);
   buf.push({ k: d.kind === 'text' ? 'tool' : d.kind, id: tool.id, ts: tool.ts, tool, out: null, err: false, end: null });
-  if (d.kind === 'todo') S.todos[id] = d.items;
+  if (d.kind === 'todo') S.todos[id] = d.items; else if (d.kind === 'task') taskOp(id, tool);
   if (buf.length > 80) buf.shift();
   S.act[id] = activityLabel(tool);
 }
+// The task list (TaskCreate / TaskUpdate, and the snapshot Claude Code reminds the agent of): kept as TodoWrite's is, { c: subject, s: status, a: what it says while on it }. Copied, never changed in place: a TodoWrite list is the event's own
+function taskOp(id, tool) {
+  const d = tool.d || {}, td = (S.todos[id] || []).map((x) => ({ ...x }));
+  if (d.op === 'create') td.push({ c: String(d.subject || ''), s: 'pending', a: d.active || '', tid: null, call: tool.id });
+  else if (d.op === 'update') {
+    const k = String(d.taskId == null ? '' : d.taskId); let j = td.findIndex((x) => x.tid === k); if (j < 0) j = td.findIndex((x, n) => x.tid == null && String(n + 1) === k);   /* an id the answer has not given yet: Claude Code counts them from 1 */
+    if (j >= 0) { if (d.status === 'deleted') td.splice(j, 1); else { if (d.status) td[j].s = d.status; if (d.subject) td[j].c = String(d.subject); } }
+  }
+  S.todos[id] = td;
+}
+function applyTasks(ev) { if (!Array.isArray(ev.items)) return; S.todos[ev.agent] = ev.items.filter((x) => x && x.s !== 'deleted').map((x) => ({ c: String(x.c || ''), s: x.s || 'pending', a: x.a || '', tid: String(x.id == null ? '' : x.id) })); if (S.present === ev.agent && !S.recomputing) renderPresent(); }   // the whole list, as Claude Code last showed it to the agent
+const reduced = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const revealOK = () => S.boost <= 1 && spd() <= 2 && (S.live || spd() <= 1.3) && !reduced() && !S.hold;   // a command typed and its output coming in line by line: live or at 1×, never while catching up, fast, or with less motion asked
 function applyResults(ev, silent) {   // the output of a tool call arrives
-  const buf = S.term[ev.agent] || []; let last = null;
-  for (const it of ev.items) for (let i = buf.length - 1; i >= 0; i--) if (buf[i].id === it.id) { Object.assign(buf[i], { out: it.out, err: it.err, end: ev.ts, img: it.img || 0, picAt: it.img && !silent ? performance.now() : 0, art: it.art || null, web: it.web || null }); last = buf[i]; break; }
+  const buf = S.term[ev.agent] || []; let last = null; const rv = !silent && revealOK() ? performance.now() : 0;
+  for (const it of ev.items) for (let i = buf.length - 1; i >= 0; i--) if (buf[i].id === it.id) { Object.assign(buf[i], { out: it.out, err: it.err, end: ev.ts, img: it.img || 0, picAt: it.img && !silent ? performance.now() : 0, art: it.art || null, web: it.web || null, diff: it.diff || null, tests: it.tests || null, search: it.search || null, fetch: it.fetch || null, bg: it.bg || null, rv }); if (it.task && it.task.id != null) { const td = S.todos[ev.agent] || [], x = td.find((y) => y.call === it.id); if (x) x.tid = String(it.task.id); } last = buf[i]; break; }
   if (S.run[ev.agent] && ev.items.some((it) => it.id === S.run[ev.agent].id)) delete S.run[ev.agent];
   if (silent || !last) return;
-  setTicker(ev.agent, last); if (S.present === ev.agent) { renderPresent(); armPresent(); }
+  setTicker(ev.agent, last); if (S.present === ev.agent) { renderPresent(); armPresent(); if (rv) revealRun(); }
 }
 function setTicker(id, e) {   // the strip on the tile: spinner while running, then ✓/✗ and the real duration
   const t = $('#t-' + id); if (!t) return; const tk = t.querySelector('.ticker'), tool = e.tool, running = e.end == null;
-  tk.innerHTML = `${running ? '<span class="spin"></span>' : ''}<i>${esc(e.k === 'browser' ? 'Chrome' : tool.name)}</i> ${esc(tool.arg || '')}${running ? ' <em class="el"></em>' : ` <em class="${e.err ? 'bad' : 'ok'}">${e.err ? '✗' : '✓'} ${fmtDur(e.end - e.ts)}</em>`}`;
+  tk.innerHTML = `${running ? '<span class="spin"></span>' : ''}<i>${esc(e.k === 'browser' ? (PREVIEW.test(tool.name) ? 'Preview' : 'Chrome') : tool.name)}</i> ${esc(tool.arg || '')}${running ? ' <em class="el"></em>' : ` <em class="${e.err ? 'bad' : 'ok'}">${e.err ? '✗' : '✓'} ${fmtDur(e.end - e.ts)}</em>`}`;
   tk.classList.add('on'); if (running) { tk.classList.remove('flash'); void tk.offsetWidth; tk.classList.add('flash'); }
 }
 function tickTools(ev) {
@@ -1671,7 +1722,7 @@ function tickTools(ev) {
   ev.tools.forEach((tool) => pushTerm(ev.agent, tool));
   const buf = S.term[ev.agent], k = ev.tools[ev.tools.length - 1];
   S.tc[ev.agent] = (S.tc[ev.agent] || 0) + ev.tools.length; S.lastTool[ev.agent] = k.name + ' ' + (k.arg || '').slice(-38);
-  S.run[ev.agent] = { id: k.id, start: performance.now(), ts: k.ts, name: k.name }; setTicker(ev.agent, buf[buf.length - 1]); showPresent(ev.agent);
+  S.run[ev.agent] = { id: k.id, start: performance.now(), ts: k.ts, name: k.name }; const le = buf[buf.length - 1]; if (le.k === 'cmd' && revealOK()) le.ty = performance.now(); setTicker(ev.agent, le); showPresent(ev.agent); if (le.ty && S.present === ev.agent) revealRun();   /* ty: the command is typed in */
 }
 setInterval(() => {   // live "running…" counters
   if (!S.playing) return;
@@ -1691,7 +1742,12 @@ function termModel(id) {
   const pic = S.cur && buf.slice(-12).reverse().find((e) => e.img), fresh = pic && performance.now() - pic.picAt < (S.live ? 8000 : 2500 / spd());   // a picture a tool returned (screenshot, image file) stays up for a few seconds whatever comes next, then for the next few calls: a screenshot is usually followed by a click or two
   const web = last && last.k === 'artifact' && last.art ? S.arts.get(last.art.url) : null; if (web) return artModel(web, id);   // a page that was just published: the browser window, until the agent does something else
   if (last && last.k === 'browser') return browserModel(buf, last, id);
-  if (pic && (fresh || (buf.length - buf.indexOf(pic) <= 4 && (pic === last || !/^(edit|write|read)$/.test(last.k))))) return { view: 'image', title: pic.k === 'read' ? base(pic.tool.d.file) : pic.tool.name.split('__').pop(), imgs: Array.from({ length: Math.min(pic.img, 3) }, (_, n) => mediaUrl(id, pic.id, n)), more: pic.img - 3, lines, stat: statOf(last, id) };
+  if (last && last.k === 'upic') return { view: 'image', title: `${nameOf('user')} — ${last.img} 🖼`, imgs: Array.from({ length: Math.min(last.img, 3) }, (_, n) => mediaUrl('user', last.id, n)), more: last.img - 3, lines, stat: last.say };   // the pictures you pasted in your message, shared from your own camera
+  if (last && last.k === 'plan' && String((last.tool.d && last.tool.d.text) || '').trim()) return planModel(last, id);   /* a plan with no text: the terminal, not a blank page */
+  const sv = last && screenModel(buf, last, id);   // a board, a page, a test run or a diff takes the place of a picture once its first seconds are over
+  const streams = S.live && !S.demo && pic && buf.slice(buf.indexOf(pic) + 1).some((e) => e.bg && !e.bgDone);   /* a command started after the picture still writes in the background: its live output takes the screen */
+  if (pic && !streams && (fresh || (!sv && buf.length - buf.indexOf(pic) <= 4 && (pic === last || !/^(edit|write|read)$/.test(last.k))))) return { view: 'image', title: pic.k === 'read' ? base(pic.tool.d.file) : pic.tool.name.split('__').pop(), imgs: Array.from({ length: Math.min(pic.img, 3) }, (_, n) => mediaUrl(id, pic.id, n)), more: pic.img - 3, lines, stat: statOf(last, id) };
+  if (sv) return sv;
   if (last && (last.k === 'edit' || last.k === 'write' || last.k === 'read')) {
     const d = last.tool.d, rows = (txt, c) => String(txt || '').split('\n').slice(0, 14).map((t) => ({ c, t }));
     if (last.k === 'read') {
@@ -1703,33 +1759,112 @@ function termModel(id) {
     }
     return { view: 'editor', title: `${base(d.file)} — ${last.k === 'read' ? L('lecture', 'read-only') : L('Éditeur', 'Editor')}`, tab: { file: base(d.file), path: (d.file || '').split('/').slice(-4, -1).join(' › ') }, lines, stat: statOf(last, id) };
   }
+  let live = false, liveE = null; const now = performance.now();
   for (const e of buf.slice(-10)) {
-    const d = e.tool.d || {}, out = (n) => { if (e.out == null) return; const r = e.out.split('\n'); r.slice(0, n).forEach((t) => lines.push({ c: e.err ? 'err' : 'out', t })); if (r.length > n) lines.push(more(r.length - n)); };
-    if (e.k === 'cmd') { lines.push({ c: 'cmd', t: d.text.split('\n').slice(0, 3).join('\n') }); if (d.note) lines.push({ c: 'dim', t: '# ' + d.note }); out(12); if (e.end == null) lines.push({ c: 'run', t: L('en cours…', 'running…') }); }
-    else { lines.push({ c: 'tool', t: `${e.tool.name}(${e.k === 'read' || e.k === 'edit' || e.k === 'write' ? base(d.file) : (e.tool.arg || '').slice(-70)})` }); if (e.k === 'grep' || e.k === 'glob' || e.k === 'web') out(6); if (e.end == null && e.k !== 'todo') lines.push({ c: 'run', t: '…' }); }
+    const d = e.tool.d || {}, git = e.k === 'cmd' && /\bgit\s+(diff|show|log\s+-p)\b/.test(d.text || ''), out = (n) => { if (e.out == null) return; const r = e.out.split('\n'), k = Math.min(n, revealed(e, r.length, now)); r.slice(0, k).forEach((t) => lines.push({ c: e.err ? 'err' : git ? gitClass(t) : 'out', t })); if (k < Math.min(n, r.length)) return; if (r.length > n) lines.push(more(r.length - n)); };   // git diff / git show: its + − @@ lines in colour
+    if (e.k === 'cmd') { const c = d.text.split('\n').slice(0, 3).join('\n'), ty = typed(e, c, now); lines.push({ c: 'cmd', t: ty, typing: ty.length < c.length }); if (ty.length < c.length) continue; if (d.note) lines.push({ c: 'dim', t: '# ' + d.note }); if (!(e.bg && e.bgOut)) out(git ? 30 : 12);   /* in the background: its own output takes the place of Claude Code's 'running in background' notice */ if (e.end == null) lines.push({ c: 'run', t: L('en cours…', 'running…') }); }
+    else { lines.push({ c: 'tool', t: `${e.tool.name}(${e.k === 'read' || e.k === 'edit' || e.k === 'write' ? base(d.file) : (e.tool.arg || '').slice(-70)})` }); if (e.k === 'grep' || e.k === 'glob' || e.k === 'web') out(6); if (e.end == null && e.k !== 'todo' && e.k !== 'task') lines.push({ c: 'run', t: '…' }); }
+    if (e.bg) { const b = e.bgOut, on = S.live && !S.demo && !e.bgDone; live = live || on; if (on && b) liveE = e;   // a command that went on in the background: what it has written since, streamed while it is on screen (see the poll below)
+      if (b) { const r = String(b.text || '').replace(/\n?\[exited with code -?\d+\]\s*$/, '').split('\n').filter((x, i, a) => x || i < a.length - 1).slice(-12); r.forEach((t) => lines.push({ c: 'out', t })); if (b.done && b.code != null) lines.push({ c: b.code === 0 ? 'ok' : 'err', t: (b.code === 0 ? '✓ ' : '✗ ') + L('terminé avec le code {0}', 'exited with code {0}').replace('{0}', b.code) }); } }
   }
-  return { view: 'term', lines: lines.slice(-60), stat: statOf(last, id) };
+  return { view: 'term', lines: lines.slice(-60), stat: liveE ? `⠋ ${liveE.tool.name} · ${L('en cours', 'running')} ${fmtDur(Math.max(0, Date.now() - liveE.ts))}` : statOf(last, id), live };
+}
+const gitClass = (t) => (/^@@ /.test(t) ? 'hunk' : /^(\+\+\+|---) /.test(t) ? 'dim' : t[0] === '+' ? 'add' : t[0] === '-' ? 'del' : 'out');
+// Progressive reveal (live, or a replay at 1×): a command is typed in, then what came back appears line by line; a second at most, and only the first time it is shown (ty and rv are set once, when it happens)
+const TYPE_MS = (c) => Math.min(400, 8 * c.length), REV_MS = (n) => Math.min(600, 45 * n);
+const typed = (e, c, now) => { if (!e.ty) return c; const t = now - e.ty, D = TYPE_MS(c); return t >= D ? c : c.slice(0, Math.max(1, Math.ceil(c.length * t / D))); };
+function revealed(e, n, now) {   // how many lines of an output are on screen yet
+  if (!e.rv) return n; const c = e.k === 'cmd' && e.tool.d ? e.tool.d.text.split('\n').slice(0, 3).join('\n') : '', from = Math.max(e.rv, e.ty ? e.ty + TYPE_MS(c) : 0), t = now - from, D = REV_MS(Math.min(n, 14));
+  return t >= D ? n : t <= 0 ? 0 : Math.max(1, Math.ceil(Math.min(n, 14) * t / D));
+}
+let revT = 0, revEnd = 0;
+function revealRun() {   // a bounded timer, 25 a second for about a second, that draws the lines as they come; it stops by itself
+  revEnd = performance.now() + 1150; if (revT) return;
+  revT = setInterval(() => { const done = performance.now() > revEnd; if (S.present && !document.hidden) renderPresent(true); if (done || !S.present) { clearInterval(revT); revT = 0; } }, 40);
+}
+// The other screens an agent shares: its task board, the plan it presents, a web search or a page it read, a test run, a diff. Each is a window of its own; null: the terminal or the editor as before
+function screenModel(buf, last, id) {
+  const d = last.tool.d || {};
+  if ((last.k === 'todo' || last.k === 'task') && (S.todos[id] || []).length) return boardModel(id, last);
+  if (last.search || (last.k === 'web' && d.query && !d.url && !last.fetch)) return searchModel(last, id);
+  if (last.fetch || (last.k === 'web' && d.url)) return fetchModel(last, id);
+  if (last.tests && last.k === 'cmd') return testModel(last, id);
+  if (last.diff && Array.isArray(last.diff.files) && last.diff.files.length && /^(edit|write|cmd)$/.test(last.k)) return diffModel(last, id);
+  return null;
+}
+function boardModel(id, last) {
+  const td = S.todos[id], n = td.filter((x) => x.s === 'completed').length, cur = td.find((x) => x.s === 'in_progress');
+  const html = `<div class="pbd"><h4><span>${esc(L('Tâches', 'Tasks'))}</span><b>${n}/${td.length}</b><span class="pbar2"><i class="ok" style="width:${(n / td.length * 100).toFixed(1)}%"></i></span></h4>` + td.map((x, i) => `<div class="bt ${esc(x.s)}" data-k="${i}|${esc(x.c.slice(0, 60))}"><i>${x.s === 'completed' ? '✓' : x.s === 'in_progress' ? '◐' : '○'}</i><span>${esc(x.c)}${x.s === 'in_progress' && x.a ? `<em>${esc(x.a)}…</em>` : ''}</span></div>`).join('') + '</div>';
+  return { view: 'board', title: `${L('Tâches', 'Tasks')} — ${nameOf(id)}`, html, key: 'board|' + prefs.lang + '|' + td.map((x) => x.s + ' ' + x.c + ' ' + (x.a || '')).join('\n'), lines: td.map((x) => ({ c: x.s === 'completed' ? 'dim' : x.s === 'in_progress' ? 'run' : 'out', t: (x.s === 'completed' ? '✓ ' : x.s === 'in_progress' ? '◐ ' : '○ ') + x.c })), stat: cur ? '◐ ' + (cur.a || cur.c) : statOf(last, id), shape: td.length > 6 ? 'pic' : '' };
+}
+function planModel(e, id) {
+  const t = String((e.tool.d || {}).text || ''), h = (t.match(/^#{1,3}\s+(.+)$/m) || [])[1];
+  return { view: 'plan', title: 'plan.md', html: `<div class="ppage"><article class="pdoc">${mdLite(t)}</article></div>`, key: 'plan|' + e.id + '|' + t.length, lines: t.split('\n').slice(0, 40).map((x) => ({ c: 'out', t: x })), stat: '📋 ' + L('Présente le plan', 'Presenting the plan') + (h ? ' · ' + h.replace(/[*`]/g, '').slice(0, 80) : ''), shape: 'pic', badge: '📋 ' + nameOf(id) + ' · ' + L('Présente le plan', 'Presenting the plan') };
+}
+function searchModel(e, id) {
+  const d = e.tool.d || {}, q = d.query || e.tool.arg || '', rs = Array.isArray(e.search) ? e.search : [];
+  const body = rs.length ? rs.map((r) => `<div class="sr"><em>${esc(hostOf(r.u) || r.u || '')}</em><b>${esc(r.t || r.u || '')}</b></div>`).join('') : e.end == null ? '<div class="pwait"><span class="spin"></span></div>' : `<div class="pwait">${esc(e.err && e.out ? e.out.split('\n')[0].slice(0, 160) : L('Aucun résultat', 'No results'))}</div>`;
+  return { view: 'search', title: q, html: `<div class="pnav"><span class="purl psq">🔎 ${esc(q)}</span></div><div class="ppage psr">${body}</div>`, key: 'search|' + e.id + '|' + (e.end == null ? 'run' : rs.length) + '|' + prefs.lang, lines: [{ c: 'tool', t: `${e.tool.name}(${q})` }, ...rs.map((r) => ({ c: 'out', t: (r.t || '') + ' — ' + hostOf(r.u) }))], stat: statOf(e, id), shape: 'pic' };
+}
+const fmtBytes = (b) => (b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(b < 10240 ? 1 : 0) + ' KB' : (b / 1048576).toFixed(1) + ' MB');
+function fetchModel(e, id) {
+  const d = e.tool.d || {}, f = e.fetch || {}, u = f.u || d.url || e.tool.arg || '', meta = [f.code ? `<b class="${f.code >= 400 ? 'bad' : 'ok'}">${+f.code}</b>` : '', f.bytes ? fmtBytes(+f.bytes) : '', f.ms ? fmtDur(+f.ms) : ''].filter(Boolean).join(' · ');
+  const body = e.end == null ? '<div class="pwait"><span class="spin"></span></div>' : e.err ? `<div class="pread"><p class="bad">${esc(String(e.out || '').slice(0, 600))}</p></div>` : `<article class="pread">${mdLite(String(e.out || '').slice(0, 4000))}</article>`;
+  return { view: 'fetch', title: hostOf(u) || u, html: `<div class="pnav"><span class="purl">${/^https:/.test(u) ? '🔒 ' : ''}${esc(u.replace(/^https?:\/\//, ''))}</span>${meta ? `<span class="pnn">${meta}</span>` : ''}</div><div class="ppage">${body}</div>`, key: 'fetch|' + e.id + '|' + (e.end == null ? 'run' : 'end') + '|' + prefs.lang, lines: [{ c: 'tool', t: `${e.tool.name}(${u})` }, ...String(e.out || '').split('\n').slice(0, 12).map((t) => ({ c: 'out', t }))], stat: statOf(e, id), shape: 'pic' };
+}
+function testModel(e, id) {
+  const t = e.tests, d = e.tool.d || {}, pass = +t.pass || 0, fail = +t.fail || 0, skip = +t.skip || 0, tot = +t.total || pass + fail + skip || 1, ok = !fail && !e.err, pc = (x) => (x / tot * 100).toFixed(1) + '%', failed = Array.isArray(t.failed) ? t.failed : [];
+  const html = `<div class="tl cmd"><span class="ps">❯</span> ${esc(d.text.split('\n')[0])}</div><div class="ptst ${ok ? 'ok' : 'bad'}${performance.now() - (e.rv || e.seenAt || 0) < 1500 ? ' flash' : ''}"><div class="ptr"><span class="prun">${esc(t.runner || 'tests')}</span><span class="pc ok"><b>${pass}</b> ${esc(L('réussis', 'passed'))}</span><span class="pc bad${fail ? '' : ' zero'}"><b>${fail}</b> ${esc(L('en échec', 'failed'))}</span>${skip ? `<span class="pc skip"><b>${skip}</b> ${esc(L('ignorés', 'skipped'))}</span>` : ''}</div><div class="pbar2"><i class="ok" style="width:${pc(pass)}"></i><i class="bad" style="width:${pc(fail)}"></i><i class="skip" style="width:${pc(skip)}"></i></div>${failed.length ? `<ul class="pfail">${failed.map((x) => `<li>✗ ${esc(x)}</li>`).join('')}${fail > failed.length ? `<li class="dim">… +${fail - failed.length}</li>` : ''}</ul>` : ''}</div>`;
+  return { view: 'test', title: `${t.runner || 'tests'} — ${nameOf(id)} — zsh`, html, key: 'test|' + e.id + '|' + prefs.lang, lines: [{ c: 'cmd', t: d.text.split('\n')[0] }, { c: ok ? 'out' : 'err', t: `${ok ? '✓' : '✗'} ${pass} ${L('réussis', 'passed')} · ${fail} ${L('en échec', 'failed')}${skip ? ` · ${skip} ${L('ignorés', 'skipped')}` : ''}` }, ...failed.map((x) => ({ c: 'err', t: '✗ ' + x }))], stat: statOf(e, id), shape: failed.length > 2 ? 'pic' : '' };
+}
+function diffModel(e, id) {   // the change as git shows it: its real line numbers, the lines around it, + and − in colour; the first file, the others named in the tab
+  const df = e.diff, f = df.files[0] || {}, lines = [], d = e.tool.d || {}, extra = df.files.length - 1 + (+df.more || 0);
+  for (const h of (f.hunks || []).slice(0, 4)) {
+    let o = +h.o || 0, n = +h.n || 0; lines.push({ c: 'hunk', g: ' ', n: '', t: `@@ -${o} +${n} @@` });
+    for (const x of h.lines || []) { const s = String(x), g = s[0], t = s.slice(1); if (g === '+') lines.push({ c: 'add', n: n++, g: '+', t }); else if (g === '-') lines.push({ c: 'del', n: o++, g: '−', t }); else if (g === '\\') lines.push({ c: 'dim', g: ' ', n: '', t: s }); else { lines.push({ c: 'ctx', n: n, g: ' ', t: g === ' ' ? t : s }); o++; n++; } }
+  }
+  const k = revealed(e, lines.length, performance.now()), shown = k < lines.length ? lines.slice(0, k) : lines, file = f.file || d.file || '';
+  return { view: 'editor', title: `${base(file)} — ${L('Éditeur', 'Editor')}`, tab: { file: base(file), path: e.k === 'cmd' ? '❯ ' + String(d.text || '').split('\n')[0].slice(0, 90) : file.split('/').slice(-4, -1).join(' › '), more: extra > 0 ? `+${extra} ${L('fichiers', 'files')}` : '' }, lines: shown, stat: statOf(e, id) };
+}
+// Markdown, a little of it, for a plan or a page read in reader mode: headings, lists, code blocks, `code` and **bold**. Everything is escaped first; only these few tags are added
+function mdLite(src) {
+  const out = []; let code = null, list = false; const inl = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\[([^\]]+)\]\([^)]*\)/g, '<u>$1</u>');
+  const endList = () => { if (list) { out.push('</ul>'); list = false; } };
+  for (const ln of String(src).split('\n').slice(0, 400)) {
+    if (/^\s*```/.test(ln)) { if (code) { out.push(`<pre>${esc(code.join('\n'))}</pre>`); code = null; } else { endList(); code = []; } continue; }
+    if (code) { code.push(ln); continue; }
+    const h = ln.match(/^(#{1,6})\s+(.*)$/), li = ln.match(/^(\s*)(?:[-*+]|\d+[.)])\s+(.*)$/);
+    if (h) { endList(); const lv = Math.min(5, h[1].length + 2); out.push(`<h${lv}>${inl(h[2])}</h${lv}>`); }
+    else if (li) { if (!list) { out.push('<ul>'); list = true; } out.push(`<li${li[1].length >= 2 ? ' class="sub"' : ''}>${inl(li[2].replace(/^\[( |x)\]\s*/i, (m, c) => (c === ' ' ? '☐ ' : '☑ ')))}</li>`); }
+    else if (!ln.trim()) endList();
+    else { endList(); out.push(`<p>${inl(ln)}</p>`); }
+  }
+  if (code) out.push(`<pre>${esc(code.join('\n'))}</pre>`); endList(); return out.join('');
 }
 // An agent driving a browser (Claude in Chrome, the desktop app's browser): the window as it last saw it, the address it is on, and the pointer where it last clicked, which glides to the next click as that call starts.
 // The picture is the last screenshot, unless the agent has gone to another address since: an old page is not shown as the new one.
 const hostOf = (u) => { try { return u ? new URL(u).host : ''; } catch { return ''; } };
 function browserModel(buf, last, id) {
-  let pic = null, url = '', title = '', frame = null, ptr = null, gone = false;
+  let pic = null, url = '', title = '', frame = null, ptr = null, gone = false, log = null, seen = 0, fi = -1, pi = -1;
   for (let i = buf.length - 1; i >= 0; i--) {
-    const e = buf[i]; if (e.k !== 'browser') continue; const w = e.web || {}, st = (e.tool.d && e.tool.d.steps) || [];
-    if (!url) url = w.u || (st.filter((s) => s.u).pop() || {}).u || ''; if (!title && w.t) title = w.t; if (!frame && w.f) frame = w.f;
+    const e = buf[i]; if (e.k !== 'browser') continue; const w = e.web || {}, st = (e.tool.d && e.tool.d.steps) || [], rs = st.filter((s) => s.a === 'resize').pop(); seen++;
+    if (!url) url = w.u || (st.filter((s) => s.u).pop() || {}).u || ''; if (!title && w.t) title = w.t; if (!frame && w.f) { frame = w.f; fi = i; } if (!frame && rs) { frame = rs.w > 0 && rs.h > 0 ? [+rs.w, +rs.h] : PRESETS[rs.preset] || null; fi = i; }   // Claude Preview: a window resized to a size, or to a device
+    if (!log && seen <= 6 && Array.isArray(w.log)) log = w.log;   // what its console said lately: the dev-tools strip (none when its last answer was "No console logs.")
     if (!ptr) for (let j = st.length - 1, ask = true; j >= 0; j--) { const at = st[j].x != null ? [st[j].x, st[j].y] : ask && w.p; if (/click|move|drag|hover/.test(st[j].a)) { if (at) { ptr = { x: at[0], y: at[1], k: e.id + ':' + j, clk: /click/.test(st[j].a) }; break; } ask = false; } }   // a click on an element has its point in the answer (w.p, of the last click only); without one, the pointer stays where it last was
-    if (!pic && e.img) pic = e; if (!pic && st.some((s) => s.u)) gone = true;
+    if (!pic && e.img) { pic = e; pi = i; } if (!pic && st.some((s) => s.u)) gone = true;
     if (pic && url && title && frame && ptr) break;
   }
-  const s = ((last.tool.d && last.tool.d.steps) || []).slice(-1)[0] || {}, host = hostOf(url), say = s.n || (s.q ? '🔎 ' + s.q : s.u ? '→ ' + s.u.replace(/^https?:\/\//, '') : s.a ? 'Chrome · ' + s.a.replace(/_/g, ' ') : ''), stat = statOf(last, id);
-  return { view: 'browser', title: title || host || 'Chrome', url, host, img: pic && !gone ? mediaUrl(id, pic.id, Math.min(pic.img - 1, 9)) : '', frame, ptr, typed: s.t || '', lines: [], stat: say ? stat.replace(last.tool.name, say) : stat };
+  if (PREVIEW.test(last.tool.name) && pic && pi > fi) frame = null;   /* Claude Preview: a screenshot taken since the last resize has the window's shape itself */
+  const s = ((last.tool.d && last.tool.d.steps) || []).slice(-1)[0] || {}, host = hostOf(url), app = PREVIEW.test(last.tool.name) ? 'Preview' : 'Chrome', say = s.n || (s.a === 'eval' && s.q ? '› ' + s.q : s.q ? '🔎 ' + s.q : s.u ? '→ ' + s.u.replace(/^https?:\/\//, '') : s.a === 'resize' && frame ? `${app} · ${frame[0]}×${frame[1]}` : s.a ? app + ' · ' + s.a.replace(/_/g, ' ') : ''), stat = statOf(last, id);   // an eval step says the expression it ran
+  return { view: 'browser', title: title || host || app, app, url, host, img: pic && !gone ? mediaUrl(id, pic.id, Math.min(pic.img - 1, 9)) : '', frame, ptr, typed: s.t || '', log: log || [], lines: [], stat: say ? stat.replace(last.tool.name, say) : stat };
 }
-const BROWSER_HTML = '<div class="pnav"><span class="purl"></span></div><div class="pbr"><div class="pfr"><img alt=""><i class="pptr"></i><span class="pkey"></span></div><div class="pcard pnone"><i>🌐</i><b></b><em></em></div></div>';
+const PREVIEW = /(^|__)Claude_Preview__|^mcp__(?:[^_]+__)?Claude_Browser__preview_/, PRESETS = { mobile: [375, 812], tablet: [768, 1024], desktop: [1280, 800] };
+const BROWSER_HTML = '<div class="pnav"><span class="purl"></span></div><div class="pbr"><div class="pfr"><img alt=""><i class="pptr"></i><span class="pkey"></span></div><div class="pcard pnone"><i>🌐</i><b></b><em></em></div></div><div class="pdev" hidden></div>';
 function paintBrowser(pb, m) {   // the window stays from one step to the next: the address changes, the pointer glides, the picture is swapped when a new one comes back
   const q = (s) => pb.querySelector(s), fr = q('.pfr'), img = q('.pfr img'), ptr = q('.pptr'), key = q('.pkey'); if (!fr) return;
   q('.purl').textContent = m.url ? (/^https:/.test(m.url) ? '🔒 ' : '') + m.url.replace(/^https?:\/\//, '') : '';
-  q('.pbr').classList.toggle('none', !m.img); q('.pnone b').textContent = m.host || 'Chrome'; q('.pnone em').textContent = m.typed ? '⌨ ' + m.typed : L('Pas encore d’image de cette page', 'No picture of this page yet');
+  q('.pbr').classList.toggle('none', !m.img); q('.pnone b').textContent = m.host || m.app || 'Chrome';
+  const dev = q('.pdev'), dk = (m.log || []).join('\n'); if (dev && dev.dataset.k !== dk) { dev.dataset.k = dk; dev.hidden = !dk; dev.innerHTML = (m.log || []).slice(-4).map((x) => `<div class="${/error|uncaught|failed|✗/i.test(x) ? 'e' : /warn/i.test(x) ? 'w' : ''}">› ${esc(String(x).slice(0, 200))}</div>`).join(''); }   /* the console of a Claude Preview page, its last lines */ q('.pnone em').textContent = m.typed ? '⌨ ' + m.typed : L('Pas encore d’image de cette page', 'No picture of this page yet');
   if (m.img && img.getAttribute('src') !== m.img) { img.onload = () => { if (S.present) renderPresent(); }; img.src = m.img; }
   const W = m.frame ? m.frame[0] : img.naturalWidth, H = m.frame ? m.frame[1] : img.naturalHeight, on = !!(m.ptr && W && H); if (W && H) fr.style.setProperty('--ar', (W / H).toFixed(4));
   const pos = (el) => { el.style.left = Math.min(100, Math.max(0, m.ptr.x / W * 100)) + '%'; el.style.top = Math.min(100, Math.max(0, m.ptr.y / H * 100)) + '%'; };
@@ -1737,30 +1872,53 @@ function paintBrowser(pb, m) {   // the window stays from one step to the next: 
   key.textContent = on && m.typed ? '⌨ ' + m.typed : '';
 }
 const lineHtml = (l, view) => view === 'editor'
-  ? `<div class="ln ${l.c}"><b>${esc(l.n != null ? l.n : l.c === 'add' ? '+' : l.c === 'del' ? '−' : '')}</b>${esc(l.t) || ' '}</div>`
-  : `<div class="tl ${l.c}">${l.c === 'cmd' ? '<span class="ps">❯</span> ' : l.c === 'tool' ? '<span class="dotg">●</span> ' : l.c === 'run' ? '<span class="spin"></span>' : ''}${esc(l.t)}</div>`;
+  ? `<div class="ln ${l.c}${l.g ? ' dn' : ''}"><b>${esc(l.n != null ? l.n : l.c === 'add' ? '+' : l.c === 'del' ? '−' : '')}</b>${l.g ? `<i>${esc(l.g)}</i>` : ''}${esc(l.t) || ' '}</div>`
+  : `<div class="tl ${l.c}">${l.c === 'cmd' ? '<span class="ps">❯</span> ' : l.c === 'tool' ? '<span class="dotg">●</span> ' : l.c === 'run' ? '<span class="spin"></span>' : ''}${esc(l.t)}${l.typing ? '<span class="cursor"></span>' : ''}</div>`;
 
 // ---------- screen sharing: a real video-call presentation (window + presenter camera) ----------
-function renderPresent() {
+function renderPresent(tick) {   // tick: a frame of the progressive reveal, the window's content only
   const id = S.present, p = S.agents[id]; if (!p) return; if (S.artPin && !S.arts.has(S.artPin)) { S.artPin = null; armPresent(); }
-  const pinned = S.artPin ? S.arts.get(S.artPin) : null, whole = !pinned && S.artWhole ? S.arts.get(S.artWhole) : null, m = pinned ? artModel(pinned, id) : whole ? artModel(whole, id) : termModel(id), shape = m.view === 'web' && pinned ? 'pin' : m.view === 'web' || m.view === 'image' || m.view === 'browser' ? 'pic' : '';
-  $('#present .pwin').className = 'pwin ' + (m.view === 'term' ? 'term' : m.view); $('#present').classList.toggle('pic', shape === 'pic'); $('#present').classList.toggle('pin', shape === 'pin'); if (shape !== S.picUp) { S.picUp = shape; layout(); }   // a picture or a page gets a taller window, a pinned page the tallest
+  const pinned = S.artPin ? S.arts.get(S.artPin) : null, whole = !pinned && S.artWhole ? S.arts.get(S.artWhole) : null, m = pinned ? artModel(pinned, id) : whole ? artModel(whole, id) : termModel(id), shape = m.view === 'web' && pinned ? 'pin' : m.view === 'web' || m.view === 'image' || m.view === 'browser' ? 'pic' : m.shape || '';
+  $('#present .pwin').className = 'pwin ' + (m.view === 'term' ? 'term' : m.view) + (m.live ? ' bglive' : ''); const lv = m.live ? `<b>●</b> ${esc(L('EN DIRECT', 'LIVE'))}` : ''; if ($('#plive').innerHTML !== lv) $('#plive').innerHTML = lv; $('#present').classList.toggle('pic', shape === 'pic'); $('#present').classList.toggle('pin', shape === 'pin'); if (shape !== S.picUp) { S.picUp = shape; layout(); }   // a picture or a page gets a taller window, a pinned page the tallest
   $('#ptitle').textContent = m.view === 'term' ? `${p.name} — zsh — 96×24` : m.title;
-  const pb = $('#pbody'), shown = m.view === 'image' ? m.imgs.join(' ') : m.view === 'web' ? m.key : m.view === 'browser' ? 'browser' : ''; pb.dataset.art = m.view === 'web' ? m.a.url : '';
-  if (shown) { if (pb.dataset.img !== shown) pb.innerHTML = m.view === 'web' ? artHtml(m) : m.view === 'browser' ? BROWSER_HTML : m.imgs.map((u) => `<img src="${esc(u)}" alt="">`).join('') + (m.more > 0 ? `<span class="pmore">+${m.more}</span>` : ''); }   // the same pictures are left in place: redrawing them would make them blink
-  else pb.innerHTML = (m.view === 'editor' ? `<div class="ptab"><span>${esc(m.tab.file)}</span><em>${esc(m.tab.path)}</em></div>` : '') + m.lines.map((l) => lineHtml(l, m.view)).join('') + (m.view === 'term' ? '<div class="tl"><span class="ps">❯</span> <span class="cursor"></span></div>' : '');
+  const pb = $('#pbody'), shown = m.html != null ? m.key : m.view === 'image' ? m.imgs.join(' ') : m.view === 'web' ? m.key : m.view === 'browser' ? 'browser' : '', fresh = pb.dataset.img !== shown; pb.dataset.art = m.view === 'web' ? m.a.url : '';
+  let same = false, tail = true;   /* same: the window already shows exactly this (a reveal frame with nothing new) · tail: you had not scrolled up */
+  if (shown) { pb.dataset.h = ''; if (fresh) pb.innerHTML = m.html != null ? m.html : m.view === 'web' ? artHtml(m) : m.view === 'browser' ? BROWSER_HTML : m.imgs.map((u) => `<img src="${esc(u)}" alt="">`).join('') + (m.more > 0 ? `<span class="pmore">+${m.more}</span>` : ''); }   // the same pictures are left in place: redrawing them would make them blink
+  else { const h = (m.view === 'editor' ? `<div class="ptab"><span>${esc(m.tab.file)}</span>${m.tab.more ? `<em class="pmf">${esc(m.tab.more)}</em>` : ''}<em>${esc(m.tab.path)}</em></div>` : '') + m.lines.map((l) => lineHtml(l, m.view)).join('') + (m.view === 'term' ? '<div class="tl"><span class="ps">❯</span> <span class="cursor"></span></div>' : ''); same = pb.dataset.h === h; if (!same) { tail = pb.scrollHeight - pb.scrollTop - pb.clientHeight < 48; pb.innerHTML = h; pb.dataset.h = h; } }
   if (m.view === 'browser') paintBrowser(pb, m);
-  pb.dataset.img = shown; pb.scrollTop = m.view === 'term' ? pb.scrollHeight : 0; $('#pstat').textContent = m.stat; if (m.view === 'web') fitArt();
-  const td = S.todos[id], el = $('#ptodo'), tk = m.view !== 'web' && td && td.length ? prefs.lang + '\n' + td.map((x) => x.s + ' ' + x.c).join('\n') : ''; el.style.display = tk ? '' : 'none'; $('#present').classList.toggle('has-todo', !!tk);
+  if (m.view === 'board' && fresh) checkOff(pb, id);
+  pb.dataset.img = shown; if (!same && (m.html == null || fresh)) { const cur = m.view === 'board' && pb.querySelector('.bt.in_progress'); pb.scrollTop = m.view === 'term' ? (tail || fresh ? pb.scrollHeight : pb.scrollTop) : cur ? Math.max(0, cur.offsetTop - (pb.clientHeight - (parseFloat($('#present').style.getPropertyValue('--camy')) || 0)) / 2) : 0; } $('#pstat').textContent = m.stat; if (m.view === 'web') fitArt();   // a board, a plan or a page keeps where you scrolled it until it changes
+  const td = S.todos[id], el = $('#ptodo'), tk = m.view !== 'web' && m.view !== 'board' && td && td.length ? prefs.lang + '\n' + td.map((x) => x.s + ' ' + x.c).join('\n') : ''; el.style.display = tk ? '' : 'none'; $('#present').classList.toggle('has-todo', !!tk);
   if (tk && el.dataset.k !== tk) {   // redrawn only when it changes, so it stays where you scrolled it; the task in progress is brought into view
     el.innerHTML = `<h5>${L('Tâches', 'Tasks')} · ${td.filter((x) => x.s === 'completed').length}/${td.length}</h5>` + td.map((x) => `<div class="td ${x.s}"><i>${x.s === 'completed' ? '☑' : x.s === 'in_progress' ? '◐' : '☐'}</i>${esc(x.c)}</div>`).join('');
     const cur = el.querySelector('.in_progress'); el.scrollTop = cur ? Math.max(0, cur.offsetTop - el.clientHeight / 2) : 0;
   }
   el.dataset.k = tk;
-  $('#pbadge').textContent = `🖥 ${p.name} ${L('partage son écran', 'is sharing their screen')}`;
+  $('#pbadge').textContent = m.badge || (id === 'user' ? '🖥 ' + L('Vous partagez votre écran', 'You are sharing your screen') : `🖥 ${p.name} ${L('partage son écran', 'is sharing their screen')}`);
   if (S.camFor !== id) { $('#pcam').innerHTML = avatarSVG(p, undefined, 'c' + p.gid + '_') + `<div class="tag"><b>${esc(p.name)}</b><span class="tk"></span></div>`; S.camFor = id; }
-  camTok();
+  if (!tick) camTok();   /* the camera's count changes with the tile's (renderTokens), not 25 times a second */
   $('#pcam').classList.toggle('speaking', S.speakers.has(id));
+  $('#present').classList.toggle('doc', m.html != null); camRoom();
+}
+function camRoom() {   // the presenter's camera and the caption sit over the bottom right of the window: a board, a page, a plan or a test run leaves them room, beside it when the window is wide enough, else under its last line
+  const pr = $('#present'), doc = pr.classList.contains('doc') && pr.classList.contains('on'); let x = 0, y = 0; pr.classList.remove('camr');
+  if (doc) {
+    const td = $('#ptodo'), cam = $('#pcam'); if (pr.classList.contains('has-todo') && td.offsetHeight) { const t = td.getBoundingClientRect(), p = pr.getBoundingClientRect(); if (t.bottom + 10 < p.bottom - 22 - cam.offsetHeight) pr.classList.add('camr'); }   /* a short task list leaves the camera its usual corner */
+    const b = $('#pbody').getBoundingClientRect(), c = cam.getBoundingClientRect(), cap = $('#pcap'), k = cap.textContent ? cap.getBoundingClientRect() : null;
+    if (c.width && c.left < b.right && c.top < b.bottom && c.right > b.left) { const over = b.right - c.left + 10; if (b.width - over >= 300) x = over; else y = b.bottom - c.top + 8; }
+    if (k && k.width && k.top < b.bottom && k.right > b.left) y = Math.max(y, b.bottom - k.top + 8);
+  }
+  const vx = Math.round(x) + 'px', vy = Math.round(y) + 'px'; if (pr.style.getPropertyValue('--camx') !== vx) pr.style.setProperty('--camx', vx); if (pr.style.getPropertyValue('--camy') !== vy) pr.style.setProperty('--camy', vy);
+}
+new ResizeObserver(() => camRoom()).observe($('#present')); new ResizeObserver(() => camRoom()).observe($('#pcap'));
+function checkOff(pb, id) {   // a task that has just been done is ticked off before your eyes (once: the board remembers what it showed last)
+  const was = (S.boardWas = S.boardWas || {})[id] || {}, at = ((S.boardJust = S.boardJust || {})[id] = S.boardJust[id] || {}), now = {}, t = performance.now();
+  pb.querySelectorAll('.bt').forEach((el) => {
+    const k = el.dataset.k.replace(/^\d+\|/, ''), s = el.classList.contains('completed') ? 'completed' : el.classList.contains('in_progress') ? 'in_progress' : 'pending'; now[k] = s;
+    if (s === 'completed' && was[k] && was[k] !== 'completed') at[k] = t; const dt = s === 'completed' && at[k] ? t - at[k] : 1e9;
+    if (dt < 1000) { el.classList.add('just'); el.style.setProperty('--jd', -Math.round(dt) + 'ms'); }   /* redrawn in the meantime (the next call came in): the tick goes on where it was */
+  });
+  S.boardWas[id] = now;
 }
 function armPresent() {   // stays up while a command is still running, then ~4 s after the last action (~9 s when it shows a picture, ~20 s for the page of an artifact; a pinned page stays until it is closed)
   clearTimeout(presentTimer); if (S.hold || S.artPin) return;
@@ -1768,6 +1926,7 @@ function armPresent() {   // stays up while a command is still running, then ~4 
 }
 function showPresent(id, keep) {   // keep: the whole document that is being shown (see shareWhole); anything else the agent does takes its place
   if (!keep) S.artWhole = null; if (S.artPin || S.boost > 1 || (S.speakers.size && !S.speakers.has(id))) return;   // a page you pinned stays up · catching up, or someone else has the floor
+  if (S.present === 'user' && id !== 'user' && performance.now() < (S.youUntil || 0)) return;   /* the pictures you pasted stay up a few seconds, whatever the lead starts on */
   const first = S.present !== id; S.present = id; $('#present').classList.add('on'); document.body.classList.add('presenting'); document.querySelectorAll('.tile.presenter').forEach((t) => t.classList.remove('presenter')); const pt = $('#t-' + id); if (pt) pt.classList.add('presenter'); renderPresent(); if (first) { layout(); AUD.tone(880, .12, 'sine', .05); }
   armPresent();
 }
@@ -1775,6 +1934,27 @@ function hidePresent() {
   clearTimeout(presentTimer); if (!S.present || S.artPin) return; S.artWhole = null; if ($('#pbody').dataset.art) { $('#pbody').innerHTML = ''; $('#pbody').dataset.img = $('#pbody').dataset.art = ''; }   /* the page of an artifact does not go on running behind a closed window */
   S.present = null; $('#present').classList.remove('on'); document.body.classList.remove('presenting'); document.querySelectorAll('.tile.presenter').forEach((t) => t.classList.remove('presenter')); $('#pcap').textContent = ''; layout();
 }
+// The pictures you pasted in a message: shared from your own camera while your line is said, for a few seconds (the server serves them as /api/media of agent "user")
+function showYourPics(g) {
+  if (!S.cur || S.demo || S.boost > 1) return; const buf = (S.term.user = S.term.user || []);
+  if (!buf.some((x) => x.id === g.iid)) { buf.push({ k: 'upic', id: g.iid, ts: g.ts, tool: { name: nameOf('user'), d: {} }, out: '', err: false, end: g.ts, img: Math.min(+g.img, 9), picAt: performance.now(), say: plain(String(g.text || '')).slice(0, 160) }); if (buf.length > 10) buf.shift(); }
+  S.youUntil = 0; showPresent('user'); if (S.present === 'user') S.youUntil = performance.now() + 8000 / Math.max(1, spd());
+}
+// A command that went on in the background (run_in_background, Monitor): while its agent's terminal is on screen, live, what it writes is read every second from the server (GET /api/taskout, the file Claude Code writes it to on this computer), until it ends
+let taskPollBusy = false;
+setInterval(async () => {
+  if (!S.live || S.demo || !S.cur || document.hidden || taskPollBusy || (S.present && !$('#present .pwin').classList.contains('term'))) return;
+  let who = S.present, e = who && (S.term[who] || []).slice(-10).reverse().find((x) => x.bg && !x.bgDone);
+  if (!who) { if (S.speakers.size || S.boost > 1 || S.artPin) return; for (const id in S.term) { e = S.term[id].slice(-10).reverse().find((x) => x.bg && !x.bgDone && !x.bgSeen); if (e) { who = id; break; } } }   /* nobody shares: a command still at work in the background (started before the page opened, or after the turn ended) is shared once, if it still writes */
+  if (!e) return; const cur = S.cur, share = S.present !== who; taskPollBusy = true;
+  try {
+    const r = await fetch(`/api/taskout?proj=${encodeURIComponent(cur.proj)}&id=${encodeURIComponent(cur.id)}&task=${encodeURIComponent(e.bg)}`); if (S.cur !== cur) return;
+    if (!r.ok) { e.bgDone = true; if (S.present === who) renderPresent(); return; }   // 404: no such output here (another computer, cleaned up): nothing to stream
+    e.bgFail = 0; const j = await r.json(), was = e.bgOut ? e.bgOut.text + '|' + e.bgOut.done : ''; e.bgOut = { text: String(j.text || ''), done: !!j.done, code: j.code == null ? null : +j.code }; if (j.done) e.bgDone = true;
+    if (share) { e.bgSeen = true; if (j.done || !(Date.now() - (+j.mtime || 0) < 20000) || S.present) return; showPresent(who); if (S.present !== who) return; }   /* still writing, and still nobody else on screen */
+    if (was !== e.bgOut.text + '|' + e.bgOut.done && S.present === who) { renderPresent(); if (!e.bgAt) e.bgAt = Date.now(); if (Date.now() - e.bgAt < 60000) armPresent(); }   // new lines keep the window up, for a minute at most
+  } catch { e.bgFail = (e.bgFail || 0) + 1; if (e.bgFail >= 3) e.bgDone = true; } finally { taskPollBusy = false; }   /* three failures in a row: given up */
+}, 1000);
 // ---------- artifacts: the pages the session published on claude.ai, shown the way a call shows a browser window someone shares ----------
 // When a publish succeeds its author shares the page for a moment; afterwards it is in the line of files, and a click there pins it: the window takes the room, stays until you close it (✕, Esc),
 // follows the next versions and steps through the other artifacts of the session (‹ ›). The page itself comes from the server, which puts it together from the session file (claude.ai lets nobody frame it):
@@ -1852,8 +2032,10 @@ function candFile(file, id, agent) {
 function askMade(c) {   // once per file and per turn in which it is named: a command that runs in the background may write it after the first time it is named
   const key = c.want + '|' + c.file, ok = S.fmade.get(key), cur = S.cur; if (ok === true) { S.files.set(c.file, { file: c.file, name: c.name, id: c.id, agent: c.agent, turn: c.want, named: true, cmd: true }); return; }
   if (ok !== undefined || S.demo || !cur) return; S.fmade.set(key, null);
-  fetch('/api/reveal', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ proj: cur.proj, id: cur.id, file: c.file, check: true }) }).then((r) => { if (S.cur !== cur) return; S.fmade.set(key, r.ok); if (r.ok) paintFiles(); }).catch(() => { if (S.cur === cur) S.fmade.delete(key); });
+  fetch('/api/reveal', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ proj: cur.proj, id: cur.id, file: c.file, check: true }) }).then(revealAns).then((a) => { if (S.cur !== cur) return; S.fmade.set(key, a.ok); if (a.ok) paintFiles(); }).catch(() => { if (S.cur === cur) S.fmade.delete(key); });
 }
+// What /api/reveal answered: 200 { ok } when the file is there; for one that is not, an older server says 404 (not made by this session) or 410 (made, and gone), a newer one 200 { exists: false, reason }, which the browser does not log as an error
+const revealAns = async (r) => { if (!r) return { ok: false }; let b = null; try { b = await r.json(); } catch {} return b && b.exists === false ? { ok: false, gone: /gone|removed|deleted|no longer/i.test(String(b.reason || '')) } : { ok: r.ok, gone: r.status === 410 }; };
 const turnDone = () => S.events.length > 0 && !S.locked && (S.live ? agentState('main', Date.now()).k === 'done' : !!S.turnOver || S.idx >= S.events.length - 1);   // replay: the mark that closes the lead's turn, or the end of a session that has none
 const fileTip = (f) => `${f.file}\n${f.agent !== 'main' && S.agents[f.agent] ? nameOf(f.agent) + ' · ' : ''}${S.fgone.has(f.file) ? L('Ce fichier n’existe plus', 'This file is no longer there') : L('Cliquer pour l’afficher dans son dossier', 'Click to show it in its folder')}`;
 const fileCls = (f) => (f.turn === S.turnN ? ' new' : '') + (S.fgone.has(f.file) ? ' gone' : '');
@@ -1875,8 +2057,8 @@ function filesPop(open) {   // the whole list, above the line: every file with t
 async function revealFile(file) {
   if (S.demo || !S.cur) { toast(L('Fichier de la démo : rien à ouvrir', 'A file of the demo: nothing to open')); return; }
   let r = null; try { r = await fetch('/api/reveal', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ proj: S.cur.proj, id: S.cur.id, file }) }); } catch {}
-  if (r && r.ok) { if (S.fgone.delete(file)) paintFiles(); return; }
-  if (r && r.status === 410) { S.fgone.add(file); paintFiles(); toast(L('Ce fichier n’existe plus', 'This file is no longer there')); } else toast(L('Impossible d’ouvrir le dossier', 'Could not open the folder'));
+  const a = await revealAns(r); if (a.ok) { if (S.fgone.delete(file)) paintFiles(); return; }
+  if (a.gone) { S.fgone.add(file); paintFiles(); toast(L('Ce fichier n’existe plus', 'This file is no longer there')); } else toast(L('Impossible d’ouvrir le dossier', 'Could not open the folder'));
 }
 function filesClick(e) { const a = e.target.closest('[data-a]'), f = e.target.closest('[data-f]'); if (a) pinArt(a.dataset.a); else if (f) revealFile(f.dataset.f); else if (e.target.closest('.sfh, .more')) filesPop(!$('#fpop')); }
 $('#files').onclick = filesClick;
@@ -2195,7 +2377,7 @@ document.addEventListener('visibilitychange', coffeeDay); setInterval(coffeeDay,
 // it? "Count me in" turns prefs.shareUsage on; then, each time the call is opened, the server sends at most one empty request a week (server.js, usageWeek). Any other answer leaves it
 // off and it is not asked again; ⚙ › All settings turns it on or off. Never asked, and nothing sent, with DO_NOT_TRACK set (APP.track), in a demo or embedded.
 const USAGE_ASKS = ['desktop', 'cli', 'plugin'].includes(APP.kind) && APP.track !== false && !EMBED && !Q.get('demo');
-function usageOpened(fresh) { if (USAGE_ASKS && prefs.shareUsage === true && !document.hidden) (fresh ? fetch('/api/prefs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(prefs) }) : Promise.resolve()).then(() => fetch('/api/usage', { method: 'POST' })).catch(() => {}); }   /* the server sends it once a week at most, and only once the settings file says yes: fresh, just answered, writes it there first (savePrefs waits 400 ms) */
+function usageOpened(fresh) { if (USAGE_ASKS && prefs.shareUsage === true && !document.hidden) (fresh ? fetch('/api/prefs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: prefsOut() }) : Promise.resolve()).then(() => fetch('/api/usage', { method: 'POST' })).catch(() => {}); }   /* the server sends it once a week at most, and only once the settings file says yes: fresh, just answered, writes it there first (savePrefs waits 400 ms) */
 function usagePending() { return USAGE_ASKS && !prefs.usageAsked && prefs.shareUsage !== true; }   // the usage question, not answered yet: it has its first day to itself, then takes turns with the Halloween pack's line
 function usageStart() {
   if (!USAGE_ASKS) return; $('#mShare').style.display = ''; usageOpened();
@@ -2267,7 +2449,7 @@ const fmt = (ms) => { const s = Math.round(ms / 1000), m = Math.floor(s / 60), h
 function computeHighlights() {
   const out = [], ev = S.events; let firstErr = -1, gap = { ms: 0, i: -1 }, prevT = null, comp = [], R = {}, loops = [];
   ev.forEach((e, i) => {
-    if (e.kind === 'usage' || e.kind === 'finish') return;
+    if (e.kind === 'usage' || e.kind === 'finish' || e.kind === 'tasks') return;
     if (e.kind === 'results' && firstErr < 0 && e.items.some((it) => it.err)) firstErr = i;
     if (e.kind === 'compact') comp.push(i);
     if (prevT != null && e.kind !== 'user' && e.t - prevT <= 3600000 && e.t - prevT > gap.ms) gap = { ms: e.t - prevT, i };   // a wait for the human (the next event is their prompt) is not an agent wait
@@ -2305,7 +2487,7 @@ function openRecap() {
   const k = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`, totTok = Object.values(tk).reduce((n, u) => n + tokTotal(u), 0);
   const RW = {}; S.events.forEach((e) => wasteStep(RW, e)); const wl = Object.entries(RW.items || {}).filter(([id]) => S.agents[id]).flatMap(([id, l]) => l.map((it) => [id, it]));
   $('#recap .box').innerHTML = `<h1>${L('Récap de l’épisode', 'Episode recap')}</h1>
-    <div class="kpis">${k(Math.max(0, Object.keys(S.agents).length - 2), 'agents')}${k(tools, L('appels d’outils', 'tool calls'))}${k(cmds, L('commandes', 'commands'))}${k(errs, L('outils en erreur', 'tool errors'))}${wl.length ? k('♻ ' + wl.length, L('travail répété', 'repeated work')) : ''}${totTok ? k('⚡ ' + fmtTok(totTok), L('jetons', 'tokens')) : ''}${S.cost ? `<div class="kpi" title="${esc(costTip())}"><b>💵 ${esc(costStr(S.cost))}</b><span>${L('coût', 'cost')}</span></div>` : ''}${k(Object.keys(files).length, L('fichiers modifiés', 'files changed'))}${k(fmt(last), L('durée', 'duration'))}</div>
+    <div class="kpis">${k(Math.max(0, Object.keys(S.agents).length - 2), L('agents', 'agents'))}${k(tools, L('appels d’outils', 'tool calls'))}${k(cmds, L('commandes', 'commands'))}${k(errs, L('outils en erreur', 'tool errors'))}${wl.length ? k('♻ ' + wl.length, L('travail répété', 'repeated work')) : ''}${totTok ? k('⚡ ' + fmtTok(totTok), L('jetons', 'tokens')) : ''}${S.cost ? `<div class="kpi" title="${esc(costTip())}"><b>💵 ${esc(costStr(S.cost))}</b><span>${L('coût', 'cost')}</span></div>` : ''}${k(Object.keys(files).length, L('fichiers modifiés', 'files changed'))}${k(fmt(last), L('durée', 'duration'))}</div>
     <h3>${L('Agents les plus actifs', 'Busiest agents')}</h3><table><tr><th></th><th>${L('Rôle', 'Role')}</th><th>${L('Outils', 'Tools')}</th><th>${L('Fichiers', 'Files')}</th><th>${L('Jetons', 'Tokens')}</th><th>${L('Modèle', 'Model')}</th><th>${L('Durée', 'Time')}</th></tr>
     ${rows.map((a) => `<tr><td><b>${esc(nameOf(a.id))}</b></td><td>${esc(S.agents[a.id].role)}</td><td>${a.tools}</td><td>${a.files.size || ''}</td><td title="${tk[a.id] ? esc(tokTip(tk[a.id])) : ''}">${tk[a.id] ? '⚡ ' + fmtTok(tokTotal(tk[a.id])) : ''}</td><td>${esc(modelShort(mdl[a.id]))}${modelShort(mdl[a.id]) && eff[a.id] ? ' · ' + esc(effortWord(eff[a.id])) : ''}</td><td>${a.t0 != null && a.t1 != null ? fmt(a.t1 - a.t0) : ''}</td></tr>`).join('')}</table>
     <h3>${L('Fichiers touchés', 'Files touched')}</h3>${fl.length ? `<table>${fl.map(([f, v]) => `<tr><td class="f">${esc(f)}</td><td>×${v.n}</td><td>${esc([...v.who].join(', '))}</td></tr>`).join('')}</table>` : `<div class="dim">${L('Aucune modification.', 'No edits.')}</div>`}
@@ -2519,7 +2701,7 @@ const TALK = {
 function varied(kind, seed) { const P = TALK[CALL()][kind]; let line = P[seed % P.length]; if (line === S.lastTalk) line = P[(seed + 1) % P.length]; return (S.lastTalk = line); }   // never the same line twice in a row
 // Who is thinking once this event has happened: the agent whose tool just answered, the lead after your message or a report, a sub-agent that just got its order. After a line or a tool call, nobody is.
 const thinkerOf = (e) => (e.kind === 'results' ? e.agent : e.kind === 'user' ? 'main' : e.kind === 'report' || e.kind === 'finish' || e.kind === 'order' ? e.to : null);
-const before = (i) => { let k = i - 1; while (k >= 0 && (S.events[k].kind === 'usage' || S.events[k].kind === 'compact')) k--; return S.events[k]; };
+const before = (i) => { let k = i - 1; while (k >= 0 && (S.events[k].kind === 'usage' || S.events[k].kind === 'compact' || S.events[k].kind === 'tasks')) k--; return S.events[k]; };
 async function ponder(i, token) {   // replay: an agent that really took a long time (40 s or more) before this line or call says so first, about every other time
   const ev = S.events[i], p = before(i); if (!prefs.banter || prefs.chat === 'quiet' || S.boost > 1 || S.hurry || !p || !S.agents[ev.agent] || thinkerOf(p) !== ev.agent || ev.ts - p.ts < 40000 || hash('t' + ev.ts) % 100 > 55) return;
   const line = varied('think', hash(String(ev.ts))); await sayLine(ev.agent, line, '💭', token);
@@ -2609,7 +2791,7 @@ async function run(i) {
     S.boost = S.hurry || (S.live && S.events.length - i > 60) ? 3 : 1;
     const ev = S.events[i]; S.idx = i; tally(ev); if (S.live && ev.ts > S.since) S.since = ev.ts;   // said once: a reload or a return to this session does not read it again
     if (!S.live && (ev.kind === 'say' || ev.kind === 'report' || ev.kind === 'order' || ev.kind === 'tools')) { await ponder(i, token); if (token !== S.token) return; }
-    if (ev.kind === 'usage' || ev.kind === 'compact') { if (ev.kind === 'compact' && S.live && prefs.banter) toast(`${nameOf(ev.agent)}: ${L('contexte compacté 🗜', 'context compacted 🗜')}`); i++; continue; }
+    if (ev.kind === 'usage' || ev.kind === 'compact' || ev.kind === 'tasks') { if (ev.kind === 'compact' && S.live && prefs.banter) toast(`${nameOf(ev.agent)}: ${L('contexte compacté 🗜', 'context compacted 🗜')}`); i++; continue; }
     if (ev.kind === 'finish') { applyStatus(ev); paintStatus(); i++; continue; }
     const backlog = S.live ? S.events.length - i : 0, quick = S.live ? Math.min(1, 40 / Math.max(1, backlog)) : 1;   // live: hundreds of tool events from parallel sub-agents must not take minutes to scroll past
     if (ev.kind === 'results') { applyResults(ev, S.boost > 1); await sleep((S.boost === 1 && S.present === ev.agent && ev.items.some((it) => it.img) ? (S.live ? 900 : 1800) : S.boost === 1 && S.present === ev.agent && ev.items.some((it) => it.art && (S.artCalls.get(it.id) || {}).pub) ? (S.live ? 2500 : 4000) : S.demo ? 900 : S.live ? 30 * quick : 80) / spd()); i++; continue; }   // a picture gets a moment on screen
@@ -2617,13 +2799,13 @@ async function run(i) {
     if (ev.kind === 'say' && ev.end && ev.agent === 'main' && S.boost <= 1) shareWhole();   // the lead says it is done: the whole document it made, if it has several pages
     const group = [ev]; let j = i + 1;   // sub-agents talking back-to-back were running in parallel: their lines are taken together and said one after the other
     if (ev.kind === 'order') {   // several orders in a row (a parallel launch): the new agents all appear now, the first order is read, the others are named in one line
-      while (j < Math.min(S.events.length, i + 40) && group.length < 8) { const e2 = S.events[j]; if (e2.kind === 'usage' || e2.kind === 'compact') { tally(e2); j++; continue; } if (e2.kind === 'order' && e2.agent === ev.agent) { group.push(e2); j++; } else break; }
+      while (j < Math.min(S.events.length, i + 40) && group.length < 8) { const e2 = S.events[j]; if (e2.kind === 'usage' || e2.kind === 'compact' || e2.kind === 'tasks') { tally(e2); j++; continue; } if (e2.kind === 'order' && e2.agent === ev.agent) { group.push(e2); j++; } else break; }
       if (group.length > 1) { for (const g of group) applyStatus(g); paintStatus(); }
     }
     else if (isSub(ev.agent) && ev.kind !== 'order') {
       while (j < Math.min(S.events.length, i + 28) && group.length < 3) {
         const e2 = S.events[j];
-        if (e2.kind === 'usage' || e2.kind === 'compact') { tally(e2); j++; continue; }
+        if (e2.kind === 'usage' || e2.kind === 'compact' || e2.kind === 'tasks') { tally(e2); j++; continue; }
         if (e2.kind === 'finish') { applyStatus(e2); j++; continue; }
         if (e2.kind === 'tools') { tally(e2); tickTools(e2); applyStatus(e2); j++; continue; }
         if (e2.kind === 'results') { tally(e2); applyResults(e2, true); j++; continue; }
@@ -2635,7 +2817,7 @@ async function run(i) {
     const playOne = (g) => {
       applyStatus(g); if (g.end) paintStates(); g._as = g.kind; if (g.agent === 'user') S.owed = true; else if (g.agent === 'main') S.owed = false;   // your order waits for a word from the lead
       const label = g.kind === 'order' ? `${L('pour', 'to')} ${nameOf(g.to)}` : g.kind === 'report' ? `${L('rapport à', 'report to')} ${nameOf(g.to)}` : '', line = talkLine(g);
-      startTalk(g.agent, line, label);
+      startTalk(g.agent, line, label); if (g.kind === 'user' && g.img > 0 && g.iid) showYourPics(g);
       if (g.kind === 'order') { S.status[g.to] = 'working'; AUD.join(); setTimeout(() => { paintStatus(); fly(g.agent, g.to, '📨'); popTile(g.to); }, 30); }
       if (g.kind === 'report') { AUD.ding(); setTimeout(() => { fly(g.agent, g.to, '✅'); popTile(g.agent); }, 30); }
       const said = clipSpeech(line, S.pace); if (g.agent === 'main' && g.kind === 'say') { const full = plain(g.text), key = said.replace(/…$/, '').trim().slice(-30), pos = key ? full.indexOf(key) : -1, n = pos >= 0 ? pos + key.length : said.length; S.mainSaid = { ev: g, said: n, full: n >= full.length - 5 }; }
@@ -2717,7 +2899,7 @@ async function followCurrent() {
 // the end of a session that was already over is on screen (states, transcript) but is not read again. Joining while the agents are at work, the last few seconds are said too, to know what they are on
 const JOIN_BACK_MS = 10000;
 function midWork() {   // someone is in the middle of something: the session does not end on a message of the lead (its turn is over then, or about to be)
-  let k = S.events.length - 1; while (k >= 0 && (S.events[k].kind === 'usage' || S.events[k].kind === 'compact')) k--; const e = S.events[k]; return !!e && !(e.agent === 'main' && e.kind === 'say');
+  let k = S.events.length - 1; while (k >= 0 && (S.events[k].kind === 'usage' || S.events[k].kind === 'compact' || S.events[k].kind === 'tasks')) k--; const e = S.events[k]; return !!e && !(e.agent === 'main' && e.kind === 'say');
 }
 function liveStart() {
   const n = S.events.length; if (!S.locked && !S.since) S.since = Date.now() - (midWork() ? JOIN_BACK_MS : 0);   // S.since 0: joining now
@@ -2789,12 +2971,13 @@ let boardBusy = false, boardAll = null, boardDoneOpen = false, boardIdleOpen = f
 const BTOOLS = [['claude', 'Claude Code'], ['_codex', 'Codex'], ['_vibe', 'Mistral Vibe'], ['_cowork', 'Cowork']], toolOf = (r) => (BTOOLS.some(([k]) => k === r.proj) ? r.proj : 'claude');   // the filter at the top of the board, shown when sessions of two tools or more are listed
 const isDone = (r) => !!r.done;   // put away by you, until the session moves again: the server says so, to every window
 function bcard(r, now, done) {
-  const g = r.state === 'turn' && r.gave ? r.gave : '', [ic, en0, fr0] = g ? ['⚠', 'gave up?', 'a abandonné ?'] : BSTATE[r.state], [en, fr] = [en0, fr0], waited = r.since ? now - r.since : r.state === 'blocked' ? r.ageMs : now - r.mtime, mine = r.state === 'blocked' || r.state === 'turn';   // how long it has waited on you
+  const g = r.state === 'turn' && r.gave ? r.gave : '', stop = r.state === 'turn' && !g ? limitTxt(r, true) : '', [ic, en0, fr0] = g ? ['⚠', 'gave up?', 'a abandonné ?'] : BSTATE[r.state], [en, fr] = [en0, fr0], waited = r.since ? now - r.since : r.state === 'blocked' ? r.ageMs : now - r.mtime, mine = r.state === 'blocked' || r.state === 'turn';   // how long it has waited on you
   const head = r.state === 'blocked' ? [r.ask ? '' : esc(r.tool), r.ran ? '' : agoStr(waited)].filter(Boolean).join(' ') : r.state === 'working' && r.tool ? esc(r.tool) : r.state === 'idle' || (r.state === 'turn' && !r.ran) ? agoStr(waited) : '', extra = head ? ' · ' + head : '';
   const took = mine && r.ran ? `⏱ ${L('a travaillé', 'worked')} ${agoStr(r.ran)} · ${L('vous attend depuis', 'waiting on you for')} ${agoStr(waited)}` : r.state === 'working' && r.asked ? `⏱ ${L('au travail depuis', 'working for')} ${agoStr(Math.max(0, now - r.asked))}` : '';   // the time it worked, apart from the time it has waited on you
   const pr = r.pr ? `<button class="bpr" data-url="${esc(r.pr.url)}" title="${esc(L('Ouvrir la pull request', 'Open the pull request'))}">PR #${+r.pr.n} ↗</button>` : '';
   const put = done ? `<button class="bdo" data-undo="1" title="${esc(L('Rouvrir', 'Reopen'))}" aria-label="${esc(L('Rouvrir', 'Reopen'))}">↩</button>` : r.state === 'turn' || r.state === 'idle' ? `<button class="bdo" title="${esc(L('Marquer comme traitée', 'Mark as done'))}" aria-label="${esc(L('Marquer comme traitée', 'Mark as done'))}">✓</button>` : '';
-  return `<div class="bcard ${r.state}${g ? ' gave' : ''}" tabindex="0" role="button" data-p="${esc(r.proj)}" data-i="${esc(r.id)}"><div class="bh"><span class="stc ${g ? 'stalled' : r.state}">${ic} ${L(fr, en)}${extra}</span>${pr}${put}</div><div class="bt">${esc(/^[0-9a-f]{8}-[0-9a-f-]{27}$/.test(r.title) ? L('Session sans titre', 'Untitled session') : r.title)}</div>${r.ask || g ? `<div class="bq">${esc(r.ask || g)}</div>` : ''}<div class="bp">${esc(niceProj(r.proj))}</div>${took ? `<div class="bm">${took}</div>` : ''}${r.subTotal ? `<div class="bm">👥 ${r.subActive}/${r.subTotal} ${L('sous-agents actifs', 'sub-agents active')}</div>` : ''}</div>`;
+  const about = r.menu && r.menu.about && r.state === 'blocked' ? `<div class="bm bab" title="${esc(r.menu.cmd || r.menu.about)}">${esc(r.menu.about)}</div>` : '', reset = stop && r.limit && r.limit.resets ? L('reprise à {0}', 'resets {0}').replace('{0}', () => r.limit.resets) : '';   // what the waiting command is for, as Claude Code wrote it; when a usage limit ends
+  return `<div class="bcard ${r.state}${g || stop ? ' gave' : ''}" tabindex="0" role="button" data-p="${esc(r.proj)}" data-i="${esc(r.id)}"><div class="bh"><span class="stc ${g || stop ? 'stalled' : r.state}">${stop ? esc(stop) : ic + ' ' + L(fr, en)}${extra}</span>${pr}${put}</div><div class="bt">${esc(/^[0-9a-f]{8}-[0-9a-f-]{27}$/.test(r.title) ? L('Session sans titre', 'Untitled session') : r.title)}</div>${r.ask || g || reset ? `<div class="bq">${esc(r.ask || g || reset)}</div>` : ''}${about}<div class="bp">${esc(niceProj(r.proj))}</div>${took ? `<div class="bm">${took}</div>` : ''}${r.subTotal ? `<div class="bm">👥 ${r.subActive}/${r.subTotal} ${L('sous-agents actifs', 'sub-agents active')}</div>` : ''}</div>`;
 }
 function paintBoard() {
   if (!boardAll || !document.body.classList.contains('board')) return; const now = Date.now(), recent = (a, b) => b.mtime - a.mtime;
@@ -2804,8 +2987,10 @@ function paintBoard() {
   const secs = filt + BGROUP.map((k) => [k, live.filter((r) => r.state === k).sort(recent)]).filter(([, rs]) => rs.length).map(([k, rs]) => k === 'idle'   /* idle: folded into one line, opened on demand (and kept open while the board is painted again) */
     ? `<details class="bsec bidle"${boardIdleOpen ? ' open' : ''}><summary class="bhd ${k}">${head(k, L(BSTATE[k][2], BSTATE[k][1]), rs.length)}</summary><div class="bgrid">${rs.map((r) => bcard(r, now, false)).join('')}</div></details>`
     : `<section class="bsec"><h3 class="bhd ${k}">${head(k, L(BSTATE[k][2], BSTATE[k][1]), rs.length)}</h3><div class="bgrid">${rs.map((r) => bcard(r, now, false)).join('')}</div></section>`).join('');
+  const lim = live.filter((r) => r.state === 'turn' && r.limit).sort(recent), rsAll = new Set(lim.map((r) => r.limit.resets || '')), rs0 = rsAll.size === 1 ? [...rsAll][0] : '';   // several sessions stopped by the same usage limit: said once, above them, with its reset time only when they all share it
+  const limLine = lim.length < 2 ? '' : `<div class="bnote">⏳ ${esc(L('Limite d’usage de Claude : {0} sessions arrêtées', 'Claude usage limit: {0} sessions stopped').replace('{0}', lim.length))}${rs0 ? ' · ' + esc(L('reprise à {0}', 'resets {0}').replace('{0}', () => rs0)) : ''}</div>`;
   const put = done.length ? `<details class="bsec bdone"${boardDoneOpen ? ' open' : ''}><summary class="bhd">${head('', L('Traitées', 'Done'), done.length)}</summary><div class="bgrid">${done.map((r) => bcard(r, now, true)).join('')}</div></details>` : '';
-  $('#boardv').innerHTML = secs + put || `<div class="bsum"><span>${L('Aucune session récente', 'No recent session')}</span></div>`;
+  $('#boardv').innerHTML = missHtml('b') + limLine + (secs + put || `<div class="bsum"><span>${L('Aucune session récente', 'No recent session')}</span></div>`);
 }
 async function renderBoardView() {
   if (!document.body.classList.contains('board') || boardBusy) return; boardBusy = true;
@@ -2846,7 +3031,20 @@ async function openSwitcher() {
   draw(); $('#swq').focus();
 }
 function closeSwitcher() { const sw = $('#switcher'); if (sw) sw.remove(); }
-setInterval(() => { if (!document.hidden) renderBoardView(); }, 2500);
+setInterval(() => { if (!document.hidden) { renderBoardView(); pollMissing(); } }, 2500);
+// ---------- Claude Code open in a folder, with no session file the app can find (GET /api/missing, server.js): one line in the Sessions view and on the empty call, with why ----------
+let MISSING = [], missOpen = false;
+function missHtml(w) {
+  if (!MISSING.length) return ''; const names = [...new Set(MISSING.map((m) => String(m.name || m.cwd || '?')))], n = names.slice(0, 3).join(', ') + (names.length > 3 ? ' +' + (names.length - 3) : '');
+  const why = L('Retirez CLAUDE_CODE_SKIP_PROMPT_HISTORY de votre profil de shell, puis relancez Claude Code.', 'Remove CLAUDE_CODE_SKIP_PROMPT_HISTORY from your shell profile, then start Claude Code again.'), v = (t) => esc(t).replace('CLAUDE_CODE_SKIP_PROMPT_HISTORY', '<code class="mv">CLAUDE_<wbr>CODE_<wbr>SKIP_<wbr>PROMPT_<wbr>HISTORY</code>');   // the one cause the app can see: Claude Code writes its status there but no transcript (an inherited CLAUDE_CODE_CHILD_SESSION writes neither; another CLAUDE_CONFIG_DIR writes its status elsewhere)
+  return `<details class="miss" data-w="${w}"${missOpen ? ' open' : ''}><summary>${v(L('Claude Code est ouvert dans {0} mais n’enregistre aucun historique (CLAUDE_CODE_SKIP_PROMPT_HISTORY est défini) : Agent Standup ne peut pas le suivre.', 'Claude Code is open in {0} but saves no history (CLAUDE_CODE_SKIP_PROMPT_HISTORY is set), so Agent Standup cannot follow it.').replace('{0}', () => n))} <u title="${esc(why)}">${esc(L('Pourquoi ?', 'Why?'))}</u></summary><ul><li>${v(why)}</li></ul></details>`;
+}
+function paintMissing() { paintBoard(); const el = $('#eMiss'), h = missHtml('e'); if (el && el.dataset.k !== h) { el.dataset.k = h; el.innerHTML = h; } }
+async function pollMissing() {   // live only: the demo, a replay and an older server (no such address) ask nothing. Local, and the server looks at most every 10 s
+  if (!S.live || S.demo || pollMissing.off || pollMissing.busy) { if (MISSING.length && (!S.live || S.demo)) { MISSING = []; paintMissing(); } return; } pollMissing.busy = true;
+  try { const r = await fetch('/api/missing'); if (r.status === 404) pollMissing.off = true; const a = r.ok ? await r.json() : [], next = Array.isArray(a) ? a.filter((m) => m && typeof m === 'object') : []; if (JSON.stringify(next) !== JSON.stringify(MISSING)) { MISSING = next; paintMissing(); } } catch {} finally { pollMissing.busy = false; }
+}
+document.addEventListener('toggle', (e) => { if (e.target.classList && e.target.classList.contains('miss')) missOpen = e.target.open; }, true);
 // ---------- several sessions at once (live): the sessions of the moment as tabs under the header, and a visitor when another one needs you ----------
 // The row is there only when there is something to tell apart: a second session at work or waiting for you. With a single session the header is as it always was.
 // The tabs keep the order in which the sessions showed up, so the one the call is in stays where it was. The call is in the session you last touched: the one you typed in or started,
@@ -2854,7 +3052,8 @@ setInterval(() => { if (!document.hidden) renderBoardView(); }, 2500);
 // the next thing you type, wherever it is, takes the call there. The rule itself is in server.js (currentSession).
 S.rows = []; S.tabOrder = []; S.knockAt = {}; S.left = {}; S.visit = S.knock = null; S.pick = S.pick || null;
 const UNTITLED = /^[0-9a-f]{8}-[0-9a-f-]{27}$/, sessKey = (r) => r.proj + '/' + r.id, tabName = (r) => (r.title && !UNTITLED.test(r.title) ? r.title : r.title ? L('Session sans titre', 'Untitled session') : niceProj(r.proj) || L('Session sans titre', 'Untitled session'));
-const inWatch = (r) => { const k = Q.get('proj') || prefs.proj || ''; return !k || S.wide ? !r.tmp : [r.proj, r.dir || ''].some((d) => d === k || d.startsWith(k + '-')); };   // the folder the live view follows, when it follows one and that folder has sessions (S.wide: it has none, see followCurrent). Looking everywhere, not the sessions started in the temporary folder (tmp, see tmpKey in server.js)
+const drive = (d) => /^[a-zA-Z]--/.test(d) ? d[0].toUpperCase() + d.slice(1) : d;   /* a Windows folder's drive letter, whatever its case: the extension sends C--…, a terminal may write c--… */
+const inWatch = (r) => { const k = drive(Q.get('proj') || prefs.proj || ''); return !k || S.wide ? !r.tmp : [r.proj, r.dir || ''].map(drive).some((d) => d === k || d.startsWith(k + '-')); };   // the folder the live view follows, when it follows one and that folder has sessions (S.wide: it has none, see followCurrent). Looking everywhere, not the sessions started in the temporary folder (tmp, see tmpKey in server.js)
 const rowOf = (c) => (c && S.rows.find((r) => r.proj === c.proj && r.id === c.id)) || null;
 function paintTabs() {
   const el = $('#tabs'), cur = S.cur; if (!S.live || S.demo) { if (paintTabs.html) el.innerHTML = paintTabs.html = ''; if (S.visit) hideVisit(); return; } if (!cur) return;   // between two sessions the tabs stay as they are: the row does not come and go
@@ -2862,8 +3061,8 @@ function paintTabs() {
   for (const k of by.keys()) if (!S.tabOrder.includes(k)) S.tabOrder.push(k);   // a session keeps its place while it has no tab: the call now goes by itself to a session that is started, sometimes before the list has the one it leaves, which then came back second
   const ks = S.tabOrder.filter((k) => by.has(k)).slice(0, 8); if (!ks.includes(ck)) ks[ks.length - 1] = ck;   // the others are in ⋯
   const html = by.size < 2 ? '' : ks.map((k) => { const r = by.get(k), on = k === ck, st = BSTATE[r.state];   // one session: no row, there is nothing to tell apart
-    const pinned = on && !!S.pick && !!S.pick.pin && sessKey(S.pick) === k, tip = tabName(r) + '\n' + niceProj(r.proj) + (r.state === 'turn' && r.gave ? ' · ⚠ ' + L('a abandonné ?', 'gave up?') + '\n' + r.gave : st ? ' · ' + L(st[2], st[1]) : '') + (pinned ? '\n' + L('Épinglé : cliquez pour désépingler', 'Pinned: click to unpin') : '');
-    return `<button class="stab ${r.state}${r.state === 'turn' && r.gave ? ' gave' : ''}${on ? ' on' : ''}" role="tab" aria-selected="${on}" data-k="${esc(k)}" title="${esc(tip)}">${st ? st[0] : ''}${TOOL[r.proj] ? `<i>${TOOL[r.proj]}</i>` : ''}<span>${esc(tabName(r))}</span>${pinned ? '📌' : ''}</button>`; }).join('')
+    const pinned = on && !!S.pick && !!S.pick.pin && sessKey(S.pick) === k, tip = tabName(r) + '\n' + niceProj(r.proj) + (r.state === 'turn' && r.gave ? ' · ⚠ ' + L('a abandonné ?', 'gave up?') + '\n' + r.gave : r.state === 'turn' && limitTxt(r) ? ' · ' + limitTxt(r) : st ? ' · ' + L(st[2], st[1]) : '') + (pinned ? '\n' + L('Épinglé : cliquez pour désépingler', 'Pinned: click to unpin') : '');
+    return `<button class="stab ${r.state}${r.state === 'turn' && (r.gave || r.limit || r.auth) ? ' gave' : ''}${on ? ' on' : ''}" role="tab" aria-selected="${on}" data-k="${esc(k)}" title="${esc(tip)}">${st ? st[0] : ''}${TOOL[r.proj] ? `<i>${TOOL[r.proj]}</i>` : ''}<span>${esc(tabName(r))}</span>${pinned ? '📌' : ''}</button>`; }).join('')
     + `<button class="stab all" title="${esc(L('Aller à une session', 'Go to a session'))} (Cmd / Ctrl + K)" aria-label="${esc(L('Aller à une session', 'Go to a session'))}">⋯</button>` + (by.size < 2 ? '' : whyTag());
   if (html === paintTabs.html) return; if (!html) paintTabs.cur = ''; el.innerHTML = paintTabs.html = html;
   if (paintTabs.cur !== ck) { paintTabs.cur = ck; const on = el.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
@@ -2895,7 +3094,7 @@ function knocks() {
   const now = Date.now(), first = !knocks.seen, seen = knocks.seen || (knocks.seen = {}), ck = S.cur ? sessKey(S.cur) : ''; let best = null;
   for (const r of S.rows) {
     const k = sessKey(r), was = seen[k], st = r.state === 'turn' && now - r.mtime < 6000 ? 'working' : r.state;   // a session that does not mark the end of its turns: a line less than 6 s old may only be a pause before the next call
-    const kind = first || !was || was === st || k === ck || !inWatch(r) ? '' : st === 'blocked' ? (/^AskUserQuestion/.test(r.tool) ? 'ask' : 'ok') : st === 'turn' && !r.cut && /^(working|waiting|blocked)$/.test(was) ? 'turn' : '';   // cut: you stopped that session yourself (Esc), which is no news
+    const kind = first || !was || was === st || k === ck || !inWatch(r) ? '' : st === 'blocked' ? (/^AskUserQuestion/.test(r.tool) ? 'ask' : 'ok') : st === 'turn' && !r.cut && !r.limit && !r.auth && /^(working|waiting|blocked)$/.test(was) ? 'turn' : '';   // cut: you stopped that session yourself (Esc), which is no news; nor is a usage limit or a logout, said in amber on its tab and card
     if (kind && now - (S.knockAt[k] || 0) < 20000) continue;   // a stop less than 20 s after the last visit for that session is not noted yet: it is told when the 20 s are over, if it still holds
     seen[k] = st; if (kind && (!best || (kind !== 'turn' && best.kind === 'turn'))) best = { r, kind, k };
   }
@@ -3036,7 +3235,7 @@ function applyLang() {
   document.querySelectorAll('#viewSeg button').forEach((b) => { b.title = b.textContent; });   // in a narrow window they are icons: the name stays as a tooltip
   $('#callTrMi').style.display = CALL_LANG[prefs.lang] && !FR() ? '' : 'none';
   const sel = $('#langSel'); if (!sel.options.length) sel.innerHTML = LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join(''); sel.value = prefs.lang;
-  [['#bPlay', L('Pause / Lecture (espace)', 'Pause / Play (space)')], ['#bLog', 'Transcript'], ['#bMute', L('Son (touche M)', 'Sound (M key)')], ['#bMenu', L('Réglages', 'Settings')], ['#dclose', L('Fermer', 'Close')], ['#officeVol', L('Volume de l’ambiance', 'Ambience volume')], ['#musicVol', L('Volume de la musique', 'Music volume')], ['#liveProj', L('Projet à suivre', 'Project to follow')], ['#reactBar', L('Réactions', 'Reactions')], ['#logQ', L('Rechercher dans la transcription', 'Search the transcript')], ['#roster', L('Agents', 'Agents')]].forEach(([q, t]) => { const el = $(q); if (!el) return; el.title = t; el.setAttribute('aria-label', t); }); $('#logQ').placeholder = L('Rechercher…', 'Search…'); $('#menuQ').placeholder = L('Chercher un réglage…', 'Search settings…'); $('#menuQ').setAttribute('aria-label', $('#menuQ').placeholder); $('#sps').setAttribute('aria-label', L('Vitesses prédéfinies', 'Speed presets')); document.querySelectorAll('#reactBar button').forEach((b) => b.setAttribute('aria-label', b.dataset.e));
+  [['#bPlay', L('Pause / Lecture (espace)', 'Pause / Play (space)')], ['#bLog', L('Transcription', 'Transcript')], ['#bMute', L('Son (touche M)', 'Sound (M key)')], ['#bMenu', L('Réglages', 'Settings')], ['#dclose', L('Fermer', 'Close')], ['#officeVol', L('Volume de l’ambiance', 'Ambience volume')], ['#voiceVol', L('Volume des voix', 'Voice volume')], ['#musicVol', L('Volume de la musique', 'Music volume')], ['#liveProj', L('Projet à suivre', 'Project to follow')], ['#reactBar', L('Réactions', 'Reactions')], ['#logQ', L('Rechercher dans la transcription', 'Search the transcript')], ['#roster', L('Agents', 'Agents')]].forEach(([q, t]) => { const el = $(q); if (!el) return; el.title = t; el.setAttribute('aria-label', t); }); $('#logQ').placeholder = L('Rechercher…', 'Search…'); $('#menuQ').placeholder = L('Chercher un réglage…', 'Search settings…'); $('#menuQ').setAttribute('aria-label', $('#menuQ').placeholder); $('#sps').setAttribute('aria-label', L('Vitesses prédéfinies', 'Speed presets')); document.querySelectorAll('#reactBar button').forEach((b) => b.setAttribute('aria-label', b.dataset.e));
   $('#gB').textContent = L('🔊 Activer le son', '🔊 Turn on sound'); $('#gB').title = L('Ou cliquez n’importe où dans l’appel', 'Or click anywhere in the call');
   $('#eDemo').textContent = L('▶ Voir la démo', '▶ Watch the demo'); $('#eT').textContent = L('En attente d’une session', 'Waiting for a session'); $('#eP').innerHTML = watched() ? esc(L('Aucune session pour l’instant. Lancez Claude Code, Codex ou Mistral Vibe dans {0} : l’appel démarrera tout seul.', 'No session yet. Start Claude Code, Codex or Mistral Vibe in {0}: the call will start by itself.')).replace('{0}', () => `<b>${esc(watched())}</b>`) : esc(L('Aucune session sur cet ordinateur pour l’instant. Lancez Claude Code, Codex ou Mistral Vibe (ou une tâche Cowork) : l’appel démarrera tout seul.', 'No session on this computer yet. Start Claude Code, Codex or Mistral Vibe (or a Cowork task): the call will start by itself.'));
   for (const id in S.agents) { const p = persona(S.agents[id]); Object.assign(S.agents[id], { name: p.name, role: p.role }); const t = $('#t-' + id); if (t) { t.querySelector('.tag span').textContent = p.role; t.querySelector('.tag b').textContent = p.name; if (id === 'main' || id === 'user') t.querySelector('.tag span').textContent = p.role; } }
@@ -3092,7 +3291,7 @@ function menuInit() {
     $('#menuNone').style.display = q && !far.length && !secs.some((sc) => sc.items.some((e) => !e.classList.contains('mhide'))) ? '' : 'none';
   };
 }
-const onSwitch = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'shareUsage') { prefs.usageAsked = true; savePrefs(); usageOpened(true); } if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'callTr') { prefs.callTrSeen = true; savePrefs(); setLang(prefs.lang); } if (b.dataset.t === 'voice') voiceOffer(); if (b.dataset.t === 'customLaptop') { for (const k in imgCache) delete imgCache[k]; buildStage(); paintStatus(); } if (b.dataset.t === 'files') paintFiles(); if (b.dataset.t === 'artNet' && S.present) renderPresent(); if (b.dataset.t === 'ownNames') renameAll(); if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'focusLayout') { document.body.classList.toggle('focusl', !!prefs.focusLayout); layout(); } if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify') { prefs.notifyChosen = true; savePrefs(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
+const onSwitch = (e) => { const b = e.target.closest('.mi[data-t]'); if (!b) return; prefs[b.dataset.t] = !prefs[b.dataset.t]; savePrefs(); if (prefs[b.dataset.t] && ['voice', 'office', 'music', 'notify'].includes(b.dataset.t)) claimAudio(); b.querySelector('.sw').classList.toggle('on', prefs[b.dataset.t]); AUD.apply(); if (b.dataset.t === 'shareUsage') { prefs.usageAsked = true; savePrefs(); usageOpened(true); } if (b.dataset.t === 'office') $('#officeBox').style.display = prefs.office ? '' : 'none'; if (b.dataset.t === 'callTr') { prefs.callTrSeen = true; savePrefs(); setLang(prefs.lang); } if (b.dataset.t === 'voice') { voiceOffer(); $('#voiceVolBox').style.display = prefs.voice ? '' : 'none'; } if (b.dataset.t === 'customLaptop') { for (const k in imgCache) delete imgCache[k]; buildStage(); paintStatus(); } if (b.dataset.t === 'files') paintFiles(); if (b.dataset.t === 'artNet' && S.present) renderPresent(); if (b.dataset.t === 'ownNames') renameAll(); if (b.dataset.t === 'reactions') document.body.classList.toggle('react', prefs.reactions); if (b.dataset.t === 'focusLayout') { document.body.classList.toggle('focusl', !!prefs.focusLayout); layout(); } if (b.dataset.t === 'roster') { document.body.classList.toggle('rost', prefs.roster); paintStates(); } if (b.dataset.t === 'notify') { prefs.notifyChosen = true; savePrefs(); } if (b.dataset.t === 'notify' && prefs.notify) askNotify(); if (b.dataset.t === 'vanish' && !prefs.vanish) { S.gone.clear(); paintStatus(); }
   if (b.dataset.t === 'askCard') paintAsk(Date.now());
   if (b.dataset.t === 'updateNotice') { prefs.updateAsked = true; savePrefs(); $('#updTip').style.display = 'none'; if (prefs.updateNotice) { updStart.at = 0; setTimeout(updStart, 600); } }   /* an answer too; on: asked once the settings file says so (savePrefs waits 400 ms) */
   if (b.dataset.t === 'music') { $('#musicBox').style.display = prefs.music ? '' : 'none'; if (prefs.music) { AUD.init(); AUD.apply(); } } };
@@ -3101,11 +3300,11 @@ function openPrefs(target) {   // ⚙ → All settings; target: one of its setti
   $('#menu').classList.remove('on'); $('#prefs').classList.add('on'); syncSwitches(); document.querySelectorAll('#prefs .mi[data-t]').forEach((b) => b.querySelector('.sw').classList.toggle('on', !!prefs[b.dataset.t]));
   if (target) { target.scrollIntoView({ block: 'center' }); target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash'); (target.matches('.mi') ? target : target.querySelector('select, input, button') || target).focus(); } else $('#prefsX').focus();
 }
-const PANEL_KEYS = ['office', 'officeVol', 'music', 'station', 'musicVol', 'notify', 'customLaptop', 'ownNames', 'roster', 'reactions', 'banter', 'chat', 'vanish', 'epi', 'files', 'artNet', 'visits', 'askCard', 'followTab'];   // what the panel holds, and so what Reset puts back
+const PANEL_KEYS = ['office', 'officeVol', 'music', 'station', 'musicVol', 'voiceVol', 'notify', 'customLaptop', 'ownNames', 'roster', 'reactions', 'banter', 'chat', 'vanish', 'epi', 'files', 'artNet', 'visits', 'askCard', 'followTab'];   // what the panel holds, and so what Reset puts back
 $('#prefsReset').onclick = async () => {
   const b = $('#prefsReset'); if (!b.classList.contains('sure')) { b.classList.add('sure'); b.textContent = L('Cliquez encore pour tout remettre', 'Click again to reset them all'); setTimeout(() => { b.classList.remove('sure'); b.textContent = L('Réglages par défaut', 'Reset to defaults'); }, 4000); return; }   // two clicks: nothing is lost by a stray one
   for (const k of PANEL_KEYS) { if (k in PREF_DEFAULTS) prefs[k] = PREF_DEFAULTS[k]; else delete prefs[k]; } delete prefs.notifyChosen;   // notifyChosen too: the default of notifications is decided at start-up from it
-  prefs._t = Date.now(); try { localStorage.setItem('cc.prefs', JSON.stringify(prefs)); } catch {} try { await fetch('/api/prefs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(prefs) }); } catch {}
+  prefs._t = Date.now(); try { localStorage.setItem('cc.prefs', prefsOut()); } catch {} try { await fetch('/api/prefs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: prefsOut() }); } catch {}
   location.reload();   // every part of the page starts again from them
 };
 function menuTip() {   // once, to someone who used the app before: where the settings went. Gone with its button, or as soon as the menu is opened
@@ -3133,7 +3332,7 @@ async function kokoroUI() {
   const box = $('#kokoroBox'), on = prefs.vstyle === 'kokoro'; box.style.display = on ? '' : 'none'; $('#vstyleTip').style.display = on ? 'none' : ''; if (!on) { clearInterval(kokoroTimer); kokoroTimer = null; return; }
   let st; try { st = await (await fetch('/api/kokoro')).json(); } catch { return; }
   const b = $('#kokoroInstall'), h = $('#kokoroHint'), addFr = st.installed && !st.g2p && !!CALL_LANG[prefs.lang]; b.style.display = st.installed && !addFr ? 'none' : '';   /* addFr: installed before French, Spanish and Portuguese were added, which is one small package more. Offered where one of them is the interface language: a session in that language is then read by these voices, translated or not */
-  b.disabled = st.installing || !st.npm; b.textContent = st.installing ? L('Installation…', 'Installing…') : addFr ? L('Ajouter les voix françaises', 'Add the voices of this language') + L(` (${st.g2pMb} Mo)`, ` (${st.g2pMb} MB)`) : L(`Installer (${st.sizeMb} Mo)`, `Install (${st.sizeMb} MB)`);
+  b.disabled = st.installing || !st.npm; b.textContent = st.installing ? L('Installation…', 'Installing…') : addFr ? L('Ajouter les voix françaises', 'Add the voices of this language') + ' (' + L('{0} Mo', '{0} MB').replace('{0}', st.g2pMb) + ')' : L('Installer ({0} Mo)', 'Install ({0} MB)').replace('{0}', st.sizeMb);
   h.textContent = st.installing ? L('Téléchargement en cours, vous pouvez continuer : les agents babillent en attendant.', 'Downloading, you can carry on: the agents babble meanwhile.')
     : st.error ? st.error : !st.npm && !st.installed ? L('npm est introuvable : installez Node.js pour activer cette option.', 'npm not found: install Node.js to enable this option.')
     : st.installed ? (st.gaveUp ? L('Le moteur s’est arrêté : les agents babillent à la place.', 'The engine stopped: the agents babble instead.') : st.ready ? (addFr ? L('Voix prêtes en anglais. Le français est encore lu par les voix du système.', 'Voices ready in English. This language is still read by the system voices.') : L('Voix prêtes.', 'Voices ready.')) : L('Chargement du modèle (téléchargé au premier usage, environ 305 Mo)…', 'Loading the model (downloaded on first use, about 305 MB)…'))
@@ -3172,6 +3371,8 @@ $('#trNoteOk').onclick = () => { prefs.callTrSeen = true; savePrefs(); callNote(
 $('#trNoteOff').onclick = () => { prefs.callTrSeen = true; prefs.callTr = false; savePrefs(); setLang(prefs.lang); };
 $('#officeVol').value = prefs.officeVol; $('#officeBox').style.display = prefs.office ? '' : 'none';
 $('#officeVol').oninput = (e) => { prefs.officeVol = +e.target.value; savePrefs(); AUD.applyMusic(); };
+$('#voiceVol').value = prefs.voiceVol ?? 1; $('#voiceVolBox').style.display = prefs.voice ? '' : 'none';
+$('#voiceVol').oninput = (e) => { prefs.voiceVol = +e.target.value; savePrefs(); AUD.apply(); };
 $('#musicVol').oninput = (e) => { prefs.musicVol = +e.target.value; savePrefs(); AUD.applyMusic(); };
 $('#tok').onclick = () => openRecap();
 $('#bMenu').onclick = (e) => { e.stopPropagation(); $('#menu').classList.toggle('on'); };
@@ -3205,7 +3406,7 @@ function attnItems(now) {
 function paintAttn(now = Date.now()) {
   const el = $('#attn'), a = attnItems(now).filter((x) => x.r), f = a[0];   /* the other sessions only: the call's own agents are already on the status line above (G still goes to them) */
   const html = f ? `<span class="aw">✋ <b>${esc(f.who)}</b> ${esc(f.sure ? L('vous attend', 'needs you') : L('vous attend peut-être', 'may need you'))}${f.what ? ' · ' + esc(f.what.replace(/\s+/g, ' ').slice(0, 120)) : ''}${f.since ? ' · ' + agoStr(Math.max(0, now - f.since)) : ''}</span>${a.length > 1 ? `<span class="am">+${a.length - 1}</span>` : ''}<span class="ak">G</span>` : '';
-  if (html !== paintAttn.html) { paintAttn.html = html; el.innerHTML = html; el.hidden = !f; el.title = L('Cliquez pour aller répondre', 'Click to go and answer') + '\n' + a.map((x) => x.who + (x.what ? ' · ' + x.what : '')).join('\n'); }
+  if (html !== paintAttn.html) { paintAttn.html = html; el.innerHTML = html; el.hidden = !f; el.title = L('Cliquez pour aller répondre', 'Click to go and answer') + '\n' + a.map((x) => x.who + (x.what ? ' · ' + x.what : '') + (x.r.menu && x.r.menu.about ? '\n    ' + x.r.menu.about : '')).join('\n'); }   /* and what the command is for */
 }
 // A click on what needs you also opens that session where it can be answered: its Claude Code tab in the editor window that runs it, or the terminal or app it runs in (server.js, answerIn).
 // Nothing to open (another tool, an older Claude Code, a session a program runs): the call alone goes there, as before.
@@ -3260,6 +3461,7 @@ function paintPill() {
       const w = by.working, wt = lead.k === 'waiting' ? 'main' : w.length ? '' : by.waiting[0]; cls = 'working'; to = wt || (w.length === 1 ? w[0] : 'main');
       txt = (w.length === 1 && !wt ? '⚙ ' + what(w[0]) : w.length ? `⚙ ${w.length} ${L('au travail', 'working')}` : '') + (wt ? (w.length ? ' · ' : '🔗 ') + what(wt) : '');
     }
+    else if (isTurn('main', lead) && lead.stop) { cls = 'stalled'; to = 'main'; txt = lead.stop; }   // the usage limit or a logout: what to know, not the last word
     else if (isTurn('main', lead)) { const g = lead.gave, last = g || lastWord(); cls = g ? 'stalled' : 'turn'; to = 'main'; txt = (g ? '⚠ ' + L('a abandonné ?', 'gave up?') : '👉 ' + L('à vous', 'your turn')) + (last ? ' · ' + (last.length > 110 ? last.slice(0, 108).replace(/\s+\S*$/, '') + '…' : last) : ''); tip = last; }   // gave: what it says it could not do, in its own first sentence
     else { cls = 'idle'; to = 'main'; txt = '💤 ' + L('inactif', 'idle'); }
   }
@@ -3304,7 +3506,7 @@ new MutationObserver((ms) => {
   }
 }).observe($('#stage'), { subtree: true, childList: true });
 // Replay: arrow keys step through the call, N jumps between highlights, speed presets, and the position of each session is remembered
-const stepKind = (e) => !['usage', 'results', 'finish', 'compact'].includes(e.kind);
+const stepKind = (e) => !['usage', 'results', 'finish', 'compact', 'tasks'].includes(e.kind);
 function stepEvent(dir) {
   if (S.live || !S.events.length) return; let i = S.idx + dir; while (i > 0 && i < S.events.length - 1 && !stepKind(S.events[i])) i += dir;
   seekTo(Math.max(0, Math.min(S.events.length - 1, i)));
@@ -3368,7 +3570,7 @@ if (EMBED) $('#mBrowser').style.display = $('#mFollowTab').style.display = '';
     if (!prefs.langChosen && FR() && h.claude === null && !h.apiKey) { prefs.lang = 'en'; applyLang(); }
     if (TRL()) { fetch('/api/warm?lang=' + CALL()).catch(() => {}); prefetchTr(S.idx); } callNote();
   });
-  if (Q.get('lang')) { await setLang(Q.get('lang'), false); }
+  if (Q.get('lang')) { langKeep = prefs.lang; await setLang(Q.get('lang'), false); }
   if (Q.get('demo')) {
     if (Q.get('view') === 'tree') setView('tree');
     await setMode('demo'); if (Q.get('speed')) $('#speed').value = Q.get('speed');
