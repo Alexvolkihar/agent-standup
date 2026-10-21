@@ -122,8 +122,8 @@ function heldOpen(r) {
 const tailCache = new Map();
 function boardRow(r, now) {
   if (r.uni) {   // the current format says it outright: idle, running, or blocked on an approval or a question
-    const u = uniSummary(r), age = now - r.mtime, live = u.live, held = u.status === 'blocked' ? heldOpen(r) : null, kind = held === false ? 'idle' : u.status;   // blocked, and its process still runs: it waits on you however long ago it asked (a question left over lunch). Its process gone: it waits on nobody, the person's turn to resume it. Not known: half an hour, as before
-    const state = held === false ? 'idle' : kind === 'blocked' && (held || age < 30 * 60e3) ? 'blocked' : age >= 30 * 60e3 ? 'idle' : kind === 'running' ? (u.waiting ? 'waiting' : 'working') : kind === 'idle' || kind === 'failed' ? 'turn' : age < 10 * 60e3 ? 'working' : 'idle';
+    const u = uniSummary(r), age = now - r.mtime, live = u.live, held = u.status === 'blocked' ? heldOpen(r) : null, kind = held === false ? 'idle' : u.status;   // blocked, and its process still runs: it waits on you for up to four hours (a question left over lunch; a crashed Vibe leaves its lock, and its process number can be reused). Its process gone: it waits on nobody. Not known: half an hour, as before
+    const state = held === false ? 'idle' : kind === 'blocked' && (held ? age < 4 * 3600e3 : age < 30 * 60e3) ? 'blocked' : age >= 30 * 60e3 ? 'idle' : kind === 'running' ? (u.waiting ? 'waiting' : 'working') : kind === 'idle' || kind === 'failed' ? 'turn' : age < 10 * 60e3 ? 'working' : 'idle';
     return { proj: PROJ, id: r.id, title: title(r), mtime: r.mtime, state, tool: '', ageMs: age, subActive: state === 'idle' || state === 'turn' ? 0 : live, subTotal: u.kids, asked: u.asked || 0, dir: dirKey(meta(r.dir).cwd), source: SOURCE, ...(state === 'blocked' ? { sure: 1 } : {}) };   /* blocked: Vibe wrote that it waits on an approval or a question, not a guess */
   }
   const sig = r.mtime + ':' + r.size; let t = tailCache.get(r.file);

@@ -104,7 +104,7 @@ const absPath = (f, cwd) => (/^~([\\/]|$)/.test(f) ? path.join(os.homedir(), f.s
 const BROWSER_MCP = /^mcp__(?:[^_]+__)?(claude-in-chrome|Claude_in_Chrome|Claude_Browser|Claude_Preview)__/;
 const previewStep = (name, i) => {
   const a = name.slice(8) === 'console_logs' ? 'logs' : name.slice(8, 38), s = { a };
-  if (a === 'eval' && typeof i.expression === 'string') s.q = clip(i.expression, 120);
+  if (a === 'eval' && typeof i.expression === 'string') s.q = clip(i.expression, 120); if (typeof i.url === 'string') s.u = clip(i.url, 300);   // the page a start names, as 1.40 showed it
   if (a === 'resize') { if (Number.isFinite(+i.width) && Number.isFinite(+i.height) && i.width != null && i.height != null) { s.w = +i.width; s.h = +i.height; } else if (typeof i.preset === 'string') s.preset = clip(i.preset, 30); }   // a size, or one of its presets (desktop, mobile…)
   return s;
 };
@@ -558,6 +558,7 @@ function liveStatus() {   // session id → { status, since, pid, ep (where it r
 // (a new id and updatedAt, while status and statusUpdatedAt are still those of the id before) have written no transcript yet, and need none.
 let missingMemo = { at: 0, list: [] }; const transcriptSeen = new Set(), busySeen = new Map();   // transcriptSeen: ids found once are not looked for again, a transcript stays where it was written · busySeen: id → when it was first seen busy (at most 500)
 function missingTranscripts() {   // [{ id, cwd, name, version, ep, since }]: one look every 10 s at most
+  if (process.env.AGENT_STANDUP_PROJECTS && !process.env.AGENT_STANDUP_CC_SESSIONS) return [];   // sessions read from another folder than the one these status files belong to: every live session would look as if it wrote nothing
   const now = Date.now(); if (now - missingMemo.at < 10e3) return missingMemo.list;
   const list = []; let dirs = null;
   for (const [id, w] of liveStatus()) {

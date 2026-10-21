@@ -1627,7 +1627,7 @@ function renderBadges() {   // per tile: failed tool calls, a command that has b
   }
   if (BT && BT.el) refreshTip();
 }
-const fmtShort = (ms) => { const s = Math.round(ms / 1000); return s < 90 ? `${s}s` : s < 5400 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`; };   // hours past 90 min, as agoStr
+const fmtShort = (ms) => { const s = Math.round(ms / 1000); return s < 90 ? `${s}s` : s < 7200 ? `${Math.round(s / 60)} min` : `${Math.floor(s / 3600)} h`; };   // whole hours from two hours on, as agoStr: it only counts up
 function askNotify() { try { if (!EMBED && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch {} AUD.init(); AUD.alert(); }
 function watchDone(n) {   // live: the team was busy for a while and has now been quiet for a few seconds → tell the person
   if (!S.live || !S.playing) { S.busySince = S.idleAt = 0; return; }
@@ -2965,7 +2965,7 @@ $('#reactBar').onclick = (e) => {
 // ---------- board: every recent session at a glance ----------
 const BSTATE = { blocked: ['✋', 'needs you', 'vous attend'], working: ['⚙', 'working', 'au travail'], waiting: ['🔗', 'waiting on sub-agents', 'attend ses sous-agents'], turn: ['✓', 'your turn', 'à vous'], idle: ['💤', 'idle', 'inactif'] };
 const BORDER = ['blocked', 'working', 'waiting', 'turn', 'idle'];
-const agoStr = (ms) => (ms < 90e3 ? Math.max(1, Math.round(ms / 1000)) + 's' : ms < 5400e3 ? Math.round(ms / 60e3) + ' min' : Math.round(ms / 3600e3) + ' h');
+const agoStr = (ms) => (ms < 90e3 ? Math.max(1, Math.round(ms / 1000)) + 's' : ms < 7200e3 ? Math.round(ms / 60e3) + ' min' : Math.floor(ms / 3600e3) + ' h');
 const BGROUP = ['blocked', 'turn', 'working', 'waiting', 'idle'];   // the board is in sections, what waits for you first
 let boardBusy = false, boardAll = null, boardDoneOpen = false, boardIdleOpen = false;
 const BTOOLS = [['claude', 'Claude Code'], ['_codex', 'Codex'], ['_vibe', 'Mistral Vibe'], ['_cowork', 'Cowork']], toolOf = (r) => (BTOOLS.some(([k]) => k === r.proj) ? r.proj : 'claude');   // the filter at the top of the board, shown when sessions of two tools or more are listed

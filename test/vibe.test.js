@@ -225,7 +225,7 @@ test('a Vibe session that says it waits on you needs you as long as the Vibe pro
     const at = (id, later) => { const r = vibe.row(id), b = vibe.boardRow(r, r.mtime + later); return b.state + (b.sure ? '!' : ''); };
     assert.deepEqual([at('blocked-open', 60e3), at('blocked-open', 45 * 60e3)], ['blocked!', 'idle'], 'no lease folder (a Vibe that keeps none): Vibe\'s word for half an hour, then idle, as before');
     lease('blocked-open', process.pid); lease('blocked-crashed', gone);
-    assert.deepEqual([at('blocked-open', 60e3), at('blocked-open', 45 * 60e3), at('blocked-open', 30 * 3600e3)], ['blocked!', 'blocked!', 'blocked!'], 'its process runs: an approval or a question left open over lunch is still open');
+    assert.deepEqual([at('blocked-open', 60e3), at('blocked-open', 45 * 60e3), at('blocked-open', 3 * 3600e3), at('blocked-open', 5 * 3600e3)], ['blocked!', 'blocked!', 'blocked!', 'idle'], 'its process runs: an approval or a question left open over lunch is still open, for four hours (a crashed Vibe leaves its lock, and its process number can be reused)');
     assert.deepEqual([at('blocked-crashed', 60e3), at('blocked-crashed', 45 * 60e3)], ['idle', 'idle'], 'its process ended without closing it: no one is there to answer');
     assert.deepEqual([at('blocked-closed', 60e3), at('blocked-closed', 45 * 60e3)], ['idle', 'idle'], 'closed: Vibe took its lease away');
     fs.writeFileSync(path.join(ACTIVE, 'blocked-crashed.lock.json'), '{"lease_ver');   // read while Vibe writes it: not known
