@@ -264,26 +264,29 @@ function askUsage(st = extCtx && extCtx.globalState, again = false) {
 }
 // Each time the call is opened, in a panel or in the side bar: the question about usage (the first time), the week counted (when shared), the days towards the rating
 const opened = () => { askUsage(); pingWeek(); noteUse(); };
-// A rating, asked once: on the third day of use, a notification asks for a rating on the page of the store this editor installs from
-// (the VS Code Marketplace; Open VSX for Cursor, VSCodium and the others). "Later", or closing it, asks again a week later, one time; "Rate it" and "No thanks" end it.
+// A rating, asked at most twice: on the third day of use, a notification asks for a rating on the page of the store this editor installs from
+// (the VS Code Marketplace; Open VSX for Cursor, VSCodium and the others). "Rate it" and "No thanks" end it. Anything else asks again a week later, one last time: "Later",
+// closing it, or no answer at all (VS Code tucks a notification into the bell after a few seconds, and most people never click it).
 // A day of use: the call was opened, or the status bar saw a session at work (many never open the call twice). ⚙ › Rate in the page opens the same store page, and ends the asking.
-// Nothing is sent: VS Code keeps the number of days, the last of them and the answer, for this extension (see PRIVACY.md).
+// Nothing is sent: VS Code keeps the number of days, the last of them, the day to ask again and the end, for this extension (see PRIVACY.md).
+// 'rate.over' is the end. The 'rate.done' of earlier versions was set as the notification showed, so those who let it go by were never asked again: they are asked once more, the last time.
 const RATE_PAGES = { vscode: 'https://marketplace.visualstudio.com/items?itemName=DoubleGeste.agent-standup&ssr=false#review-details', other: 'https://open-vsx.org/extension/DoubleGeste/agent-standup/reviews' };
 let extCtx = null;
 const ratedHere = new WeakSet();   // as askedHere: asked once by this window, whatever the store has written yet
 const ratePage = () => (/^vscode(-insiders)?$/.test(vscode.env.uriScheme || '') ? RATE_PAGES.vscode : RATE_PAGES.other);
-function rateNow(st = extCtx && extCtx.globalState) { try { if (st) st.update('rate.done', true); vscode.env.openExternal(ratePage()); } catch (err) { logErr('rating', err); } }
+function rateNow(st = extCtx && extCtx.globalState) { try { if (st) st.update('rate.over', true); vscode.env.openExternal(ratePage()); } catch (err) { logErr('rating', err); } }
 function noteUse(st = extCtx && extCtx.globalState, day = new Date().toISOString().slice(0, 10)) {
   try {
-    if (!st || ratedHere.has(st) || st.get('rate.done')) return;
+    if (!st || ratedHere.has(st) || st.get('rate.over')) return;
     const fresh = st.get('rate.last') !== day, days = (st.get('rate.days') || 0) + (fresh ? 1 : 0), later = st.get('rate.later') || '';
     if (fresh) { st.update('rate.last', day); st.update('rate.days', days); }
     if (days < 3 || (later && day < later)) return;
-    ratedHere.add(st); st.update('rate.done', true);   // marked before it shows: another window opening the call at the same time does not ask too
+    if (later || st.get('rate.done')) { ratedHere.add(st); st.update('rate.over', true); }   // asked before: this is the last time. Marked before it shows: another window opening the call at the same time does not ask too
+    else st.update('rate.later', new Date(Date.parse(day) + 7 * 864e5).toISOString().slice(0, 10));   // the first time: again in a week, whatever happens to the notification, unless it is answered
     const rate = tt('Rate it'), not = tt('Later'), no = tt('No thanks'), page = ratePage();
     Promise.resolve(vscode.window.showInformationMessage(tt('Enjoying Agent Standup? A rating helps other people find it.'), rate, not, no)).then((a) => {
+      if (a === rate || a === no) st.update('rate.over', true);
       if (a === rate) vscode.env.openExternal(page);   // handed over as text, as in relay: given as a Uri, VS Code re-encodes the query and the link loses its "&"
-      else if (a !== no && !later) { st.update('rate.later', new Date(Date.parse(day) + 7 * 864e5).toISOString().slice(0, 10)); st.update('rate.done', false); ratedHere.delete(st); }
     }, () => {});
   } catch (err) { logErr('rating', err); }
 }

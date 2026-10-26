@@ -87,7 +87,7 @@ test('the extension registers its commands, its panel and its sidebar view, also
   } finally { await x.close(); }
 });
 
-test('a rating is asked once, on the third day the call is opened, for the store the editor installs from; "Later" or closing it asks again a week later, one time', async () => {
+test('a rating is asked on the third day the call is opened, for the store the editor installs from; "Later", closing it or no answer asks again a week later, one last time', async () => {
   const v = standIn(), x = await activated(v), asked = [], tick = () => new Promise((r) => setImmediate(r));
   let answer; v.vscode.window.showInformationMessage = (m, ...b) => { asked.push([m, ...b]); return Promise.resolve(answer === undefined ? undefined : b[answer]); };
   const store = () => { const m = new Map(); return { get: (k) => m.get(k), update: async (k, val) => { m.set(k, val); } }; };
@@ -102,6 +102,11 @@ test('a rating is asked once, on the third day the call is opened, for the store
     answer = 0; await use(store(), '2026-10-01', '2026-10-02', '2026-10-03'); assert.deepEqual(v.opened, [x.ext._ratePages.vscode]);   // the review page of the Marketplace, link as text
     v.vscode.env.uriScheme = 'cursor'; await use(store(), '2026-10-01', '2026-10-02', '2026-10-03'); assert.deepEqual(v.opened.slice(-1), [x.ext._ratePages.other]);   // Cursor, VSCodium… install from Open VSX
     answer = 2; await use(store(), '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-20'); assert.equal(asked.length, 5); assert.equal(v.opened.length, 2);   // "No thanks": never again
+    v.vscode.window.showInformationMessage = (m, ...b) => { asked.push([m, ...b]); return new Promise(() => {}); };   // left alone: VS Code tucks it into the bell, and no answer ever comes
+    const left = store(); await use(left, '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-09'); assert.equal(asked.length, 6);
+    await use(left, '2026-10-10', '2026-10-30'); assert.equal(asked.length, 7);   // a week later, one last time
+    const old = store(); await old.update('rate.days', 3); await old.update('rate.last', '2026-10-03'); await old.update('rate.done', true);   // asked by an earlier version, which ended it as it showed
+    await use(old, '2026-10-27', '2026-11-30'); assert.equal(asked.length, 8);   // once more, the last time
     assert.match(x.ext._ratePages.vscode, /^https:\/\/marketplace\.visualstudio\.com\/items\?itemName=DoubleGeste\.agent-standup&/); assert.match(x.ext._ratePages.other, /^https:\/\/open-vsx\.org\/extension\/DoubleGeste\/agent-standup\//);
   } finally { await x.close(); }
 });
@@ -113,7 +118,7 @@ test('a day an agent works counts towards the rating, call opened or not; ⚙ �
     await new Promise((r) => setTimeout(r, 50));
     assert.equal(m.get('rate.days'), 1); assert.equal(m.get('rate.last'), new Date().toISOString().slice(0, 10));   // the status bar saw the sessions of this folder at work
     assert.equal(process.env.AGENT_STANDUP_RATE, x.ext._ratePages.vscode);   // the page opened in a browser rates on the same store
-    x.ext._rateNow(st); assert.deepEqual(v.opened, [x.ext._ratePages.vscode]); assert.equal(m.get('rate.done'), true);
+    x.ext._rateNow(st); assert.deepEqual(v.opened, [x.ext._ratePages.vscode]); assert.equal(m.get('rate.over'), true);
   } finally { await x.close(); if (r0 == null) delete process.env.AGENT_STANDUP_RATE; else process.env.AGENT_STANDUP_RATE = r0; }
 });
 
