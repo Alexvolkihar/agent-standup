@@ -2353,20 +2353,20 @@ function rateTip() {
 $('#rateYes').onclick = rateGo; $('#rateNo').onclick = rateEnd;
 $('#rateLater').onclick = () => { if (prefs.rateLater) return rateEnd(); prefs.rateLater = new Date(Date.parse(utcDay()) + 7 * 864e5).toISOString().slice(0, 10); savePrefs(); $('#rateTip').style.display = 'none'; };
 document.addEventListener('visibilitychange', rateDay); setInterval(rateDay, 3600e3);   // the desktop window can stay open for days
-// ☕ Once, at the end of a long run the call followed live (the lead at work for 10 minutes, or 3 agents at work in that turn), from the second day the call has been in view.
+// ☕ Once, at the end of a run the call followed live (the lead at work for 3 minutes, or 3 agents at work in that turn), from the second day the call has been in view.
 // Never twice ("No thanks", the coffee or nothing at all end it), never the day the star is asked, never in a demo. The days are kept in the settings file; nothing is sent.
 function coffeeDay() { if (document.hidden || !SUPPORT.url || prefs.coffeeAsked || prefs.useFirst) return; prefs.useFirst = utcDay(); savePrefs(); }   /* one write, ever: the first day the call is in view (a window left open overnight must not write its old settings over newer ones) */
 function coffeeAsk(busyAt) {
   if (!SUPPORT.url || prefs.coffeeAsked || Q.get('demo') || firstDay() || askedToday('coffee') || !prefs.useFirst || prefs.useFirst >= utcDay() || document.hidden) return;
   const now = Date.now(), team = Object.keys(S.agents).filter((id) => id !== 'main' && id !== 'user' && S.lastAct[id] >= busyAt).length;
-  if (!(now - busyAt >= 10 * 60e3 || (team >= 3 && now - busyAt >= 2 * 60e3))) return;
+  if (!(now - busyAt >= 3 * 60e3 || (team >= 3 && now - busyAt >= 2 * 60e3))) return;
   if ($('#rateTip').style.display !== 'none' || $('#usageTip').style.display !== 'none' || rateTip.seen === utcDay() || prefs.rateDone === utcDay() || (RATE_ASKS && !prefs.rateDone && prefs.rateLast === utcDay() && (+prefs.rateDays || 0) >= 3)) return;   /* the star shown, given or declined today */
   clearTimeout(coffeeAsk.t); coffeeAsk.t = setTimeout(() => { if (prefs.coffeeAsked || document.hidden || $('#menu').classList.contains('on') || $('#menuTip').style.display !== 'none' || $('#rateTip').style.display !== 'none' || $('#updTip').style.display !== 'none' || agentState('main', Date.now()).k !== 'done') return; coffeeTip(); }, 8000);   /* after the confetti and the lead's last word */
 }
 function coffeeTip() {
   const at = [$('#bCoffee'), $('#bMenu')].find((b) => b.getBoundingClientRect().width), t = $('#coffeeTip'); if (!at) return;
   prefs.coffeeAsked = utcDay(); noteAsk('coffee'); savePrefs(); const r = at.getBoundingClientRect();
-  $('#coffeeTipT').textContent = L('{0} et l’équipe ont fini. Si l’appel vous a aidé à suivre ce long travail, un café aide Agent Standup à continuer. (On ne le demande qu’une fois.)', '{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)').replace('{0}', () => nameOf('main'));
+  $('#coffeeTipT').textContent = L('{0} et l’équipe ont fini. Si l’appel vous a aidé à suivre ce travail, un café aide Agent Standup à continuer. (On ne le demande qu’une fois.)', '{0} and the team are done. If the call helped you follow this run, a coffee keeps Agent Standup going. (We only ask once.)').replace('{0}', () => nameOf('main'));
   $('#coffeeYes').textContent = L('☕ Offrir un café', '☕ Buy a coffee'); $('#coffeeNo').textContent = L('Non merci', 'No thanks');
   t.style.display = ''; t.style.top = Math.round(r.bottom + 10) + 'px'; t.style.right = Math.max(8, Math.round(innerWidth - r.right - 6)) + 'px'; t.style.setProperty('--ax', Math.max(8, Math.round(r.width / 2 - 2)) + 'px');
   clearTimeout(coffeeTip.t); coffeeTip.t = setTimeout(() => (t.style.display = 'none'), 60000);

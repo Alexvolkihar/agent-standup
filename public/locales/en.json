@@ -2,7 +2,7 @@
  " full — compaction soon": " full — compaction soon",
  " on ": " on ",
  "”": "”",
- "{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)": "{0} and the team are done. If the call helped you follow this long run, a coffee keeps Agent Standup going. (We only ask once.)",
+ "{0} and the team are done. If the call helped you follow this run, a coffee keeps Agent Standup going. (We only ask once.)": "{0} and the team are done. If the call helped you follow this run, a coffee keeps Agent Standup going. (We only ask once.)",
  "{0} failures in a row": "{0} failures in a row",
  "{0} MB": "{0} MB",
  "{0} times in a row": "{0} times in a row",
