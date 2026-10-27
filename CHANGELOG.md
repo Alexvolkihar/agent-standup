@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.41.2
+- **The VS Code rating request no longer disappears for good.** VS Code tucks a notification into the bell after a few seconds, and if you had not clicked it by then, Agent Standup never asked again. Now it asks again a week later, one last time, unless you chose “Rate it” or “No thanks”. If an earlier version asked you once already, you are asked one more time. Nothing is sent: VS Code keeps the days and the answer for the extension.
+- **The one-time coffee tip** comes at the end of a run of three minutes, not only ten, so people whose agents finish quickly see it too.
+
 ## 1.41.1
 - **More room for the call:** for new users, the list of agents on the left of the call is off by default; ⚙ → Agents list (left) turns it on, and ⚙ → Reset to defaults now turns it off. If you already use Agent Standup, nothing changes.
 - **A plan waiting for your approval is on the shared screen again** with Claude Code 2.1.30x, which sends the plan in its file only.
